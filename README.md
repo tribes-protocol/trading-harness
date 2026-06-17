@@ -21,12 +21,12 @@ Pi reads `.pi/settings.json` and `AGENTS.md`, then starts the trading harness. E
 
 Set these in the sandbox/runtime env (never commit secrets):
 
-| Variable | Purpose |
-|---|---|
-| `API_BASE_URL` | Tribes API base (LLM proxy + wallet backend) |
-| `PRIVY_APP_ID` | Privy app for the agent wallet |
-| `ALCHEMY_API_KEY` | EVM RPC (Base/Eth/BSC/Arb/Optimism/Polygon) |
-| `HELIUS_API_KEY` | Solana RPC |
+| Variable          | Purpose                                      |
+| ----------------- | -------------------------------------------- |
+| `API_BASE_URL`    | Tribes API base (LLM proxy + wallet backend) |
+| `PRIVY_APP_ID`    | Privy app for the agent wallet               |
+| `ALCHEMY_API_KEY` | EVM RPC (Base/Eth/BSC/Arb/Optimism/Polygon)  |
+| `HELIUS_API_KEY`  | Solana RPC                                   |
 
 Direct wallet CLI usage from the workspace root, injecting a bearer token:
 

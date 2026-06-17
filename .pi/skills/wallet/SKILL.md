@@ -78,9 +78,9 @@ Pass addresses as separate arguments after `--wallet-addresses`.
 
 ## Error handling
 
-| Symptom                        | Action                                                                                                                                                       |
-| ------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Symptom                        | Action                                                                                                                                       |
+| ------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------- |
 | Need addresses                 | Run `API_BEARER_TOKEN="$(bun src/cli/llm-token.ts)" bun .pi/skills/wallet/src/cli/Wallet.ts list`                                            |
 | Need portfolio balances        | Run `API_BEARER_TOKEN="$(bun src/cli/llm-token.ts)" bun .pi/skills/wallet/src/cli/Wallet.ts assets --wallet-addresses <address1> <address2>` |
-| Need balances on one EVM chain | Add `--chain-ids <id>` (for example `--chain-ids 8453` for Base)                                                                                             |
-| Assets command failed          | Verify API bearer token and retry the same `assets` command                                                                                                  |
+| Need balances on one EVM chain | Add `--chain-ids <id>` (for example `--chain-ids 8453` for Base)                                                                             |
+| Assets command failed          | Verify API bearer token and retry the same `assets` command                                                                                  |

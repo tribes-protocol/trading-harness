@@ -1,0 +1,12 @@
+const prettierConfig = {
+  semi: false,
+  singleQuote: true,
+  trailingComma: 'none',
+  bracketSpacing: true,
+  jsxSingleQuote: false,
+  tabWidth: 2,
+  printWidth: 100,
+  useTabs: false
+}
+
+export default prettierConfig
