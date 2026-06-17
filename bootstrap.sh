@@ -1,23 +1,20 @@
 #!/bin/sh
 # First-boot bootstrap for the trading-harness.
 #
-# The sandbox clones this repo into /workspace and runs this script ONCE, as root,
-# before launching the agent. Its job: install the deps the thin warmup base lacks
-# so `pi` can run. The base ships bun (the bridge runtime) + git; everything else
-# the harness needs is installed here, at claim time, watched live in the terminal.
+# The sandbox clones this repo into /workspace and runs this ONCE before launching
+# the agent. BOOT SPEED is the priority: just install deps so `pi` can run.
 #
-# Idempotent: re-running is safe (bun install is a no-op when satisfied).
+# No typecheck / lint / build here — CI does those (the code is assumed solid).
+# Bun runs the TypeScript directly (CLIs via `bun .../X.ts`, extensions via jiti),
+# so there is NOTHING to compile at boot; a tsc pass would only add latency and
+# doesn't even warm bun's transpile cache.
 set -eu
 cd "$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)"
 
-echo "[bootstrap] installing node deps (incl. the pinned pi CLI)…"
-# Pi ships as a devDependency, so this drops node_modules/.bin/pi — on PATH inside
-# the VM because vm-init adds /workspace/node_modules/.bin. No global npm install.
-bun install
-
-# Build the entire world — the ata CLIs, the extensions, and every skill — so any
-# compile error surfaces here at first boot instead of mid-trade.
-echo "[bootstrap] building the world (ata + extensions + all skills)…"
-bun run build
+echo "[bootstrap] installing deps (incl. the pinned pi CLI)…"
+# Pi ships as a devDependency -> node_modules/.bin/pi, on PATH via vm-init.
+# --frozen-lockfile uses the committed bun.lock (skips resolution: faster +
+# deterministic); fall back to a normal install if the lockfile is ever stale.
+bun install --frozen-lockfile || bun install
 
 echo "[bootstrap] done — run the harness with: pi"
