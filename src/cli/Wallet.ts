@@ -8,7 +8,7 @@ import {
   ListWalletAssetsCommandOptionsSchema,
   ListWalletsCommandOptionsSchema
 } from '@/types/WalletCli'
-import { ensureJsonTreeString } from '@/utils/lang'
+import { ensureJsonTreeString } from '@/utils/Lang'
 
 const VERSION = '1.0.0'
 

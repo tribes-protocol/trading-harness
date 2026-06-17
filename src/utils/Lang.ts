@@ -1,4 +1,4 @@
-import { HexStringSchema } from '@/types/lang'
+import { HexStringSchema } from '@/types/Lang'
 
 type JsonSerializable = { toJSON: () => unknown }
 

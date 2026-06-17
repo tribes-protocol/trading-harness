@@ -1,6 +1,6 @@
 import { z } from 'zod'
 
-import { BasePoolItemSchema, BaseTokenItemSchema } from '@/types/crosschain'
+import { BasePoolItemSchema, BaseTokenItemSchema } from '@/types/Crosschain'
 
 export const SearchTokenItemSchema = BaseTokenItemSchema
 export type SearchTokenItem = z.infer<typeof SearchTokenItemSchema>

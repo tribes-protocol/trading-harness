@@ -1,8 +1,8 @@
 import { z } from 'zod'
 
 import { fetchTerminalApi } from '@/helpers/TerminalApiRequest'
-import { type HexString, HexStringSchema } from '@/types/lang'
-import { type SolSignature, SolSignatureSchema } from '@/types/solana'
+import { type HexString, HexStringSchema } from '@/types/Lang'
+import { type SolSignature, SolSignatureSchema } from '@/types/Solana'
 import {
   EthCallsSchema,
   SendEthCallsApiRequestSchema,
@@ -18,7 +18,7 @@ import type {
   TransactionServiceParams
 } from '@/types/TransactionService'
 import { TxSchema } from '@/types/Tx'
-import { ensureJsonTreeString } from '@/utils/lang'
+import { ensureJsonTreeString } from '@/utils/Lang'
 import {
   generateEthSendCallsSignature,
   generateEthSendTransactionSignature,

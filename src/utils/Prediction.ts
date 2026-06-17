@@ -2,7 +2,7 @@ import BigNumber from 'bignumber.js'
 
 import type { PolymarketEvent, PolymarketMarket, SelectedLeadingMarket } from '@/types/Polymarket'
 import { type PredictionEnrichedEvent, PredictionEnrichedEventSchema } from '@/types/Prediction'
-import { isNullish } from '@/utils/lang'
+import { isNullish } from '@/utils/Lang'
 
 /**
  * Primary outcome for cross-market comparison: Polymarket uses index 0 as the affirmative outcome

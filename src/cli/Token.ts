@@ -2,11 +2,11 @@
 
 import { Command } from 'commander'
 
-import { API_BASE_URL } from '@/common/env'
+import { API_BASE_URL } from '@/common/Env'
 import { writeOutput } from '@/helpers/WriteOutput'
 import { TokenService } from '@/services/TokenService'
 import { TokenSearchCommandOptionsSchema } from '@/types/Token'
-import { ensureJsonTreeString } from '@/utils/lang'
+import { ensureJsonTreeString } from '@/utils/Lang'
 
 const VERSION = '1.0.0'
 const tokenService = new TokenService({ apiBaseUrl: API_BASE_URL })

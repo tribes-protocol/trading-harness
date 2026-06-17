@@ -28,13 +28,14 @@ Set these in the sandbox/runtime env (never commit secrets):
 | `ALCHEMY_API_KEY` | EVM RPC (Base/Eth/BSC/Arb/Optimism/Polygon)  |
 | `HELIUS_API_KEY`  | Solana RPC                                   |
 
-A bearer token for authed API calls is minted on demand with `bun src/cli/llm-token.ts`.
+On startup the `tribes` extension writes `API_BASE_URL`, `PRIVY_APP_ID`, and a freshly
+minted `API_BEARER_TOKEN` into `.env` (refreshed every 24h). bun auto-loads `.env`, so the
+CLIs read their config straight from it — no token prefix on any command.
 
-Direct wallet CLI usage from the workspace root, injecting a bearer token:
+Direct wallet CLI usage from the workspace root:
 
 ```bash
-API_BEARER_TOKEN="$(bun src/cli/llm-token.ts)" \
-  bun src/cli/Wallet.ts list
+bun src/cli/Wallet.ts list
 ```
 
 ## Trading

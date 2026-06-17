@@ -74,7 +74,6 @@ bun src/cli/TokenAnalyst.ts --help
 ### Ask the specialist
 
 ```bash
-API_BEARER_TOKEN="$(bun src/cli/llm-token.ts)" \
 bun src/cli/TokenAnalyst.ts ask \
   --query "risk and holder concentration for PEPE on ethereum"
 ```
@@ -85,5 +84,4 @@ The CLI calls:
 
 - `POST /agent/lucy/token-analyst`
 - Query string param: `q=<user-query>`
-- Authorization header: `Bearer <API_BEARER_TOKEN>`
 - Response: JSON object `{ "result": "<analysis string>" }`

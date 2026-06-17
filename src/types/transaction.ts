@@ -1,9 +1,9 @@
 import { z } from 'zod'
 
 import { ChainIdSchema, EvmChainIdSchema } from '@/types/ChainId'
-import { EthAddressSchema } from '@/types/eth'
-import { BigintSchema, HexStringSchema } from '@/types/lang'
-import { SolInstructionSchema } from '@/types/solana'
+import { EthAddressSchema } from '@/types/Eth'
+import { BigintSchema, HexStringSchema } from '@/types/Lang'
+import { SolInstructionSchema } from '@/types/Solana'
 import { EthSignTypedDataSchema, TxIdSchema, TxSchema } from '@/types/Tx'
 
 export const EthTransactionSchema = z.object({

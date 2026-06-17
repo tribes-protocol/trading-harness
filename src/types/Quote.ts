@@ -1,11 +1,11 @@
 import { z } from 'zod'
 
 import { ChainIdSchema, EvmChainIdSchema, SolanaChainIdSchema } from '@/types/ChainId'
-import { TokenIdSchema } from '@/types/crosschain'
-import { EthAddressSchema, EthTokenIdSchema } from '@/types/eth'
-import { BigintSchema, HexStringSchema } from '@/types/lang'
-import { SolInstructionSchema, SPLTokenIdSchema } from '@/types/solana'
-import { WalletAddressSchema } from '@/types/wallet'
+import { TokenIdSchema } from '@/types/Crosschain'
+import { EthAddressSchema, EthTokenIdSchema } from '@/types/Eth'
+import { BigintSchema, HexStringSchema } from '@/types/Lang'
+import { SolInstructionSchema, SPLTokenIdSchema } from '@/types/Solana'
+import { WalletAddressSchema } from '@/types/Wallet'
 
 export const QuoteRequestSchema = z.object({
   fromToken: TokenIdSchema,

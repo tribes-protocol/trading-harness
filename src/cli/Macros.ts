@@ -4,9 +4,9 @@ import { stderr, stdout } from 'node:process'
 
 import { Command } from 'commander'
 
-import { API_BASE_URL, API_BEARER_TOKEN } from '@/common/env'
+import { API_BASE_URL, API_BEARER_TOKEN } from '@/common/Env'
 import { MacrosService } from '@/services/MacrosService'
-import { ensureJsonTreeString } from '@/utils/lang'
+import { ensureJsonTreeString } from '@/utils/Lang'
 
 const VERSION = '1.0.0'
 const macrosService = new MacrosService({

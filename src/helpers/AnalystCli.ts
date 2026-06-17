@@ -1,6 +1,6 @@
 import { Command } from 'commander'
 
-import { API_BASE_URL, API_BEARER_TOKEN } from '@/common/env'
+import { API_BASE_URL, API_BEARER_TOKEN } from '@/common/Env'
 import { AnalystService } from '@/services/AnalystService'
 import { type AnalystConfig, AskAnalystCliOptionsSchema } from '@/types/Analyst'
 

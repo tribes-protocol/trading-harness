@@ -1,4 +1,4 @@
-import { ensureJsonTreeString } from '@/utils/lang'
+import { ensureJsonTreeString } from '@/utils/Lang'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { MacrosService } from '@/services/MacrosService'

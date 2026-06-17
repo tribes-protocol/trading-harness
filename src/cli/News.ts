@@ -2,11 +2,11 @@
 
 import { Command } from 'commander'
 
-import { API_BASE_URL } from '@/common/env'
+import { API_BASE_URL } from '@/common/Env'
 import { writeCliError, writeOutput } from '@/helpers/WriteOutput'
 import { NewsService } from '@/services/NewsService'
 import { FetchNewsCommandOptionsSchema } from '@/types/News'
-import { ensureJsonTreeString } from '@/utils/lang'
+import { ensureJsonTreeString } from '@/utils/Lang'
 import { toAssetIdentity } from '@/utils/News'
 
 const VERSION = '1.0.0'

@@ -1,6 +1,6 @@
 import { z } from 'zod'
 
-import { QuoteRequestSchema } from '@/types/quote'
+import { QuoteRequestSchema } from '@/types/Quote'
 
 export const QuoteCliOptionInputSchema = QuoteRequestSchema.extend({
   out: z.string().nullish()

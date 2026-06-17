@@ -2,8 +2,8 @@ import { isAddress } from 'viem'
 import { z } from 'zod'
 
 import { EvmChainIdSchema } from '@/types/ChainId'
-import { BigintSchema, BigNumberSchema } from '@/types/lang'
-import { TokenVerificationStatusSchema } from '@/types/verification'
+import { BigintSchema, BigNumberSchema } from '@/types/Lang'
+import { TokenVerificationStatusSchema } from '@/types/Verification'
 
 export const EthAddressSchema = z
   .custom<`0x${string}`>((val): val is `0x${string}` => typeof val === 'string' && isAddress(val))

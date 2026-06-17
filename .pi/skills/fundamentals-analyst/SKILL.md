@@ -72,7 +72,6 @@ bun src/cli/FundamentalsAnalyst.ts --help
 ### Ask the specialist
 
 ```bash
-API_BEARER_TOKEN="$(bun src/cli/llm-token.ts)" \
 bun src/cli/FundamentalsAnalyst.ts ask \
   --query "fundamentals and supply trend for ethereum over 90d"
 ```
@@ -83,5 +82,4 @@ The CLI calls:
 
 - `POST /agent/lucy/fundamentals-analyst`
 - Query string param: `q=<user-query>`
-- Authorization header: `Bearer <API_BEARER_TOKEN>`
 - Response: JSON object `{ "result": "<analysis string>" }`

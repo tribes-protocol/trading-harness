@@ -109,6 +109,7 @@ const LUCY_RULES = {
   'lucy/no-pass-through-alias-export': 'error',
   'lucy/no-barrel-re-export': 'error',
   'lucy/no-generic-filenames': 'error',
+  'lucy/pascalcase-filename': 'error',
   'lucy/no-indexed-type-access': 'error',
   'lucy/no-inline-zod-infer': 'error',
   'lucy/no-optional-nullable': 'error',

@@ -1,12 +1,12 @@
 import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import { dirname, resolve } from 'node:path'
 
-import { API_BASE_URL, API_BEARER_TOKEN } from '@/common/env'
+import { API_BASE_URL, API_BEARER_TOKEN } from '@/common/Env'
 import type { AgentWalletSnapshot } from '@/types/Privy'
 import { AgentWalletSnapshotSchema } from '@/types/Privy'
-import { type AssetBalance, AssetBalanceSchema } from '@/types/wallet'
+import { type AssetBalance, AssetBalanceSchema } from '@/types/Wallet'
 import type { ListWalletAssetsParams } from '@/types/WalletCli'
-import { ensureJsonTreeString, isNullish } from '@/utils/lang'
+import { ensureJsonTreeString, isNullish } from '@/utils/Lang'
 
 const WALLET_SNAPSHOT_PATH = '.pi/privy-wallets.json'
 

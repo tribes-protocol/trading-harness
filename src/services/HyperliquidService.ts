@@ -14,7 +14,7 @@ import BigNumber from 'bignumber.js'
 import { encodeFunctionData, erc20Abi, parseUnits } from 'viem'
 
 import { TransactionService } from '@/services/TransactionService'
-import { type EthAddress } from '@/types/eth'
+import { type EthAddress } from '@/types/Eth'
 import {
   type HyperliquidDepositResult,
   HyperliquidDepositResultSchema,
@@ -42,9 +42,9 @@ import {
   type ResolvePerpAssetParams,
   type ResolveWirePerpAssetIdParams
 } from '@/types/Hyperliquid'
-import { type HexString } from '@/types/lang'
+import { type HexString } from '@/types/Lang'
 import { type EthSignTypedData } from '@/types/Tx'
-import { isNullish } from '@/utils/lang'
+import { isNullish } from '@/utils/Lang'
 
 interface HyperliquidServiceParams {
   readonly transaction: TransactionService

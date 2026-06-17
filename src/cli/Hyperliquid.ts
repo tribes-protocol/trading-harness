@@ -4,7 +4,7 @@ import { stderr } from 'node:process'
 
 import { Command } from 'commander'
 
-import { API_BASE_URL, API_BEARER_TOKEN, PRIVY_APP_ID } from '@/common/env'
+import { API_BASE_URL, API_BEARER_TOKEN, PRIVY_APP_ID } from '@/common/Env'
 import { writeOutput } from '@/helpers/WriteOutput'
 import { HyperliquidService } from '@/services/HyperliquidService'
 import { TransactionService } from '@/services/TransactionService'
@@ -18,7 +18,7 @@ import {
   HyperliquidUsdClassTransferCommandOptionsSchema,
   HyperliquidWithdrawCommandOptionsSchema
 } from '@/types/Hyperliquid'
-import { ensureJsonTreeString } from '@/utils/lang'
+import { ensureJsonTreeString } from '@/utils/Lang'
 
 const VERSION = '1.0.0'
 const program = new Command()

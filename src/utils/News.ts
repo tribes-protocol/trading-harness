@@ -2,7 +2,7 @@ import { type AssetIdentity } from '@/types/AssetIdentity'
 import { normalizeHyperliquidCoin } from '@/types/Hyperliquid'
 import { normalizeMassiveStocksTicker } from '@/types/MassiveStocks'
 import type { FetchNewsCommandOptions } from '@/types/News'
-import { isNullish } from '@/utils/lang'
+import { isNullish } from '@/utils/Lang'
 
 export function toAssetIdentity(options: FetchNewsCommandOptions): AssetIdentity {
   switch (options.kind) {

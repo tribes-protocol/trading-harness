@@ -1,7 +1,7 @@
 import { z } from 'zod'
 
-import { EthAddressSchema } from '@/types/eth'
-import { SolAddressSchema } from '@/types/solana'
+import { EthAddressSchema } from '@/types/Eth'
+import { SolAddressSchema } from '@/types/Solana'
 
 export const AgentWalletSnapshotSchema = z.object({
   evmWalletId: z.string().trim().min(1),

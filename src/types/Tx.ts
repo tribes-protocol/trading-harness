@@ -1,9 +1,9 @@
 import { z } from 'zod'
 
 import { EvmChainIdSchema } from '@/types/ChainId'
-import { EthAddressSchema } from '@/types/eth'
-import { BigintSchema, HexStringSchema } from '@/types/lang'
-import { SolSignatureSchema } from '@/types/solana'
+import { EthAddressSchema } from '@/types/Eth'
+import { BigintSchema, HexStringSchema } from '@/types/Lang'
+import { SolSignatureSchema } from '@/types/Solana'
 
 export const Eip712TypeFieldSchema = z.object({
   name: z.string(),

@@ -1,7 +1,7 @@
 import { z } from 'zod'
 
 import { type EvmChainId, EvmChainIdSchema } from '@/types/ChainId'
-import { type WalletAddress, WalletAddressSchema } from '@/types/wallet'
+import { type WalletAddress, WalletAddressSchema } from '@/types/Wallet'
 
 export const ListWalletsCommandOptionsSchema = z.object({
   out: z.string().nullish()

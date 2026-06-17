@@ -5,9 +5,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "typecheck:src": "tsc --noEmit -p tsconfig.build.json",
-    "typecheck:extensions": "tsc --noEmit -p tsconfig.json",
-    "typecheck": "bun run typecheck:src && bun run typecheck:extensions",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
     "build": "bun run typecheck",
     "test": "bun run typecheck",
     "lint": "eslint . --ext .ts,.mts --max-warnings 0 --no-warn-ignored",

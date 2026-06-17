@@ -4,7 +4,7 @@ import {
   type NewsStateResponse,
   NewsStateResponseSchema
 } from '@/types/News'
-import { ensureJsonTreeString } from '@/utils/lang'
+import { ensureJsonTreeString } from '@/utils/Lang'
 
 export async function fetchNewsState(params: FetchNewsStateParams): Promise<NewsStateResponse> {
   const parsedRequest = GetNewsRequestSchema.parse(params.request)

@@ -9,7 +9,7 @@ import {
   PolymarketSearchInputSchema,
   SelectedLeadingMarketSchema
 } from '@/types/Polymarket'
-import { isNullish } from '@/utils/lang'
+import { isNullish } from '@/utils/Lang'
 
 const CliBooleanSchema = z
   .union([z.boolean(), z.enum(['true', 'false'])])

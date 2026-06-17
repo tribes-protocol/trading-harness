@@ -66,7 +66,6 @@ bun src/cli/TechnicalAnalyst.ts --help
 ### Ask the specialist
 
 ```bash
-API_BEARER_TOKEN="$(bun src/cli/llm-token.ts)" \
 bun src/cli/TechnicalAnalyst.ts ask \
   --query "BTC 4H technical analysis with RSI, MACD, and ATR"
 ```
@@ -77,5 +76,4 @@ The CLI calls:
 
 - `POST /agent/lucy/technical-analyst`
 - Query string param: `q=<user-query>`
-- Authorization header: `Bearer <API_BEARER_TOKEN>`
 - Response: JSON object `{ "result": "<analysis string>" }`

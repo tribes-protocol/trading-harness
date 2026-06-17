@@ -66,7 +66,6 @@ bun src/cli/ResearchAnalyst.ts --help
 ### Ask the specialist
 
 ```bash
-API_BEARER_TOKEN="$(bun src/cli/llm-token.ts)" \
 bun src/cli/ResearchAnalyst.ts ask \
   --query "what is pendle and how does it work"
 ```
@@ -77,5 +76,4 @@ The CLI calls:
 
 - `POST /agent/lucy/research-analyst`
 - Query string param: `q=<user-query>`
-- Authorization header: `Bearer <API_BEARER_TOKEN>`
 - Response: JSON object `{ "result": "<analysis string>" }`

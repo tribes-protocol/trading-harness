@@ -66,7 +66,6 @@ bun src/cli/WalletAnalyst.ts --help
 ### Ask the specialist
 
 ```bash
-API_BEARER_TOKEN="$(bun src/cli/llm-token.ts)" \
 bun src/cli/WalletAnalyst.ts ask \
   --query "portfolio PnL and net worth trend over the last 30d"
 ```
@@ -77,5 +76,4 @@ The CLI calls:
 
 - `POST /agent/lucy/wallet-analyst`
 - Query string param: `q=<user-query>`
-- Authorization header: `Bearer <API_BEARER_TOKEN>`
 - Response: JSON object `{ "result": "<analysis string>" }`

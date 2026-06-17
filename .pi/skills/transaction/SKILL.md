@@ -17,7 +17,6 @@ Use this skill when the agent must send a transaction or check transaction statu
 
 ## Requirements
 
-- `API_BEARER_TOKEN` for authenticated CLI calls.
 - Caller provides `walletId` and `privateKeyPem` for signed send endpoints.
 
 ## Required EVM tx data
@@ -76,7 +75,6 @@ bun src/cli/Transaction.ts --help
 ### Send ETH transaction (EVM)
 
 ```bash
-API_BEARER_TOKEN="$(bun src/cli/llm-token.ts)" \
 bun src/cli/Transaction.ts sendEthTransaction \
   --chain-id 42161 \
   --to 0x1111111111111111111111111111111111111111 \
@@ -88,7 +86,6 @@ bun src/cli/Transaction.ts sendEthTransaction \
 ### Send a batch of EVM calls (atomic)
 
 ```bash
-API_BEARER_TOKEN="$(bun src/cli/llm-token.ts)" \
 bun src/cli/Transaction.ts sendCalls \
   --chain-id 8453 \
   --calls '[{"to":"0xTokenAddress","value":"0","data":"0xApproveCalldata"},{"to":"0xRouterAddress","value":"0","data":"0xSwapCalldata"}]' \
@@ -99,7 +96,6 @@ bun src/cli/Transaction.ts sendCalls \
 ### Send Solana transaction
 
 ```bash
-API_BEARER_TOKEN="$(bun src/cli/llm-token.ts)" \
 bun src/cli/Transaction.ts sendSolTransaction \
   --transaction "<serializedSolanaInstruction>" \
   --wallet-id "<solWalletId>" \
@@ -117,7 +113,6 @@ bun src/cli/Transaction.ts getTransactionStatus \
 ### Example (sendEthTransaction)
 
 ```bash
-API_BEARER_TOKEN="$(bun src/cli/llm-token.ts)" \
 bun src/cli/Transaction.ts sendEthTransaction \
   --chain-id 8453 \
   --to 0xe784B1FB160249E36c514Dc7f21cADDf025aE69f \

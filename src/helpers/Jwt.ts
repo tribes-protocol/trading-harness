@@ -12,7 +12,7 @@ import {
   type JwtTokenClaims,
   JwtTokenClaimsSchema
 } from '@/types/JwtAuth'
-import { ensureJsonTreeString, isNullish } from '@/utils/lang'
+import { ensureJsonTreeString, isNullish } from '@/utils/Lang'
 
 const TOKEN_TTL = '7d'
 const TOKEN_REFRESH_BUFFER_SECONDS = 60
@@ -111,31 +111,35 @@ async function mintTokenCache(key: AgentAuthorizationKey): Promise<JwtTokenCache
   })
 }
 
-export async function getApiBearerToken(): Promise<string> {
+export async function getApiBearerToken(
+  options: { readonly forceRefresh?: boolean } = {}
+): Promise<string> {
   const key = await readAgentAuthorizationKey()
   if (isNullish(key)) {
     throw new Error('Authorization key missing')
   }
 
-  if (!isNullish(memoryCache)) {
-    const reusableMemoryCache = isReusableCache({
-      key,
-      cache: memoryCache
-    })
-    if (reusableMemoryCache) {
-      return memoryCache.token
+  if (options.forceRefresh !== true) {
+    if (!isNullish(memoryCache)) {
+      const reusableMemoryCache = isReusableCache({
+        key,
+        cache: memoryCache
+      })
+      if (reusableMemoryCache) {
+        return memoryCache.token
+      }
     }
-  }
 
-  const diskCache = await readDiskCache()
-  if (!isNullish(diskCache)) {
-    const reusableDiskCache = isReusableCache({
-      key,
-      cache: diskCache
-    })
-    if (reusableDiskCache) {
-      memoryCache = diskCache
-      return diskCache.token
+    const diskCache = await readDiskCache()
+    if (!isNullish(diskCache)) {
+      const reusableDiskCache = isReusableCache({
+        key,
+        cache: diskCache
+      })
+      if (reusableDiskCache) {
+        memoryCache = diskCache
+        return diskCache.token
+      }
     }
   }
 

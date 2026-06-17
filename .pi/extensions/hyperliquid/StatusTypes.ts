@@ -1,7 +1,7 @@
 /**
  * Shared types for the hyperliquid-status extension.
  *
- * Split from `index.ts` so the renderer in `./render.ts` can import these
+ * Split from `index.ts` so the renderer in `./Render.ts` can import these
  * without dragging the index module's pi-coding-agent runtime imports.
  */
 

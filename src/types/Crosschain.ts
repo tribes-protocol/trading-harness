@@ -1,10 +1,10 @@
 import z from 'zod'
 
 import { ChainIdSchema } from '@/types/ChainId'
-import { EthTokenIdSchema } from '@/types/eth'
-import { BigNumberSchema, HexStringSchema } from '@/types/lang'
-import { SolInstructionSchema, SolPubKeySchema, SPLTokenIdSchema } from '@/types/solana'
-import { AssetTokenSchema } from '@/types/wallet'
+import { EthTokenIdSchema } from '@/types/Eth'
+import { BigNumberSchema, HexStringSchema } from '@/types/Lang'
+import { SolInstructionSchema, SolPubKeySchema, SPLTokenIdSchema } from '@/types/Solana'
+import { AssetTokenSchema } from '@/types/Wallet'
 
 export const TokenIdSchema = z
 

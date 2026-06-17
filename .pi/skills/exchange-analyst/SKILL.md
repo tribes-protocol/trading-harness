@@ -66,7 +66,6 @@ bun src/cli/ExchangeAnalyst.ts --help
 ### Ask the specialist
 
 ```bash
-API_BEARER_TOKEN="$(bun src/cli/llm-token.ts)" \
 bun src/cli/ExchangeAnalyst.ts ask \
   --query "compare top derivatives exchanges by open interest"
 ```
@@ -77,5 +76,4 @@ The CLI calls:
 
 - `POST /agent/lucy/exchange-analyst`
 - Query string param: `q=<user-query>`
-- Authorization header: `Bearer <API_BEARER_TOKEN>`
 - Response: JSON object `{ "result": "<analysis string>" }`

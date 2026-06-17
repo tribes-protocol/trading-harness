@@ -1,13 +1,24 @@
 {
-  "extends": "./tsconfig.base.json",
   "compilerOptions": {
+    "target": "ESNext",
+    "module": "ESNext",
+    "lib": ["ESNext", "DOM"],
+    "strict": true,
+    "moduleResolution": "bundler",
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "resolveJsonModule": true,
+    "noImplicitAny": true,
+    "types": ["node"],
     "baseUrl": ".",
+    "paths": { "@/*": ["./src/*"] },
     "allowImportingTsExtensions": true,
     "noEmit": true,
-    "paths": {
-      "@/*": ["./src/*"]
-    }
+    "noUncheckedIndexedAccess": true,
+    "noImplicitOverride": true,
+    "noFallthroughCasesInSwitch": true,
+    "forceConsistentCasingInFileNames": true
   },
   "include": ["src/**/*.ts", ".pi/extensions/**/*.ts"],
-  "exclude": ["node_modules", "runtime", "src/**/*.test.ts"]
+  "exclude": ["node_modules", "runtime", "dist", "src/**/*.test.ts"]
 }

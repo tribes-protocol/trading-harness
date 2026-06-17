@@ -10,7 +10,7 @@ import type { Theme } from '@earendil-works/pi-coding-agent'
 import { DynamicBorder } from '@earendil-works/pi-coding-agent'
 import { Container, Text, truncateToWidth, visibleWidth } from '@earendil-works/pi-tui'
 
-import type { HyperliquidStatus, StatusPosition } from './status-types.ts'
+import type { HyperliquidStatus, StatusPosition } from './StatusTypes.ts'
 
 export function fmtUsd(n: number | null | undefined): string {
   if (typeof n !== 'number' || !Number.isFinite(n)) return '$0'

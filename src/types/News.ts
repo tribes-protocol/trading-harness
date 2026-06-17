@@ -2,9 +2,9 @@ import { z } from 'zod'
 
 import { AssetIdentitySchema } from '@/types/AssetIdentity'
 import { ChainIdSchema } from '@/types/ChainId'
-import { TokenIdSchema } from '@/types/crosschain'
+import { TokenIdSchema } from '@/types/Crosschain'
 import { Keccak256Schema } from '@/types/Keccak256'
-import { isNullish } from '@/utils/lang'
+import { isNullish } from '@/utils/Lang'
 
 const NewsSentimentSchema = z.enum(['bullish', 'bearish', 'neutral', 'unknown'])
 

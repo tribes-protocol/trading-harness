@@ -2,11 +2,11 @@
 
 import { Command } from 'commander'
 
-import { API_BASE_URL } from '@/common/env'
+import { API_BASE_URL } from '@/common/Env'
 import { writeCliError, writeOutput } from '@/helpers/WriteOutput'
 import { SwapBridgeService } from '@/services/SwapBridgeService'
 import { QuoteCliOptionInputSchema } from '@/types/SpotTradingCli'
-import { ensureJsonTreeString } from '@/utils/lang'
+import { ensureJsonTreeString } from '@/utils/Lang'
 
 const service = new SwapBridgeService({ apiBaseUrl: API_BASE_URL })
 const program = new Command()

@@ -1,9 +1,9 @@
 import { generateAuthorizationSignature, type WalletApiRequestSignatureInput } from '@privy-io/node'
 import { toHex } from 'viem'
 
-import type { SolInstruction } from '@/types/solana'
+import type { SolInstruction } from '@/types/Solana'
 import type { EthSignTypedData, Tx } from '@/types/Tx'
-import { isNullish } from '@/utils/lang'
+import { isNullish } from '@/utils/Lang'
 
 const PRIVY_API_BASE_URL = 'https://api.privy.io'
 

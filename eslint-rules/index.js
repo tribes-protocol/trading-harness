@@ -10,6 +10,7 @@ import noOptionalNullable from './rules/no-optional-nullable.js'
 import noPassThroughAliasExport from './rules/no-pass-through-alias-export.js'
 import noRawZodBigint from './rules/no-raw-zod-bigint.js'
 import noV8Ignore from './rules/no-v8-ignore.js'
+import pascalcaseFilename from './rules/pascalcase-filename.js'
 import requireEslintDisableExplanation from './rules/require-eslint-disable-explanation.js'
 
 export default {
@@ -25,6 +26,7 @@ export default {
     'no-pass-through-alias-export': noPassThroughAliasExport,
     'no-raw-zod-bigint': noRawZodBigint,
     'no-v8-ignore': noV8Ignore,
+    'pascalcase-filename': pascalcaseFilename,
     'require-eslint-disable-explanation': requireEslintDisableExplanation
   }
 }

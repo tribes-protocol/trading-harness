@@ -72,7 +72,6 @@ bun src/cli/DefiAnalyst.ts --help
 ### Ask the specialist
 
 ```bash
-API_BEARER_TOKEN="$(bun src/cli/llm-token.ts)" \
 bun src/cli/DefiAnalyst.ts ask \
   --query "top SOL pools by liquidity and 24h volume"
 ```
@@ -83,5 +82,4 @@ The CLI calls:
 
 - `POST /agent/lucy/defi-analyst`
 - Query string param: `q=<user-query>`
-- Authorization header: `Bearer <API_BEARER_TOKEN>`
 - Response: JSON object `{ "result": "<analysis string>" }`

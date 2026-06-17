@@ -13,7 +13,7 @@ import {
   PredictionSearchCommandOptionsSchema
 } from '@/types/Prediction'
 import { appendNumberValue, appendStringValue } from '@/utils/CommanderArgParser'
-import { ensureJsonTreeString } from '@/utils/lang'
+import { ensureJsonTreeString } from '@/utils/Lang'
 import { enrichEvent, enrichEvents } from '@/utils/Prediction'
 
 const VERSION = '1.0.0'

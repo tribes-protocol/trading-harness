@@ -8,7 +8,7 @@ import {
   type PolymarketSearchQuery,
   PolymarketSearchResponseSchema
 } from '@/types/Polymarket'
-import { isNullish } from '@/utils/lang'
+import { isNullish } from '@/utils/Lang'
 
 type QueryParam = boolean | number | number[] | string | string[] | null | undefined
 

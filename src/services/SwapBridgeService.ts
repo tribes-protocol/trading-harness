@@ -3,8 +3,8 @@ import {
   type QuoteRequest,
   type QuoteResponse,
   QuoteResponseSchema
-} from '@/types/quote'
-import { ensureJsonTreeString } from '@/utils/lang'
+} from '@/types/Quote'
+import { ensureJsonTreeString } from '@/utils/Lang'
 
 interface SwapBridgeServiceParams {
   readonly apiBaseUrl: string

@@ -2,7 +2,7 @@ import { Connection } from '@solana/web3.js'
 import { getTransactionReceipt } from 'viem/actions'
 import { z } from 'zod'
 
-import { SAFE_CONFIRMATIONS } from '@/common/constants'
+import { SAFE_CONFIRMATIONS } from '@/common/Constants'
 import { retry, sleep } from '@/helpers/AsyncControl'
 import { EvmRegistry } from '@/helpers/EvmRegistry'
 import {
@@ -12,11 +12,11 @@ import {
   SolanaChainId,
   SolanaChainIdSchema
 } from '@/types/ChainId'
-import { HexString, HexStringSchema } from '@/types/lang'
-import { SolSignature, SolSignatureSchema } from '@/types/solana'
+import { HexString, HexStringSchema } from '@/types/Lang'
+import { SolSignature, SolSignatureSchema } from '@/types/Solana'
 import { TxId } from '@/types/Tx'
-import { discernChain } from '@/utils/chain'
-import { isNullish } from '@/utils/lang'
+import { discernChain } from '@/utils/Chain'
+import { isNullish } from '@/utils/Lang'
 
 const SolBlockResponseSchema = z.object({
   blockHeight: z.number()

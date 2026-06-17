@@ -8,8 +8,6 @@ allowed-tools: bash read
 
 Use this skill for swap/bridge execution flow. Wallet auth/session and balance discovery still come from the wallet skill.
 
-When invoking wallet commands, pass `API_BEARER_TOKEN="$(bun src/cli/llm-token.ts)"` in the same command.
-
 ## Required flow
 
 1. Resolve wallet addresses (usually from `src/cli/Wallet.ts list` or `.pi/privy-wallets.json`).
@@ -82,8 +80,7 @@ Use only these chain aliases/ids when building quote requests:
 ## 1) Fetch balances first
 
 ```bash
-API_BEARER_TOKEN="$(bun src/cli/llm-token.ts)" \
-  bun src/cli/Wallet.ts assets \
+bun src/cli/Wallet.ts assets \
   --wallet-addresses <evm-address> <solana-pubkey>
 ```
 
@@ -101,7 +98,7 @@ For destination token, use exact token address (or mint for Solana).
 If destination token is not present in balances, search it by user-provided name/symbol:
 
 ```bash
-bun src/cli/token.ts search \
+bun src/cli/Token.ts search \
   --query <to-token-name-or-symbol>
 ```
 
@@ -160,7 +157,6 @@ Apply this pattern to EVM `transactionRequests[]` in quote order:
 ### Single request in a run (`sendEthTransaction`)
 
 ```bash
-API_BEARER_TOKEN="$(bun src/cli/llm-token.ts)" \
 bun src/cli/Transaction.ts sendEthTransaction \
   --chain-id <evm-chain-id> \
   --to <tx.to> \
@@ -171,7 +167,6 @@ bun src/cli/Transaction.ts sendEthTransaction \
 ### Multi-request run (`sendCalls`)
 
 ```bash
-API_BEARER_TOKEN="$(bun src/cli/llm-token.ts)" \
 bun src/cli/Transaction.ts sendCalls \
   --chain-id <evm-chain-id> \
   --calls '[{"to":"<tx0.to>","value":"<tx0.value>","data":"<tx0.data>"},{"to":"<tx1.to>","value":"<tx1.value>","data":"<tx1.data>"}]'
@@ -180,7 +175,6 @@ bun src/cli/Transaction.ts sendCalls \
 Then poll status after each send:
 
 ```bash
-API_BEARER_TOKEN="$(bun src/cli/llm-token.ts)" \
 bun src/cli/Transaction.ts getTransactionStatus \
   --chain-id <evm-chain-id> \
   --hash <tx-hash> \

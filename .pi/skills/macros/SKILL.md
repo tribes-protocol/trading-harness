@@ -20,7 +20,6 @@ stdout JSON.
 ## Requirements
 
 - `API_BASE_URL` must point to the Terminal API worker.
-- `API_BEARER_TOKEN` must be a valid bearer token for `/agent/macros/market`.
 
 ## Indicators
 

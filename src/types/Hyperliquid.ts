@@ -1,9 +1,9 @@
 import { z } from 'zod'
 
-import { type EthAddress, EthAddressSchema } from '@/types/eth'
-import { BigintSchema, BigNumberSchema, type HexString, HexStringSchema } from '@/types/lang'
+import { type EthAddress, EthAddressSchema } from '@/types/Eth'
+import { BigintSchema, BigNumberSchema, type HexString, HexStringSchema } from '@/types/Lang'
 import { type EthSignTypedData } from '@/types/Tx'
-import { isNullish } from '@/utils/lang'
+import { isNullish } from '@/utils/Lang'
 
 export const HyperliquidSignerOptionsSchema = z.object({
   walletId: z.string().trim().min(1),

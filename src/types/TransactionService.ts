@@ -1,4 +1,4 @@
-import type { SolInstruction } from '@/types/solana'
+import type { SolInstruction } from '@/types/Solana'
 import type { EthSignTypedData, Tx } from '@/types/Tx'
 
 export type TransactionServiceParams = {

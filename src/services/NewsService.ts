@@ -1,7 +1,7 @@
 import { retry } from '@/helpers/AsyncControl'
 import { fetchNewsState } from '@/helpers/News'
 import { type GetNewsRequest, type NewsServiceParams, type NewsStateResponse } from '@/types/News'
-import { isNullish } from '@/utils/lang'
+import { isNullish } from '@/utils/Lang'
 
 class NewsStillAnalyzingError extends Error {
   constructor() {

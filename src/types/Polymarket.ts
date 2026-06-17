@@ -1,9 +1,9 @@
 import z from 'zod'
 
 import { ChainIdSchema } from '@/types/ChainId'
-import { TokenIdSchema } from '@/types/crosschain'
-import { BigNumberSchema } from '@/types/lang'
-import { isNullish } from '@/utils/lang'
+import { TokenIdSchema } from '@/types/Crosschain'
+import { BigNumberSchema } from '@/types/Lang'
+import { isNullish } from '@/utils/Lang'
 
 export const PredictionSortOrderSchema = z.enum(['asc', 'desc']).nullish()
 export const PredictionDisplayFormatSchema = z.enum(['overview', 'table']).default('overview')

@@ -9,7 +9,7 @@ import {
   PUBLIC_OPTIMISM_RPC_URL,
   PUBLIC_POLYGON_POS_RPC_URL,
   PUBLIC_SOLANA_RPC_URL
-} from '@/common/constants'
+} from '@/common/Constants'
 import { EvmRegistry } from '@/helpers/EvmRegistry'
 import { Web3Client } from '@/helpers/Web3Client'
 

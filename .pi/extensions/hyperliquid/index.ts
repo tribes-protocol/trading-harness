@@ -4,9 +4,9 @@ import { dirname, resolve } from 'node:path'
 import type { ExtensionAPI, ExtensionContext, Theme } from '@earendil-works/pi-coding-agent'
 import type { TUI } from '@earendil-works/pi-tui'
 
-import { ensureJsonTreeString } from './ensure-json.ts'
-import { type CrossBucket, estimateCrossLiquidationPx } from './liq-estimator.ts'
-import { renderHyperliquidPositionsWidget } from './render.ts'
+import { ensureJsonTreeString } from './EnsureJson.ts'
+import { type CrossBucket, estimateCrossLiquidationPx } from './LiqEstimator.ts'
+import { renderHyperliquidPositionsWidget } from './Render.ts'
 import type {
   AccountSummary,
   ClosedPnlSummary,
@@ -16,7 +16,7 @@ import type {
   MarketContext,
   PositionCostStats,
   StatusPosition
-} from './status-types.ts'
+} from './StatusTypes.ts'
 
 const RUNTIME_STATUS_DIR = 'runtime/hyperliquid'
 const STATUS_FILE = 'live-status.json'
@@ -26,8 +26,8 @@ const COST_LOOKBACK_DAYS = 7
 const CLOSED_PNL_LOOKBACK_HOURS = 24
 const HYPERLIQUID_INFO_URL = 'https://api.hyperliquid.xyz/info'
 
-// Types live in ./types.ts; renderer in ./render.ts. CrossBucket +
-// estimateCrossLiquidationPx live in ./liq-estimator.ts so they can be
+// Types live in ./types.ts; renderer in ./Render.ts. CrossBucket +
+// estimateCrossLiquidationPx live in ./LiqEstimator.ts so they can be
 // unit-tested without dragging in the pi-coding-agent runtime imports
 // this file pulls in.
 
