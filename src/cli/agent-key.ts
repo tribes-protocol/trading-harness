@@ -24,9 +24,8 @@ import { generateKeyPairSync } from 'node:crypto'
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { dirname } from 'node:path'
 
-import { ensureJsonTreeString, ensureString, isNullish } from '@shared/utils/lang'
-
 import { type AgentAuthorizationKey } from '@/types/JwtAuth'
+import { ensureJsonTreeString, ensureString, isNullish } from '@/utils/lang'
 
 const AGENT_KEY_PATH = '/var/lib/tribes/agent-authorization-key.json'
 

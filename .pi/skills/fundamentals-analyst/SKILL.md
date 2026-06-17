@@ -61,25 +61,19 @@ Best results come from queries that include:
 
 For live on-chain holder/trader/security analysis, switch to `token-analyst`.
 
-## Code
-
-```bash
-bun run build
-```
-
 ## Command examples
 
 ### Show CLI help
 
 ```bash
-bun .pi/skills/fundamentals-analyst/src/cli/FundamentalsAnalyst.ts --help
+bun src/cli/FundamentalsAnalyst.ts --help
 ```
 
 ### Ask the specialist
 
 ```bash
 API_BEARER_TOKEN="$(bun src/cli/llm-token.ts)" \
-bun .pi/skills/fundamentals-analyst/src/cli/FundamentalsAnalyst.ts ask \
+bun src/cli/FundamentalsAnalyst.ts ask \
   --query "fundamentals and supply trend for ethereum over 90d"
 ```
 

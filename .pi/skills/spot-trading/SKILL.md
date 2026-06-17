@@ -12,8 +12,8 @@ When invoking wallet commands, pass `API_BEARER_TOKEN="$(bun src/cli/llm-token.t
 
 ## Required flow
 
-1. Resolve wallet addresses (usually from `.pi/skills/wallet/src/cli/Wallet.ts list` or `.pi/privy-wallets.json`).
-2. Fetch balances with `.pi/skills/wallet/src/cli/Wallet.ts assets`.
+1. Resolve wallet addresses (usually from `src/cli/Wallet.ts list` or `.pi/privy-wallets.json`).
+2. Fetch balances with `src/cli/Wallet.ts assets`.
 3. If chain/token intent is ambiguous, ask clarifying questions before any quote.
 4. Resolve source and destination token metadata (`address`, `decimals`) from balance rows.
 5. If destination token is missing from balances, search with `token-cli search` using the provided name/symbol and resolve `to-token` from search results.
@@ -58,7 +58,7 @@ Ask these questions when ambiguous:
 3. Which exact source token contract/mint should be used?
 4. Which exact destination token contract/mint should be used?
 
-If the user does not provide token addresses, run `.pi/skills/wallet/src/cli/Wallet.ts assets`, propose matching candidates from the balance rows, and ask the user to pick one exact token per side.
+If the user does not provide token addresses, run `src/cli/Wallet.ts assets`, propose matching candidates from the balance rows, and ask the user to pick one exact token per side.
 
 If `to-token` is not present in balance rows on the destination chain, run token search and use the results to resolve the destination token address/mint.
 
@@ -83,9 +83,8 @@ Use only these chain aliases/ids when building quote requests:
 
 ```bash
 API_BEARER_TOKEN="$(bun src/cli/llm-token.ts)" \
-  bun .pi/skills/wallet/src/cli/Wallet.ts assets \
-  --wallet-addresses <evm-address> <solana-pubkey> \
-  --out runtime/wallet-assets/latest.json
+  bun src/cli/Wallet.ts assets \
+  --wallet-addresses <evm-address> <solana-pubkey>
 ```
 
 To narrow EVM lookups to the source or destination chain, pass `--chain-ids` with the numeric chain ID from the mapping below (for example `--chain-ids 8453` for Base). Omit `--chain-ids` to fetch all supported EVM chains.
@@ -103,8 +102,7 @@ If destination token is not present in balances, search it by user-provided name
 
 ```bash
 bun src/cli/token.ts search \
-  --query <to-token-name-or-symbol> \
-  --out runtime/spot-trading/to-token-search.json
+  --query <to-token-name-or-symbol>
 ```
 
 Then resolve `--to-token` from search results with this order:
@@ -131,15 +129,14 @@ node -e "const amount='0.12'; const decimals=6; const [i,f='']=amount.split('.')
 ## 3) Quote with spot-trading
 
 ```bash
-bun .pi/skills/spot-trading/src/cli/SpotTrading.ts quote \
+bun src/cli/SpotTrading.ts quote \
   --from-chain <from-chain-id-or-solana> \
   --to-chain <to-chain-id-or-solana> \
   --from-token <from-token-address-or-network> \
   --to-token <to-token-address-or-network> \
   --from-amount <base-unit-amount> \
   --from-address <user-wallet-address> \
-  --to-address <user-wallet-address-or-explicit-destination> \
-  --out runtime/spot-trading/latest-quote.json
+  --to-address <user-wallet-address-or-explicit-destination>
 ```
 
 The quote output shape is defined by `QuoteResponseSchema` and includes:
@@ -164,33 +161,30 @@ Apply this pattern to EVM `transactionRequests[]` in quote order:
 
 ```bash
 API_BEARER_TOKEN="$(bun src/cli/llm-token.ts)" \
-bun .pi/skills/transaction/src/cli/Transaction.ts sendEthTransaction \
+bun src/cli/Transaction.ts sendEthTransaction \
   --chain-id <evm-chain-id> \
   --to <tx.to> \
   --data <tx.data> \
-  --value <hex-value> \
-  --out runtime/spot-trading/tx-0-send.json
+  --value <hex-value>
 ```
 
 ### Multi-request run (`sendCalls`)
 
 ```bash
 API_BEARER_TOKEN="$(bun src/cli/llm-token.ts)" \
-bun .pi/skills/transaction/src/cli/Transaction.ts sendCalls \
+bun src/cli/Transaction.ts sendCalls \
   --chain-id <evm-chain-id> \
-  --calls '[{"to":"<tx0.to>","value":"<tx0.value>","data":"<tx0.data>"},{"to":"<tx1.to>","value":"<tx1.value>","data":"<tx1.data>"}]' \
-  --out runtime/spot-trading/tx-run-0-send.json
+  --calls '[{"to":"<tx0.to>","value":"<tx0.value>","data":"<tx0.data>"},{"to":"<tx1.to>","value":"<tx1.value>","data":"<tx1.data>"}]'
 ```
 
 Then poll status after each send:
 
 ```bash
 API_BEARER_TOKEN="$(bun src/cli/llm-token.ts)" \
-bun .pi/skills/transaction/src/cli/Transaction.ts getTransactionStatus \
+bun src/cli/Transaction.ts getTransactionStatus \
   --chain-id <evm-chain-id> \
   --hash <tx-hash> \
-  --check-safe-confirmations \
-  --out runtime/spot-trading/tx-0-status.json
+  --check-safe-confirmations
 ```
 
 Repeat status polling until:
@@ -208,4 +202,3 @@ Run this loop for each run in order.
 - Never continue after a failed transaction.
 - Always default `to-address` to the user wallet unless user explicitly overrides it.
 - Always show exact transaction payload details before broadcast.
-- Keep artifacts under `runtime/spot-trading/` for traceability.

@@ -60,14 +60,14 @@ If you need token fundamentals instead of chart structure, switch to `fundamenta
 ### Show CLI help
 
 ```bash
-bun .pi/skills/technical-analyst/src/cli/TechnicalAnalyst.ts --help
+bun src/cli/TechnicalAnalyst.ts --help
 ```
 
 ### Ask the specialist
 
 ```bash
 API_BEARER_TOKEN="$(bun src/cli/llm-token.ts)" \
-bun .pi/skills/technical-analyst/src/cli/TechnicalAnalyst.ts ask \
+bun src/cli/TechnicalAnalyst.ts ask \
   --query "BTC 4H technical analysis with RSI, MACD, and ATR"
 ```
 

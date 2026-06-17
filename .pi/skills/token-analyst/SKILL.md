@@ -68,14 +68,14 @@ market footprint and proceed with that token.
 ### Show CLI help
 
 ```bash
-bun .pi/skills/token-analyst/src/cli/TokenAnalyst.ts --help
+bun src/cli/TokenAnalyst.ts --help
 ```
 
 ### Ask the specialist
 
 ```bash
 API_BEARER_TOKEN="$(bun src/cli/llm-token.ts)" \
-bun .pi/skills/token-analyst/src/cli/TokenAnalyst.ts ask \
+bun src/cli/TokenAnalyst.ts ask \
   --query "risk and holder concentration for PEPE on ethereum"
 ```
 

@@ -1,12 +1,13 @@
-import { BigNumberSchema } from '@shared/types/lang'
-import { TokenVerificationStatusSchema } from '@shared/types/verification'
+import z from 'zod'
+
+import { BigNumberSchema } from '@/types/lang'
+import { TokenVerificationStatusSchema } from '@/types/verification'
 import {
   isSolanaPubKey,
   isSolanaWalletAddress,
   isValidSolanaInstruction,
   isValidSolanaTxSignature
-} from '@shared/utils/solana'
-import z from 'zod'
+} from '@/utils/solana'
 
 export const SolAddressSchema = z.custom<`${string}`>(
   (val): val is `${string}` => typeof val === 'string' && isSolanaWalletAddress(val)

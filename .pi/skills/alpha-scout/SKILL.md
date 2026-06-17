@@ -54,25 +54,19 @@ Best results come from queries that include:
 - Chain and token identifiers where possible
 - Desired signal type (trending, new listings, smart money, or combined)
 
-## Code
-
-```bash
-bun run build
-```
-
 ## Command examples
 
 ### Show CLI help
 
 ```bash
-bun .pi/skills/alpha-scout/src/cli/AlphaScout.ts --help
+bun src/cli/AlphaScout.ts --help
 ```
 
 ### Ask the specialist
 
 ```bash
 API_BEARER_TOKEN="$(bun src/cli/llm-token.ts)" \
-bun .pi/skills/alpha-scout/src/cli/AlphaScout.ts ask \
+bun src/cli/AlphaScout.ts ask \
   --query "top 10 trending tokens in the last 24 hours"
 ```
 

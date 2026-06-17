@@ -1,10 +1,8 @@
-import type {
-  PolymarketEvent,
-  PolymarketMarket,
-  SelectedLeadingMarket
-} from '@shared/types/Polymarket'
-import { isNullish } from '@shared/utils/lang'
 import BigNumber from 'bignumber.js'
+
+import type { PolymarketEvent, PolymarketMarket, SelectedLeadingMarket } from '@/types/Polymarket'
+import { type PredictionEnrichedEvent, PredictionEnrichedEventSchema } from '@/types/Prediction'
+import { isNullish } from '@/utils/lang'
 
 /**
  * Primary outcome for cross-market comparison: Polymarket uses index 0 as the affirmative outcome
@@ -132,4 +130,15 @@ export function selectLeadingMarket(event: PolymarketEvent): SelectedLeadingMark
   }
 
   return selected
+}
+
+export function enrichEvent(event: PolymarketEvent): PredictionEnrichedEvent {
+  return PredictionEnrichedEventSchema.parse({
+    event,
+    leadingMarket: selectLeadingMarket(event)
+  })
+}
+
+export function enrichEvents(events: PolymarketEvent[]): PredictionEnrichedEvent[] {
+  return events.map(enrichEvent)
 }

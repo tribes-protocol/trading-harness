@@ -5,10 +5,9 @@
     "allowImportingTsExtensions": true,
     "noEmit": true,
     "paths": {
-      "@/*": ["./src/*"],
-      "@shared/*": ["./src/*"]
+      "@/*": ["./src/*"]
     }
   },
   "include": ["src/**/*.ts", ".pi/extensions/**/*.ts"],
-  "exclude": ["node_modules", "runtime", ".pi/skills"]
+  "exclude": ["node_modules", "runtime", "src/**/*.test.ts"]
 }

@@ -55,25 +55,19 @@ Best results come from queries that include:
 
 For token-level on-chain holder/trader/security depth, switch to `token-analyst`.
 
-## Code
-
-```bash
-bun run build
-```
-
 ## Command examples
 
 ### Show CLI help
 
 ```bash
-bun .pi/skills/exchange-analyst/src/cli/ExchangeAnalyst.ts --help
+bun src/cli/ExchangeAnalyst.ts --help
 ```
 
 ### Ask the specialist
 
 ```bash
 API_BEARER_TOKEN="$(bun src/cli/llm-token.ts)" \
-bun .pi/skills/exchange-analyst/src/cli/ExchangeAnalyst.ts ask \
+bun src/cli/ExchangeAnalyst.ts ask \
   --query "compare top derivatives exchanges by open interest"
 ```
 

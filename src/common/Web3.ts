@@ -1,5 +1,3 @@
-import { EvmRegistry } from '@shared/helpers/EvmRegistry'
-import { Web3Client } from '@shared/helpers/Web3Client'
 import { Connection } from '@solana/web3.js'
 import { arbitrum, base, bsc, mainnet, optimism, polygon } from 'viem/chains'
 
@@ -12,6 +10,8 @@ import {
   PUBLIC_POLYGON_POS_RPC_URL,
   PUBLIC_SOLANA_RPC_URL
 } from '@/common/constants'
+import { EvmRegistry } from '@/helpers/EvmRegistry'
+import { Web3Client } from '@/helpers/Web3Client'
 
 export const EVM_REGISTRY = new EvmRegistry([
   [base, PUBLIC_BASE_RPC_URL],

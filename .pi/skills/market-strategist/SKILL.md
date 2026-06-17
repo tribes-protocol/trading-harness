@@ -60,25 +60,19 @@ Best results come from queries that include:
 
 For token-specific on-chain depth (holders/traders/security), switch to `token-analyst`.
 
-## Code
-
-```bash
-bun run build
-```
-
 ## Command examples
 
 ### Show CLI help
 
 ```bash
-bun .pi/skills/market-strategist/src/cli/MarketStrategist.ts --help
+bun src/cli/MarketStrategist.ts --help
 ```
 
 ### Ask the specialist
 
 ```bash
 API_BEARER_TOKEN="$(bun src/cli/llm-token.ts)" \
-bun .pi/skills/market-strategist/src/cli/MarketStrategist.ts ask \
+bun src/cli/MarketStrategist.ts ask \
   --query "global crypto market overview for the last 24h"
 ```
 

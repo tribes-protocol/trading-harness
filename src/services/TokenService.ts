@@ -1,4 +1,4 @@
-import { type SearchItem, SearchItemSchema } from '@shared/types/Search'
+import { type SearchItem, SearchItemSchema } from '@/types/Search'
 
 interface TokenServiceParams {
   readonly apiBaseUrl: string

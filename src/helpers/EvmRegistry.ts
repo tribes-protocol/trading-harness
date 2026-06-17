@@ -1,6 +1,7 @@
-import { EvmChainId, EvmChainIdSchema } from '@shared/types/ChainId'
-import type { IEvmRegistry } from '@shared/types/IEvmRegistry'
 import { Chain, createPublicClient, http, PublicClient, Transport } from 'viem'
+
+import { EvmChainId, EvmChainIdSchema } from '@/types/ChainId'
+import type { IEvmRegistry } from '@/types/IEvmRegistry'
 
 type ChainConfig = [Chain, string]
 

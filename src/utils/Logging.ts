@@ -4,8 +4,8 @@ import {
   type LoggerConfig,
   type LoggerErrorOptions,
   type LoggerTags
-} from '@shared/types/Logging'
-import { isNullish, toJsonTreeString } from '@shared/utils/lang'
+} from '@/types/Logging'
+import { isNullish, toJsonTreeString } from '@/utils/lang'
 
 let _colorize = false
 

@@ -1,4 +1,4 @@
-import { logger } from '@shared/utils/Logger'
+import { logger } from '@/utils/Logger'
 
 export class ShutdownError extends Error {
   constructor() {

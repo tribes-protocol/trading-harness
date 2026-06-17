@@ -1,5 +1,5 @@
-import type { Network } from '@shared/types/chain'
-import type { ChainId } from '@shared/types/ChainId'
+import type { Network } from '@/types/chain'
+import type { ChainId } from '@/types/ChainId'
 
 export function discernChain(chainId: ChainId): Network {
   switch (chainId) {

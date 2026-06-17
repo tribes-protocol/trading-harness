@@ -130,7 +130,9 @@ export default [
       'eslint-rules/**',
       '**/*.d.ts',
       '**/test/**',
-      'tests/**'
+      'tests/**',
+      '**/*.test.ts',
+      'vitest.config.ts'
     ]
   },
   js.configs.recommended,

@@ -1,22 +1,23 @@
-import { SAFE_CONFIRMATIONS } from '@shared/common/constants'
-import { retry, sleep } from '@shared/helpers/AsyncControl'
-import { EvmRegistry } from '@shared/helpers/EvmRegistry'
+import { Connection } from '@solana/web3.js'
+import { getTransactionReceipt } from 'viem/actions'
+import { z } from 'zod'
+
+import { SAFE_CONFIRMATIONS } from '@/common/constants'
+import { retry, sleep } from '@/helpers/AsyncControl'
+import { EvmRegistry } from '@/helpers/EvmRegistry'
 import {
   ChainId,
   EvmChainId,
   EvmChainIdSchema,
   SolanaChainId,
   SolanaChainIdSchema
-} from '@shared/types/ChainId'
-import { HexString, HexStringSchema } from '@shared/types/lang'
-import { SolSignature, SolSignatureSchema } from '@shared/types/solana'
-import { TxId } from '@shared/types/transaction'
-import { discernChain } from '@shared/utils/chain'
-import { isNullish } from '@shared/utils/lang'
-import { logger } from '@shared/utils/Logger'
-import { Connection } from '@solana/web3.js'
-import { getTransactionReceipt } from 'viem/actions'
-import { z } from 'zod'
+} from '@/types/ChainId'
+import { HexString, HexStringSchema } from '@/types/lang'
+import { SolSignature, SolSignatureSchema } from '@/types/solana'
+import { TxId } from '@/types/Tx'
+import { discernChain } from '@/utils/chain'
+import { isNullish } from '@/utils/lang'
+import { logger } from '@/utils/Logger'
 
 const SolBlockResponseSchema = z.object({
   blockHeight: z.number()

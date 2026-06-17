@@ -1,14 +1,13 @@
-import { getApiBearerToken } from '@/helpers/Jwt'
-
-interface AuthorizationHeadersParams {
+type AuthorizationHeadersParams = {
   readonly headers: HeadersInit | undefined
   readonly bearerToken: string
 }
 
-interface FetchTerminalApiParams {
+type FetchTerminalApiParams = {
   readonly apiBaseUrl: string
   readonly path: string
   readonly init: RequestInit
+  readonly apiBearerToken: string
 }
 
 function withAuthorizationHeader(params: AuthorizationHeadersParams): Headers {
@@ -18,10 +17,9 @@ function withAuthorizationHeader(params: AuthorizationHeadersParams): Headers {
 }
 
 export async function fetchTerminalApi(params: FetchTerminalApiParams): Promise<Response> {
-  const token = await getApiBearerToken()
   const headers = withAuthorizationHeader({
     headers: params.init.headers,
-    bearerToken: token
+    bearerToken: params.apiBearerToken
   })
   const url = new URL(params.path, params.apiBaseUrl)
   return await fetch(url, { ...params.init, headers })

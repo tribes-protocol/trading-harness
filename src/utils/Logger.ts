@@ -1,5 +1,5 @@
-import type { CaptureExceptionFn } from '@shared/types/Logging'
-import { createLogger } from '@shared/utils/Logging'
+import type { CaptureExceptionFn } from '@/types/Logging'
+import { createLogger } from '@/utils/Logging'
 
 let captureExceptionFn: CaptureExceptionFn | null = null
 

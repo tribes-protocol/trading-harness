@@ -1,10 +1,11 @@
-import { ChainIdSchema, EvmChainIdSchema, SolanaChainIdSchema } from '@shared/types/ChainId'
-import { TokenIdSchema } from '@shared/types/crosschain'
-import { EthAddressSchema, EthTokenIdSchema } from '@shared/types/eth'
-import { BigintSchema, HexStringSchema } from '@shared/types/lang'
-import { SolInstructionSchema, SPLTokenIdSchema } from '@shared/types/solana'
-import { WalletAddressSchema } from '@shared/types/wallet'
 import { z } from 'zod'
+
+import { ChainIdSchema, EvmChainIdSchema, SolanaChainIdSchema } from '@/types/ChainId'
+import { TokenIdSchema } from '@/types/crosschain'
+import { EthAddressSchema, EthTokenIdSchema } from '@/types/eth'
+import { BigintSchema, HexStringSchema } from '@/types/lang'
+import { SolInstructionSchema, SPLTokenIdSchema } from '@/types/solana'
+import { WalletAddressSchema } from '@/types/wallet'
 
 export const QuoteRequestSchema = z.object({
   fromToken: TokenIdSchema,

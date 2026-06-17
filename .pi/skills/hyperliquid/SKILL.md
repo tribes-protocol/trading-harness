@@ -29,7 +29,7 @@ they hit Hyperliquid's public info API and need no wallet, signer, or
 ## Workflow
 
 1. Run wallet discovery with:
-   - `API_BEARER_TOKEN="$(bun src/cli/llm-token.ts)" bun .pi/skills/wallet/src/cli/Wallet.ts list`
+   - `API_BEARER_TOKEN="$(bun src/cli/llm-token.ts)" bun src/cli/Wallet.ts list`
 2. Select the `evmWalletId` and matching EVM address for `--from`.
 3. Resolve `privateKeyPem` from runtime (`.pi/agent-authorization-key.json`).
 4. Build and review the exact command payload before broadcast.
@@ -38,7 +38,7 @@ they hit Hyperliquid's public info API and need no wallet, signer, or
 ## CLI
 
 ```bash
-bun .pi/skills/hyperliquid/src/cli/Hyperliquid.ts --help
+bun src/cli/Hyperliquid.ts --help
 ```
 
 ## Supported commands
@@ -63,7 +63,7 @@ Execution (require `--wallet-id` and `--private-key-pem`):
 ### List exchanges (perp dexes)
 
 ```bash
-bun .pi/skills/hyperliquid/src/cli/Hyperliquid.ts list-exchanges
+bun src/cli/Hyperliquid.ts list-exchanges
 ```
 
 Returns `main` plus named dexes (for example: `xyz`, `flx`, `vntl`).
@@ -72,13 +72,13 @@ Returns `main` plus named dexes (for example: `xyz`, `flx`, `vntl`).
 
 ```bash
 # Perp assets on the main dex (default)
-bun .pi/skills/hyperliquid/src/cli/Hyperliquid.ts list-assets
+bun src/cli/Hyperliquid.ts list-assets
 
 # Perp assets on a named dex (exchange)
-bun .pi/skills/hyperliquid/src/cli/Hyperliquid.ts list-assets --dex xyz
+bun src/cli/Hyperliquid.ts list-assets --dex xyz
 
 # Spot pairs
-bun .pi/skills/hyperliquid/src/cli/Hyperliquid.ts list-assets --market spot
+bun src/cli/Hyperliquid.ts list-assets --market spot
 ```
 
 Each perp asset includes `name`, `szDecimals`, `maxLeverage`, and `markPx`; each
@@ -89,7 +89,7 @@ spot asset includes `pair`, `szDecimals`, and `markPx`. Use these names with
 
 ```bash
 API_BEARER_TOKEN="$(bun src/cli/llm-token.ts)" \
-bun .pi/skills/hyperliquid/src/cli/Hyperliquid.ts deposit \
+bun src/cli/Hyperliquid.ts deposit \
   --amount 25 \
   --from 0x1111111111111111111111111111111111111111 \
   --wallet-id "<evmWalletId from wallet list>" \
@@ -100,7 +100,7 @@ bun .pi/skills/hyperliquid/src/cli/Hyperliquid.ts deposit \
 
 ```bash
 API_BEARER_TOKEN="$(bun src/cli/llm-token.ts)" \
-bun .pi/skills/hyperliquid/src/cli/Hyperliquid.ts withdraw \
+bun src/cli/Hyperliquid.ts withdraw \
   --amount 2 \
   --from 0x1111111111111111111111111111111111111111 \
   --destination 0x2222222222222222222222222222222222222222 \
@@ -112,7 +112,7 @@ bun .pi/skills/hyperliquid/src/cli/Hyperliquid.ts withdraw \
 
 ```bash
 API_BEARER_TOKEN="$(bun src/cli/llm-token.ts)" \
-bun .pi/skills/hyperliquid/src/cli/Hyperliquid.ts trade-perp \
+bun src/cli/Hyperliquid.ts trade-perp \
   --from 0x1111111111111111111111111111111111111111 \
   --coin BTC \
   --side long \
@@ -126,7 +126,7 @@ bun .pi/skills/hyperliquid/src/cli/Hyperliquid.ts trade-perp \
 
 ```bash
 API_BEARER_TOKEN="$(bun src/cli/llm-token.ts)" \
-bun .pi/skills/hyperliquid/src/cli/Hyperliquid.ts trade-spot \
+bun src/cli/Hyperliquid.ts trade-spot \
   --from 0x1111111111111111111111111111111111111111 \
   --pair HYPE/USDC \
   --side buy \
@@ -140,7 +140,7 @@ bun .pi/skills/hyperliquid/src/cli/Hyperliquid.ts trade-spot \
 
 ```bash
 API_BEARER_TOKEN="$(bun src/cli/llm-token.ts)" \
-bun .pi/skills/hyperliquid/src/cli/Hyperliquid.ts transfer-usd-class \
+bun src/cli/Hyperliquid.ts transfer-usd-class \
   --amount 2 \
   --from 0x1111111111111111111111111111111111111111 \
   --direction spot-to-perp \
@@ -152,7 +152,7 @@ bun .pi/skills/hyperliquid/src/cli/Hyperliquid.ts transfer-usd-class \
 
 ```bash
 API_BEARER_TOKEN="$(bun src/cli/llm-token.ts)" \
-bun .pi/skills/hyperliquid/src/cli/Hyperliquid.ts transfer-dex-cash \
+bun src/cli/Hyperliquid.ts transfer-dex-cash \
   --amount 2 \
   --from 0x1111111111111111111111111111111111111111 \
   --source-dex main \
@@ -177,22 +177,21 @@ bun .pi/skills/hyperliquid/src/cli/Hyperliquid.ts transfer-dex-cash \
   - `--price` (required for `--type limit`)
   - `--tif Gtc|Ioc|Alo`
 
-## Any token -> Arbitrum USDC (trading-cli + transaction-cli), then usual deposit flow
+## Any token -> Arbitrum USDC (spot-trading + transaction), then usual deposit flow
 
 Use this bridge flow only for source-token-to-Arbitrum-USDC conversion before Hyperliquid deposit.
 
 1. Quote to Arbitrum native USDC:
 
 ```bash
-bun src/cli/trading-cli.ts quote \
+bun src/cli/SpotTrading.ts quote \
   --from-chain <from-chain-id-or-solana> \
   --to-chain 42161 \
   --from-token <from-token-address-or-network> \
   --to-token 0xaf88d065e77c8cC2239327C5EDb3A432268e5831 \
   --from-amount <base-unit-amount> \
   --from-address <user-wallet-address> \
-  --to-address <user-wallet-address> \
-  --out runtime/trading/latest-quote.json
+  --to-address <user-wallet-address>
 ```
 
 2. Read quote `kind` and branch before broadcasting:
@@ -207,7 +206,7 @@ Example branch commands:
 ```bash
 # kind: "evm"
 API_BEARER_TOKEN="$(bun src/cli/llm-token.ts)" \
-bun .pi/skills/transaction/src/cli/Transaction.ts sendEthTransaction \
+bun src/cli/Transaction.ts sendEthTransaction \
   --chain-id <evm-chain-id> \
   --to <tx.to> \
   --data <tx.data> \
@@ -216,19 +215,19 @@ bun .pi/skills/transaction/src/cli/Transaction.ts sendEthTransaction \
   --private-key-pem <agent-private-key-pem>
 
 API_BEARER_TOKEN="$(bun src/cli/llm-token.ts)" \
-bun .pi/skills/transaction/src/cli/Transaction.ts getTransactionStatus \
+bun src/cli/Transaction.ts getTransactionStatus \
   --chain-id <evm-chain-id> \
   --hash <tx-hash>
 
 # kind: "solana"
 API_BEARER_TOKEN="$(bun src/cli/llm-token.ts)" \
-bun .pi/skills/transaction/src/cli/Transaction.ts sendSolTransaction \
+bun src/cli/Transaction.ts sendSolTransaction \
   --transaction <tx.data> \
   --wallet-id <sol-wallet-id> \
   --private-key-pem <agent-private-key-pem>
 
 API_BEARER_TOKEN="$(bun src/cli/llm-token.ts)" \
-bun .pi/skills/transaction/src/cli/Transaction.ts getTransactionStatus \
+bun src/cli/Transaction.ts getTransactionStatus \
   --chain-id solana \
   --hash <sol-signature>
 ```

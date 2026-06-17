@@ -55,25 +55,19 @@ Best results come from queries that include:
 
 Always request source-backed answers if you need high confidence outputs.
 
-## Code
-
-```bash
-bun run build
-```
-
 ## Command examples
 
 ### Show CLI help
 
 ```bash
-bun .pi/skills/research-analyst/src/cli/ResearchAnalyst.ts --help
+bun src/cli/ResearchAnalyst.ts --help
 ```
 
 ### Ask the specialist
 
 ```bash
 API_BEARER_TOKEN="$(bun src/cli/llm-token.ts)" \
-bun .pi/skills/research-analyst/src/cli/ResearchAnalyst.ts ask \
+bun src/cli/ResearchAnalyst.ts ask \
   --query "what is pendle and how does it work"
 ```
 

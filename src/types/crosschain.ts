@@ -1,9 +1,10 @@
-import { ChainIdSchema } from '@shared/types/ChainId'
-import { EthTokenIdSchema } from '@shared/types/eth'
-import { BigNumberSchema, HexStringSchema } from '@shared/types/lang'
-import { SolInstructionSchema, SolPubKeySchema, SPLTokenIdSchema } from '@shared/types/solana'
-import { AssetTokenSchema } from '@shared/types/wallet'
 import z from 'zod'
+
+import { ChainIdSchema } from '@/types/ChainId'
+import { EthTokenIdSchema } from '@/types/eth'
+import { BigNumberSchema, HexStringSchema } from '@/types/lang'
+import { SolInstructionSchema, SolPubKeySchema, SPLTokenIdSchema } from '@/types/solana'
+import { AssetTokenSchema } from '@/types/wallet'
 
 export const TokenIdSchema = z
 

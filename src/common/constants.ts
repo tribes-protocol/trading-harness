@@ -1,5 +1,6 @@
-import { type ChainId } from '@shared/types/ChainId'
 import { arbitrum, base, bsc, mainnet, optimism, polygon } from 'viem/chains'
+
+import { type ChainId } from '@/types/ChainId'
 
 // RPC provider keys are injected via the environment — never hardcode them.
 // Set ALCHEMY_API_KEY and HELIUS_API_KEY in the sandbox/runtime env.

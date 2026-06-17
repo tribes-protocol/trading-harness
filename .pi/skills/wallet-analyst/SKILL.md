@@ -55,25 +55,19 @@ Best results come from queries that include:
 
 If your query is broad, start with a portfolio snapshot and then ask follow-up questions.
 
-## Code
-
-```bash
-bun run build
-```
-
 ## Command examples
 
 ### Show CLI help
 
 ```bash
-bun .pi/skills/wallet-analyst/src/cli/WalletAnalyst.ts --help
+bun src/cli/WalletAnalyst.ts --help
 ```
 
 ### Ask the specialist
 
 ```bash
 API_BEARER_TOKEN="$(bun src/cli/llm-token.ts)" \
-bun .pi/skills/wallet-analyst/src/cli/WalletAnalyst.ts ask \
+bun src/cli/WalletAnalyst.ts ask \
   --query "portfolio PnL and net worth trend over the last 30d"
 ```
 

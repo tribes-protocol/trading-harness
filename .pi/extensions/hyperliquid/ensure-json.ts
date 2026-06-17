@@ -2,7 +2,7 @@
  * Self-contained JSON serializer, copied from src/utils/lang.ts.
  *
  * Pi loads extensions through jiti, which resolves relative paths + node_modules
- * but NOT the harness's `@shared/*` tsconfig alias — so the extension can't import
+ * but NOT the harness's `@/*` tsconfig alias — so the extension can't import
  * the shared util. This local copy keeps the extension jiti-safe and dependency-
  * free. Keep in sync with src/utils/lang.ts.
  */

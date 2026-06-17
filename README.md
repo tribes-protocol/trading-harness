@@ -6,12 +6,12 @@ Autonomous Hyperliquid trading harness for the [Pi coding agent](https://github.
 
 ## How it runs
 
-This repo **is** the agent's workspace. In a Tribes sandbox the control plane clones it into `/workspace`, runs `bootstrap.sh` once to install deps and build everything, injects the agent's authorization key + RPC/provider env, and launches `pi`. Auth is already wired at provisioning — **there is no manual login step**.
+This repo **is** the agent's workspace. In a Tribes sandbox the control plane clones it into `/workspace`, runs `bootstrap.sh` once to install deps, injects the agent's authorization key + RPC/provider env, and launches `pi`. Auth is already wired at provisioning — **there is no manual login step**.
 
 To run it locally instead:
 
 ```bash
-bun run bootstrap.sh   # install deps + build the world (ata CLIs, extensions, all skills)
+bun run bootstrap.sh   # install deps (bun runs the TypeScript directly — no build step)
 pi                      # start the harness
 ```
 
@@ -28,11 +28,13 @@ Set these in the sandbox/runtime env (never commit secrets):
 | `ALCHEMY_API_KEY` | EVM RPC (Base/Eth/BSC/Arb/Optimism/Polygon)  |
 | `HELIUS_API_KEY`  | Solana RPC                                   |
 
+A bearer token for authed API calls is minted on demand with `bun src/cli/llm-token.ts`.
+
 Direct wallet CLI usage from the workspace root, injecting a bearer token:
 
 ```bash
 API_BEARER_TOKEN="$(bun src/cli/llm-token.ts)" \
-  bun .pi/skills/wallet/src/cli/Wallet.ts list
+  bun src/cli/Wallet.ts list
 ```
 
 ## Trading
@@ -40,45 +42,52 @@ API_BEARER_TOKEN="$(bun src/cli/llm-token.ts)" \
 Deposit into Hyperliquid (bridge minimum is 5 USDC):
 
 ```bash
-bun .pi/skills/hyperliquid/src/cli/Hyperliquid.ts deposit --amount 25 --from <0x-privy-wallet>
+bun src/cli/Hyperliquid.ts deposit --amount 25 --from <0x-privy-wallet>
 ```
 
 Withdraw USDC:
 
 ```bash
-bun .pi/skills/hyperliquid/src/cli/Hyperliquid.ts withdraw --amount 2 --from <0x-privy-wallet> --destination <0x-evm-address>
+bun src/cli/Hyperliquid.ts withdraw --amount 2 --from <0x-privy-wallet> --destination <0x-evm-address>
 ```
 
 Transfer USDC between spot and perp wallets:
 
 ```bash
-bun .pi/skills/hyperliquid/src/cli/Hyperliquid.ts transfer-usd-class --amount 2 --from <0x-privy-wallet> --direction spot-to-perp
+bun src/cli/Hyperliquid.ts transfer-usd-class --amount 2 --from <0x-privy-wallet> --direction spot-to-perp
 ```
 
 Place a perp order:
 
 ```bash
-bun .pi/skills/hyperliquid/src/cli/Hyperliquid.ts trade-perp --from <0x-privy-wallet> --coin BTC --side long --type market --amount 0.001
+bun src/cli/Hyperliquid.ts trade-perp --from <0x-privy-wallet> --coin BTC --side long --type market --amount 0.001
 ```
 
 Place a spot order:
 
 ```bash
-bun .pi/skills/hyperliquid/src/cli/Hyperliquid.ts trade-spot --from <0x-privy-wallet> --pair HYPE/USDC --side buy --type market --amount 10
+bun src/cli/Hyperliquid.ts trade-spot --from <0x-privy-wallet> --pair HYPE/USDC --side buy --type market --amount 10
 ```
 
 ## Layout
 
+All executable code lives under a single root `src/` (one alias: `@/*` -> `./src/*`). Each
+skill under `.pi/skills/<slug>/` is **documentation only** — its `SKILL.md` points the agent
+at the matching `bun src/cli/<Name>.ts`.
+
 ```text
 AGENTS.md                  # Operating constitution
-bootstrap.sh               # First-boot: install deps + build the world
-src/                       # ata code (@/*) + shared foundation utilities (@foundation/*)
-  cli/                     # agent-key, llm-token, token CLIs
+bootstrap.sh               # First-boot: install deps (no build — bun runs TS directly)
+src/                       # ALL code: ata CLIs + skill CLIs + shared foundation (@/*)
+  cli/                     # every CLI: agent-key, llm-token, token, Wallet, Hyperliquid,
+                           #   Transaction, SpotTrading, News, Macros, Prediction, 9 analysts
   common/ helpers/ services/ types/ utils/
 .pi/
   settings.json            # Pi provider/model config
-  extensions/tribes.ts     # the one extension: provider + welcome + wallet warm-up
-  skills/                  # real skill dirs (hyperliquid, wallet, transaction, analysts, …)
+  extensions/
+    tribes/                # LLM provider + welcome + wallet warm-up
+    hyperliquid/           # live Hyperliquid positions/status widget
+  skills/<slug>/SKILL.md   # skill docs only (no code); run via bun src/cli/<Name>.ts
 ```
 
 ## Security

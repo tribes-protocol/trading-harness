@@ -1,8 +1,9 @@
-import { ChainIdSchema } from '@shared/types/ChainId'
-import { TokenIdSchema } from '@shared/types/crosschain'
-import { HyperliquidCoinSchema } from '@shared/types/Hyperliquid'
-import { MassiveStocksTickerSchema } from '@shared/types/MassiveStocks'
 import { z } from 'zod'
+
+import { ChainIdSchema } from '@/types/ChainId'
+import { TokenIdSchema } from '@/types/crosschain'
+import { HyperliquidCoinSchema } from '@/types/Hyperliquid'
+import { MassiveStocksTickerSchema } from '@/types/MassiveStocks'
 
 export const AssetIdentityKindSchema = z.enum(['token', 'perp', 'stock'])
 export type AssetIdentityKind = z.infer<typeof AssetIdentityKindSchema>

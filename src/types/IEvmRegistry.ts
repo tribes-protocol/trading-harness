@@ -1,5 +1,6 @@
-import type { EvmChainId } from '@shared/types/ChainId'
 import type { Chain, PublicClient, Transport } from 'viem'
+
+import type { EvmChainId } from '@/types/ChainId'
 
 export interface IEvmRegistry {
   getPublicClient(chainId: EvmChainId): PublicClient

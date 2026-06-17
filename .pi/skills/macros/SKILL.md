@@ -14,8 +14,8 @@ skill provides the numeric snapshot used by strategize.
 
 ## When this runs
 
-The strategize extension runs this on each data-collector cycle and captures
-the CLI stdout JSON into `runtime/journal/<date>/<HH>/macros/`.
+The strategize flow runs this on each data-collector cycle and reads the CLI's
+stdout JSON.
 
 ## Requirements
 
@@ -44,7 +44,7 @@ Values are null-safe, so partial outages do not fail the entire payload.
 ## CLI
 
 ```bash
-bun .pi/skills/macros/src/cli/Macros.ts market
+bun src/cli/Macros.ts market
 ```
 
 Output schema:

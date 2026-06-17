@@ -1,17 +1,18 @@
+import z from 'zod'
+
 import {
   ERC20BalanceSchema,
   ERC20TokenSchema,
   type EthAddress,
   EthAddressSchema
-} from '@shared/types/eth'
+} from '@/types/eth'
 import {
   type SolAddress,
   SolAddressSchema,
   SolPubKeySchema,
   SPLBalanceSchema,
   SPLTokenSchema
-} from '@shared/types/solana'
-import z from 'zod'
+} from '@/types/solana'
 
 export const WalletAddressSchema = z.union([EthAddressSchema, SolAddressSchema])
 export type WalletAddress = z.infer<typeof WalletAddressSchema>

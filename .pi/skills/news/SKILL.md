@@ -10,13 +10,6 @@ Use this skill whenever trading decisions need current news, catalysts, macro co
 
 ## Setup
 
-From this skill directory (`skills/news`):
-
-```bash
-bun install
-bun run build
-```
-
 Requires `API_BASE_URL` in the environment (or harness `.env` loaded in the shell before invoking the CLI).
 
 ## Core rule
@@ -34,48 +27,33 @@ For fallback mode:
 2. Turn that targeted query into one reusable encoded search string, then use the same string across all fallback sources.
 3. Use free/open sources as fallback and cross-check: Google News RSS, Yahoo Finance RSS, Nasdaq/SEC/issuer feeds when relevant, CoinDesk/Cointelegraph/Decrypt RSS for crypto, Federal Reserve/market calendar feeds for macro.
 4. Use browser fallback when the CLI path fails and normal HTTP is blocked, empty, JS-rendered, or returns 401/403/406/429/challenge pages.
-5. Store temporary raw/cached/analysis artifacts under `runtime/news/`; keep only headlines, URLs, snippets, source names, timestamps, sentiment, and query metadata.
+5. Keep only headlines, URLs, snippets, source names, timestamps, sentiment, and query metadata.
 
 ## Quick command
 
-From a harness root with this skill at `.pi/skills/news`, write artifacts under the harness `runtime/news/`:
+From the harness root:
 
 ```bash
-bun .pi/skills/news/src/cli/News.ts fetch \
+bun src/cli/News.ts fetch \
   --kind perp \
-  --coin BTC \
-  --out runtime/news/btc.json
+  --coin BTC
 ```
 
 Token example:
 
 ```bash
-bun .pi/skills/news/src/cli/News.ts fetch \
+bun src/cli/News.ts fetch \
   --kind token \
   --chain-id 1 \
-  --token-id 0xA0b86991c6218b36c1d19d4a2e9eb0ce3606eb48 \
-  --out runtime/news/usdc.json
+  --token-id 0xA0b86991c6218b36c1d19d4a2e9eb0ce3606eb48
 ```
 
 Stock example:
 
 ```bash
-bun .pi/skills/news/src/cli/News.ts fetch \
+bun src/cli/News.ts fetch \
   --kind stock \
-  --ticker NVDA \
-  --out runtime/news/nvda.json
-```
-
-From this skill directory (`skills/news`), paths are relative to the skill dir:
-
-```bash
-bun src/cli/News.ts fetch --kind perp --coin BTC --out runtime/news/btc.json
-```
-
-Built CLI (after `bun run build`, run from skill directory):
-
-```bash
-node dist/cli/News.js fetch --kind perp --coin BTC --out runtime/news/btc.json
+  --ticker NVDA
 ```
 
 CLI behavior:
@@ -84,7 +62,7 @@ CLI behavior:
 - Uses up to 10 retries.
 - Retries while response state is `analyzing`.
 - Retries while any returned item has `sentiment: "unknown"`.
-- Writes JSON output to `--out` when provided.
+- Prints JSON output to stdout.
 
 ## Browser fallback
 
@@ -103,9 +81,9 @@ playwright-cli -s=news-open run-code "async ({ page }) => ({ ua: await page.eval
 
 Do not use browser fallback to bypass paywalls, CAPTCHAs, or access controls.
 
-## Output format for analysis artifacts
+## Output format
 
-Write JSON to `runtime/news/<timestamp-or-topic>.json`:
+Structure collected analysis as JSON in this shape:
 
 ```json
 {

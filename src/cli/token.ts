@@ -1,12 +1,12 @@
 #!/usr/bin/env node
 
-import { ensureJsonTreeString } from '@shared/utils/lang'
 import { Command } from 'commander'
 
 import { API_BASE_URL } from '@/common/env'
+import { writeOutput } from '@/helpers/WriteOutput'
 import { TokenService } from '@/services/TokenService'
 import { TokenSearchCommandOptionsSchema } from '@/types/Token'
-import { writeOutput } from '@/utils/WriteOutput'
+import { ensureJsonTreeString } from '@/utils/lang'
 
 const VERSION = '1.0.0'
 const tokenService = new TokenService({ apiBaseUrl: API_BASE_URL })

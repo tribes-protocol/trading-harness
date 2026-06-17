@@ -2,7 +2,6 @@ import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
-import { ensureJsonTreeString, isNullish } from '@shared/utils/lang'
 import { decodeJwt, importPKCS8, SignJWT } from 'jose'
 
 import { readAgentAuthorizationKey } from '@/helpers/AuthKey'
@@ -13,6 +12,7 @@ import {
   type JwtTokenClaims,
   JwtTokenClaimsSchema
 } from '@/types/JwtAuth'
+import { ensureJsonTreeString, isNullish } from '@/utils/lang'
 
 const TOKEN_TTL = '7d'
 const TOKEN_REFRESH_BUFFER_SECONDS = 60

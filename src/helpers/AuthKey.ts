@@ -2,9 +2,8 @@ import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
-import { ensureJsonTreeString } from '@shared/utils/lang'
-
 import { type AgentAuthorizationKey, AgentAuthorizationKeySchema } from '@/types/JwtAuth'
+import { ensureJsonTreeString } from '@/utils/lang'
 
 const HARNESS_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../../')
 const AGENT_AUTHORIZATION_KEY_PATH = resolve(HARNESS_ROOT, '.pi/agent-authorization-key.json')
