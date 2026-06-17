@@ -1,4 +1,4 @@
-# @tribes-terminal/skill-spot-trading
+# spot-trading
 
 Scaffolded with `bun scripts/create-package.ts --dir skills/spot-trading`.
 

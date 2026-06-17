@@ -6,12 +6,12 @@ export default createRule({
     type: 'problem',
     docs: {
       description:
-        'Disallow JSON.stringify(); prefer toJsonTreeString/ensureJsonTreeString from @tribes-terminal/core/shared',
+        'Disallow JSON.stringify(); prefer toJsonTreeString/ensureJsonTreeString from the shared lang utils',
       recommended: 'error'
     },
     messages: {
       useToJsonTreeString:
-        'Avoid JSON.stringify(). Use toJsonTreeString() or ensureJsonTreeString() from @tribes-terminal/core/shared instead.'
+        'Avoid JSON.stringify(). Use toJsonTreeString() or ensureJsonTreeString() from the shared lang utils instead.'
     },
     schema: []
   },

@@ -3,8 +3,8 @@ import { dirname, resolve } from 'node:path'
 
 import type { ExtensionAPI, ExtensionContext, Theme } from '@earendil-works/pi-coding-agent'
 import type { TUI } from '@earendil-works/pi-tui'
-import { ensureJsonTreeString } from '@shared/utils/lang'
 
+import { ensureJsonTreeString } from './ensure-json.ts'
 import { type CrossBucket, estimateCrossLiquidationPx } from './liq-estimator.ts'
 import { renderHyperliquidPositionsWidget } from './render.ts'
 import type {

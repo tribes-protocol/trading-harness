@@ -1,4 +1,4 @@
-# @tribes-terminal/skill-prediction
+# prediction
 
 Scaffolded with `bun scripts/create-package.ts --dir skills/prediction`.
 

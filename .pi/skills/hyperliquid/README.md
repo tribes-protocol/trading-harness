@@ -1,4 +1,4 @@
-# @tribes-terminal/skill-hyperliquid
+# hyperliquid
 
 Shared Hyperliquid skill for ATA execution flows.
 

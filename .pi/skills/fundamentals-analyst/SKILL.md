@@ -64,7 +64,7 @@ For live on-chain holder/trader/security analysis, switch to `token-analyst`.
 ## Code
 
 ```bash
-bun run build --filter=@tribes-terminal/skill-fundamentals-analyst
+bun run build
 ```
 
 ## Command examples

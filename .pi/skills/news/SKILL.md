@@ -14,7 +14,7 @@ From this skill directory (`skills/news`):
 
 ```bash
 bun install
-bun run build --filter=@tribes-terminal/skill-news
+bun run build
 ```
 
 Requires `API_BASE_URL` in the environment (or harness `.env` loaded in the shell before invoking the CLI).

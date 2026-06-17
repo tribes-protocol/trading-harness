@@ -58,7 +58,7 @@ Always request source-backed answers if you need high confidence outputs.
 ## Code
 
 ```bash
-bun run build --filter=@tribes-terminal/skill-research-analyst
+bun run build
 ```
 
 ## Command examples

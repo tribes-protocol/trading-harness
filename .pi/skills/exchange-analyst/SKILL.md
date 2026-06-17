@@ -58,7 +58,7 @@ For token-level on-chain holder/trader/security depth, switch to `token-analyst`
 ## Code
 
 ```bash
-bun run build --filter=@tribes-terminal/skill-exchange-analyst
+bun run build
 ```
 
 ## Command examples

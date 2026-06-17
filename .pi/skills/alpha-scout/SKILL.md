@@ -57,7 +57,7 @@ Best results come from queries that include:
 ## Code
 
 ```bash
-bun run build --filter=@tribes-terminal/skill-alpha-scout
+bun run build
 ```
 
 ## Command examples

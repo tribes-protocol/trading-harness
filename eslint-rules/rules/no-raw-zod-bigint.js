@@ -17,7 +17,7 @@ export default createRule({
     },
     messages: {
       useBigintSchema:
-        'Do not use z.bigint() directly. Import and use BigintSchema (or BigNumberSchema) from @tribes-terminal/core/shared instead.'
+        'Do not use z.bigint() directly. Import and use BigintSchema (or BigNumberSchema) from the shared lang utils instead.'
     },
     schema: []
   },

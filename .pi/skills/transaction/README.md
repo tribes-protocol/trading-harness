@@ -1,4 +1,4 @@
-# @tribes-terminal/skill-transaction
+# transaction
 
 Shared transaction/auth skill for ATA.
 

@@ -1,4 +1,4 @@
-# @tribes-terminal/skill-fundamentals-analyst
+# fundamentals-analyst
 
 CLI skill that queries the `fundamentals_analyst` Lucy specialist via the sandbox-authenticated
 `POST /agent/lucy/fundamentals-analyst` endpoint.

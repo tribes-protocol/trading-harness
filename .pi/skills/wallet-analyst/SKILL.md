@@ -58,7 +58,7 @@ If your query is broad, start with a portfolio snapshot and then ask follow-up q
 ## Code
 
 ```bash
-bun run build --filter=@tribes-terminal/skill-wallet-analyst
+bun run build
 ```
 
 ## Command examples

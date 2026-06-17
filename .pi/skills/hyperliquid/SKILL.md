@@ -17,7 +17,7 @@ they hit Hyperliquid's public info API and need no wallet, signer, or
 ## Compatibility
 
 - Depends on the `wallet` skill for wallet discovery.
-- Depends on transaction signing via `@tribes-terminal/skill-transaction`.
+- Depends on transaction signing via `the transaction skill`.
 - Use wallet CLI output as the source of `walletId` and signer `from` address.
 - Do not read `.pi/privy-wallets.json` directly in the workflow.
 

@@ -1,4 +1,4 @@
-# @tribes-terminal/skill-macros
+# macros
 
 Shared macros skill for ATA.
 

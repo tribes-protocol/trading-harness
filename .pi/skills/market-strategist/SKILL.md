@@ -63,7 +63,7 @@ For token-specific on-chain depth (holders/traders/security), switch to `token-a
 ## Code
 
 ```bash
-bun run build --filter=@tribes-terminal/skill-market-strategist
+bun run build
 ```
 
 ## Command examples

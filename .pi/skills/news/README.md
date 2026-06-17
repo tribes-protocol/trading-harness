@@ -1,4 +1,4 @@
-# @tribes-terminal/skill-news
+# news
 
 Scaffolded with `bun scripts/create-package.ts --dir skills/news`.
 

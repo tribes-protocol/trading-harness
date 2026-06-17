@@ -1,4 +1,4 @@
-# @tribes-terminal/skill-wallet
+# wallet
 
 Scaffolded with `bun scripts/create-package.ts --dir skills/wallet`.
 

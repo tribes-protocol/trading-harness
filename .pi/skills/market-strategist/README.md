@@ -1,4 +1,4 @@
-# @tribes-terminal/skill-market-strategist
+# market-strategist
 
 CLI skill that queries the `market_strategist` Lucy specialist via the sandbox-authenticated
 `POST /agent/lucy/market-strategist` endpoint.
