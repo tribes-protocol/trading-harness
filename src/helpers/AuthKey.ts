@@ -6,7 +6,7 @@ import { ensureJsonTreeString } from '@shared/utils/lang'
 
 import { type AgentAuthorizationKey, AgentAuthorizationKeySchema } from '@/types/JwtAuth'
 
-const HARNESS_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../../../../')
+const HARNESS_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../../')
 const AGENT_AUTHORIZATION_KEY_PATH = resolve(HARNESS_ROOT, '.pi/agent-authorization-key.json')
 
 export async function readAgentAuthorizationKey(): Promise<AgentAuthorizationKey> {

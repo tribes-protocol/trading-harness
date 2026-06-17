@@ -16,7 +16,7 @@ import {
 
 const TOKEN_TTL = '7d'
 const TOKEN_REFRESH_BUFFER_SECONDS = 60
-const HARNESS_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../../../../')
+const HARNESS_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../../')
 const TOKEN_CACHE_PATH = resolve(HARNESS_ROOT, '.pi/jwt-token-cache.json')
 
 let memoryCache: JwtTokenCache | null = null
