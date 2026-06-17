@@ -4,7 +4,7 @@ import { stderr, stdout } from 'node:process'
 
 import { Command, Option } from 'commander'
 
-import { PredictionService } from '@/services/Prediction'
+import { PredictionService } from '@/services/PredictionService'
 import {
   PredictionGetEventCommandOptionsSchema,
   PredictionGetMarketCommandOptionsSchema,

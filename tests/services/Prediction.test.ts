@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, test, vi } from 'vitest'
 
-import { PredictionService } from '@/services/Prediction'
+import { PredictionService } from '@/services/PredictionService'
 
 function toUrl(requestInfo: URL | RequestInfo): URL {
   if (requestInfo instanceof URL) {

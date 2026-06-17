@@ -1,7 +1,7 @@
 import z from 'zod'
 
 import { ChainIdSchema } from '@/types/ChainId'
-import { TokenIdSchema } from '@/types/Crosschain'
+import { TokenIdSchema } from '@/types/CrossChain'
 import { BigNumberSchema } from '@/types/Lang'
 import { isNullish } from '@/utils/Lang'
 

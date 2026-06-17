@@ -5,7 +5,7 @@ import { Command } from 'commander'
 import { API_BASE_URL } from '@/common/Env'
 import { writeOutput } from '@/helpers/WriteOutput'
 import { TokenService } from '@/services/TokenService'
-import { TokenSearchCommandOptionsSchema } from '@/types/Token'
+import { TokenSearchCommandOptionsSchema } from '@/types/Search'
 import { ensureJsonTreeString } from '@/utils/Lang'
 
 const VERSION = '1.0.0'

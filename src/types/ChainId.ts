@@ -61,3 +61,6 @@ export const ChainIdSchema = z
   )
 
 export type ChainId = z.infer<typeof ChainIdSchema>
+
+export const NetworkSchema = z.enum(['evm', 'solana'])
+export type Network = z.infer<typeof NetworkSchema>

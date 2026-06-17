@@ -1,6 +1,6 @@
 import { z } from 'zod'
 
-import { BasePoolItemSchema, BaseTokenItemSchema } from '@/types/Crosschain'
+import { BasePoolItemSchema, BaseTokenItemSchema } from '@/types/CrossChain'
 
 export const SearchTokenItemSchema = BaseTokenItemSchema
 export type SearchTokenItem = z.infer<typeof SearchTokenItemSchema>
@@ -13,3 +13,8 @@ export const SearchItemSchema = z.discriminatedUnion('kind', [
   SearchTokenItemSchema
 ])
 export type SearchItem = z.infer<typeof SearchItemSchema>
+
+export const TokenSearchCommandOptionsSchema = z.object({
+  query: z.string().trim().min(1, 'query is required'),
+  out: z.string().nullish()
+})

@@ -1,9 +1,9 @@
 {
   "$schema": "https://unpkg.com/knip@5/schema.json",
-  // All executable code now lives in a single root `src/`. Entry points: the ata +
+  // All executable code lives in a single root `src/`. Entry points: the ata +
   // skill CLIs (invoked at runtime via `bun src/cli/<Name>.ts`) and the Pi extensions
-  // (auto-discovered by Pi via their `index.ts` default export). Tests are detected by
-  // knip's vitest plugin.
-  "entry": ["src/cli/*.ts", ".pi/extensions/*/index.ts"],
-  "project": ["src/**/*.ts", ".pi/extensions/**/*.ts"]
+  // (auto-discovered by Pi via their `index.ts` default export). Tests live under
+  // tests/ and are detected by knip's vitest plugin.
+  "entry": ["src/cli/*.ts", ".pi/extensions/*/index.ts", "tests/**/*.test.ts"],
+  "project": ["src/**/*.ts", ".pi/extensions/**/*.ts", "tests/**/*.ts"]
 }

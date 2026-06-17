@@ -1,7 +1,7 @@
 import { z } from 'zod'
 
 import { ChainIdSchema, EvmChainIdSchema, SolanaChainIdSchema } from '@/types/ChainId'
-import { TokenIdSchema } from '@/types/Crosschain'
+import { TokenIdSchema } from '@/types/CrossChain'
 import { EthAddressSchema, EthTokenIdSchema } from '@/types/Eth'
 import { BigintSchema, HexStringSchema } from '@/types/Lang'
 import { SolInstructionSchema, SPLTokenIdSchema } from '@/types/Solana'
