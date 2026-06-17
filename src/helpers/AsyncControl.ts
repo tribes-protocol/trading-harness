@@ -1,5 +1,3 @@
-import { logger } from '@/utils/Logger'
-
 export class ShutdownError extends Error {
   constructor() {
     super('Process shutdown requested')
@@ -104,11 +102,8 @@ export function retry<T>({
           }
 
           if (logError) {
-            logger.error('Retry attempt failed', {
-              error,
-              details: {
-                module: 'async-control'
-              }
+            console.error('Retry attempt failed', error, {
+              module: 'async-control'
             })
           }
           if (shouldRetry && !shouldRetry(error)) {

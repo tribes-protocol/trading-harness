@@ -17,7 +17,6 @@ import { SolSignature, SolSignatureSchema } from '@/types/solana'
 import { TxId } from '@/types/Tx'
 import { discernChain } from '@/utils/chain'
 import { isNullish } from '@/utils/lang'
-import { logger } from '@/utils/Logger'
 
 const SolBlockResponseSchema = z.object({
   blockHeight: z.number()
@@ -164,13 +163,10 @@ export class Web3Client {
           return
         }
       } catch (error) {
-        logger.error('Failed to get transaction status', {
-          error,
-          details: {
-            module: 'Web3Client',
-            chainId,
-            hash
-          }
+        console.error('Failed to get transaction status', error, {
+          module: 'Web3Client',
+          chainId,
+          hash
         })
       } finally {
         await sleep(POLL_INTERVAL_MS)
