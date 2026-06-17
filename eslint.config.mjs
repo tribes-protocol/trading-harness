@@ -127,7 +127,6 @@ export default [
       '**/dist-test/**',
       '**/coverage/**',
       'runtime/**',
-      '.venv/**',
       'eslint-rules/**',
       '**/*.d.ts',
       '**/test/**',

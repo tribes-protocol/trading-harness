@@ -12,7 +12,5 @@ node_modules/
 .pi/skills/**/dist/
 .pi/skills/**/dist-test/
 code/typescript/dist/
-**/__pycache__/
 .playwright-cli/
 todos/
-.venv/

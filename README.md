@@ -79,7 +79,6 @@ src/                       # ata code (@/*) + shared foundation utilities (@foun
   settings.json            # Pi provider/model config
   extensions/tribes.ts     # the one extension: provider + welcome + wallet warm-up
   skills/                  # real skill dirs (hyperliquid, wallet, transaction, analysts, …)
-tests/                     # Unit tests
 ```
 
 ## Security

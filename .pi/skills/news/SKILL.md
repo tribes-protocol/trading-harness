@@ -92,7 +92,7 @@ Use the `browser` skill only when the CLI path fails and normal HTTP cannot retr
 
 ```bash
 QUERY='AMD earnings guidance AI chip demand'
-ENCODED_QUERY="$(python3 -c "import urllib.parse; print(urllib.parse.quote('''$QUERY'''))")"
+ENCODED_QUERY="$(printf %s "$QUERY" | bun -e 'process.stdout.write(encodeURIComponent(await Bun.stdin.text()))')"
 
 PLAYWRIGHT_MCP_USER_AGENT='Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36' \
 PLAYWRIGHT_MCP_VIEWPORT_SIZE=1365x768 \
