@@ -1,0 +1,30 @@
+import { z } from 'zod'
+
+export const AgentAuthorizationKeySchema = z.object({
+  schema: z.literal('agent-authorization-key.v1'),
+  curve: z.literal('P-256'),
+  privateKeyPem: z.string().min(1),
+  publicKeyPem: z.string().min(1),
+  sandboxId: z.string().min(1),
+  userId: z.string().min(1),
+  createdAt: z.string().min(1)
+})
+export type AgentAuthorizationKey = z.infer<typeof AgentAuthorizationKeySchema>
+
+export const JwtTokenClaimsSchema = z.object({
+  sub: z.string().min(1),
+  sandboxId: z.string().min(1),
+  exp: z.number().int().positive()
+})
+export type JwtTokenClaims = z.infer<typeof JwtTokenClaimsSchema>
+
+export const JwtTokenCacheSchema = z.object({
+  schema: z.literal('jwt-token-cache.v1'),
+  token: z.string().min(1),
+  expiresAtEpochSeconds: z.number().int().positive(),
+  sandboxId: z.string().min(1),
+  userId: z.string().min(1),
+  createdAt: z.string().min(1),
+  updatedAt: z.string().min(1)
+})
+export type JwtTokenCache = z.infer<typeof JwtTokenCacheSchema>

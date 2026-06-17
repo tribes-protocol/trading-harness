@@ -1,0 +1,3 @@
+import { ensureString } from '@shared/utils/lang'
+
+export const API_BASE_URL = ensureString(process.env.API_BASE_URL, 'API_BASE_URL is not set')

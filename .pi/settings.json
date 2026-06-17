@@ -1,0 +1,6 @@
+{
+  "defaultThinkingLevel": "high",
+  "defaultProvider": "tribes-llm-proxy",
+  "defaultModel": "deepseek-v4-pro",
+  "packages": []
+}

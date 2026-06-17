@@ -1,0 +1,18 @@
+# Secrets / local environment
+.env
+*.env.local
+runtime/
+.pi/privy-wallets.json
+.pi/agent-authorization-key.json
+.pi/jwt-token-cache.json
+
+# Dependencies / build artifacts
+node_modules/
+.pi/skills/**/node_modules/
+.pi/skills/**/dist/
+.pi/skills/**/dist-test/
+code/typescript/dist/
+**/__pycache__/
+.playwright-cli/
+todos/
+.venv/
