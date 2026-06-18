@@ -55,8 +55,7 @@ When all provided wallet addresses are Solana addresses, omit `--chain-ids`.
 When Solana and EVM addresses are mixed, Solana balances are still returned and `--chain-ids` only filters EVM lookups.
 
 ```bash
-API_BEARER_TOKEN="$(bun code/typescript/src/cli/llm-token.ts)" \
-  bun .pi/skills/wallet/src/cli/Wallet.ts assets \
+bun src/cli/Wallet.ts assets \
   --wallet-addresses <solana-address>
 ```
 

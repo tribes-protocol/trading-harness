@@ -164,6 +164,16 @@ bun src/cli/Hyperliquid.ts transfer-dex-cash \
   - `--price` (required for `--type limit`)
   - `--tif Gtc|Ioc|Alo`
 
+## Gas preflight (conditional)
+
+Hyperliquid deposits and on-chain trades are broadcast as transactions and need
+native gas (ETH on Arbitrum, chain id `42161`) on the chain they run on. Do not
+re-check gas on every step. Run the transaction skill's gas acquisition flow
+only when native gas on the destination chain is low/insufficient or for a
+cross-chain flow; otherwise proceed. If no native gas token exists
+on any chain, STOP and ask the user to deposit native gas instead of improvising
+workarounds.
+
 ## Any token -> Arbitrum USDC (spot-trading + transaction), then usual deposit flow
 
 Use this bridge flow only for source-token-to-Arbitrum-USDC conversion before Hyperliquid deposit.
@@ -242,6 +252,7 @@ Operational notes:
 
 ## Live broadcast safety
 
+- Run the transaction skill's gas acquisition flow only when native gas (ETH on Arbitrum) on the destination chain is low/insufficient or for a cross-chain flow; otherwise proceed, and stop to ask the user to deposit gas if none exists anywhere.
 - Do not broadcast vague natural-language intent; always show and review the exact command payload first.
 - Never mix wallet ids across chains; use the exact EVM wallet id that matches `--from`.
 - Do not run live execution commands without explicit `--wallet-id`.
