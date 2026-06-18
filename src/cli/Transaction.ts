@@ -34,14 +34,12 @@ program
   .option('--data <hexData>', 'Hex calldata, defaults to 0x')
   .option('--from <address>', 'Optional from address')
   .requiredOption('--wallet-id <walletId>', 'Privy wallet id')
-  .requiredOption('--private-key-pem <privateKeyPem>', 'Privy authorization private key')
   .option('--out <file>', 'Write output JSON to file')
   .action(async (options: unknown): Promise<void> => {
     const request = EthTransactionCommandOptionsSchema.parse(options)
     const response = await transactionService.sendEthTransaction({
       txData: request,
-      walletId: request.walletId,
-      privateKeyPem: request.privateKeyPem
+      walletId: request.walletId
     })
     const output = ensureJsonTreeString(response)
     await writeOutput({
@@ -59,7 +57,6 @@ program
     'JSON array of calls: [{"to":"0x..","value":"<wei>","data":"0x.."}]'
   )
   .requiredOption('--wallet-id <walletId>', 'Privy wallet id')
-  .requiredOption('--private-key-pem <privateKeyPem>', 'Privy authorization private key')
   .option('--out <file>', 'Write output JSON to file')
   .action(async (options: unknown): Promise<void> => {
     const request = EthCallsCommandOptionsSchema.parse(options)
@@ -71,8 +68,7 @@ program
     }))
     const response = await transactionService.sendCalls({
       calls,
-      walletId: request.walletId,
-      privateKeyPem: request.privateKeyPem
+      walletId: request.walletId
     })
     const output = ensureJsonTreeString(response)
     await writeOutput({
@@ -86,14 +82,12 @@ program
   .description('Send a Solana transaction via Privy signAndSendTransaction')
   .requiredOption('--transaction <instruction>', 'Serialized transaction string')
   .requiredOption('--wallet-id <walletId>', 'Privy wallet id')
-  .requiredOption('--private-key-pem <privateKeyPem>', 'Privy authorization private key')
   .option('--out <file>', 'Write output JSON to file')
   .action(async (options: unknown): Promise<void> => {
     const request = SolTransactionCommandOptionsSchema.parse(options)
     const response = await transactionService.sendSolTransaction({
       transaction: request.transaction,
-      walletId: request.walletId,
-      privateKeyPem: request.privateKeyPem
+      walletId: request.walletId
     })
     const output = ensureJsonTreeString(response)
     await writeOutput({

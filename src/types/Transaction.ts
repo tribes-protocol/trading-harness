@@ -17,7 +17,6 @@ export type EthTransaction = z.infer<typeof EthTransactionSchema>
 
 export const EthTransactionCommandOptionsSchema = EthTransactionSchema.extend({
   walletId: z.string().trim().min(1),
-  privateKeyPem: z.string().min(1),
   out: z.string().nullish()
 })
 export type EthTransactionCommandOptions = z.infer<typeof EthTransactionCommandOptionsSchema>
@@ -50,7 +49,6 @@ export const EthCallsCommandOptionsSchema = z.object({
     })
     .pipe(z.array(EthCallSchema).min(1)),
   walletId: z.string().trim().min(1),
-  privateKeyPem: z.string().min(1),
   out: z.string().nullish()
 })
 export type EthCallsCommandOptions = z.infer<typeof EthCallsCommandOptionsSchema>
@@ -58,7 +56,6 @@ export type EthCallsCommandOptions = z.infer<typeof EthCallsCommandOptionsSchema
 export const SolTransactionCommandOptionsSchema = z.object({
   transaction: SolInstructionSchema,
   walletId: z.string().trim().min(1),
-  privateKeyPem: z.string().min(1),
   out: z.string().nullish()
 })
 export type SolTransactionCommandOptions = z.infer<typeof SolTransactionCommandOptionsSchema>

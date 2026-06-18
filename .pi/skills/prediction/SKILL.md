@@ -8,7 +8,7 @@ allowed-tools: bash read write
 
 Use this skill when a trading decision needs market-implied probabilities from Polymarket: elections, crypto regulation, ETF decisions, macro events, earnings-adjacent catalysts, geopolitical events, sports/entertainment only if it affects a tradable thesis, or any question where prediction odds can validate or challenge a view.
 
-The bundled CLI mirrors the core Lucy prediction tools under `packages/core/src/lucy/tools/prediction`:
+The bundled CLI mirrors the Lucy prediction tool actions (implemented in `src/cli/Prediction.ts` and `src/services/PredictionService.ts`):
 
 - `prediction_search` -> `search`
 - `prediction_list_events` -> `list-events`
@@ -172,6 +172,6 @@ Use `get-event` or `get-market` when sub-market detail beyond `leadingMarket` is
 ## Implementation
 
 - Entry: `src/cli/Prediction.ts`
-- Service: `src/services/Prediction.ts` (inline HTTP)
+- Service: `src/services/PredictionService.ts` (inline HTTP)
 - Types: `src/types/Prediction.ts` (Zod schemas + option types)
 - Enrichment: `src/utils/Prediction.ts` (`leadingMarket` via `selectLeadingMarket`)

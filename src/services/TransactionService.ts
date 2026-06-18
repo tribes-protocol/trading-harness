@@ -1,5 +1,4 @@
-import { z } from 'zod'
-
+import { readAgentAuthorizationKey } from '@/helpers/AuthKey'
 import { fetchTerminalApi } from '@/helpers/TerminalApiRequest'
 import { type HexString, HexStringSchema } from '@/types/Lang'
 import { type SolSignature, SolSignatureSchema } from '@/types/Solana'
@@ -18,7 +17,7 @@ import type {
   TransactionServiceParams
 } from '@/types/TransactionService'
 import { TxSchema } from '@/types/Tx'
-import { ensureJsonTreeString } from '@/utils/Lang'
+import { ensureJsonTreeString, isNullish } from '@/utils/Lang'
 import {
   generateEthSendCallsSignature,
   generateEthSendTransactionSignature,
@@ -39,12 +38,13 @@ export class TransactionService {
     this.privyAppId = params.privyAppId
   }
 
-  async sendCalls(params: SendEthCallsParams): Promise<string> {
+  async sendCalls(params: SendEthCallsParams): Promise<HexString> {
     const calls = EthCallsSchema.parse(params.calls)
+    const privateKeyPem = await this.resolveAuthorizationPrivateKey()
     const signature = generateEthSendCallsSignature({
       walletId: params.walletId,
       calls,
-      privateKeyPem: params.privateKeyPem,
+      privateKeyPem,
       privyAppId: this.privyAppId
     })
     const apiRequest = SendEthCallsApiRequestSchema.parse({
@@ -74,15 +74,16 @@ export class TransactionService {
     }
 
     const data: unknown = await response.json()
-    return z.string().parse(data)
+    return HexStringSchema.parse(data)
   }
 
   async sendEthTransaction(params: SendEthTransactionParams): Promise<HexString> {
     const txData = TxSchema.parse(params.txData)
+    const privateKeyPem = await this.resolveAuthorizationPrivateKey()
     const signature = generateEthSendTransactionSignature({
       walletId: params.walletId,
       txData,
-      privateKeyPem: params.privateKeyPem,
+      privateKeyPem,
       privyAppId: this.privyAppId
     })
     const apiRequest = SendEthTransactionApiRequestSchema.parse({
@@ -116,10 +117,11 @@ export class TransactionService {
   }
 
   async sendSolTransaction(params: SendSolTransactionParams): Promise<SolSignature> {
+    const privateKeyPem = await this.resolveAuthorizationPrivateKey()
     const signature = generateSolSendTransactionSignature({
       walletId: params.walletId,
       transaction: params.transaction,
-      privateKeyPem: params.privateKeyPem,
+      privateKeyPem,
       privyAppId: this.privyAppId
     })
     const apiRequest = SendSolTransactionApiRequestSchema.parse({
@@ -153,10 +155,11 @@ export class TransactionService {
   }
 
   async signEthTypedDataV4(params: SignEthTypedDataV4Params): Promise<HexString> {
+    const privateKeyPem = await this.resolveAuthorizationPrivateKey()
     const signature = generateEthSignTypedDataV4Signature({
       walletId: params.walletId,
       typedData: params.typedData,
-      privateKeyPem: params.privateKeyPem,
+      privateKeyPem,
       privyAppId: this.privyAppId
     })
     const apiRequest = SignEthTypedDataV4ApiRequestSchema.parse({
@@ -187,5 +190,13 @@ export class TransactionService {
 
     const data: unknown = await response.json()
     return HexStringSchema.parse(data)
+  }
+
+  private async resolveAuthorizationPrivateKey(): Promise<string> {
+    const authorizationKey = await readAgentAuthorizationKey()
+    if (isNullish(authorizationKey)) {
+      throw new Error('Authorization key missing')
+    }
+    return authorizationKey.privateKeyPem
   }
 }
