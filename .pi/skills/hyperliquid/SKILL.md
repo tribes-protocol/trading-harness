@@ -86,6 +86,8 @@ Discovery (read-only, no wallet/signer):
   `--market spot`
 - `list-balances` — list perp account summary + spot token balances for an
   `--address` (read-only); scope perp with `--dex <name>`
+- `list-positions` — list open perp positions for an `--address` (read-only);
+  scope with `--dex <name>` or sweep everything with `--all-dexes`
 
 Execution (require `--wallet-id`; most also require signer `--from`):
 
@@ -142,6 +144,27 @@ Returns `perp` (`accountValue`, `withdrawable`, `totalMarginUsed`, `totalNtlPos`
 and `spot` (per token: `coin`, `token`, `total`, `hold`, `available`, where
 `available = total - hold`). This is a read-only info query — no wallet or
 signer is required.
+
+### List open positions
+
+```bash
+# Open positions on the main dex
+bun src/cli/Hyperliquid.ts list-positions \
+  --address 0x1111111111111111111111111111111111111111
+
+# Sweep main + every perp dex (use this before "close all positions")
+bun src/cli/Hyperliquid.ts list-positions \
+  --address 0x1111111111111111111111111111111111111111 \
+  --all-dexes
+```
+
+Returns an array of open positions (zero-size positions are filtered out), each
+with `dex`, `coin`, `side` (`long`/`short`), `size` (absolute), `signedSize`,
+`entryPx`, `positionValue`, `unrealizedPnl`, `returnOnEquity`, `liquidationPx`,
+`leverage`, `leverageType` (`cross`/`isolated`), `marginUsed`, and `maxLeverage`.
+Read-only — no wallet or signer required. Prefer this over ad-hoc inline scripts
+when you need a per-position view (for example, to enumerate positions before
+closing them with `trade-perp --reduce-only`).
 
 ### Deposit Arbitrum USDC to Hyperliquid
 

@@ -30,8 +30,12 @@ import {
   type HyperliquidPerpAssetsResult,
   HyperliquidPerpAssetsResultSchema,
   type HyperliquidPerpOrderType,
+  type HyperliquidPerpPosition,
+  HyperliquidPerpPositionSchema,
   type HyperliquidPerpTif,
   type HyperliquidPerpTradeCommandOptions,
+  type HyperliquidPositionsResult,
+  HyperliquidPositionsResultSchema,
   type HyperliquidPrivyWallet,
   type HyperliquidSpotAsset,
   HyperliquidSpotAssetSchema,
@@ -74,6 +78,12 @@ interface HyperliquidWithSignerParams<TRequest> {
 interface HyperliquidListBalancesParams {
   readonly address: EthAddress
   readonly dex: string | null | undefined
+}
+
+interface HyperliquidListPositionsParams {
+  readonly address: EthAddress
+  readonly dex: string | null | undefined
+  readonly allDexes: boolean
 }
 
 interface CreateExchangeClientParams {
@@ -476,6 +486,62 @@ export class HyperliquidService {
       },
       spot
     })
+  }
+
+  async listPositions(params: HyperliquidListPositionsParams): Promise<HyperliquidPositionsResult> {
+    const dexNames = params.allDexes
+      ? await this.resolveAllDexNames()
+      : [this.normalizeDex(params.dex)]
+
+    const states = await Promise.all(
+      dexNames.map(async (dexName) => {
+        const stateParams: { user: EthAddress; dex?: string } = { user: params.address }
+        if (dexName.length > 0) stateParams.dex = dexName
+        const state = await this.infoClient.clearinghouseState(stateParams)
+        return { dexName, state }
+      })
+    )
+
+    const positions: HyperliquidPerpPosition[] = []
+    for (const { dexName, state } of states) {
+      for (const assetPosition of state.assetPositions) {
+        const position = assetPosition.position
+        const szi = new BigNumber(position.szi)
+        if (szi.isZero()) continue
+        positions.push(
+          HyperliquidPerpPositionSchema.parse({
+            dex: dexName.length > 0 ? dexName : 'main',
+            coin: position.coin,
+            side: szi.isGreaterThan(0) ? 'long' : 'short',
+            size: szi.abs().toFixed(),
+            signedSize: position.szi,
+            entryPx: position.entryPx,
+            positionValue: position.positionValue,
+            unrealizedPnl: position.unrealizedPnl,
+            returnOnEquity: position.returnOnEquity,
+            liquidationPx: position.liquidationPx,
+            leverage: position.leverage.value,
+            leverageType: position.leverage.type,
+            marginUsed: position.marginUsed,
+            maxLeverage: position.maxLeverage
+          })
+        )
+      }
+    }
+
+    return HyperliquidPositionsResultSchema.parse({
+      address: params.address,
+      positions
+    })
+  }
+
+  private async resolveAllDexNames(): Promise<string[]> {
+    const perpDexs = await this.infoClient.perpDexs()
+    const dexNames = ['']
+    for (const perpDex of perpDexs) {
+      if (!isNullish(perpDex) && perpDex.name.length > 0) dexNames.push(perpDex.name)
+    }
+    return dexNames
   }
 
   async listExchanges(): Promise<HyperliquidExchange[]> {

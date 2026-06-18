@@ -14,6 +14,7 @@ import {
   HyperliquidListAssetsCommandOptionsSchema,
   HyperliquidListBalancesCommandOptionsSchema,
   HyperliquidListExchangesCommandOptionsSchema,
+  HyperliquidListPositionsCommandOptionsSchema,
   HyperliquidPerpTradeCommandOptionsSchema,
   HyperliquidSpotTradeCommandOptionsSchema,
   HyperliquidSpotTransferCommandOptionsSchema,
@@ -62,6 +63,27 @@ program
     const response = await hyperliquidService.listBalances({
       address: request.address,
       dex: request.dex
+    })
+    const output = ensureJsonTreeString(response)
+    await writeOutput({
+      output,
+      outPath: request.out ?? undefined
+    })
+  })
+
+program
+  .command('list-positions')
+  .description('List open perp positions for a Hyperliquid account')
+  .requiredOption('--address <address>', 'Hyperliquid account address to inspect')
+  .option('--dex <dex>', 'Perp dex name (main by default)')
+  .option('--all-dexes', 'Sweep main and every perp dex')
+  .option('--out <file>', 'Write output JSON to file')
+  .action(async (options: unknown): Promise<void> => {
+    const request = HyperliquidListPositionsCommandOptionsSchema.parse(options)
+    const response = await hyperliquidService.listPositions({
+      address: request.address,
+      dex: request.dex,
+      allDexes: request.allDexes
     })
     const output = ensureJsonTreeString(response)
     await writeOutput({

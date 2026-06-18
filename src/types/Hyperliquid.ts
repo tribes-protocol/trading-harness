@@ -383,6 +383,39 @@ export const HyperliquidSpotTradeCommandOptionsSchema = z
 export type HyperliquidSpotTradeCommandOptions = z.infer<
   typeof HyperliquidSpotTradeCommandOptionsSchema
 >
+export const HyperliquidListPositionsCommandOptionsSchema = z.object({
+  address: EthAddressSchema,
+  dex: z.string().trim().min(1).nullish(),
+  allDexes: z.boolean().default(false),
+  out: z.string().nullish()
+})
+export type HyperliquidListPositionsCommandOptions = z.infer<
+  typeof HyperliquidListPositionsCommandOptionsSchema
+>
+
+export const HyperliquidPerpPositionSchema = z.object({
+  dex: z.string(),
+  coin: z.string(),
+  side: HyperliquidPerpSideSchema,
+  size: z.string(),
+  signedSize: z.string(),
+  entryPx: z.string(),
+  positionValue: z.string(),
+  unrealizedPnl: z.string(),
+  returnOnEquity: z.string(),
+  liquidationPx: z.string().nullish(),
+  leverage: z.number(),
+  leverageType: HyperliquidPerpMarginModeSchema,
+  marginUsed: z.string(),
+  maxLeverage: z.number()
+})
+export type HyperliquidPerpPosition = z.infer<typeof HyperliquidPerpPositionSchema>
+
+export const HyperliquidPositionsResultSchema = z.object({
+  address: EthAddressSchema,
+  positions: z.array(HyperliquidPerpPositionSchema)
+})
+export type HyperliquidPositionsResult = z.infer<typeof HyperliquidPositionsResultSchema>
 
 export const ResolvePerpAssetParamsSchema = z.object({
   coin: z.string().trim().min(1),
