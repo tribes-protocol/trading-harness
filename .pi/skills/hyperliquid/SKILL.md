@@ -84,6 +84,8 @@ Discovery (read-only, no wallet/signer):
 - `list-exchanges` — list perp dexes (exchanges), including `main`
 - `list-assets` — list tradable assets; scope with `--dex <name>` (perp) or
   `--market spot`
+- `list-balances` — list perp account summary + spot token balances for an
+  `--address` (read-only); scope perp with `--dex <name>`
 
 Execution (require `--wallet-id`; most also require signer `--from`):
 
@@ -122,6 +124,24 @@ bun src/cli/Hyperliquid.ts list-assets --market spot
 Each perp asset includes `name`, `szDecimals`, `maxLeverage`, and `markPx`; each
 spot asset includes `pair`, `szDecimals`, and `markPx`. Use these names with
 `trade-perp --coin` / `--dex` and `trade-spot --pair`.
+
+### List balances
+
+```bash
+# Perp summary (main dex) + all spot token balances
+bun src/cli/Hyperliquid.ts list-balances \
+  --address 0x1111111111111111111111111111111111111111
+
+# Scope the perp summary to a named dex
+bun src/cli/Hyperliquid.ts list-balances \
+  --address 0x1111111111111111111111111111111111111111 \
+  --dex xyz
+```
+
+Returns `perp` (`accountValue`, `withdrawable`, `totalMarginUsed`, `totalNtlPos`)
+and `spot` (per token: `coin`, `token`, `total`, `hold`, `available`, where
+`available = total - hold`). This is a read-only info query — no wallet or
+signer is required.
 
 ### Deposit Arbitrum USDC to Hyperliquid
 

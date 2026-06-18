@@ -101,6 +101,40 @@ export type HyperliquidListExchangesCommandOptions = z.infer<
   typeof HyperliquidListExchangesCommandOptionsSchema
 >
 
+export const HyperliquidListBalancesCommandOptionsSchema = z.object({
+  address: EthAddressSchema,
+  dex: z.string().trim().min(1).nullish(),
+  out: z.string().nullish()
+})
+export type HyperliquidListBalancesCommandOptions = z.infer<
+  typeof HyperliquidListBalancesCommandOptionsSchema
+>
+
+export const HyperliquidSpotBalanceSchema = z.object({
+  coin: z.string(),
+  token: z.number().int(),
+  total: z.string(),
+  hold: z.string(),
+  available: z.string()
+})
+export type HyperliquidSpotBalance = z.infer<typeof HyperliquidSpotBalanceSchema>
+
+export const HyperliquidPerpBalanceSummarySchema = z.object({
+  accountValue: z.string(),
+  withdrawable: z.string(),
+  totalMarginUsed: z.string(),
+  totalNtlPos: z.string()
+})
+export type HyperliquidPerpBalanceSummary = z.infer<typeof HyperliquidPerpBalanceSummarySchema>
+
+export const HyperliquidBalancesResultSchema = z.object({
+  address: EthAddressSchema,
+  dex: z.string(),
+  perp: HyperliquidPerpBalanceSummarySchema,
+  spot: z.array(HyperliquidSpotBalanceSchema)
+})
+export type HyperliquidBalancesResult = z.infer<typeof HyperliquidBalancesResultSchema>
+
 export const HyperliquidExchangeSchema = z.object({
   name: z.string(),
   fullName: z.string(),

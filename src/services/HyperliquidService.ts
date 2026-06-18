@@ -18,6 +18,8 @@ import { encodeFunctionData, erc20Abi, parseUnits } from 'viem'
 import { TransactionService } from '@/services/TransactionService'
 import { type EthAddress } from '@/types/Eth'
 import {
+  type HyperliquidBalancesResult,
+  HyperliquidBalancesResultSchema,
   type HyperliquidDepositResult,
   HyperliquidDepositResultSchema,
   type HyperliquidDexCashTransferCommandOptions,
@@ -33,6 +35,7 @@ import {
   HyperliquidSpotAssetSchema,
   type HyperliquidSpotAssetsResult,
   HyperliquidSpotAssetsResultSchema,
+  HyperliquidSpotBalanceSchema,
   type HyperliquidSpotTradeCommandOptions,
   type HyperliquidSpotTransferCommandOptions,
   type HyperliquidUsdClassDirection,
@@ -63,6 +66,11 @@ interface HyperliquidDepositParams {
 interface HyperliquidWithSignerParams<TRequest> {
   readonly request: TRequest
   readonly walletId: string
+}
+
+interface HyperliquidListBalancesParams {
+  readonly address: EthAddress
+  readonly dex: string | null | undefined
 }
 
 interface CreateExchangeClientParams {
@@ -334,6 +342,39 @@ export class HyperliquidService {
       grouping: 'na'
     }
     return await exchange.order(orderParams)
+  }
+
+  async listBalances(params: HyperliquidListBalancesParams): Promise<HyperliquidBalancesResult> {
+    const normalizedDex = this.normalizeDex(params.dex)
+    const perpParams: { user: EthAddress; dex?: string } = { user: params.address }
+    if (normalizedDex.length > 0) perpParams.dex = normalizedDex
+
+    const [perpState, spotState] = await Promise.all([
+      this.infoClient.clearinghouseState(perpParams),
+      this.infoClient.spotClearinghouseState({ user: params.address })
+    ])
+
+    const spot = spotState.balances.map((balance) =>
+      HyperliquidSpotBalanceSchema.parse({
+        coin: balance.coin,
+        token: balance.token,
+        total: balance.total,
+        hold: balance.hold,
+        available: new BigNumber(balance.total).minus(balance.hold).toFixed()
+      })
+    )
+
+    return HyperliquidBalancesResultSchema.parse({
+      address: params.address,
+      dex: normalizedDex.length > 0 ? normalizedDex : 'main',
+      perp: {
+        accountValue: perpState.marginSummary.accountValue,
+        withdrawable: perpState.withdrawable,
+        totalMarginUsed: perpState.marginSummary.totalMarginUsed,
+        totalNtlPos: perpState.marginSummary.totalNtlPos
+      },
+      spot
+    })
   }
 
   async listExchanges(): Promise<HyperliquidExchange[]> {
