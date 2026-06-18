@@ -94,6 +94,7 @@ Execution (require `--wallet-id`; most also require signer `--from`):
 - `deposit`
 - `withdraw`
 - `trade-perp` (single order, or atomic OCO bracket via `--tp-px`/`--sl-px`)
+- `twap-perp` / `twap-cancel`
 - `trade-spot`
 - `transfer-usd-class`
 - `transfer-usd`
@@ -310,6 +311,36 @@ bun src/cli/Hyperliquid.ts trade-perp \
   --wallet-id "<evmWalletId from wallet list>"
 ```
 
+### Place a TWAP perp order
+
+A TWAP (time-weighted average price) order slices `--amount` into sub-orders
+executed evenly over `--duration-minutes` (5–1440), reducing market impact. Add
+`--randomize` to jitter the sub-order timing, `--reduce-only` to only close an
+existing position, and `--leverage` / `--margin-mode` to set leverage first (same
+as `trade-perp`). The response includes a `twapId` — keep it to cancel early.
+
+```bash
+# Buy 0.5 BTC spread over 30 minutes with randomized timing
+bun src/cli/Hyperliquid.ts twap-perp \
+  --from 0x1111111111111111111111111111111111111111 \
+  --coin BTC \
+  --side long \
+  --amount 0.5 \
+  --duration-minutes 30 \
+  --randomize \
+  --wallet-id "<evmWalletId from wallet list>"
+```
+
+### Cancel a running TWAP order
+
+```bash
+bun src/cli/Hyperliquid.ts twap-cancel \
+  --from 0x1111111111111111111111111111111111111111 \
+  --coin BTC \
+  --twap-id 1234 \
+  --wallet-id "<evmWalletId from wallet list>"
+```
+
 ### Place a spot order
 
 ```bash
@@ -387,6 +418,12 @@ bun src/cli/Hyperliquid.ts transfer-dex-cash \
   - `--margin-mode cross|isolated`, `--leverage <int>`, `--dex <name>`
   - entry + TP/SL are sent atomically with `grouping: normalTpsl`; TP/SL are
     reduce-only OCO exits sized to the entry
+- `twap-perp` supports:
+  - `--amount` (total size, base units), `--side long|short`
+  - `--duration-minutes <5-1440>` (slices the order evenly over this window)
+  - `--randomize` (jitter sub-order timing), `--reduce-only`
+  - `--margin-mode cross|isolated`, `--leverage <int>`, `--dex <name>`
+  - returns a `twapId`; cancel early with `twap-cancel --coin <c> --twap-id <id>`
 - `trade-spot` supports:
   - `--type market|limit`
   - `--price` (required for `--type limit`)

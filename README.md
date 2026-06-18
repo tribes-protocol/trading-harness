@@ -84,6 +84,19 @@ Place an atomic bracket (entry + linked take-profit and stop-loss as OCO) by add
 bun src/cli/Hyperliquid.ts trade-perp --from <0x-privy-wallet> --dex xyz --coin MSFT --side long --type market --amount 1.307 --tp-px 405.56 --sl-px 371.13
 ```
 
+Place a TWAP perp order (slices the order over a duration) and cancel it by id:
+
+```bash
+bun src/cli/Hyperliquid.ts twap-perp --from <0x-privy-wallet> --coin BTC --side long --amount 0.5 --duration-minutes 30 --randomize
+bun src/cli/Hyperliquid.ts twap-cancel --from <0x-privy-wallet> --coin BTC --twap-id 1234
+```
+
+List open perp positions (read-only; `--all-dexes` sweeps main + every perp dex):
+
+```bash
+bun src/cli/Hyperliquid.ts list-positions --address <0x-evm-address> --all-dexes
+```
+
 Place a spot order:
 
 ```bash

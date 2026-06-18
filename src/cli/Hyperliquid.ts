@@ -18,6 +18,8 @@ import {
   HyperliquidPerpTradeCommandOptionsSchema,
   HyperliquidSpotTradeCommandOptionsSchema,
   HyperliquidSpotTransferCommandOptionsSchema,
+  HyperliquidTwapCancelCommandOptionsSchema,
+  HyperliquidTwapOrderCommandOptionsSchema,
   HyperliquidUsdClassTransferCommandOptionsSchema,
   HyperliquidUsdTransferCommandOptionsSchema,
   HyperliquidWithdrawCommandOptionsSchema
@@ -186,6 +188,56 @@ program
   .action(async (options: unknown): Promise<void> => {
     const request = HyperliquidPerpTradeCommandOptionsSchema.parse(options)
     const response = await hyperliquidService.tradePerp({
+      request,
+      walletId: request.walletId
+    })
+    const output = ensureJsonTreeString(response)
+    await writeOutput({
+      output,
+      outPath: request.out ?? undefined
+    })
+  })
+
+program
+  .command('twap-perp')
+  .description('Place a TWAP perp order on Hyperliquid (slices the order over a duration)')
+  .requiredOption('--from <address>', 'Signer EVM address (Privy wallet)')
+  .requiredOption('--coin <coin>', 'Perp symbol (for example: BTC, ETH)')
+  .requiredOption('--amount <amount>', 'Total order size in base units')
+  .requiredOption('--side <side>', 'Order side: long | short')
+  .requiredOption('--duration-minutes <minutes>', 'TWAP duration in minutes (5-1440)')
+  .option('--randomize', 'Randomize sub-order timing')
+  .option('--reduce-only', 'Place reduce-only order')
+  .option('--margin-mode <mode>', 'Margin mode: cross | isolated', 'cross')
+  .option('--leverage <leverage>', 'Set leverage before order (integer)')
+  .option('--dex <dex>', 'Perp dex name (main by default)')
+  .requiredOption('--wallet-id <walletId>', 'Privy wallet id')
+  .option('--out <file>', 'Write output JSON to file')
+  .action(async (options: unknown): Promise<void> => {
+    const request = HyperliquidTwapOrderCommandOptionsSchema.parse(options)
+    const response = await hyperliquidService.twapPerp({
+      request,
+      walletId: request.walletId
+    })
+    const output = ensureJsonTreeString(response)
+    await writeOutput({
+      output,
+      outPath: request.out ?? undefined
+    })
+  })
+
+program
+  .command('twap-cancel')
+  .description('Cancel a running TWAP perp order on Hyperliquid')
+  .requiredOption('--from <address>', 'Signer EVM address (Privy wallet)')
+  .requiredOption('--coin <coin>', 'Perp symbol the TWAP was placed on')
+  .requiredOption('--twap-id <twapId>', 'TWAP id returned when the order was placed')
+  .option('--dex <dex>', 'Perp dex name (main by default)')
+  .requiredOption('--wallet-id <walletId>', 'Privy wallet id')
+  .option('--out <file>', 'Write output JSON to file')
+  .action(async (options: unknown): Promise<void> => {
+    const request = HyperliquidTwapCancelCommandOptionsSchema.parse(options)
+    const response = await hyperliquidService.twapCancel({
       request,
       walletId: request.walletId
     })

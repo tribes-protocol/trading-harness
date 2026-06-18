@@ -7,6 +7,8 @@ import {
   type OrderSuccessResponse,
   type SendAssetSuccessResponse,
   type SpotSendSuccessResponse,
+  type TwapCancelSuccessResponse,
+  type TwapOrderSuccessResponse,
   type UsdClassTransferSuccessResponse,
   type UsdSendSuccessResponse,
   type Withdraw3SuccessResponse
@@ -18,25 +20,29 @@ import { encodeFunctionData, erc20Abi, parseUnits } from 'viem'
 import { TransactionService } from '@/services/TransactionService'
 import { type EthAddress } from '@/types/Eth'
 import {
+  type BuildBracketExitLegParams,
+  type CreateExchangeClientParams,
   type HyperliquidBalancesResult,
   HyperliquidBalancesResultSchema,
+  type HyperliquidDepositParams,
   type HyperliquidDepositResult,
   HyperliquidDepositResultSchema,
   type HyperliquidDexCashTransferCommandOptions,
   type HyperliquidExchange,
   HyperliquidExchangeSchema,
+  type HyperliquidListBalancesParams,
+  type HyperliquidListPositionsParams,
   type HyperliquidOrderTif,
   HyperliquidPerpAssetSchema,
   type HyperliquidPerpAssetsResult,
   HyperliquidPerpAssetsResultSchema,
-  type HyperliquidPerpOrderType,
   type HyperliquidPerpPosition,
   HyperliquidPerpPositionSchema,
-  type HyperliquidPerpTif,
   type HyperliquidPerpTradeCommandOptions,
   type HyperliquidPositionsResult,
   HyperliquidPositionsResultSchema,
   type HyperliquidPrivyWallet,
+  type HyperliquidServiceParams,
   type HyperliquidSpotAsset,
   HyperliquidSpotAssetSchema,
   type HyperliquidSpotAssetsResult,
@@ -45,86 +51,26 @@ import {
   type HyperliquidSpotTradeCommandOptions,
   type HyperliquidSpotTransferCommandOptions,
   type HyperliquidTpSl,
+  type HyperliquidTwapCancelCommandOptions,
+  type HyperliquidTwapOrderCommandOptions,
   type HyperliquidUsdClassDirection,
   type HyperliquidUsdClassTransferCommandOptions,
   type HyperliquidUsdTransferCommandOptions,
   type HyperliquidWithdrawCommandOptions,
+  type HyperliquidWithSignerParams,
+  type PerpOrderTypeField,
+  type PerpOrderWire,
   type ResolvedPerpAsset,
   type ResolvedSpotAsset,
   type ResolveOrderPriceParams,
   type ResolveOrderTifParams,
   type ResolvePerpAssetParams,
+  type ResolvePerpOrderTypeFieldParams,
   type ResolveWirePerpAssetIdParams
 } from '@/types/Hyperliquid'
 import { type HexString } from '@/types/Lang'
 import { type EthSignTypedData } from '@/types/Tx'
 import { isNullish } from '@/utils/Lang'
-
-interface HyperliquidServiceParams {
-  readonly transaction: TransactionService
-}
-
-interface HyperliquidDepositParams {
-  readonly amount: BigNumber
-  readonly from: EthAddress
-  readonly walletId: string
-}
-
-interface HyperliquidWithSignerParams<TRequest> {
-  readonly request: TRequest
-  readonly walletId: string
-}
-
-interface HyperliquidListBalancesParams {
-  readonly address: EthAddress
-  readonly dex: string | null | undefined
-}
-
-interface HyperliquidListPositionsParams {
-  readonly address: EthAddress
-  readonly dex: string | null | undefined
-  readonly allDexes: boolean
-}
-
-interface CreateExchangeClientParams {
-  readonly address: EthAddress
-  readonly walletId: string
-}
-
-type PerpOrderTypeField =
-  | { readonly limit: { readonly tif: HyperliquidOrderTif } }
-  | {
-      readonly trigger: {
-        readonly isMarket: boolean
-        readonly triggerPx: string
-        readonly tpsl: HyperliquidTpSl
-      }
-    }
-
-interface PerpOrderWire {
-  readonly a: number
-  readonly b: boolean
-  readonly p: string
-  readonly s: string
-  readonly r: boolean
-  readonly t: PerpOrderTypeField
-}
-
-interface BuildBracketExitLegParams {
-  readonly orderType: HyperliquidPerpOrderType
-  readonly triggerPx: BigNumber
-  readonly limitPx: BigNumber | null | undefined
-  readonly exitIsBuy: boolean
-  readonly perpAsset: ResolvedPerpAsset
-  readonly size: string
-}
-
-interface ResolvePerpOrderTypeFieldParams {
-  readonly orderType: HyperliquidPerpOrderType
-  readonly tif: HyperliquidPerpTif
-  readonly triggerPx: BigNumber | null | undefined
-  readonly szDecimals: number
-}
 
 const ARBITRUM_USDC_DECIMALS = 6
 const MIN_HYPERLIQUID_DEPOSIT_USDC = '5'
@@ -412,6 +358,67 @@ export class HyperliquidService {
     }
 
     return { orders, grouping: 'normalTpsl' }
+  }
+
+  async twapPerp(
+    params: HyperliquidWithSignerParams<HyperliquidTwapOrderCommandOptions>
+  ): Promise<TwapOrderSuccessResponse> {
+    if (!params.request.amount.isGreaterThan(0)) {
+      throw new Error('twap amount must be greater than 0')
+    }
+
+    const exchange = this.createExchangeClient({
+      address: params.request.from,
+      walletId: params.walletId
+    })
+    const dex = this.normalizeDex(params.request.dex)
+    const perpAsset = await this.resolvePerpAsset({
+      coin: params.request.coin,
+      dex
+    })
+
+    if (!isNullish(params.request.leverage)) {
+      await exchange
+        .updateLeverage({
+          asset: perpAsset.wireAsset,
+          isCross: params.request.marginMode === 'cross',
+          leverage: params.request.leverage
+        })
+        .catch((error: unknown) => {
+          const msg = error instanceof Error ? error.message : String(error)
+          if (!msg.includes('already') && !msg.includes('leverage')) throw error
+        })
+    }
+
+    return await exchange.twapOrder({
+      twap: {
+        a: perpAsset.wireAsset,
+        b: params.request.side === 'long',
+        s: formatSize(params.request.amount.toFixed(), perpAsset.szDecimals),
+        r: params.request.reduceOnly,
+        m: params.request.durationMinutes,
+        t: params.request.randomize
+      }
+    })
+  }
+
+  async twapCancel(
+    params: HyperliquidWithSignerParams<HyperliquidTwapCancelCommandOptions>
+  ): Promise<TwapCancelSuccessResponse> {
+    const exchange = this.createExchangeClient({
+      address: params.request.from,
+      walletId: params.walletId
+    })
+    const dex = this.normalizeDex(params.request.dex)
+    const perpAsset = await this.resolvePerpAsset({
+      coin: params.request.coin,
+      dex
+    })
+
+    return await exchange.twapCancel({
+      a: perpAsset.wireAsset,
+      t: params.request.twapId
+    })
   }
 
   async tradeSpot(

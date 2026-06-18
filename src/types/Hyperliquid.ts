@@ -1,5 +1,7 @@
+import BigNumber from 'bignumber.js'
 import { z } from 'zod'
 
+import { type TransactionService } from '@/services/TransactionService'
 import { type EthAddress, EthAddressSchema } from '@/types/Eth'
 import { BigintSchema, BigNumberSchema, type HexString, HexStringSchema } from '@/types/Lang'
 import { type EthSignTypedData } from '@/types/Tx'
@@ -383,6 +385,37 @@ export const HyperliquidSpotTradeCommandOptionsSchema = z
 export type HyperliquidSpotTradeCommandOptions = z.infer<
   typeof HyperliquidSpotTradeCommandOptionsSchema
 >
+
+export const HyperliquidTwapOrderCommandOptionsSchema = z.object({
+  from: EthAddressSchema,
+  coin: z.string().trim().min(1),
+  amount: BigNumberSchema,
+  side: HyperliquidPerpSideSchema,
+  durationMinutes: z.coerce.number().int().min(5).max(1440),
+  randomize: z.boolean().default(false),
+  reduceOnly: z.boolean().default(false),
+  marginMode: HyperliquidPerpMarginModeSchema.default('cross'),
+  leverage: z.coerce.number().int().positive().nullish(),
+  dex: z.string().trim().nullish(),
+  walletId: z.string().trim().min(1),
+  out: z.string().nullish()
+})
+export type HyperliquidTwapOrderCommandOptions = z.infer<
+  typeof HyperliquidTwapOrderCommandOptionsSchema
+>
+
+export const HyperliquidTwapCancelCommandOptionsSchema = z.object({
+  from: EthAddressSchema,
+  coin: z.string().trim().min(1),
+  twapId: z.coerce.number().int().nonnegative(),
+  dex: z.string().trim().nullish(),
+  walletId: z.string().trim().min(1),
+  out: z.string().nullish()
+})
+export type HyperliquidTwapCancelCommandOptions = z.infer<
+  typeof HyperliquidTwapCancelCommandOptionsSchema
+>
+
 export const HyperliquidListPositionsCommandOptionsSchema = z.object({
   address: EthAddressSchema,
   dex: z.string().trim().min(1).nullish(),
@@ -475,3 +508,69 @@ export function normalizeHyperliquidCoin(raw: string): string {
 
 export const HyperliquidCoinSchema = z.string().min(1).transform(normalizeHyperliquidCoin)
 export type HyperliquidCoin = z.infer<typeof HyperliquidCoinSchema>
+
+export interface HyperliquidServiceParams {
+  readonly transaction: TransactionService
+}
+
+export interface HyperliquidDepositParams {
+  readonly amount: BigNumber
+  readonly from: EthAddress
+  readonly walletId: string
+}
+
+export interface HyperliquidWithSignerParams<TRequest> {
+  readonly request: TRequest
+  readonly walletId: string
+}
+
+export interface HyperliquidListBalancesParams {
+  readonly address: EthAddress
+  readonly dex: string | null | undefined
+}
+
+export interface HyperliquidListPositionsParams {
+  readonly address: EthAddress
+  readonly dex: string | null | undefined
+  readonly allDexes: boolean
+}
+
+export interface CreateExchangeClientParams {
+  readonly address: EthAddress
+  readonly walletId: string
+}
+
+export type PerpOrderTypeField =
+  | { readonly limit: { readonly tif: HyperliquidOrderTif } }
+  | {
+      readonly trigger: {
+        readonly isMarket: boolean
+        readonly triggerPx: string
+        readonly tpsl: HyperliquidTpSl
+      }
+    }
+
+export interface PerpOrderWire {
+  readonly a: number
+  readonly b: boolean
+  readonly p: string
+  readonly s: string
+  readonly r: boolean
+  readonly t: PerpOrderTypeField
+}
+
+export interface BuildBracketExitLegParams {
+  readonly orderType: HyperliquidPerpOrderType
+  readonly triggerPx: BigNumber
+  readonly limitPx: BigNumber | null | undefined
+  readonly exitIsBuy: boolean
+  readonly perpAsset: ResolvedPerpAsset
+  readonly size: string
+}
+
+export interface ResolvePerpOrderTypeFieldParams {
+  readonly orderType: HyperliquidPerpOrderType
+  readonly tif: HyperliquidPerpTif
+  readonly triggerPx: BigNumber | null | undefined
+  readonly szDecimals: number
+}
