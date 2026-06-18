@@ -262,7 +262,7 @@ Make the funding path explicit before any quote/deposit. Pick one:
   swap/bridge, no cross-chain gas funding.
 - Path B - Arbitrum (`42161`), different token (ETH, other ERC-20): same-chain
   swap to Arbitrum USDC via `spot-trading quote` with `--from-chain 42161
-  --to-chain 42161`, then `deposit`. Same-chain, so the gas preflight only acts
+--to-chain 42161`, then `deposit`. Same-chain, so the gas preflight only acts
   if ETH on Arbitrum is low.
 - Path C - any other chain (EVM or Solana): cross-chain swap/bridge to Arbitrum
   USDC with `--from-chain <other> --to-chain 42161`, then `deposit`. This is a
