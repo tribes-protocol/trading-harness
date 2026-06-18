@@ -154,22 +154,19 @@ function renderPositionsTable(
     const margin = marginUsd !== null ? `${fmtUsd(marginUsd)}${leverageLabel}` : '—'
 
     // Liq display contract:
-    //   - HL returned a value  →  same render the column has always used
-    //     (distance from mark for longs with liq<mark, raw price otherwise).
+    //   - HL returned a value  →  the actual liquidation price (matches what
+    //     hyperliquid.xyz and the position detail table show).
     //   - HL returned null but we synthesized a cross-margin estimate
-    //     →  same shape, prefixed with `~` so the operator sees it's an estimate.
+    //     →  the estimated price, prefixed with `~` so the operator sees it's
+    //     an estimate.
     //   - HL returned null AND no estimate was possible (cross position so
     //     well-collateralized HL declines to compute one) → `safe` (dim).
     //   - Truly missing data (no mark, no estimate, isolated and HL null)
     //     →  `—` (dim) like before.
     const liqRaw = coerceNumber(position.liquidationPrice)
     const liqEstimate = coerceNumber(position.estimatedLiquidationPrice)
-    const markPrice = coerceNumber(position.markPrice)
     const renderLiq = (px: number, isEstimate: boolean): string => {
       const tag = isEstimate ? '~' : ''
-      if (position.side === 'long' && markPrice !== null && px > 0 && px < markPrice) {
-        return `${tag}${fmtPrice(markPrice - px)}`
-      }
       return `${tag}${fmtPrice(px)}`
     }
     const liqDisplay =
