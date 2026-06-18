@@ -234,9 +234,28 @@ cross-chain flow; otherwise proceed. If no native gas token exists
 on any chain, STOP and ask the user to deposit native gas instead of improvising
 workarounds.
 
-## Any token -> Arbitrum USDC (spot-trading + transaction), then usual deposit flow
+## Choose the deposit path (where the source funds are)
 
-Use this bridge flow only for source-token-to-Arbitrum-USDC conversion before Hyperliquid deposit.
+Make the funding path explicit before any quote/deposit. Pick one:
+
+- Path A - Arbitrum (`42161`), already native USDC: run `deposit` directly. No
+  swap/bridge, no cross-chain gas funding.
+- Path B - Arbitrum (`42161`), different token (ETH, other ERC-20): same-chain
+  swap to Arbitrum USDC via `spot-trading quote` with `--from-chain 42161
+  --to-chain 42161`, then `deposit`. Same-chain, so the gas preflight only acts
+  if ETH on Arbitrum is low.
+- Path C - any other chain (EVM or Solana): cross-chain swap/bridge to Arbitrum
+  USDC with `--from-chain <other> --to-chain 42161`, then `deposit`. This is a
+  cross-chain flow, so ensure gas on the source chain for the bridge leg and ETH
+  on Arbitrum for the deposit leg (gas preflight).
+
+Paths B and C use the conversion flow below; after conversion the `5` USDC
+minimum deposit still applies. Path A skips straight to `deposit`.
+
+## Convert to Arbitrum USDC (same-chain swap or cross-chain bridge), then usual deposit flow
+
+Use this conversion flow for Path B (same-chain swap, `--from-chain 42161`) and
+Path C (cross-chain bridge, `--from-chain <other>`) before a Hyperliquid deposit.
 
 1. Quote to Arbitrum native USDC:
 
@@ -283,7 +302,7 @@ bun src/cli/Transaction.ts getTransactionStatus \
   --hash <sol-signature>
 ```
 
-If source chain is already Arbitrum and token is native USDC, skip this bridge flow and run `deposit` directly.
+If the source is already Arbitrum native USDC (Path A), skip this conversion flow and run `deposit` directly.
 
 ## Deposits from Arbitrum USDC
 
@@ -319,5 +338,5 @@ Operational notes:
 - For any ambiguous fund-movement request (e.g. "transfer/move/send all funds"), STOP and ask for the missing action/scope/amount/destination details before running any command, including read-only balance or help lookups. See "Clarify ambiguous requests before acting".
 - Never mix wallet ids across chains; use the exact EVM wallet id that matches `--from`.
 - Do not run live execution commands without explicit `--wallet-id`.
-- In bridge mode, execute quote `transactionRequests[]` in order; never reorder or skip steps.
-- Do not send the next bridge transaction until the current transaction is confirmed `success`.
+- In conversion mode (Path B/C), execute quote `transactionRequests[]` in order; never reorder or skip steps.
+- Do not send the next conversion transaction until the current transaction is confirmed `success`.
