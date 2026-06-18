@@ -68,13 +68,13 @@ market footprint and proceed with that token.
 ### Show CLI help
 
 ```bash
-bun src/cli/TokenAnalyst.ts --help
+tribes-cli token-analyst --help
 ```
 
 ### Ask the specialist
 
 ```bash
-bun src/cli/TokenAnalyst.ts ask \
+tribes-cli token-analyst ask \
   --query "risk and holder concentration for PEPE on ethereum"
 ```
 

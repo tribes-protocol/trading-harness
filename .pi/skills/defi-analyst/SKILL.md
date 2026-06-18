@@ -66,13 +66,13 @@ If multiple pools match, prefer the one with stronger liquidity and meaningful v
 ### Show CLI help
 
 ```bash
-bun src/cli/DefiAnalyst.ts --help
+tribes-cli defi-analyst --help
 ```
 
 ### Ask the specialist
 
 ```bash
-bun src/cli/DefiAnalyst.ts ask \
+tribes-cli defi-analyst ask \
   --query "top SOL pools by liquidity and 24h volume"
 ```
 

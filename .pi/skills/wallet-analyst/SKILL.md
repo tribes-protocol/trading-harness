@@ -60,13 +60,13 @@ If your query is broad, start with a portfolio snapshot and then ask follow-up q
 ### Show CLI help
 
 ```bash
-bun src/cli/WalletAnalyst.ts --help
+tribes-cli wallet-analyst --help
 ```
 
 ### Ask the specialist
 
 ```bash
-bun src/cli/WalletAnalyst.ts ask \
+tribes-cli wallet-analyst ask \
   --query "portfolio PnL and net worth trend over the last 30d"
 ```
 

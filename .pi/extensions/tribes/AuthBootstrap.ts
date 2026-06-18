@@ -24,7 +24,7 @@ export const AUTH_REFRESH_INTERVAL_MS = 24 * 60 * 60 * 1000
 
 /**
  * Copy the host-minted agent key into <root>/.pi. Sync + best-effort so the key
- * is in place before the LLM provider's `!bun src/cli/LlmToken.ts` token
+ * is in place before the LLM provider's `!bun … AgentProxyToken.ts` token
  * command can run. A missing host key (local dev / already provisioned) leaves
  * any existing key untouched.
  */
@@ -46,11 +46,15 @@ export function installAgentKey(cwd: string): void {
  * each call genuinely refreshes the key.
  */
 export async function writeAuthEnv(cwd: string): Promise<void> {
-  const { stdout } = await execFileAsync('bun', ['src/cli/LlmToken.ts', '--force'], {
-    cwd,
-    timeout: MINT_TIMEOUT_MS,
-    maxBuffer: MINT_MAX_BUFFER_BYTES
-  })
+  const { stdout } = await execFileAsync(
+    'bun',
+    ['.pi/extensions/tribes/AgentProxyToken.ts', '--force'],
+    {
+      cwd,
+      timeout: MINT_TIMEOUT_MS,
+      maxBuffer: MINT_MAX_BUFFER_BYTES
+    }
+  )
 
   const lines: string[] = []
   for (const name of ENV_PASSTHROUGH) {

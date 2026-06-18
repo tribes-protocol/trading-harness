@@ -18,7 +18,7 @@ documentation, regulatory updates, or background context those tools don't cover
 Find ranked results (title, URL, snippet) for a query:
 
 ```bash
-bun src/cli/WebSearch.ts search --query "ECB rate decision september 2026"
+tribes-cli web-search search --query "ECB rate decision september 2026"
 ```
 
 Output:
@@ -44,7 +44,7 @@ Read the snippets to decide which URLs are worth opening.
 After a search, read the full text of a promising URL:
 
 ```bash
-bun src/cli/WebSearch.ts extract --url "https://example.com/article"
+tribes-cli web-search extract --url "https://example.com/article"
 ```
 
 Output:

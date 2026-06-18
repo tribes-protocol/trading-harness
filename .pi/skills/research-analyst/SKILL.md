@@ -60,13 +60,13 @@ Always request source-backed answers if you need high confidence outputs.
 ### Show CLI help
 
 ```bash
-bun src/cli/ResearchAnalyst.ts --help
+tribes-cli research-analyst --help
 ```
 
 ### Ask the specialist
 
 ```bash
-bun src/cli/ResearchAnalyst.ts ask \
+tribes-cli research-analyst ask \
   --query "what is pendle and how does it work"
 ```
 
