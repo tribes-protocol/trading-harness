@@ -64,6 +64,26 @@ Place a perp order:
 bun src/cli/Hyperliquid.ts trade-perp --from <0x-privy-wallet> --coin BTC --side long --type market --amount 0.001
 ```
 
+Place a stop-loss perp order (stop-market or stop-limit):
+
+```bash
+bun src/cli/Hyperliquid.ts trade-perp --from <0x-privy-wallet> --coin BTC --side short --type stop_market --trigger-px 58000 --amount 0.001 --reduce-only
+bun src/cli/Hyperliquid.ts trade-perp --from <0x-privy-wallet> --coin BTC --side short --type stop_limit --trigger-px 58000 --price 57900 --amount 0.001 --reduce-only
+```
+
+Place a take-profit perp order (take-market or take-limit):
+
+```bash
+bun src/cli/Hyperliquid.ts trade-perp --from <0x-privy-wallet> --coin BTC --side short --type take_market --trigger-px 72000 --amount 0.001 --reduce-only
+bun src/cli/Hyperliquid.ts trade-perp --from <0x-privy-wallet> --coin BTC --side short --type take_limit --trigger-px 72000 --price 71900 --amount 0.001 --reduce-only
+```
+
+Place an atomic bracket (entry + linked take-profit and stop-loss as OCO) by adding `--tp-px`/`--sl-px`:
+
+```bash
+bun src/cli/Hyperliquid.ts trade-perp --from <0x-privy-wallet> --dex xyz --coin MSFT --side long --type market --amount 1.307 --tp-px 405.56 --sl-px 371.13
+```
+
 Place a spot order:
 
 ```bash

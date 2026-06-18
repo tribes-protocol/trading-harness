@@ -14,6 +14,7 @@ import {
   HyperliquidListAssetsCommandOptionsSchema,
   HyperliquidListBalancesCommandOptionsSchema,
   HyperliquidListExchangesCommandOptionsSchema,
+  HyperliquidListPositionsCommandOptionsSchema,
   HyperliquidPerpTradeCommandOptionsSchema,
   HyperliquidSpotTradeCommandOptionsSchema,
   HyperliquidSpotTransferCommandOptionsSchema,
@@ -62,6 +63,27 @@ program
     const response = await hyperliquidService.listBalances({
       address: request.address,
       dex: request.dex
+    })
+    const output = ensureJsonTreeString(response)
+    await writeOutput({
+      output,
+      outPath: request.out ?? undefined
+    })
+  })
+
+program
+  .command('list-positions')
+  .description('List open perp positions for a Hyperliquid account')
+  .requiredOption('--address <address>', 'Hyperliquid account address to inspect')
+  .option('--dex <dex>', 'Perp dex name (main by default)')
+  .option('--all-dexes', 'Sweep main and every perp dex')
+  .option('--out <file>', 'Write output JSON to file')
+  .action(async (options: unknown): Promise<void> => {
+    const request = HyperliquidListPositionsCommandOptionsSchema.parse(options)
+    const response = await hyperliquidService.listPositions({
+      address: request.address,
+      dex: request.dex,
+      allDexes: request.allDexes
     })
     const output = ensureJsonTreeString(response)
     await writeOutput({
@@ -133,13 +155,27 @@ program
 
 program
   .command('trade-perp')
-  .description('Place a perpetual order on Hyperliquid')
+  .description(
+    'Place a perpetual order on Hyperliquid; add --tp-px/--sl-px to attach an atomic OCO bracket'
+  )
   .requiredOption('--from <address>', 'Signer EVM address (Privy wallet)')
   .requiredOption('--coin <coin>', 'Perp symbol (for example: BTC, ETH)')
   .requiredOption('--amount <amount>', 'Order size in base units')
   .requiredOption('--side <side>', 'Order side: long | short')
-  .option('--type <type>', 'Order type: market | limit', 'market')
-  .option('--price <price>', 'Limit price (required when --type limit)')
+  .option(
+    '--type <type>',
+    'Order type: market | limit | stop_market | stop_limit | take_market | take_limit',
+    'market'
+  )
+  .option('--price <price>', 'Limit price (required when --type limit | stop_limit | take_limit)')
+  .option(
+    '--trigger-px <price>',
+    'Trigger price (required when --type stop_market | stop_limit | take_market | take_limit)'
+  )
+  .option('--tp-px <price>', 'Bracket take-profit trigger price (market | limit entry only)')
+  .option('--sl-px <price>', 'Bracket stop-loss trigger price (market | limit entry only)')
+  .option('--tp-limit-px <price>', 'Optional resting limit price for the TP leg (else market exit)')
+  .option('--sl-limit-px <price>', 'Optional resting limit price for the SL leg (else market exit)')
   .option('--tif <tif>', 'Time in force for limit orders: Gtc | Ioc | Alo', 'Gtc')
   .option('--reduce-only', 'Place reduce-only order')
   .option('--margin-mode <mode>', 'Margin mode: cross | isolated', 'cross')

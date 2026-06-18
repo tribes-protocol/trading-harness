@@ -197,8 +197,34 @@ export interface HyperliquidPrivyWallet {
 export const HyperliquidPerpSideSchema = z.enum(['long', 'short'])
 export type HyperliquidPerpSide = z.infer<typeof HyperliquidPerpSideSchema>
 
-export const HyperliquidPerpOrderTypeSchema = z.enum(['market', 'limit'])
+export const HyperliquidPerpOrderTypeSchema = z.enum([
+  'market',
+  'limit',
+  'stop_market',
+  'stop_limit',
+  'take_market',
+  'take_limit'
+])
 export type HyperliquidPerpOrderType = z.infer<typeof HyperliquidPerpOrderTypeSchema>
+
+export const HyperliquidSpotOrderTypeSchema = z.enum(['market', 'limit'])
+export type HyperliquidSpotOrderType = z.infer<typeof HyperliquidSpotOrderTypeSchema>
+
+export const HyperliquidTpSlSchema = z.enum(['tp', 'sl'])
+export type HyperliquidTpSl = z.infer<typeof HyperliquidTpSlSchema>
+
+export const HYPERLIQUID_TRIGGER_LIMIT_ORDER_TYPES: readonly HyperliquidPerpOrderType[] = [
+  'limit',
+  'stop_limit',
+  'take_limit'
+]
+
+export const HYPERLIQUID_TRIGGER_PX_ORDER_TYPES: readonly HyperliquidPerpOrderType[] = [
+  'stop_market',
+  'stop_limit',
+  'take_market',
+  'take_limit'
+]
 
 export const HyperliquidPerpTifSchema = z.enum(['Gtc', 'Ioc', 'Alo'])
 export type HyperliquidPerpTif = z.infer<typeof HyperliquidPerpTifSchema>
@@ -220,6 +246,11 @@ export const HyperliquidPerpTradeCommandOptionsSchema = z
     side: HyperliquidPerpSideSchema,
     type: HyperliquidPerpOrderTypeSchema.default('market'),
     price: BigNumberSchema.nullish(),
+    triggerPx: BigNumberSchema.nullish(),
+    tpPx: BigNumberSchema.nullish(),
+    slPx: BigNumberSchema.nullish(),
+    tpLimitPx: BigNumberSchema.nullish(),
+    slLimitPx: BigNumberSchema.nullish(),
     tif: HyperliquidPerpTifSchema.default('Gtc'),
     reduceOnly: z.boolean().default(false),
     marginMode: HyperliquidPerpMarginModeSchema.default('cross'),
@@ -229,14 +260,95 @@ export const HyperliquidPerpTradeCommandOptionsSchema = z
     out: z.string().nullish()
   })
   .superRefine((value, ctx) => {
-    if (
-      value.type === 'limit' &&
-      (isNullish(value.price) || value.price.isNaN() || !value.price.isGreaterThan(0))
-    ) {
+    const isPositive = (price: typeof value.price): boolean =>
+      !isNullish(price) && !price.isNaN() && price.isGreaterThan(0)
+
+    const hasTp = !isNullish(value.tpPx)
+    const hasSl = !isNullish(value.slPx)
+    const isBracket = hasTp || hasSl
+
+    if (!isNullish(value.tpLimitPx) && !hasTp) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['tpLimitPx'],
+        message: 'tpLimitPx requires tpPx'
+      })
+    }
+    if (!isNullish(value.slLimitPx) && !hasSl) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['slLimitPx'],
+        message: 'slLimitPx requires slPx'
+      })
+    }
+    if (!isNullish(value.tpPx) && !isPositive(value.tpPx)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['tpPx'],
+        message: 'tpPx must be greater than 0'
+      })
+    }
+    if (!isNullish(value.slPx) && !isPositive(value.slPx)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['slPx'],
+        message: 'slPx must be greater than 0'
+      })
+    }
+    if (!isNullish(value.tpLimitPx) && !isPositive(value.tpLimitPx)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['tpLimitPx'],
+        message: 'tpLimitPx must be greater than 0'
+      })
+    }
+    if (!isNullish(value.slLimitPx) && !isPositive(value.slLimitPx)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['slLimitPx'],
+        message: 'slLimitPx must be greater than 0'
+      })
+    }
+
+    if (isBracket) {
+      if (value.type !== 'market' && value.type !== 'limit') {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['type'],
+          message:
+            'tp/sl brackets require a market or limit entry (trigger entry types cannot carry a bracket)'
+        })
+      }
+      if (value.reduceOnly) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['reduceOnly'],
+          message: 'a bracket entry (with tpPx/slPx) cannot be reduce-only'
+        })
+      }
+      if (value.type === 'limit' && !isPositive(value.price)) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['price'],
+          message: 'price must be greater than 0 for a limit entry'
+        })
+      }
+      return
+    }
+
+    if (HYPERLIQUID_TRIGGER_LIMIT_ORDER_TYPES.includes(value.type) && !isPositive(value.price)) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         path: ['price'],
-        message: 'price must be greater than 0 for limit orders'
+        message: 'price must be greater than 0 for limit, stop_limit, and take_limit orders'
+      })
+    }
+    if (HYPERLIQUID_TRIGGER_PX_ORDER_TYPES.includes(value.type) && !isPositive(value.triggerPx)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['triggerPx'],
+        message:
+          'triggerPx must be greater than 0 for stop_market, stop_limit, take_market, and take_limit orders'
       })
     }
   })
@@ -250,7 +362,7 @@ export const HyperliquidSpotTradeCommandOptionsSchema = z
     pair: z.string().trim().min(1),
     amount: BigNumberSchema,
     side: HyperliquidSpotSideSchema,
-    type: HyperliquidPerpOrderTypeSchema.default('market'),
+    type: HyperliquidSpotOrderTypeSchema.default('market'),
     price: BigNumberSchema.nullish(),
     tif: HyperliquidPerpTifSchema.default('Gtc'),
     walletId: z.string().trim().min(1),
@@ -271,6 +383,39 @@ export const HyperliquidSpotTradeCommandOptionsSchema = z
 export type HyperliquidSpotTradeCommandOptions = z.infer<
   typeof HyperliquidSpotTradeCommandOptionsSchema
 >
+export const HyperliquidListPositionsCommandOptionsSchema = z.object({
+  address: EthAddressSchema,
+  dex: z.string().trim().min(1).nullish(),
+  allDexes: z.boolean().default(false),
+  out: z.string().nullish()
+})
+export type HyperliquidListPositionsCommandOptions = z.infer<
+  typeof HyperliquidListPositionsCommandOptionsSchema
+>
+
+export const HyperliquidPerpPositionSchema = z.object({
+  dex: z.string(),
+  coin: z.string(),
+  side: HyperliquidPerpSideSchema,
+  size: z.string(),
+  signedSize: z.string(),
+  entryPx: z.string(),
+  positionValue: z.string(),
+  unrealizedPnl: z.string(),
+  returnOnEquity: z.string(),
+  liquidationPx: z.string().nullish(),
+  leverage: z.number(),
+  leverageType: HyperliquidPerpMarginModeSchema,
+  marginUsed: z.string(),
+  maxLeverage: z.number()
+})
+export type HyperliquidPerpPosition = z.infer<typeof HyperliquidPerpPositionSchema>
+
+export const HyperliquidPositionsResultSchema = z.object({
+  address: EthAddressSchema,
+  positions: z.array(HyperliquidPerpPositionSchema)
+})
+export type HyperliquidPositionsResult = z.infer<typeof HyperliquidPositionsResultSchema>
 
 export const ResolvePerpAssetParamsSchema = z.object({
   coin: z.string().trim().min(1),
@@ -289,6 +434,7 @@ export const ResolveOrderPriceParamsSchema = z.object({
   marketType: HyperliquidMarketTypeSchema,
   orderType: HyperliquidPerpOrderTypeSchema,
   limitPrice: BigNumberSchema.nullish(),
+  triggerPx: BigNumberSchema.nullish(),
   szDecimals: z.number().int().nonnegative(),
   referencePrice: BigNumberSchema,
   isBuy: z.boolean()
