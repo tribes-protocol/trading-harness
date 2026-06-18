@@ -34,6 +34,8 @@ import {
   HyperliquidPerpPositionSchema,
   type HyperliquidPerpTif,
   type HyperliquidPerpTradeCommandOptions,
+  type HyperliquidPositionsResult,
+  HyperliquidPositionsResultSchema,
   type HyperliquidPrivyWallet,
   type HyperliquidSpotAsset,
   HyperliquidSpotAssetSchema,
