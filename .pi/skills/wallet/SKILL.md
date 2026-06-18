@@ -34,7 +34,7 @@ bun src/cli/Wallet.ts assets \
   --wallet-addresses <address1> <address2>
 ```
 
-Limit EVM balance lookups to specific chains with `--chain-ids` (comma-separated numeric chain IDs). Omit it to query all supported EVM chains.
+Limit EVM balance lookups to specific chains with `--chain-ids` (space-separated numeric chain IDs). Omit it to query all supported EVM chains.
 
 ```bash
 bun src/cli/Wallet.ts assets \
@@ -51,7 +51,14 @@ Supported EVM `chainIds`:
 - `137` - Polygon
 - `10` - Optimism
 
-When a Solana wallet address is included, Solana balances are still returned. `--chain-ids` only filters EVM lookups.
+When all provided wallet addresses are Solana addresses, omit `--chain-ids`.
+When Solana and EVM addresses are mixed, Solana balances are still returned and `--chain-ids` only filters EVM lookups.
+
+```bash
+API_BEARER_TOKEN="$(bun code/typescript/src/cli/llm-token.ts)" \
+  bun .pi/skills/wallet/src/cli/Wallet.ts assets \
+  --wallet-addresses <solana-address>
+```
 
 Write output to a file when needed:
 

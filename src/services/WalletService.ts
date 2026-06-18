@@ -7,6 +7,7 @@ import { AgentWalletSnapshotSchema } from '@/types/Privy'
 import { type AssetBalance, AssetBalanceSchema } from '@/types/Wallet'
 import type { ListWalletAssetsParams } from '@/types/WalletCli'
 import { ensureJsonTreeString, isNullish } from '@/utils/Lang'
+import { isSolanaWalletAddress } from '@/utils/Solana'
 
 const WALLET_SNAPSHOT_PATH = '.pi/privy-wallets.json'
 
@@ -54,7 +55,10 @@ export class WalletService {
     const searchQuery = new URLSearchParams({
       userAddresses: walletAddresses.join(',')
     })
-    if (!isNullish(chainIds) && chainIds.length > 0) {
+    const areSolanaOnlyWalletAddresses = walletAddresses.every((walletAddress) =>
+      isSolanaWalletAddress(walletAddress)
+    )
+    if (!isNullish(chainIds) && chainIds.length > 0 && !areSolanaOnlyWalletAddresses) {
       searchQuery.set('chainIds', chainIds.join(','))
     }
     const response = await fetch(new URL(`/user/assets?${searchQuery.toString()}`, API_BASE_URL), {

@@ -15,7 +15,6 @@ export const HyperliquidDepositCommandOptionsSchema = z.object({
   amount: BigNumberSchema,
   from: EthAddressSchema,
   walletId: z.string().trim().min(1),
-  privateKeyPem: z.string().min(1),
   out: z.string().nullish()
 })
 export type HyperliquidDepositCommandOptions = z.infer<
@@ -27,7 +26,6 @@ export const HyperliquidWithdrawCommandOptionsSchema = z.object({
   from: EthAddressSchema,
   destination: EthAddressSchema,
   walletId: z.string().trim().min(1),
-  privateKeyPem: z.string().min(1),
   out: z.string().nullish()
 })
 export type HyperliquidWithdrawCommandOptions = z.infer<
@@ -42,7 +40,6 @@ export const HyperliquidUsdClassTransferCommandOptionsSchema = z.object({
   from: EthAddressSchema,
   direction: HyperliquidUsdClassDirectionSchema,
   walletId: z.string().trim().min(1),
-  privateKeyPem: z.string().min(1),
   out: z.string().nullish()
 })
 export type HyperliquidUsdClassTransferCommandOptions = z.infer<
@@ -56,7 +53,6 @@ export const HyperliquidDexCashTransferCommandOptionsSchema = z.object({
   destinationDex: z.string().trim().min(1, 'destinationDex is required'),
   token: z.string().trim().min(1).default('USDC'),
   walletId: z.string().trim().min(1),
-  privateKeyPem: z.string().min(1),
   out: z.string().nullish()
 })
 export type HyperliquidDexCashTransferCommandOptions = z.infer<
@@ -173,7 +169,6 @@ export const HyperliquidPerpTradeCommandOptionsSchema = z
     leverage: z.coerce.number().int().positive().nullish(),
     dex: z.string().trim().nullish(),
     walletId: z.string().trim().min(1),
-    privateKeyPem: z.string().min(1),
     out: z.string().nullish()
   })
   .superRefine((value, ctx) => {
@@ -202,7 +197,6 @@ export const HyperliquidSpotTradeCommandOptionsSchema = z
     price: BigNumberSchema.nullish(),
     tif: HyperliquidPerpTifSchema.default('Gtc'),
     walletId: z.string().trim().min(1),
-    privateKeyPem: z.string().min(1),
     out: z.string().nullish()
   })
   .superRefine((value, ctx) => {

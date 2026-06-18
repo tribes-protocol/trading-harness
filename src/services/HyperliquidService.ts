@@ -54,19 +54,16 @@ interface HyperliquidDepositParams {
   readonly amount: BigNumber
   readonly from: EthAddress
   readonly walletId: string
-  readonly privateKeyPem: string
 }
 
 interface HyperliquidWithSignerParams<TRequest> {
   readonly request: TRequest
   readonly walletId: string
-  readonly privateKeyPem: string
 }
 
 interface CreateExchangeClientParams {
   readonly address: EthAddress
   readonly walletId: string
-  readonly privateKeyPem: string
 }
 
 const ARBITRUM_USDC_DECIMALS = 6
@@ -111,8 +108,7 @@ export class HyperliquidService {
         data,
         value: BigInt(0)
       },
-      walletId: params.walletId,
-      privateKeyPem: params.privateKeyPem
+      walletId: params.walletId
     })
 
     return HyperliquidDepositResultSchema.parse({
@@ -141,8 +137,7 @@ export class HyperliquidService {
     const amount = params.request.amount.toFixed()
     const exchange = this.createExchangeClient({
       address: params.request.from,
-      walletId: params.walletId,
-      privateKeyPem: params.privateKeyPem
+      walletId: params.walletId
     })
     return await exchange.withdraw3({
       destination: params.request.destination,
@@ -161,8 +156,7 @@ export class HyperliquidService {
     const toPerp = this.directionToPerpFlag(params.request.direction)
     const exchange = this.createExchangeClient({
       address: params.request.from,
-      walletId: params.walletId,
-      privateKeyPem: params.privateKeyPem
+      walletId: params.walletId
     })
     return await exchange.usdClassTransfer({
       amount,
@@ -185,8 +179,7 @@ export class HyperliquidService {
 
     const exchange = this.createExchangeClient({
       address: params.request.from,
-      walletId: params.walletId,
-      privateKeyPem: params.privateKeyPem
+      walletId: params.walletId
     })
     return await exchange.sendAsset({
       destination: params.request.from,
@@ -207,8 +200,7 @@ export class HyperliquidService {
 
     const exchange = this.createExchangeClient({
       address: params.request.from,
-      walletId: params.walletId,
-      privateKeyPem: params.privateKeyPem
+      walletId: params.walletId
     })
     const dex = this.normalizeDex(params.request.dex)
     const perpAsset = await this.resolvePerpAsset({
@@ -267,8 +259,7 @@ export class HyperliquidService {
 
     const exchange = this.createExchangeClient({
       address: params.request.from,
-      walletId: params.walletId,
-      privateKeyPem: params.privateKeyPem
+      walletId: params.walletId
     })
     const spotAsset = await this.resolveSpotAsset(params.request.pair)
     const isBuy = params.request.side === 'buy'
@@ -531,8 +522,7 @@ export class HyperliquidService {
       ): Promise<HexString> => {
         return await this.transaction.signEthTypedDataV4({
           typedData,
-          walletId: params.walletId,
-          privateKeyPem: params.privateKeyPem
+          walletId: params.walletId
         })
       }
     }

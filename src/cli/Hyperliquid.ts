@@ -73,15 +73,13 @@ program
   .requiredOption('--amount <amount>', 'USDC amount (decimal units)')
   .requiredOption('--from <address>', 'Sender EVM address (Privy wallet)')
   .requiredOption('--wallet-id <walletId>', 'Privy wallet id')
-  .requiredOption('--private-key-pem <privateKeyPem>', 'Privy authorization private key')
   .option('--out <file>', 'Write output JSON to file')
   .action(async (options: unknown): Promise<void> => {
     const request = HyperliquidDepositCommandOptionsSchema.parse(options)
     const response = await hyperliquidService.deposit({
       amount: request.amount,
       from: request.from,
-      walletId: request.walletId,
-      privateKeyPem: request.privateKeyPem
+      walletId: request.walletId
     })
     const output = ensureJsonTreeString(response)
     await writeOutput({
@@ -97,14 +95,12 @@ program
   .requiredOption('--from <address>', 'Signer EVM address (Privy wallet)')
   .requiredOption('--destination <address>', 'Recipient EVM address')
   .requiredOption('--wallet-id <walletId>', 'Privy wallet id')
-  .requiredOption('--private-key-pem <privateKeyPem>', 'Privy authorization private key')
   .option('--out <file>', 'Write output JSON to file')
   .action(async (options: unknown): Promise<void> => {
     const request = HyperliquidWithdrawCommandOptionsSchema.parse(options)
     const response = await hyperliquidService.withdraw({
       request,
-      walletId: request.walletId,
-      privateKeyPem: request.privateKeyPem
+      walletId: request.walletId
     })
     const output = ensureJsonTreeString(response)
     await writeOutput({
@@ -128,14 +124,12 @@ program
   .option('--leverage <leverage>', 'Set leverage before order (integer)')
   .option('--dex <dex>', 'Perp dex name (main by default)')
   .requiredOption('--wallet-id <walletId>', 'Privy wallet id')
-  .requiredOption('--private-key-pem <privateKeyPem>', 'Privy authorization private key')
   .option('--out <file>', 'Write output JSON to file')
   .action(async (options: unknown): Promise<void> => {
     const request = HyperliquidPerpTradeCommandOptionsSchema.parse(options)
     const response = await hyperliquidService.tradePerp({
       request,
-      walletId: request.walletId,
-      privateKeyPem: request.privateKeyPem
+      walletId: request.walletId
     })
     const output = ensureJsonTreeString(response)
     await writeOutput({
@@ -155,14 +149,12 @@ program
   .option('--price <price>', 'Limit price (required when --type limit)')
   .option('--tif <tif>', 'Time in force for limit orders: Gtc | Ioc | Alo', 'Gtc')
   .requiredOption('--wallet-id <walletId>', 'Privy wallet id')
-  .requiredOption('--private-key-pem <privateKeyPem>', 'Privy authorization private key')
   .option('--out <file>', 'Write output JSON to file')
   .action(async (options: unknown): Promise<void> => {
     const request = HyperliquidSpotTradeCommandOptionsSchema.parse(options)
     const response = await hyperliquidService.tradeSpot({
       request,
-      walletId: request.walletId,
-      privateKeyPem: request.privateKeyPem
+      walletId: request.walletId
     })
     const output = ensureJsonTreeString(response)
     await writeOutput({
@@ -178,14 +170,12 @@ program
   .requiredOption('--from <address>', 'Signer EVM address (Privy wallet)')
   .requiredOption('--direction <direction>', 'Transfer direction: spot-to-perp | perp-to-spot')
   .requiredOption('--wallet-id <walletId>', 'Privy wallet id')
-  .requiredOption('--private-key-pem <privateKeyPem>', 'Privy authorization private key')
   .option('--out <file>', 'Write output JSON to file')
   .action(async (options: unknown): Promise<void> => {
     const request = HyperliquidUsdClassTransferCommandOptionsSchema.parse(options)
     const response = await hyperliquidService.transferUsdClass({
       request,
-      walletId: request.walletId,
-      privateKeyPem: request.privateKeyPem
+      walletId: request.walletId
     })
     const output = ensureJsonTreeString(response)
     await writeOutput({
@@ -203,14 +193,12 @@ program
   .requiredOption('--destination-dex <dex>', 'Destination dex: main | spot | xyz | ...')
   .option('--token <token>', 'Token identifier (default: USDC)', 'USDC')
   .requiredOption('--wallet-id <walletId>', 'Privy wallet id')
-  .requiredOption('--private-key-pem <privateKeyPem>', 'Privy authorization private key')
   .option('--out <file>', 'Write output JSON to file')
   .action(async (options: unknown): Promise<void> => {
     const request = HyperliquidDexCashTransferCommandOptionsSchema.parse(options)
     const response = await hyperliquidService.transferDexCash({
       request,
-      walletId: request.walletId,
-      privateKeyPem: request.privateKeyPem
+      walletId: request.walletId
     })
     const output = ensureJsonTreeString(response)
     await writeOutput({
