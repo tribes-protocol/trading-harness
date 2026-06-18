@@ -12,10 +12,14 @@ import {
   HyperliquidDepositCommandOptionsSchema,
   HyperliquidDexCashTransferCommandOptionsSchema,
   HyperliquidListAssetsCommandOptionsSchema,
+  HyperliquidListBalancesCommandOptionsSchema,
   HyperliquidListExchangesCommandOptionsSchema,
+  HyperliquidListPositionsCommandOptionsSchema,
   HyperliquidPerpTradeCommandOptionsSchema,
   HyperliquidSpotTradeCommandOptionsSchema,
+  HyperliquidSpotTransferCommandOptionsSchema,
   HyperliquidUsdClassTransferCommandOptionsSchema,
+  HyperliquidUsdTransferCommandOptionsSchema,
   HyperliquidWithdrawCommandOptionsSchema
 } from '@/types/Hyperliquid'
 import { ensureJsonTreeString } from '@/utils/Lang'
@@ -41,6 +45,46 @@ program
   .action(async (options: unknown): Promise<void> => {
     const request = HyperliquidListExchangesCommandOptionsSchema.parse(options)
     const response = await hyperliquidService.listExchanges()
+    const output = ensureJsonTreeString(response)
+    await writeOutput({
+      output,
+      outPath: request.out ?? undefined
+    })
+  })
+
+program
+  .command('list-balances')
+  .description('List perp and spot balances for a Hyperliquid account')
+  .requiredOption('--address <address>', 'Hyperliquid account address to inspect')
+  .option('--dex <dex>', 'Perp dex name (main by default)')
+  .option('--out <file>', 'Write output JSON to file')
+  .action(async (options: unknown): Promise<void> => {
+    const request = HyperliquidListBalancesCommandOptionsSchema.parse(options)
+    const response = await hyperliquidService.listBalances({
+      address: request.address,
+      dex: request.dex
+    })
+    const output = ensureJsonTreeString(response)
+    await writeOutput({
+      output,
+      outPath: request.out ?? undefined
+    })
+  })
+
+program
+  .command('list-positions')
+  .description('List open perp positions for a Hyperliquid account')
+  .requiredOption('--address <address>', 'Hyperliquid account address to inspect')
+  .option('--dex <dex>', 'Perp dex name (main by default)')
+  .option('--all-dexes', 'Sweep main and every perp dex')
+  .option('--out <file>', 'Write output JSON to file')
+  .action(async (options: unknown): Promise<void> => {
+    const request = HyperliquidListPositionsCommandOptionsSchema.parse(options)
+    const response = await hyperliquidService.listPositions({
+      address: request.address,
+      dex: request.dex,
+      allDexes: request.allDexes
+    })
     const output = ensureJsonTreeString(response)
     await writeOutput({
       output,
@@ -111,13 +155,27 @@ program
 
 program
   .command('trade-perp')
-  .description('Place a perpetual order on Hyperliquid')
+  .description(
+    'Place a perpetual order on Hyperliquid; add --tp-px/--sl-px to attach an atomic OCO bracket'
+  )
   .requiredOption('--from <address>', 'Signer EVM address (Privy wallet)')
   .requiredOption('--coin <coin>', 'Perp symbol (for example: BTC, ETH)')
   .requiredOption('--amount <amount>', 'Order size in base units')
   .requiredOption('--side <side>', 'Order side: long | short')
-  .option('--type <type>', 'Order type: market | limit', 'market')
-  .option('--price <price>', 'Limit price (required when --type limit)')
+  .option(
+    '--type <type>',
+    'Order type: market | limit | stop_market | stop_limit | take_market | take_limit',
+    'market'
+  )
+  .option('--price <price>', 'Limit price (required when --type limit | stop_limit | take_limit)')
+  .option(
+    '--trigger-px <price>',
+    'Trigger price (required when --type stop_market | stop_limit | take_market | take_limit)'
+  )
+  .option('--tp-px <price>', 'Bracket take-profit trigger price (market | limit entry only)')
+  .option('--sl-px <price>', 'Bracket stop-loss trigger price (market | limit entry only)')
+  .option('--tp-limit-px <price>', 'Optional resting limit price for the TP leg (else market exit)')
+  .option('--sl-limit-px <price>', 'Optional resting limit price for the SL leg (else market exit)')
   .option('--tif <tif>', 'Time in force for limit orders: Gtc | Ioc | Alo', 'Gtc')
   .option('--reduce-only', 'Place reduce-only order')
   .option('--margin-mode <mode>', 'Margin mode: cross | isolated', 'cross')
@@ -174,6 +232,49 @@ program
   .action(async (options: unknown): Promise<void> => {
     const request = HyperliquidUsdClassTransferCommandOptionsSchema.parse(options)
     const response = await hyperliquidService.transferUsdClass({
+      request,
+      walletId: request.walletId
+    })
+    const output = ensureJsonTreeString(response)
+    await writeOutput({
+      output,
+      outPath: request.out ?? undefined
+    })
+  })
+
+program
+  .command('transfer-usd')
+  .description('Send USDC from perp balance to another Hyperliquid user')
+  .requiredOption('--amount <amount>', 'USDC amount (decimal units)')
+  .requiredOption('--from <address>', 'Signer EVM address (Privy wallet)')
+  .requiredOption('--destination <address>', 'Recipient Hyperliquid account address')
+  .requiredOption('--wallet-id <walletId>', 'Privy wallet id')
+  .option('--out <file>', 'Write output JSON to file')
+  .action(async (options: unknown): Promise<void> => {
+    const request = HyperliquidUsdTransferCommandOptionsSchema.parse(options)
+    const response = await hyperliquidService.transferUsd({
+      request,
+      walletId: request.walletId
+    })
+    const output = ensureJsonTreeString(response)
+    await writeOutput({
+      output,
+      outPath: request.out ?? undefined
+    })
+  })
+
+program
+  .command('transfer-spot')
+  .description('Send spot tokens to another Hyperliquid user')
+  .requiredOption('--amount <amount>', 'Token amount (decimal units)')
+  .requiredOption('--from <address>', 'Signer EVM address (Privy wallet)')
+  .requiredOption('--destination <address>', 'Recipient Hyperliquid account address')
+  .requiredOption('--token <token>', 'Spot token identifier (for example: HYPE, USDC)')
+  .requiredOption('--wallet-id <walletId>', 'Privy wallet id')
+  .option('--out <file>', 'Write output JSON to file')
+  .action(async (options: unknown): Promise<void> => {
+    const request = HyperliquidSpotTransferCommandOptionsSchema.parse(options)
+    const response = await hyperliquidService.transferSpot({
       request,
       walletId: request.walletId
     })
