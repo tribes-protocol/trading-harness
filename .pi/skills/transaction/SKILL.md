@@ -17,7 +17,7 @@ Use this skill when the agent must send a transaction or check transaction statu
 
 ## Requirements
 
-- Caller provides `walletId` and `privateKeyPem` for signed send endpoints.
+- Caller provides `walletId` for signed send endpoints.
 
 ## Required EVM tx data
 
@@ -56,13 +56,12 @@ calls land or the whole batch reverts.
    - Run `wallet list` to get `evmWalletId` and `evmWalletAddress`.
    - If `chainId` is unknown, run `wallet assets` for the EVM address and select an EVM `chainId` from returned ERC-20 balances.
 2. Confirm tx intent and payload with the user (`chainId`, `to`, `data`, `value`).
-3. Resolve `privateKeyPem` from runtime (`.pi/agent-authorization-key.json`).
-4. If handling multiple EVM txs, split them into contiguous same-`chainId` runs:
+3. If handling multiple EVM txs, split them into contiguous same-`chainId` runs:
    - Run length >= 2 -> `sendCalls`.
    - Run length = 1 -> `sendEthTransaction`.
-5. Run the transaction command with explicit tx data fields.
-6. Return the tx hash/signature to the user.
-7. Optionally run `getTransactionStatus` to verify confirmation.
+4. Run the transaction command with explicit tx data fields and `--wallet-id`.
+5. Return the tx hash/signature to the user.
+6. Optionally run `getTransactionStatus` to verify confirmation.
 
 ## CLI
 
@@ -79,8 +78,7 @@ bun src/cli/Transaction.ts sendEthTransaction \
   --chain-id 42161 \
   --to 0x1111111111111111111111111111111111111111 \
   --value 1000000 \
-  --wallet-id "<evmWalletId>" \
-  --private-key-pem "<privateKeyPem>"
+  --wallet-id "<evmWalletId>"
 ```
 
 ### Send a batch of EVM calls (atomic)
@@ -89,8 +87,7 @@ bun src/cli/Transaction.ts sendEthTransaction \
 bun src/cli/Transaction.ts sendCalls \
   --chain-id 8453 \
   --calls '[{"to":"0xTokenAddress","value":"0","data":"0xApproveCalldata"},{"to":"0xRouterAddress","value":"0","data":"0xSwapCalldata"}]' \
-  --wallet-id "<evmWalletId>" \
-  --private-key-pem "<privateKeyPem>"
+  --wallet-id "<evmWalletId>"
 ```
 
 ### Send Solana transaction
@@ -98,8 +95,7 @@ bun src/cli/Transaction.ts sendCalls \
 ```bash
 bun src/cli/Transaction.ts sendSolTransaction \
   --transaction "<serializedSolanaInstruction>" \
-  --wallet-id "<solWalletId>" \
-  --private-key-pem "<privateKeyPem>"
+  --wallet-id "<solWalletId>"
 ```
 
 ### Check transaction status
@@ -118,8 +114,7 @@ bun src/cli/Transaction.ts sendEthTransaction \
   --to 0xe784B1FB160249E36c514Dc7f21cADDf025aE69f \
   --value 21200000000 \
   --data 0x \
-  --wallet-id "<evmWalletId from wallet list>" \
-  --private-key-pem "<privateKeyPem from agent authorization key>"
+  --wallet-id "<evmWalletId from wallet list>"
 ```
 
 ## Guardrails

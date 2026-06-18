@@ -12,7 +12,7 @@ live Hyperliquid execution flows.
 
 The `list-exchanges` and `list-assets` commands are read-only market discovery:
 they hit Hyperliquid's public info API and need no wallet, signer, or
-`--private-key-pem`. Skip the wallet-discovery workflow below for them.
+execution wallet context. Skip the wallet-discovery workflow below for them.
 
 ## Compatibility
 
@@ -24,16 +24,15 @@ they hit Hyperliquid's public info API and need no wallet, signer, or
 ## Requirements
 
 - `API_BASE_URL` and `PRIVY_APP_ID` must be available.
-- Caller provides `walletId` and `privateKeyPem` explicitly to every execution command.
+- Caller provides `walletId` (and signer `--from` where required) to execution commands.
 
 ## Workflow
 
 1. Run wallet discovery with:
    - `bun src/cli/Wallet.ts list`
 2. Select the `evmWalletId` and matching EVM address for `--from`.
-3. Resolve `privateKeyPem` from runtime (`.pi/agent-authorization-key.json`).
-4. Build and review the exact command payload before broadcast.
-5. Run the chosen Hyperliquid command with `--wallet-id` and `--private-key-pem`.
+3. Build and review the exact command payload before broadcast.
+4. Run the chosen Hyperliquid command with `--wallet-id`.
 
 ## CLI
 
@@ -49,7 +48,7 @@ Discovery (read-only, no wallet/signer):
 - `list-assets` — list tradable assets; scope with `--dex <name>` (perp) or
   `--market spot`
 
-Execution (require `--wallet-id` and `--private-key-pem`):
+Execution (require `--wallet-id`; most also require signer `--from`):
 
 - `deposit`
 - `withdraw`
@@ -91,8 +90,7 @@ spot asset includes `pair`, `szDecimals`, and `markPx`. Use these names with
 bun src/cli/Hyperliquid.ts deposit \
   --amount 25 \
   --from 0x1111111111111111111111111111111111111111 \
-  --wallet-id "<evmWalletId from wallet list>" \
-  --private-key-pem "<privateKeyPem from agent authorization key>"
+  --wallet-id "<evmWalletId from wallet list>"
 ```
 
 ### Withdraw USDC from Hyperliquid
@@ -102,8 +100,7 @@ bun src/cli/Hyperliquid.ts withdraw \
   --amount 2 \
   --from 0x1111111111111111111111111111111111111111 \
   --destination 0x2222222222222222222222222222222222222222 \
-  --wallet-id "<evmWalletId from wallet list>" \
-  --private-key-pem "<privateKeyPem from agent authorization key>"
+  --wallet-id "<evmWalletId from wallet list>"
 ```
 
 ### Place a perp order
@@ -115,8 +112,7 @@ bun src/cli/Hyperliquid.ts trade-perp \
   --side long \
   --type market \
   --amount 0.001 \
-  --wallet-id "<evmWalletId from wallet list>" \
-  --private-key-pem "<privateKeyPem from agent authorization key>"
+  --wallet-id "<evmWalletId from wallet list>"
 ```
 
 ### Place a spot order
@@ -128,8 +124,7 @@ bun src/cli/Hyperliquid.ts trade-spot \
   --side buy \
   --type market \
   --amount 10 \
-  --wallet-id "<evmWalletId from wallet list>" \
-  --private-key-pem "<privateKeyPem from agent authorization key>"
+  --wallet-id "<evmWalletId from wallet list>"
 ```
 
 ### Transfer USDC between spot and perp balances
@@ -139,8 +134,7 @@ bun src/cli/Hyperliquid.ts transfer-usd-class \
   --amount 2 \
   --from 0x1111111111111111111111111111111111111111 \
   --direction spot-to-perp \
-  --wallet-id "<evmWalletId from wallet list>" \
-  --private-key-pem "<privateKeyPem from agent authorization key>"
+  --wallet-id "<evmWalletId from wallet list>"
 ```
 
 ### Transfer token balances between dexes
@@ -152,8 +146,7 @@ bun src/cli/Hyperliquid.ts transfer-dex-cash \
   --source-dex main \
   --destination-dex xyz \
   --token USDC \
-  --wallet-id "<evmWalletId from wallet list>" \
-  --private-key-pem "<privateKeyPem from agent authorization key>"
+  --wallet-id "<evmWalletId from wallet list>"
 ```
 
 ## Order options
@@ -204,8 +197,7 @@ bun src/cli/Transaction.ts sendEthTransaction \
   --to <tx.to> \
   --data <tx.data> \
   --value <tx.value> \
-  --wallet-id <evm-wallet-id> \
-  --private-key-pem <agent-private-key-pem>
+  --wallet-id <evm-wallet-id>
 
 bun src/cli/Transaction.ts getTransactionStatus \
   --chain-id <evm-chain-id> \
@@ -214,8 +206,7 @@ bun src/cli/Transaction.ts getTransactionStatus \
 # kind: "solana"
 bun src/cli/Transaction.ts sendSolTransaction \
   --transaction <tx.data> \
-  --wallet-id <sol-wallet-id> \
-  --private-key-pem <agent-private-key-pem>
+  --wallet-id <sol-wallet-id>
 
 bun src/cli/Transaction.ts getTransactionStatus \
   --chain-id solana \
@@ -253,6 +244,6 @@ Operational notes:
 
 - Do not broadcast vague natural-language intent; always show and review the exact command payload first.
 - Never mix wallet ids across chains; use the exact EVM wallet id that matches `--from`.
-- Do not run live execution commands without explicit `--wallet-id` and `--private-key-pem`.
+- Do not run live execution commands without explicit `--wallet-id`.
 - In bridge mode, execute quote `transactionRequests[]` in order; never reorder or skip steps.
 - Do not send the next bridge transaction until the current transaction is confirmed `success`.
