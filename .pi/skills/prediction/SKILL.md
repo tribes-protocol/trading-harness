@@ -29,15 +29,15 @@ Data source: Polymarket Gamma API at `https://gamma-api.polymarket.com`. No API 
 ## Quick start
 
 ```bash
-bun src/cli/Prediction.ts <action> [options]
+tribes-cli prediction <action> [options]
 ```
 
 Output is always pretty-printed JSON. Event commands attach a `leadingMarket` field (overview semantics - one best market per event).
 
 ```bash
-bun src/cli/Prediction.ts search --query "crypto regulation stablecoin bill" --limit-per-type 10
-bun src/cli/Prediction.ts list-events --active true --closed false --limit 10 --order volume --ascending false
-bun src/cli/Prediction.ts list-markets --closed false --limit 20 --order volume --ascending false
+tribes-cli prediction search --query "crypto regulation stablecoin bill" --limit-per-type 10
+tribes-cli prediction list-events --active true --closed false --limit 10 --order volume --ascending false
+tribes-cli prediction list-markets --closed false --limit 20 --order volume --ascending false
 ```
 
 ## Search prediction events
@@ -45,8 +45,8 @@ bun src/cli/Prediction.ts list-markets --closed false --limit 20 --order volume 
 Use search first for a natural-language thesis or catalyst.
 
 ```bash
-bun src/cli/Prediction.ts search --query "Fed rate cut June" --limit-per-type 10
-bun src/cli/Prediction.ts search --query "CLARITY Act crypto" --limit-per-type 10
+tribes-cli prediction search --query "Fed rate cut June" --limit-per-type 10
+tribes-cli prediction search --query "CLARITY Act crypto" --limit-per-type 10
 ```
 
 Options:
@@ -62,7 +62,7 @@ Options:
 List current events with optional filters and pagination:
 
 ```bash
-bun src/cli/Prediction.ts list-events \
+tribes-cli prediction list-events \
   --active true \
   --closed false \
   --limit 25 \
@@ -91,8 +91,8 @@ Useful filters:
 Fetch a specific event after search/listing exposes its id or slug:
 
 ```bash
-bun src/cli/Prediction.ts get-event --event-id 12345
-bun src/cli/Prediction.ts get-event --event-slug some-polymarket-event-slug
+tribes-cli prediction get-event --event-id 12345
+tribes-cli prediction get-event --event-slug some-polymarket-event-slug
 ```
 
 One of `--event-id` or `--event-slug` is required.
@@ -102,7 +102,7 @@ One of `--event-id` or `--event-slug` is required.
 List individual markets directly:
 
 ```bash
-bun src/cli/Prediction.ts list-markets \
+tribes-cli prediction list-markets \
   --closed false \
   --limit 20 \
   --order volume \
@@ -127,8 +127,8 @@ Useful filters:
 Fetch a specific market after search/listing exposes its id or slug:
 
 ```bash
-bun src/cli/Prediction.ts get-market --market-id 12345
-bun src/cli/Prediction.ts get-market --market-slug some-polymarket-market-slug
+tribes-cli prediction get-market --market-id 12345
+tribes-cli prediction get-market --market-slug some-polymarket-market-slug
 ```
 
 One of `--market-id` or `--market-slug` is required.
@@ -171,7 +171,7 @@ Use `get-event` or `get-market` when sub-market detail beyond `leadingMarket` is
 
 ## Implementation
 
-- Entry: `src/cli/Prediction.ts`
+- Command: `tribes-cli prediction` (source: `src/cli/Prediction.ts`)
 - Service: `src/services/PredictionService.ts` (inline HTTP)
 - Types: `src/types/Prediction.ts` (Zod schemas + option types)
 - Enrichment: `src/utils/Prediction.ts` (`leadingMarket` via `selectLeadingMarket`)

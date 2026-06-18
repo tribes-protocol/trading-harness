@@ -59,13 +59,13 @@ Best results come from queries that include:
 ### Show CLI help
 
 ```bash
-bun src/cli/AlphaScout.ts --help
+tribes-cli alpha-scout --help
 ```
 
 ### Ask the specialist
 
 ```bash
-bun src/cli/AlphaScout.ts ask \
+tribes-cli alpha-scout ask \
   --query "top 10 trending tokens in the last 24 hours"
 ```
 

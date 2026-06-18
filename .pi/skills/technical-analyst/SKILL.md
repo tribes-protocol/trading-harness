@@ -60,13 +60,13 @@ If you need token fundamentals instead of chart structure, switch to `fundamenta
 ### Show CLI help
 
 ```bash
-bun src/cli/TechnicalAnalyst.ts --help
+tribes-cli technical-analyst --help
 ```
 
 ### Ask the specialist
 
 ```bash
-bun src/cli/TechnicalAnalyst.ts ask \
+tribes-cli technical-analyst ask \
   --query "BTC 4H technical analysis with RSI, MACD, and ATR"
 ```
 

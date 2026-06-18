@@ -65,13 +65,13 @@ For token-specific on-chain depth (holders/traders/security), switch to `token-a
 ### Show CLI help
 
 ```bash
-bun src/cli/MarketStrategist.ts --help
+tribes-cli market-strategist --help
 ```
 
 ### Ask the specialist
 
 ```bash
-bun src/cli/MarketStrategist.ts ask \
+tribes-cli market-strategist ask \
   --query "global crypto market overview for the last 24h"
 ```
 

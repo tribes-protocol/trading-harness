@@ -117,7 +117,7 @@ workarounds.
 ## CLI
 
 ```bash
-bun src/cli/Transaction.ts --help
+tribes-cli transaction --help
 ```
 
 ## Common commands
@@ -125,7 +125,7 @@ bun src/cli/Transaction.ts --help
 ### Send ETH transaction (EVM)
 
 ```bash
-bun src/cli/Transaction.ts sendEthTransaction \
+tribes-cli transaction sendEthTransaction \
   --chain-id 42161 \
   --to 0x1111111111111111111111111111111111111111 \
   --value 1000000 \
@@ -135,7 +135,7 @@ bun src/cli/Transaction.ts sendEthTransaction \
 ### Send a batch of EVM calls (atomic)
 
 ```bash
-bun src/cli/Transaction.ts sendCalls \
+tribes-cli transaction sendCalls \
   --chain-id 8453 \
   --calls '[{"to":"0xTokenAddress","value":"0","data":"0xApproveCalldata"},{"to":"0xRouterAddress","value":"0","data":"0xSwapCalldata"}]' \
   --wallet-id "<evmWalletId>"
@@ -144,7 +144,7 @@ bun src/cli/Transaction.ts sendCalls \
 ### Send Solana transaction
 
 ```bash
-bun src/cli/Transaction.ts sendSolTransaction \
+tribes-cli transaction sendSolTransaction \
   --transaction "<serializedSolanaInstruction>" \
   --wallet-id "<solWalletId>"
 ```
@@ -152,7 +152,7 @@ bun src/cli/Transaction.ts sendSolTransaction \
 ### Check transaction status
 
 ```bash
-bun src/cli/Transaction.ts getTransactionStatus \
+tribes-cli transaction getTransactionStatus \
   --chain-id 42161 \
   --hash 0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
 ```
@@ -160,7 +160,7 @@ bun src/cli/Transaction.ts getTransactionStatus \
 ### Example (sendEthTransaction)
 
 ```bash
-bun src/cli/Transaction.ts sendEthTransaction \
+tribes-cli transaction sendEthTransaction \
   --chain-id 8453 \
   --to 0xe784B1FB160249E36c514Dc7f21cADDf025aE69f \
   --value 21200000000 \

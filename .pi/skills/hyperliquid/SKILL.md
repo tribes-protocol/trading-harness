@@ -66,7 +66,7 @@ balances and build the command payload.
 ## Workflow
 
 1. Run wallet discovery with:
-   - `bun src/cli/Wallet.ts list`
+   - `tribes-cli wallet list`
 2. Select the `evmWalletId` and matching EVM address for `--from`.
 3. Build and review the exact command payload before broadcast.
 4. Run the chosen Hyperliquid command with `--wallet-id`.
@@ -74,7 +74,7 @@ balances and build the command payload.
 ## CLI
 
 ```bash
-bun src/cli/Hyperliquid.ts --help
+tribes-cli hyperliquid --help
 ```
 
 ## Supported commands
@@ -105,7 +105,7 @@ Execution (require `--wallet-id`; most also require signer `--from`):
 ### List exchanges (perp dexes)
 
 ```bash
-bun src/cli/Hyperliquid.ts list-exchanges
+tribes-cli hyperliquid list-exchanges
 ```
 
 Returns `main` plus named dexes (for example: `xyz`, `flx`, `vntl`).
@@ -114,13 +114,13 @@ Returns `main` plus named dexes (for example: `xyz`, `flx`, `vntl`).
 
 ```bash
 # Perp assets on the main dex (default)
-bun src/cli/Hyperliquid.ts list-assets
+tribes-cli hyperliquid list-assets
 
 # Perp assets on a named dex (exchange)
-bun src/cli/Hyperliquid.ts list-assets --dex xyz
+tribes-cli hyperliquid list-assets --dex xyz
 
 # Spot pairs
-bun src/cli/Hyperliquid.ts list-assets --market spot
+tribes-cli hyperliquid list-assets --market spot
 ```
 
 Each perp asset includes `name`, `szDecimals`, `maxLeverage`, and `markPx`; each
@@ -131,11 +131,11 @@ spot asset includes `pair`, `szDecimals`, and `markPx`. Use these names with
 
 ```bash
 # Perp summary (main dex) + all spot token balances
-bun src/cli/Hyperliquid.ts list-balances \
+tribes-cli hyperliquid list-balances \
   --address 0x1111111111111111111111111111111111111111
 
 # Scope the perp summary to a named dex
-bun src/cli/Hyperliquid.ts list-balances \
+tribes-cli hyperliquid list-balances \
   --address 0x1111111111111111111111111111111111111111 \
   --dex xyz
 ```
@@ -149,11 +149,11 @@ signer is required.
 
 ```bash
 # Open positions on the main dex
-bun src/cli/Hyperliquid.ts list-positions \
+tribes-cli hyperliquid list-positions \
   --address 0x1111111111111111111111111111111111111111
 
 # Sweep main + every perp dex (use this before "close all positions")
-bun src/cli/Hyperliquid.ts list-positions \
+tribes-cli hyperliquid list-positions \
   --address 0x1111111111111111111111111111111111111111 \
   --all-dexes
 ```
@@ -169,7 +169,7 @@ closing them with `trade-perp --reduce-only`).
 ### Deposit Arbitrum USDC to Hyperliquid
 
 ```bash
-bun src/cli/Hyperliquid.ts deposit \
+tribes-cli hyperliquid deposit \
   --amount 25 \
   --from 0x1111111111111111111111111111111111111111 \
   --wallet-id "<evmWalletId from wallet list>"
@@ -178,7 +178,7 @@ bun src/cli/Hyperliquid.ts deposit \
 ### Withdraw USDC from Hyperliquid
 
 ```bash
-bun src/cli/Hyperliquid.ts withdraw \
+tribes-cli hyperliquid withdraw \
   --amount 2 \
   --from 0x1111111111111111111111111111111111111111 \
   --destination 0x2222222222222222222222222222222222222222 \
@@ -213,7 +213,7 @@ Prices auto-format to valid ticks, so reasonable rounding is fine.
 ### Place a perp order
 
 ```bash
-bun src/cli/Hyperliquid.ts trade-perp \
+tribes-cli hyperliquid trade-perp \
   --from 0x1111111111111111111111111111111111111111 \
   --coin BTC \
   --side long \
@@ -228,7 +228,7 @@ Triggers a market order once `--trigger-px` is crossed. Use `--reduce-only` for 
 protective stop on an existing position.
 
 ```bash
-bun src/cli/Hyperliquid.ts trade-perp \
+tribes-cli hyperliquid trade-perp \
   --from 0x1111111111111111111111111111111111111111 \
   --coin BTC \
   --side short \
@@ -244,7 +244,7 @@ bun src/cli/Hyperliquid.ts trade-perp \
 Triggers a limit order at `--price` once `--trigger-px` is crossed.
 
 ```bash
-bun src/cli/Hyperliquid.ts trade-perp \
+tribes-cli hyperliquid trade-perp \
   --from 0x1111111111111111111111111111111111111111 \
   --coin BTC \
   --side short \
@@ -263,7 +263,7 @@ limit order at `--price`. Use `--reduce-only` to take profit on an open position
 
 ```bash
 # Take-profit market: close a long when BTC rises to 72000
-bun src/cli/Hyperliquid.ts trade-perp \
+tribes-cli hyperliquid trade-perp \
   --from 0x1111111111111111111111111111111111111111 \
   --coin BTC \
   --side short \
@@ -274,7 +274,7 @@ bun src/cli/Hyperliquid.ts trade-perp \
   --wallet-id "<evmWalletId from wallet list>"
 
 # Take-profit limit: trigger at 72000, rest a limit at 71900
-bun src/cli/Hyperliquid.ts trade-perp \
+tribes-cli hyperliquid trade-perp \
   --from 0x1111111111111111111111111111111111111111 \
   --coin BTC \
   --side short \
@@ -298,7 +298,7 @@ and is not reduce-only. TP/SL legs default to market exits; pass
 
 ```bash
 # Long ~$500 of MSFT at market, take-profit +6%, stop-loss -3%
-bun src/cli/Hyperliquid.ts trade-perp \
+tribes-cli hyperliquid trade-perp \
   --dex xyz \
   --coin MSFT \
   --side long \
@@ -313,7 +313,7 @@ bun src/cli/Hyperliquid.ts trade-perp \
 ### Place a spot order
 
 ```bash
-bun src/cli/Hyperliquid.ts trade-spot \
+tribes-cli hyperliquid trade-spot \
   --from 0x1111111111111111111111111111111111111111 \
   --pair HYPE/USDC \
   --side buy \
@@ -325,7 +325,7 @@ bun src/cli/Hyperliquid.ts trade-spot \
 ### Transfer USDC between spot and perp balances
 
 ```bash
-bun src/cli/Hyperliquid.ts transfer-usd-class \
+tribes-cli hyperliquid transfer-usd-class \
   --amount 2 \
   --from 0x1111111111111111111111111111111111111111 \
   --direction spot-to-perp \
@@ -335,7 +335,7 @@ bun src/cli/Hyperliquid.ts transfer-usd-class \
 ### Send USDC to another Hyperliquid user
 
 ```bash
-bun src/cli/Hyperliquid.ts transfer-usd \
+tribes-cli hyperliquid transfer-usd \
   --amount 2 \
   --from 0x1111111111111111111111111111111111111111 \
   --destination 0x2222222222222222222222222222222222222222 \
@@ -345,7 +345,7 @@ bun src/cli/Hyperliquid.ts transfer-usd \
 ### Send spot tokens to another Hyperliquid user
 
 ```bash
-bun src/cli/Hyperliquid.ts transfer-spot \
+tribes-cli hyperliquid transfer-spot \
   --amount 10 \
   --from 0x1111111111111111111111111111111111111111 \
   --destination 0x2222222222222222222222222222222222222222 \
@@ -356,7 +356,7 @@ bun src/cli/Hyperliquid.ts transfer-spot \
 ### Transfer token balances between dexes
 
 ```bash
-bun src/cli/Hyperliquid.ts transfer-dex-cash \
+tribes-cli hyperliquid transfer-dex-cash \
   --amount 2 \
   --from 0x1111111111111111111111111111111111111111 \
   --source-dex main \
@@ -428,7 +428,7 @@ Path C (cross-chain bridge, `--from-chain <other>`) before a Hyperliquid deposit
 1. Quote to Arbitrum native USDC:
 
 ```bash
-bun src/cli/SpotTrading.ts quote \
+tribes-cli spot-trading quote \
   --from-chain <from-chain-id-or-solana> \
   --to-chain 42161 \
   --from-token <from-token-address-or-network> \
@@ -449,23 +449,23 @@ Example branch commands:
 
 ```bash
 # kind: "evm"
-bun src/cli/Transaction.ts sendEthTransaction \
+tribes-cli transaction sendEthTransaction \
   --chain-id <evm-chain-id> \
   --to <tx.to> \
   --data <tx.data> \
   --value <tx.value> \
   --wallet-id <evm-wallet-id>
 
-bun src/cli/Transaction.ts getTransactionStatus \
+tribes-cli transaction getTransactionStatus \
   --chain-id <evm-chain-id> \
   --hash <tx-hash>
 
 # kind: "solana"
-bun src/cli/Transaction.ts sendSolTransaction \
+tribes-cli transaction sendSolTransaction \
   --transaction <tx.data> \
   --wallet-id <sol-wallet-id>
 
-bun src/cli/Transaction.ts getTransactionStatus \
+tribes-cli transaction getTransactionStatus \
   --chain-id solana \
   --hash <sol-signature>
 ```

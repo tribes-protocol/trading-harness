@@ -43,7 +43,7 @@ Values are null-safe, so partial outages do not fail the entire payload.
 ## CLI
 
 ```bash
-bun src/cli/Macros.ts market
+tribes-cli macros market
 ```
 
 Output schema:
