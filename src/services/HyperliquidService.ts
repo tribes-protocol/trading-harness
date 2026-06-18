@@ -6,7 +6,9 @@ import {
   type OrderParameters,
   type OrderSuccessResponse,
   type SendAssetSuccessResponse,
+  type SpotSendSuccessResponse,
   type UsdClassTransferSuccessResponse,
+  type UsdSendSuccessResponse,
   type Withdraw3SuccessResponse
 } from '@nktkas/hyperliquid'
 import { formatPrice, formatSize } from '@nktkas/hyperliquid/utils'
@@ -32,8 +34,10 @@ import {
   type HyperliquidSpotAssetsResult,
   HyperliquidSpotAssetsResultSchema,
   type HyperliquidSpotTradeCommandOptions,
+  type HyperliquidSpotTransferCommandOptions,
   type HyperliquidUsdClassDirection,
   type HyperliquidUsdClassTransferCommandOptions,
+  type HyperliquidUsdTransferCommandOptions,
   type HyperliquidWithdrawCommandOptions,
   type ResolvedPerpAsset,
   type ResolvedSpotAsset,
@@ -161,6 +165,47 @@ export class HyperliquidService {
     return await exchange.usdClassTransfer({
       amount,
       toPerp
+    })
+  }
+
+  async transferUsd(
+    params: HyperliquidWithSignerParams<HyperliquidUsdTransferCommandOptions>
+  ): Promise<UsdSendSuccessResponse> {
+    if (!params.request.amount.isGreaterThan(0)) {
+      throw new Error('transfer amount must be greater than 0')
+    }
+    if (params.request.from === params.request.destination) {
+      throw new Error('destination must differ from sender')
+    }
+
+    const exchange = this.createExchangeClient({
+      address: params.request.from,
+      walletId: params.walletId
+    })
+    return await exchange.usdSend({
+      destination: params.request.destination,
+      amount: params.request.amount.toFixed()
+    })
+  }
+
+  async transferSpot(
+    params: HyperliquidWithSignerParams<HyperliquidSpotTransferCommandOptions>
+  ): Promise<SpotSendSuccessResponse> {
+    if (!params.request.amount.isGreaterThan(0)) {
+      throw new Error('transfer amount must be greater than 0')
+    }
+    if (params.request.from === params.request.destination) {
+      throw new Error('destination must differ from sender')
+    }
+
+    const exchange = this.createExchangeClient({
+      address: params.request.from,
+      walletId: params.walletId
+    })
+    return await exchange.spotSend({
+      destination: params.request.destination,
+      token: params.request.token,
+      amount: params.request.amount.toFixed()
     })
   }
 

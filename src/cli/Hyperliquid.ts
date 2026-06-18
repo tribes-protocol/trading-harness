@@ -15,7 +15,9 @@ import {
   HyperliquidListExchangesCommandOptionsSchema,
   HyperliquidPerpTradeCommandOptionsSchema,
   HyperliquidSpotTradeCommandOptionsSchema,
+  HyperliquidSpotTransferCommandOptionsSchema,
   HyperliquidUsdClassTransferCommandOptionsSchema,
+  HyperliquidUsdTransferCommandOptionsSchema,
   HyperliquidWithdrawCommandOptionsSchema
 } from '@/types/Hyperliquid'
 import { ensureJsonTreeString } from '@/utils/Lang'
@@ -174,6 +176,49 @@ program
   .action(async (options: unknown): Promise<void> => {
     const request = HyperliquidUsdClassTransferCommandOptionsSchema.parse(options)
     const response = await hyperliquidService.transferUsdClass({
+      request,
+      walletId: request.walletId
+    })
+    const output = ensureJsonTreeString(response)
+    await writeOutput({
+      output,
+      outPath: request.out ?? undefined
+    })
+  })
+
+program
+  .command('transfer-usd')
+  .description('Send USDC from perp balance to another Hyperliquid user')
+  .requiredOption('--amount <amount>', 'USDC amount (decimal units)')
+  .requiredOption('--from <address>', 'Signer EVM address (Privy wallet)')
+  .requiredOption('--destination <address>', 'Recipient Hyperliquid account address')
+  .requiredOption('--wallet-id <walletId>', 'Privy wallet id')
+  .option('--out <file>', 'Write output JSON to file')
+  .action(async (options: unknown): Promise<void> => {
+    const request = HyperliquidUsdTransferCommandOptionsSchema.parse(options)
+    const response = await hyperliquidService.transferUsd({
+      request,
+      walletId: request.walletId
+    })
+    const output = ensureJsonTreeString(response)
+    await writeOutput({
+      output,
+      outPath: request.out ?? undefined
+    })
+  })
+
+program
+  .command('transfer-spot')
+  .description('Send spot tokens to another Hyperliquid user')
+  .requiredOption('--amount <amount>', 'Token amount (decimal units)')
+  .requiredOption('--from <address>', 'Signer EVM address (Privy wallet)')
+  .requiredOption('--destination <address>', 'Recipient Hyperliquid account address')
+  .requiredOption('--token <token>', 'Spot token identifier (for example: HYPE, USDC)')
+  .requiredOption('--wallet-id <walletId>', 'Privy wallet id')
+  .option('--out <file>', 'Write output JSON to file')
+  .action(async (options: unknown): Promise<void> => {
+    const request = HyperliquidSpotTransferCommandOptionsSchema.parse(options)
+    const response = await hyperliquidService.transferSpot({
       request,
       walletId: request.walletId
     })

@@ -14,6 +14,43 @@ The `list-exchanges` and `list-assets` commands are read-only market discovery:
 they hit Hyperliquid's public info API and need no wallet, signer, or
 execution wallet context. Skip the wallet-discovery workflow below for them.
 
+## Clarify ambiguous requests before acting
+
+Before running ANY command (including read-only balance/help lookups) for a
+fund-movement request, check whether the request is fully specified. If
+required details are missing or ambiguous, STOP and ask the user with concrete
+options. Do not start mapping a command path, running help, or reading balances
+to "figure out what they meant" — asking first is faster and safer than
+exploring.
+
+A fund-movement request is only unambiguous when ALL of these are pinned down:
+
+- **Action**: withdraw to an external chain vs. transfer to another Hyperliquid
+  account vs. internal move (spot/perp class, between dexes). "Transfer" and
+  "send" are ambiguous — confirm which one.
+- **What funds**: which balances are in scope. Funds can live in perp USDC, spot
+  USDC, and other spot tokens across multiple dexes. "All funds" is ambiguous —
+  confirm whether it means only withdrawable USDC, every token, positions must
+  be closed first, etc.
+- **Amount**: an exact amount, or an explicit "everything" that you have
+  confirmed maps to a specific computed total. The CLI requires exact amounts.
+- **Destination**: a specific address, and whether it is an external chain
+  withdrawal or another Hyperliquid user.
+
+Examples that MUST trigger a clarifying question before any command runs:
+
+- "transfer all my Hyperliquid funds to 0x..." — ambiguous action ("transfer"
+  could mean withdraw or send to a Hyperliquid user) AND ambiguous scope ("all
+  funds" spans perp/spot/other tokens, and may require class transfers or
+  closing positions first).
+- "move everything", "send my balance", "withdraw it all" — scope and exact
+  amount are not pinned down.
+
+When you ask, present the specific decisions as options (action, scope,
+destination type) rather than silently picking one. Only after the user
+confirms the exact action, scope, amount(s), and destination should you fetch
+balances and build the command payload.
+
 ## Compatibility
 
 - Depends on the `wallet` skill for wallet discovery.
@@ -55,6 +92,8 @@ Execution (require `--wallet-id`; most also require signer `--from`):
 - `trade-perp`
 - `trade-spot`
 - `transfer-usd-class`
+- `transfer-usd`
+- `transfer-spot`
 - `transfer-dex-cash`
 
 ## Command examples
@@ -134,6 +173,27 @@ bun src/cli/Hyperliquid.ts transfer-usd-class \
   --amount 2 \
   --from 0x1111111111111111111111111111111111111111 \
   --direction spot-to-perp \
+  --wallet-id "<evmWalletId from wallet list>"
+```
+
+### Send USDC to another Hyperliquid user
+
+```bash
+bun src/cli/Hyperliquid.ts transfer-usd \
+  --amount 2 \
+  --from 0x1111111111111111111111111111111111111111 \
+  --destination 0x2222222222222222222222222222222222222222 \
+  --wallet-id "<evmWalletId from wallet list>"
+```
+
+### Send spot tokens to another Hyperliquid user
+
+```bash
+bun src/cli/Hyperliquid.ts transfer-spot \
+  --amount 10 \
+  --from 0x1111111111111111111111111111111111111111 \
+  --destination 0x2222222222222222222222222222222222222222 \
+  --token HYPE \
   --wallet-id "<evmWalletId from wallet list>"
 ```
 
@@ -248,12 +308,15 @@ Operational notes:
 - `trade-perp` and `trade-spot` support `market` and `limit`:
   - For `--type limit`, `--price` is required and must be > 0.
   - For `--type market`, the service submits an aggressive IOC-style price around reference price.
+- `transfer-usd` and `transfer-spot` send funds to another Hyperliquid account
+  (`--destination`); they do not withdraw to an external chain.
 - `transfer-dex-cash` requires different source and destination dex values.
 
 ## Live broadcast safety
 
 - Run the transaction skill's gas acquisition flow only when native gas (ETH on Arbitrum) on the destination chain is low/insufficient or for a cross-chain flow; otherwise proceed, and stop to ask the user to deposit gas if none exists anywhere.
 - Do not broadcast vague natural-language intent; always show and review the exact command payload first.
+- For any ambiguous fund-movement request (e.g. "transfer/move/send all funds"), STOP and ask for the missing action/scope/amount/destination details before running any command, including read-only balance or help lookups. See "Clarify ambiguous requests before acting".
 - Never mix wallet ids across chains; use the exact EVM wallet id that matches `--from`.
 - Do not run live execution commands without explicit `--wallet-id`.
 - In bridge mode, execute quote `transactionRequests[]` in order; never reorder or skip steps.

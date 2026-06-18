@@ -59,6 +59,29 @@ export type HyperliquidDexCashTransferCommandOptions = z.infer<
   typeof HyperliquidDexCashTransferCommandOptionsSchema
 >
 
+export const HyperliquidUsdTransferCommandOptionsSchema = z.object({
+  amount: BigNumberSchema,
+  from: EthAddressSchema,
+  destination: EthAddressSchema,
+  walletId: z.string().trim().min(1),
+  out: z.string().nullish()
+})
+export type HyperliquidUsdTransferCommandOptions = z.infer<
+  typeof HyperliquidUsdTransferCommandOptionsSchema
+>
+
+export const HyperliquidSpotTransferCommandOptionsSchema = z.object({
+  amount: BigNumberSchema,
+  from: EthAddressSchema,
+  destination: EthAddressSchema,
+  token: z.string().trim().min(1),
+  walletId: z.string().trim().min(1),
+  out: z.string().nullish()
+})
+export type HyperliquidSpotTransferCommandOptions = z.infer<
+  typeof HyperliquidSpotTransferCommandOptionsSchema
+>
+
 export const HyperliquidMarketKindSchema = z.enum(['perp', 'spot'])
 export type HyperliquidMarketKind = z.infer<typeof HyperliquidMarketKindSchema>
 
