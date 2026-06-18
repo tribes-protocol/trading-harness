@@ -133,13 +133,27 @@ program
 
 program
   .command('trade-perp')
-  .description('Place a perpetual order on Hyperliquid')
+  .description(
+    'Place a perpetual order on Hyperliquid; add --tp-px/--sl-px to attach an atomic OCO bracket'
+  )
   .requiredOption('--from <address>', 'Signer EVM address (Privy wallet)')
   .requiredOption('--coin <coin>', 'Perp symbol (for example: BTC, ETH)')
   .requiredOption('--amount <amount>', 'Order size in base units')
   .requiredOption('--side <side>', 'Order side: long | short')
-  .option('--type <type>', 'Order type: market | limit', 'market')
-  .option('--price <price>', 'Limit price (required when --type limit)')
+  .option(
+    '--type <type>',
+    'Order type: market | limit | stop_market | stop_limit | take_market | take_limit',
+    'market'
+  )
+  .option('--price <price>', 'Limit price (required when --type limit | stop_limit | take_limit)')
+  .option(
+    '--trigger-px <price>',
+    'Trigger price (required when --type stop_market | stop_limit | take_market | take_limit)'
+  )
+  .option('--tp-px <price>', 'Bracket take-profit trigger price (market | limit entry only)')
+  .option('--sl-px <price>', 'Bracket stop-loss trigger price (market | limit entry only)')
+  .option('--tp-limit-px <price>', 'Optional resting limit price for the TP leg (else market exit)')
+  .option('--sl-limit-px <price>', 'Optional resting limit price for the SL leg (else market exit)')
   .option('--tif <tif>', 'Time in force for limit orders: Gtc | Ioc | Alo', 'Gtc')
   .option('--reduce-only', 'Place reduce-only order')
   .option('--margin-mode <mode>', 'Margin mode: cross | isolated', 'cross')

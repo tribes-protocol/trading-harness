@@ -29,6 +29,8 @@ import {
   HyperliquidPerpAssetSchema,
   type HyperliquidPerpAssetsResult,
   HyperliquidPerpAssetsResultSchema,
+  type HyperliquidPerpOrderType,
+  type HyperliquidPerpTif,
   type HyperliquidPerpTradeCommandOptions,
   type HyperliquidPrivyWallet,
   type HyperliquidSpotAsset,
@@ -38,6 +40,7 @@ import {
   HyperliquidSpotBalanceSchema,
   type HyperliquidSpotTradeCommandOptions,
   type HyperliquidSpotTransferCommandOptions,
+  type HyperliquidTpSl,
   type HyperliquidUsdClassDirection,
   type HyperliquidUsdClassTransferCommandOptions,
   type HyperliquidUsdTransferCommandOptions,
@@ -76,6 +79,41 @@ interface HyperliquidListBalancesParams {
 interface CreateExchangeClientParams {
   readonly address: EthAddress
   readonly walletId: string
+}
+
+type PerpOrderTypeField =
+  | { readonly limit: { readonly tif: HyperliquidOrderTif } }
+  | {
+      readonly trigger: {
+        readonly isMarket: boolean
+        readonly triggerPx: string
+        readonly tpsl: HyperliquidTpSl
+      }
+    }
+
+interface PerpOrderWire {
+  readonly a: number
+  readonly b: boolean
+  readonly p: string
+  readonly s: string
+  readonly r: boolean
+  readonly t: PerpOrderTypeField
+}
+
+interface BuildBracketExitLegParams {
+  readonly orderType: HyperliquidPerpOrderType
+  readonly triggerPx: BigNumber
+  readonly limitPx: BigNumber | null | undefined
+  readonly exitIsBuy: boolean
+  readonly perpAsset: ResolvedPerpAsset
+  readonly size: string
+}
+
+interface ResolvePerpOrderTypeFieldParams {
+  readonly orderType: HyperliquidPerpOrderType
+  readonly tif: HyperliquidPerpTif
+  readonly triggerPx: BigNumber | null | undefined
+  readonly szDecimals: number
 }
 
 const ARBITRUM_USDC_DECIMALS = 6
@@ -274,33 +312,96 @@ export class HyperliquidService {
         })
     }
 
-    const isBuy = params.request.side === 'long'
-    const orderPrice = this.resolveOrderPrice({
+    const orderParams = this.buildPerpOrderParams(params.request, perpAsset)
+    return await exchange.order(orderParams)
+  }
+
+  private buildPerpOrderParams(
+    request: HyperliquidPerpTradeCommandOptions,
+    perpAsset: ResolvedPerpAsset
+  ): OrderParameters {
+    const isBuy = request.side === 'long'
+    const size = formatSize(request.amount.toFixed(), perpAsset.szDecimals)
+    const isBracket = !isNullish(request.tpPx) || !isNullish(request.slPx)
+
+    if (!isBracket) {
+      const orderPrice = this.resolveOrderPrice({
+        marketType: 'perp',
+        orderType: request.type,
+        limitPrice: request.price,
+        triggerPx: request.triggerPx,
+        szDecimals: perpAsset.szDecimals,
+        referencePrice: perpAsset.referencePrice,
+        isBuy
+      })
+      return {
+        orders: [
+          {
+            a: perpAsset.wireAsset,
+            b: isBuy,
+            p: orderPrice,
+            s: size,
+            r: request.reduceOnly,
+            t: this.resolvePerpOrderTypeField({
+              orderType: request.type,
+              tif: request.tif,
+              triggerPx: request.triggerPx,
+              szDecimals: perpAsset.szDecimals
+            })
+          }
+        ],
+        grouping: 'na'
+      }
+    }
+
+    const exitIsBuy = !isBuy
+    const entryPrice = this.resolveOrderPrice({
       marketType: 'perp',
-      orderType: params.request.type,
-      limitPrice: params.request.price,
+      orderType: request.type,
+      limitPrice: request.price,
+      triggerPx: null,
       szDecimals: perpAsset.szDecimals,
       referencePrice: perpAsset.referencePrice,
       isBuy
     })
-    const orderParams: OrderParameters = {
-      orders: [
-        {
-          a: perpAsset.wireAsset,
-          b: isBuy,
-          p: orderPrice,
-          s: formatSize(params.request.amount.toFixed(), perpAsset.szDecimals),
-          r: params.request.reduceOnly,
-          t: {
-            limit: {
-              tif: this.resolveOrderTif({ orderType: params.request.type, tif: params.request.tif })
-            }
-          }
-        }
-      ],
-      grouping: 'na'
+    const orders: PerpOrderWire[] = [
+      {
+        a: perpAsset.wireAsset,
+        b: isBuy,
+        p: entryPrice,
+        s: size,
+        r: false,
+        t: { limit: { tif: request.type === 'market' ? 'Ioc' : 'Gtc' } }
+      }
+    ]
+
+    if (!isNullish(request.tpPx)) {
+      orders.push(
+        this.buildBracketExitLeg({
+          orderType: isNullish(request.tpLimitPx) ? 'take_market' : 'take_limit',
+          triggerPx: request.tpPx,
+          limitPx: request.tpLimitPx,
+          exitIsBuy,
+          perpAsset,
+          size
+        })
+      )
     }
-    return await exchange.order(orderParams)
+
+    if (!isNullish(request.slPx)) {
+      orders.push(
+        this.buildBracketExitLeg({
+          orderType: isNullish(request.slLimitPx) ? 'stop_market' : 'stop_limit',
+          triggerPx: request.slPx,
+          limitPx: request.slLimitPx,
+          exitIsBuy,
+          perpAsset,
+          size
+        })
+      )
+    }
+
+    return { orders, grouping: 'normalTpsl' }
   }
 
   async tradeSpot(
@@ -575,9 +676,12 @@ export class HyperliquidService {
   }
 
   private resolveOrderPrice(params: ResolveOrderPriceParams): string {
-    const { marketType, orderType, limitPrice, szDecimals, referencePrice, isBuy } = params
+    const { marketType, orderType, limitPrice, triggerPx, szDecimals, referencePrice, isBuy } =
+      params
     switch (orderType) {
-      case 'limit': {
+      case 'limit':
+      case 'stop_limit':
+      case 'take_limit': {
         if (isNullish(limitPrice) || limitPrice.isNaN() || !limitPrice.isGreaterThan(0)) {
           throw new Error('limit price must be greater than 0')
         }
@@ -586,6 +690,48 @@ export class HyperliquidService {
       case 'market': {
         const value = referencePrice.multipliedBy(isBuy ? 1.01 : 0.99)
         return formatPrice(value.toFixed(), szDecimals, marketType)
+      }
+      case 'stop_market':
+      case 'take_market': {
+        if (isNullish(triggerPx) || triggerPx.isNaN() || !triggerPx.isGreaterThan(0)) {
+          throw new Error('trigger price must be greater than 0')
+        }
+        const value = triggerPx.multipliedBy(isBuy ? 1.01 : 0.99)
+        return formatPrice(value.toFixed(), szDecimals, marketType)
+      }
+    }
+  }
+
+  private resolvePerpOrderTypeField(params: ResolvePerpOrderTypeFieldParams): PerpOrderTypeField {
+    switch (params.orderType) {
+      case 'market':
+      case 'limit':
+        return {
+          limit: {
+            tif: this.resolveOrderTif({ orderType: params.orderType, tif: params.tif })
+          }
+        }
+      case 'stop_market':
+      case 'stop_limit':
+      case 'take_market':
+      case 'take_limit': {
+        if (
+          isNullish(params.triggerPx) ||
+          params.triggerPx.isNaN() ||
+          !params.triggerPx.isGreaterThan(0)
+        ) {
+          throw new Error('trigger price must be greater than 0')
+        }
+        const isMarket = params.orderType === 'stop_market' || params.orderType === 'take_market'
+        const tpsl: HyperliquidTpSl =
+          params.orderType === 'take_market' || params.orderType === 'take_limit' ? 'tp' : 'sl'
+        return {
+          trigger: {
+            isMarket,
+            triggerPx: formatPrice(params.triggerPx.toFixed(), params.szDecimals, 'perp'),
+            tpsl
+          }
+        }
       }
     }
   }
@@ -596,6 +742,36 @@ export class HyperliquidService {
         return 'Ioc'
       case 'limit':
         return params.tif
+      case 'stop_market':
+      case 'stop_limit':
+      case 'take_market':
+      case 'take_limit':
+        throw new Error(`tif is not applicable to ${params.orderType} orders`)
+    }
+  }
+
+  private buildBracketExitLeg(params: BuildBracketExitLegParams): PerpOrderWire {
+    const price = this.resolveOrderPrice({
+      marketType: 'perp',
+      orderType: params.orderType,
+      limitPrice: params.limitPx,
+      triggerPx: params.triggerPx,
+      szDecimals: params.perpAsset.szDecimals,
+      referencePrice: params.perpAsset.referencePrice,
+      isBuy: params.exitIsBuy
+    })
+    return {
+      a: params.perpAsset.wireAsset,
+      b: params.exitIsBuy,
+      p: price,
+      s: params.size,
+      r: true,
+      t: this.resolvePerpOrderTypeField({
+        orderType: params.orderType,
+        tif: 'Gtc',
+        triggerPx: params.triggerPx,
+        szDecimals: params.perpAsset.szDecimals
+      })
     }
   }
 

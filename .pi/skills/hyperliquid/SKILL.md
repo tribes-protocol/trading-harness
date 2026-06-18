@@ -91,7 +91,7 @@ Execution (require `--wallet-id`; most also require signer `--from`):
 
 - `deposit`
 - `withdraw`
-- `trade-perp`
+- `trade-perp` (single order, or atomic OCO bracket via `--tp-px`/`--sl-px`)
 - `trade-spot`
 - `transfer-usd-class`
 - `transfer-usd`
@@ -162,6 +162,31 @@ bun src/cli/Hyperliquid.ts withdraw \
   --wallet-id "<evmWalletId from wallet list>"
 ```
 
+### Converting "$N worth" and percentage targets (do this before any order)
+
+Trade commands take sizes and prices as literal numbers — there are no
+`--notional` / `--percent` flags. Convert intent into concrete values yourself
+before calling, using the live mark price from `list-assets`. This applies to
+every order type below (single, trigger, and bracket) and to spot orders.
+
+- `--amount` is in **base units** (contracts / shares / tokens), not USD.
+- Every price flag is an **absolute price**: `--price`, `--trigger-px`,
+  `--tp-px`, `--sl-px`, `--tp-limit-px`, `--sl-limit-px`.
+
+Steps:
+
+1. Get the mark price: `list-assets --dex <dex>` for perps (or
+   `list-assets --market spot`), field `markPx` — e.g. MSFT on `xyz` ≈ `382.605`.
+2. Size from USD notional: `amount = round(usd / markPx, szDecimals)`. For `$500`
+   and `szDecimals: 3` → `500 / 382.605 = 1.3068 → 1.307`.
+3. Targets from percentages, relative to the entry reference (use `markPx` for a
+   market entry, or your `--price` for a limit entry):
+   - Long: take-profit `ref * (1 + pct)`, stop-loss `ref * (1 - pct)`.
+     `+6% → 382.605 * 1.06 = 405.56`; `-3% → 382.605 * 0.97 = 371.13`.
+   - Short: invert — take-profit `ref * (1 - pct)`, stop-loss `ref * (1 + pct)`.
+
+Prices auto-format to valid ticks, so reasonable rounding is fine.
+
 ### Place a perp order
 
 ```bash
@@ -171,6 +196,94 @@ bun src/cli/Hyperliquid.ts trade-perp \
   --side long \
   --type market \
   --amount 0.001 \
+  --wallet-id "<evmWalletId from wallet list>"
+```
+
+### Place a stop-market perp order
+
+Triggers a market order once `--trigger-px` is crossed. Use `--reduce-only` for a
+protective stop on an existing position.
+
+```bash
+bun src/cli/Hyperliquid.ts trade-perp \
+  --from 0x1111111111111111111111111111111111111111 \
+  --coin BTC \
+  --side short \
+  --type stop_market \
+  --trigger-px 58000 \
+  --amount 0.001 \
+  --reduce-only \
+  --wallet-id "<evmWalletId from wallet list>"
+```
+
+### Place a stop-limit perp order
+
+Triggers a limit order at `--price` once `--trigger-px` is crossed.
+
+```bash
+bun src/cli/Hyperliquid.ts trade-perp \
+  --from 0x1111111111111111111111111111111111111111 \
+  --coin BTC \
+  --side short \
+  --type stop_limit \
+  --trigger-px 58000 \
+  --price 57900 \
+  --amount 0.001 \
+  --reduce-only \
+  --wallet-id "<evmWalletId from wallet list>"
+```
+
+### Place a take-profit perp order (take-market or take-limit)
+
+`take_market` fills at market once `--trigger-px` is crossed; `take_limit` rests a
+limit order at `--price`. Use `--reduce-only` to take profit on an open position.
+
+```bash
+# Take-profit market: close a long when BTC rises to 72000
+bun src/cli/Hyperliquid.ts trade-perp \
+  --from 0x1111111111111111111111111111111111111111 \
+  --coin BTC \
+  --side short \
+  --type take_market \
+  --trigger-px 72000 \
+  --amount 0.001 \
+  --reduce-only \
+  --wallet-id "<evmWalletId from wallet list>"
+
+# Take-profit limit: trigger at 72000, rest a limit at 71900
+bun src/cli/Hyperliquid.ts trade-perp \
+  --from 0x1111111111111111111111111111111111111111 \
+  --coin BTC \
+  --side short \
+  --type take_limit \
+  --trigger-px 72000 \
+  --price 71900 \
+  --amount 0.001 \
+  --reduce-only \
+  --wallet-id "<evmWalletId from wallet list>"
+```
+
+### Place an atomic bracket (entry + linked TP/SL)
+
+Add `--tp-px` and/or `--sl-px` to `trade-perp` to attach a bracket. It then
+submits the entry and its take-profit and/or stop-loss in a single `order`
+action with `grouping: normalTpsl`, so the TP/SL are linked OCO exits on the
+resulting position (one fills, the other cancels — no dangling order, no
+unprotected window). Bracket mode requires a `market` or `limit` entry (`--type`)
+and is not reduce-only. TP/SL legs default to market exits; pass
+`--tp-limit-px` / `--sl-limit-px` to rest them as limit orders instead.
+
+```bash
+# Long ~$500 of MSFT at market, take-profit +6%, stop-loss -3%
+bun src/cli/Hyperliquid.ts trade-perp \
+  --dex xyz \
+  --coin MSFT \
+  --side long \
+  --type market \
+  --amount 1.307 \
+  --tp-px 405.56 \
+  --sl-px 371.13 \
+  --from 0x1111111111111111111111111111111111111111 \
   --wallet-id "<evmWalletId from wallet list>"
 ```
 
@@ -232,13 +345,25 @@ bun src/cli/Hyperliquid.ts transfer-dex-cash \
 ## Order options
 
 - `trade-perp` supports:
-  - `--type market|limit`
-  - `--price` (required for `--type limit`)
+  - `--type market|limit|stop_market|stop_limit|take_market|take_limit`
+  - `--price` (required for `--type limit`, `stop_limit`, and `take_limit`)
+  - `--trigger-px` (required for `--type stop_market`, `stop_limit`,
+    `take_market`, and `take_limit`)
+  - the trigger direction is implied by the type: `stop_*` = stop-loss,
+    `take_*` = take-profit; pair with `--reduce-only` for protective exits
   - `--tif Gtc|Ioc|Alo`
   - `--reduce-only`
   - `--margin-mode cross|isolated`
   - `--leverage <int>`
   - `--dex <name>` (`main` default, `xyz` supported)
+  - bracket mode (attach linked TP/SL to the entry):
+    - `--tp-px` / `--sl-px` (trigger prices; either or both turns on the bracket)
+    - `--tp-limit-px` / `--sl-limit-px` (optional; rest that leg as a limit instead
+      of a market exit — each requires its matching `--tp-px` / `--sl-px`)
+    - requires a `market` or `limit` entry (`--type`) and cannot be `--reduce-only`
+  - `--margin-mode cross|isolated`, `--leverage <int>`, `--dex <name>`
+  - entry + TP/SL are sent atomically with `grouping: normalTpsl`; TP/SL are
+    reduce-only OCO exits sized to the entry
 - `trade-spot` supports:
   - `--type market|limit`
   - `--price` (required for `--type limit`)
@@ -344,9 +469,16 @@ Operational notes:
 ## Execution notes
 
 - `trade-perp --dex` defaults to `main`; pass `--dex xyz` for HIP-3 perps.
-- `trade-perp` and `trade-spot` support `market` and `limit`:
+- `trade-spot` supports `market` and `limit`; `trade-perp` also supports
+  `stop_market`, `stop_limit`, `take_market`, and `take_limit`:
   - For `--type limit`, `--price` is required and must be > 0.
   - For `--type market`, the service submits an aggressive IOC-style price around reference price.
+  - For `--type stop_market` / `take_market`, `--trigger-px` is required; once
+    triggered it fills at market (aggressive price derived from the trigger price).
+  - For `--type stop_limit` / `take_limit`, both `--trigger-px` and `--price` are
+    required; once triggered it rests as a limit order at `--price`.
+  - `stop_*` orders trigger as stop-loss and `take_*` as take-profit; pair with
+    `--reduce-only` for protective exits on an open position.
 - `transfer-usd` and `transfer-spot` send funds to another Hyperliquid account
   (`--destination`); they do not withdraw to an external chain.
 - `transfer-dex-cash` requires different source and destination dex values.
