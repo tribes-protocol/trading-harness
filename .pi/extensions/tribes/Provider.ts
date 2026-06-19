@@ -1,3 +1,6 @@
+import { execFile } from 'node:child_process'
+import { promisify } from 'node:util'
+
 import type { ExtensionAPI } from '@earendil-works/pi-coding-agent'
 
 /**
@@ -42,6 +45,8 @@ export type TribesApi = ExtensionAPI & {
   registerProvider(name: string, config: ProviderConfig): void
 }
 
+const execFileAsync = promisify(execFile)
+
 // `!command` apiKey: Pi runs this to read the bearer token. AgentProxyToken.ts
 // serves API_BEARER_TOKEN from .env (the single source the tribes extension
 // refreshes every 24h). The harness dir is surfaced AS /workspace in the sandbox
@@ -49,6 +54,8 @@ export type TribesApi = ExtensionAPI & {
 const TOKEN_COMMAND = '!bun /workspace/.pi/extensions/tribes/AgentProxyToken.ts'
 
 const ZERO_COST: ProviderModelCost = { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 }
+const MODEL_FETCH_TIMEOUT_MS = 30_000
+const MODEL_FETCH_MAX_BUFFER_BYTES = 1024 * 1024
 
 function resolveProxyBaseUrl(): string {
   return process.env.API_BASE_URL
@@ -56,33 +63,138 @@ function resolveProxyBaseUrl(): string {
     : 'http://localhost:8787/llm/proxy'
 }
 
-export function registerTribesProvider(pi: TribesApi): void {
+function resolveModelsUrl(): string {
+  return `${resolveProxyBaseUrl().replace(/\/$/, '')}/models`
+}
+
+async function readBearerToken(): Promise<string> {
+  const { stdout } = await execFileAsync('bun', ['.pi/extensions/tribes/AgentProxyToken.ts'], {
+    cwd: process.cwd(),
+    timeout: MODEL_FETCH_TIMEOUT_MS,
+    maxBuffer: MODEL_FETCH_MAX_BUFFER_BYTES
+  })
+  return stdout.trim()
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value)
+}
+
+function readNumber(value: unknown, fallback: number): number {
+  return typeof value === 'number' && Number.isFinite(value) ? value : fallback
+}
+
+function readNumberLike(value: unknown): number | null {
+  if (typeof value === 'number' && Number.isFinite(value)) return value
+  if (typeof value !== 'string' || value.length === 0) return null
+  const parsed = Number(value)
+  return Number.isFinite(parsed) ? parsed : null
+}
+
+function readBoolean(value: unknown, fallback: boolean): boolean {
+  return typeof value === 'boolean' ? value : fallback
+}
+
+function readInput(value: unknown): ('text' | 'image')[] {
+  if (!Array.isArray(value)) return ['text']
+  const input = value.filter(
+    (item): item is 'text' | 'image' => item === 'text' || item === 'image'
+  )
+  return input.length > 0 ? input : ['text']
+}
+
+function readOpenRouterPricing(value: unknown): ProviderModelCost | null {
+  if (!isRecord(value)) return null
+
+  const prompt = readNumberLike(value.prompt)
+  const completion = readNumberLike(value.completion)
+  const inputCacheRead = readNumberLike(value.input_cache_read)
+  const inputCacheWrite = readNumberLike(value.input_cache_write)
+
+  if (
+    prompt === null &&
+    completion === null &&
+    inputCacheRead === null &&
+    inputCacheWrite === null
+  ) {
+    return null
+  }
+
+  return {
+    input: (prompt ?? 0) * 1_000_000,
+    output: (completion ?? 0) * 1_000_000,
+    cacheRead: (inputCacheRead ?? 0) * 1_000_000,
+    cacheWrite: (inputCacheWrite ?? 0) * 1_000_000
+  }
+}
+
+function readCost(value: unknown, pricing: unknown): ProviderModelCost {
+  const openRouterPricing = readOpenRouterPricing(pricing)
+  if (!isRecord(value)) return openRouterPricing ?? ZERO_COST
+  return {
+    input: readNumber(value.input, openRouterPricing?.input ?? ZERO_COST.input),
+    output: readNumber(value.output, openRouterPricing?.output ?? ZERO_COST.output),
+    cacheRead: readNumber(value.cacheRead, openRouterPricing?.cacheRead ?? ZERO_COST.cacheRead),
+    cacheWrite: readNumber(value.cacheWrite, openRouterPricing?.cacheWrite ?? ZERO_COST.cacheWrite)
+  }
+}
+
+function normalizeModel(value: unknown): ProviderModel | null {
+  if (!isRecord(value) || typeof value.id !== 'string' || value.id.length === 0) return null
+
+  return {
+    id: value.id,
+    name: typeof value.name === 'string' && value.name.length > 0 ? value.name : value.id,
+    reasoning: readBoolean(value.reasoning, false),
+    input: readInput(value.input),
+    cost: readCost(value.cost, value.pricing),
+    contextWindow: readNumber(
+      value.contextWindow,
+      readNumber(value.context_window, readNumber(value.context_length, 128_000))
+    ),
+    maxTokens: readNumber(value.maxTokens, readNumber(value.max_tokens, 16_384))
+  }
+}
+
+function readModelsPayload(payload: unknown): ProviderModel[] {
+  const rawModels = isRecord(payload) && Array.isArray(payload.data) ? payload.data : payload
+  if (!Array.isArray(rawModels)) {
+    throw new Error('/models response must be an array or an object with a data array')
+  }
+
+  const models = rawModels.flatMap((model) => {
+    const normalized = normalizeModel(model)
+    return normalized ? [normalized] : []
+  })
+
+  if (models.length === 0) {
+    throw new Error('/models response did not include any valid models')
+  }
+  return models
+}
+
+async function fetchProviderModels(): Promise<ProviderModel[]> {
+  const response = await fetch(resolveModelsUrl(), {
+    headers: {
+      Authorization: `Bearer ${await readBearerToken()}`
+    }
+  })
+
+  if (!response.ok) {
+    throw new Error(`Failed to fetch /models: ${response.status} ${response.statusText}`)
+  }
+
+  const payload: unknown = await response.json()
+  return readModelsPayload(payload)
+}
+
+export async function registerTribesProvider(pi: TribesApi): Promise<void> {
   pi.registerProvider('tribes-llm-proxy', {
     name: 'Tribes LLM Proxy',
     baseUrl: resolveProxyBaseUrl(),
     api: 'openai-completions',
     apiKey: TOKEN_COMMAND,
     authHeader: true,
-    // Clean ids; the proxy maps them to OpenRouter slugs.
-    models: [
-      {
-        id: 'deepseek-v4-pro',
-        name: 'DeepSeek V4 Pro',
-        reasoning: true,
-        input: ['text'],
-        cost: ZERO_COST,
-        contextWindow: 1_000_000,
-        maxTokens: 16_384
-      },
-      {
-        id: 'kimi-k2.6',
-        name: 'Kimi K2.6',
-        reasoning: true,
-        input: ['text'],
-        cost: ZERO_COST,
-        contextWindow: 1_000_000,
-        maxTokens: 16_384
-      }
-    ]
+    models: await fetchProviderModels()
   })
 }

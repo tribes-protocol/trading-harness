@@ -13,10 +13,10 @@ import { registerTribesProvider, type TribesApi } from './Provider.ts'
 import { warmWalletSnapshot } from './WalletSnapshot.ts'
 import { showWelcome } from './Welcome.ts'
 
-export default function tribes(pi: TribesApi): void {
+export default async function tribes(pi: TribesApi): Promise<void> {
   // Put the agent key in place before the provider's token command can run.
   installAgentKey(process.cwd())
-  registerTribesProvider(pi)
+  await registerTribesProvider(pi)
 
   let authRefreshTimer: ReturnType<typeof setInterval> | undefined
 
