@@ -32,10 +32,12 @@ else
   echo "[bootstrap] could not link pi into /usr/local/bin (still on PATH via node_modules/.bin)"
 fi
 
-# Pull pi's self-managed components up to date right after install (best-effort —
-# never block boot on it).
-echo "[bootstrap] updating pi…"
-pi update || echo "[bootstrap] pi update failed (continuing)"
+# NOTE: do NOT run `pi update` here. This repo PINS pi (@earendil-works/
+# pi-coding-agent + pi-tui at 0.74.0) and the .pi extensions are written against
+# that exact API. Updating pi out from under them desyncs the runtime from the
+# pinned extension API and breaks the tribes extension's session_start hook —
+# which silently leaves .env unwritten (no bearer token → every proxy/wallet
+# call fails). Bump the pin in package.json + bun.lock instead.
 
 ENTRY="src/cli/Tribes.ts"
 # Build artifact. node_modules/.bin is writable and already on PATH in the

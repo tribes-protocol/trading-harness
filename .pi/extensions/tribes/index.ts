@@ -25,8 +25,12 @@ export default function tribes(pi: TribesApi): void {
     if (ctx.hasUI) showWelcome(ctx)
     try {
       await writeAuthEnv(ctx.cwd)
-    } catch {
-      // Best-effort; the agent can still mint tokens on demand.
+    } catch (err) {
+      // Surface it — a swallowed failure here means no .env (no API_BEARER_TOKEN),
+      // which silently breaks every proxy + wallet call (e.g. hyperliquid shows
+      // "Missing account address"). Don't fail startup, but make it visible.
+      const message = err instanceof Error ? err.message : String(err)
+      if (ctx.hasUI) ctx.ui.notify(`auth bootstrap failed — .env not written: ${message}`, 'error')
     }
     // Refresh the .env bearer token every 24h so it never goes stale.
     authRefreshTimer = setInterval(() => {
