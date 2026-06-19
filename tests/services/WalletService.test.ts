@@ -13,16 +13,14 @@ const SOL_SENDER = '11111111111111111111111111111111'
 const SOL_RECIPIENT = '9WzDXwBbmkg8ZTbNMqUxvQRAyrZzDsGYdLVL9zYtAWWM'
 const SPL_MINT = 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v'
 
-function createMockSolConnection(params?: {
-  destinationAccountExists?: boolean
-}): Connection {
+function createMockSolConnection(params?: { destinationAccountExists?: boolean }): Connection {
   return {
     getLatestBlockhash: vi.fn().mockResolvedValue({
       blockhash: '11111111111111111111111111111111'
     }),
-    getAccountInfo: vi.fn().mockResolvedValue(
-      params?.destinationAccountExists ? { data: Buffer.alloc(1) } : null
-    )
+    getAccountInfo: vi
+      .fn()
+      .mockResolvedValue(params?.destinationAccountExists ? { data: Buffer.alloc(1) } : null)
   } as unknown as Connection
 }
 

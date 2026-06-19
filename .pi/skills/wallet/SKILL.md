@@ -129,11 +129,11 @@ tribes-cli transaction sendSolTransaction \
 
 ## Error handling
 
-| Symptom                        | Action                                                                  |
-| ------------------------------ | ----------------------------------------------------------------------- |
-| Need addresses                 | Run `tribes-cli wallet list`                                            |
-| Need portfolio balances        | Run `tribes-cli wallet assets --wallet-addresses <address1> <address2>` |
-| Need balances on one EVM chain | Add `--chain-ids <id>` (for example `--chain-ids 8453` for Base)        |
-| Need EVM transfer payload      | Run `tribes-cli wallet ethTransfer --chain-id ... --token-id ...`       |
+| Symptom                        | Action                                                                   |
+| ------------------------------ | ------------------------------------------------------------------------ |
+| Need addresses                 | Run `tribes-cli wallet list`                                             |
+| Need portfolio balances        | Run `tribes-cli wallet assets --wallet-addresses <address1> <address2>`  |
+| Need balances on one EVM chain | Add `--chain-ids <id>` (for example `--chain-ids 8453` for Base)         |
+| Need EVM transfer payload      | Run `tribes-cli wallet ethTransfer --chain-id ... --token-id ...`        |
 | Need Solana transfer payload   | Run `tribes-cli wallet solTransfer --chain-id solana --from-address ...` |
-| Assets command failed          | Verify API bearer token and retry the same `assets` command             |
+| Assets command failed          | Verify API bearer token and retry the same `assets` command              |
