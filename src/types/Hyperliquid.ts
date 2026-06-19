@@ -754,6 +754,11 @@ export interface HyperliquidListBalancesParams {
   readonly dex: string | null | undefined
 }
 
+export interface HyperliquidInfoUserDexParams {
+  user: EthAddress
+  dex?: string
+}
+
 export interface HyperliquidListPositionsParams {
   readonly address: EthAddress
   readonly dex: string | null | undefined

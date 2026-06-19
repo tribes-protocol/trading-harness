@@ -18,7 +18,6 @@ import BigNumber from 'bignumber.js'
 import { encodeFunctionData, erc20Abi, parseUnits } from 'viem'
 
 import { TransactionService } from '@/services/TransactionService'
-import { type EthAddress } from '@/types/Eth'
 import {
   type BuildBracketExitLegParams,
   type BuildScaleOrdersParams,
@@ -36,6 +35,7 @@ import {
   type HyperliquidFillsResult,
   HyperliquidFillsResultSchema,
   type HyperliquidFrontendOpenOrderWire,
+  type HyperliquidInfoUserDexParams,
   type HyperliquidListBalancesParams,
   type HyperliquidListFillsParams,
   type HyperliquidListOpenOrdersParams,
@@ -589,7 +589,7 @@ export class HyperliquidService {
 
   async listBalances(params: HyperliquidListBalancesParams): Promise<HyperliquidBalancesResult> {
     const normalizedDex = this.normalizeDex(params.dex)
-    const perpParams: { user: EthAddress; dex?: string } = { user: params.address }
+    const perpParams: HyperliquidInfoUserDexParams = { user: params.address }
     if (normalizedDex.length > 0) perpParams.dex = normalizedDex
 
     const [perpState, spotState] = await Promise.all([
@@ -629,7 +629,7 @@ export class HyperliquidService {
     const [states, twapHistory] = await Promise.all([
       Promise.all(
         dexNames.map(async (dexName) => {
-          const stateParams: { user: EthAddress; dex?: string } = { user: params.address }
+          const stateParams: HyperliquidInfoUserDexParams = { user: params.address }
           if (dexName.length > 0) stateParams.dex = dexName
           const state = await this.infoClient.clearinghouseState(stateParams)
           return { dexName, state }
@@ -719,7 +719,7 @@ export class HyperliquidService {
 
     const orderSets = await Promise.all(
       dexNames.map(async (dexName) => {
-        const requestParams: { user: EthAddress; dex?: string } = { user: params.address }
+        const requestParams: HyperliquidInfoUserDexParams = { user: params.address }
         if (dexName.length > 0) requestParams.dex = dexName
         const orders = await this.infoClient.frontendOpenOrders(requestParams)
         return { dexName, orders }
@@ -740,18 +740,21 @@ export class HyperliquidService {
   }
 
   async listFills(params: HyperliquidListFillsParams): Promise<HyperliquidFillsResult> {
-    const fills = isNullish(params.startTime)
-      ? await this.infoClient.userFills({
-          user: params.address,
-          aggregateByTime: params.aggregateByTime
-        })
-      : await this.infoClient.userFillsByTime({
-          user: params.address,
-          startTime: params.startTime,
-          endTime: params.endTime ?? undefined,
-          aggregateByTime: params.aggregateByTime,
-          reversed: params.reversed
-        })
+    let fills: HyperliquidUserFillWire[]
+    if (isNullish(params.startTime)) {
+      fills = await this.infoClient.userFills({
+        user: params.address,
+        aggregateByTime: params.aggregateByTime
+      })
+    } else {
+      fills = await this.infoClient.userFillsByTime({
+        user: params.address,
+        startTime: params.startTime,
+        endTime: params.endTime ?? undefined,
+        aggregateByTime: params.aggregateByTime,
+        reversed: params.reversed
+      })
+    }
 
     return HyperliquidFillsResultSchema.parse({
       address: params.address,
@@ -789,7 +792,10 @@ export class HyperliquidService {
 
     const assets = meta.universe.map((asset, index) => {
       const assetContext = assetContexts[index]
-      const markPx = isNullish(assetContext) ? null : (assetContext.midPx ?? assetContext.markPx)
+      let markPx: string | null = null
+      if (!isNullish(assetContext)) {
+        markPx = assetContext.midPx ?? assetContext.markPx
+      }
       return HyperliquidPerpAssetSchema.parse({
         name: asset.name,
         szDecimals: asset.szDecimals,
@@ -827,9 +833,10 @@ export class HyperliquidService {
         continue
       }
       const spotAssetContext = spotAssetContexts[spotMarket.index]
-      const markPx = isNullish(spotAssetContext)
-        ? null
-        : (spotAssetContext.midPx ?? spotAssetContext.markPx)
+      let markPx: string | null = null
+      if (!isNullish(spotAssetContext)) {
+        markPx = spotAssetContext.midPx ?? spotAssetContext.markPx
+      }
       assets.push(
         HyperliquidSpotAssetSchema.parse({
           pair: `${baseTokenName}/${quoteTokenName}`,
