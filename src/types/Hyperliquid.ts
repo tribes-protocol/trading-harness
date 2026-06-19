@@ -416,6 +416,54 @@ export type HyperliquidTwapCancelCommandOptions = z.infer<
   typeof HyperliquidTwapCancelCommandOptionsSchema
 >
 
+export const HyperliquidScaleOrderCommandOptionsSchema = z
+  .object({
+    from: EthAddressSchema,
+    coin: z.string().trim().min(1),
+    amount: BigNumberSchema,
+    side: HyperliquidPerpSideSchema,
+    startPx: BigNumberSchema,
+    endPx: BigNumberSchema,
+    orders: z.coerce.number().int().min(2).max(50),
+    sizeSkew: z.coerce.number().positive().default(1),
+    tif: HyperliquidPerpTifSchema.default('Gtc'),
+    reduceOnly: z.boolean().default(false),
+    marginMode: HyperliquidPerpMarginModeSchema.default('cross'),
+    leverage: z.coerce.number().int().positive().nullish(),
+    dex: z.string().trim().nullish(),
+    walletId: z.string().trim().min(1),
+    out: z.string().nullish()
+  })
+  .superRefine((value, ctx) => {
+    const isPositive = (price: typeof value.startPx): boolean =>
+      !price.isNaN() && price.isFinite() && price.isGreaterThan(0)
+
+    if (!isPositive(value.startPx)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['startPx'],
+        message: 'startPx must be greater than 0'
+      })
+    }
+    if (!isPositive(value.endPx)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['endPx'],
+        message: 'endPx must be greater than 0'
+      })
+    }
+    if (isPositive(value.startPx) && isPositive(value.endPx) && value.startPx.eq(value.endPx)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['endPx'],
+        message: 'startPx and endPx must differ'
+      })
+    }
+  })
+export type HyperliquidScaleOrderCommandOptions = z.infer<
+  typeof HyperliquidScaleOrderCommandOptionsSchema
+>
+
 export const HyperliquidListPositionsCommandOptionsSchema = z.object({
   address: EthAddressSchema,
   dex: z.string().trim().min(1).nullish(),
@@ -584,6 +632,11 @@ export interface BuildBracketExitLegParams {
   readonly exitIsBuy: boolean
   readonly perpAsset: ResolvedPerpAsset
   readonly size: string
+}
+
+export interface BuildScaleOrdersParams {
+  readonly request: HyperliquidScaleOrderCommandOptions
+  readonly perpAsset: ResolvedPerpAsset
 }
 
 export interface ResolvePerpOrderTypeFieldParams {

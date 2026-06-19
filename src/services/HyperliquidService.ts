@@ -21,6 +21,7 @@ import { TransactionService } from '@/services/TransactionService'
 import { type EthAddress } from '@/types/Eth'
 import {
   type BuildBracketExitLegParams,
+  type BuildScaleOrdersParams,
   type CreateExchangeClientParams,
   type HyperliquidBalancesResult,
   HyperliquidBalancesResultSchema,
@@ -44,6 +45,7 @@ import {
   type HyperliquidPositionsResult,
   HyperliquidPositionsResultSchema,
   type HyperliquidPrivyWallet,
+  type HyperliquidScaleOrderCommandOptions,
   type HyperliquidServiceParams,
   type HyperliquidSpotAsset,
   HyperliquidSpotAssetSchema,
@@ -364,6 +366,60 @@ export class HyperliquidService {
     return { orders, grouping: 'normalTpsl' }
   }
 
+  private buildScaleOrderParams(params: BuildScaleOrdersParams): OrderParameters {
+    const { request, perpAsset } = params
+    const isBuy = request.side === 'long'
+    const legCount = request.orders
+    const priceSpan = request.endPx.minus(request.startPx)
+    const sizeSkew = new BigNumber(request.sizeSkew)
+    const minNotional = new BigNumber(MIN_HYPERLIQUID_ORDER_NOTIONAL_USD)
+
+    const weights: BigNumber[] = []
+    for (let i = 0; i < legCount; i++) {
+      const progress = new BigNumber(i).dividedBy(legCount - 1)
+      weights.push(new BigNumber(1).plus(sizeSkew.minus(1).multipliedBy(progress)))
+    }
+    const weightSum = weights.reduce((sum, weight) => sum.plus(weight), new BigNumber(0))
+
+    const orders: PerpOrderWire[] = []
+    let smallestNotional: BigNumber | null = null
+    let smallestLegIndex = 0
+
+    for (let i = 0; i < legCount; i++) {
+      const progress = new BigNumber(i).dividedBy(legCount - 1)
+      const price = request.startPx.plus(priceSpan.multipliedBy(progress))
+      const weight = weights[i]
+      if (isNullish(weight)) {
+        throw new Error(`missing scale weight for leg ${i + 1}`)
+      }
+      const size = request.amount.multipliedBy(weight).dividedBy(weightSum)
+      const notional = size.multipliedBy(price)
+
+      if (smallestNotional === null || notional.isLessThan(smallestNotional)) {
+        smallestNotional = notional
+        smallestLegIndex = i
+      }
+
+      orders.push({
+        a: perpAsset.wireAsset,
+        b: isBuy,
+        p: formatPrice(price.toFixed(), perpAsset.szDecimals, 'perp'),
+        s: formatSize(size.toFixed(), perpAsset.szDecimals),
+        r: request.reduceOnly,
+        t: { limit: { tif: request.tif } }
+      })
+    }
+
+    if (smallestNotional !== null && smallestNotional.isLessThan(minNotional)) {
+      throw new Error(
+        `scale leg ${smallestLegIndex + 1} notional ~$${smallestNotional.toFixed(2)} is below Hyperliquid's ` +
+          `$${MIN_HYPERLIQUID_ORDER_NOTIONAL_USD} minimum per order. Increase --amount or reduce --orders.`
+      )
+    }
+
+    return { orders, grouping: 'na' }
+  }
+
   async twapPerp(
     params: HyperliquidWithSignerParams<HyperliquidTwapOrderCommandOptions>
   ): Promise<TwapOrderSuccessResponse> {
@@ -442,6 +498,40 @@ export class HyperliquidService {
       a: perpAsset.wireAsset,
       t: params.request.twapId
     })
+  }
+
+  async scalePerp(
+    params: HyperliquidWithSignerParams<HyperliquidScaleOrderCommandOptions>
+  ): Promise<OrderSuccessResponse> {
+    if (!params.request.amount.isGreaterThan(0)) {
+      throw new Error('scale amount must be greater than 0')
+    }
+
+    const exchange = this.createExchangeClient({
+      address: params.request.from,
+      walletId: params.walletId
+    })
+    const dex = this.normalizeDex(params.request.dex)
+    const perpAsset = await this.resolvePerpAsset({
+      coin: params.request.coin,
+      dex
+    })
+
+    if (!isNullish(params.request.leverage)) {
+      await exchange
+        .updateLeverage({
+          asset: perpAsset.wireAsset,
+          isCross: params.request.marginMode === 'cross',
+          leverage: params.request.leverage
+        })
+        .catch((error: unknown) => {
+          const msg = error instanceof Error ? error.message : String(error)
+          if (!msg.includes('already') && !msg.includes('leverage')) throw error
+        })
+    }
+
+    const orderParams = this.buildScaleOrderParams({ request: params.request, perpAsset })
+    return await exchange.order(orderParams)
   }
 
   async tradeSpot(

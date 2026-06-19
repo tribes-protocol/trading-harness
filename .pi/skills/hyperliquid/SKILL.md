@@ -95,6 +95,7 @@ Execution (require `--wallet-id`; most also require signer `--from`):
 - `withdraw`
 - `trade-perp` (single order, or atomic OCO bracket via `--tp-px`/`--sl-px`)
 - `twap-perp` / `twap-cancel`
+- `scale-perp` (ladder of limit orders across a price range)
 - `trade-spot`
 - `transfer-usd-class`
 - `transfer-usd`
@@ -349,6 +350,29 @@ tribes-cli hyperliquid twap-cancel \
   --wallet-id "<evmWalletId from wallet list>"
 ```
 
+### Place a scale (ladder) perp order
+
+A scale order splits `--amount` into `--orders` resting limit legs whose prices
+step linearly from `--start-px` to `--end-px`. Use `--size-skew` to tilt more
+size toward the end of the range (`1` = uniform legs). All legs are submitted
+atomically in one signed action. Each leg must be ≥ $10 notional; the CLI
+rejects too-small scales before signing — increase `--amount` or reduce
+`--orders` if you hit this.
+
+```bash
+# Long 0.01 BTC across 5 limit orders from 95000 to 98000, skewed toward higher prices
+tribes-cli hyperliquid scale-perp \
+  --from 0x1111111111111111111111111111111111111111 \
+  --coin BTC \
+  --side long \
+  --amount 0.01 \
+  --start-px 95000 \
+  --end-px 98000 \
+  --orders 5 \
+  --size-skew 1.5 \
+  --wallet-id "<evmWalletId from wallet list>"
+```
+
 ### Place a spot order
 
 ```bash
@@ -434,6 +458,14 @@ tribes-cli hyperliquid transfer-dex-cash \
   - each sub-order must be ≥ $10 notional (split is `durationMinutes * 2`
     sub-orders); the CLI rejects too-small TWAPs before signing
   - returns a `twapId`; cancel early with `twap-cancel --coin <c> --twap-id <id>`
+- `scale-perp` supports:
+  - `--amount` (total size, base units), `--side long|short`
+  - `--start-px` / `--end-px` (price range endpoints; must differ)
+  - `--orders <2-50>` (number of evenly spaced limit legs)
+  - `--size-skew <ratio>` (last-leg size / first-leg size; `1` = uniform)
+  - `--tif Gtc|Ioc|Alo`, `--reduce-only`
+  - `--margin-mode cross|isolated`, `--leverage <int>`, `--dex <name>`
+  - each leg must be ≥ $10 notional; the CLI rejects too-small scales before signing
 - `trade-spot` supports:
   - `--type market|limit`
   - `--price` (required for `--type limit`)

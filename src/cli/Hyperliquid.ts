@@ -12,6 +12,7 @@ import {
   HyperliquidListExchangesCommandOptionsSchema,
   HyperliquidListPositionsCommandOptionsSchema,
   HyperliquidPerpTradeCommandOptionsSchema,
+  HyperliquidScaleOrderCommandOptionsSchema,
   HyperliquidSpotTradeCommandOptionsSchema,
   HyperliquidSpotTransferCommandOptionsSchema,
   HyperliquidTwapCancelCommandOptionsSchema,
@@ -171,6 +172,39 @@ export function buildHyperliquidCommand(): Command {
     .action(async (options: unknown): Promise<void> => {
       const request = HyperliquidTwapCancelCommandOptionsSchema.parse(options)
       const response = await hyperliquidService.twapCancel({
+        request,
+        walletId: request.walletId
+      })
+      const output = ensureJsonTreeString(response)
+      await writeOutput({
+        output,
+        outPath: request.out ?? undefined
+      })
+    })
+
+  program
+    .command('scale-perp')
+    .description(
+      'Place a scale (ladder) perp order on Hyperliquid — N limit orders evenly spaced across a price range'
+    )
+    .requiredOption('--from <address>', 'Signer EVM address (Privy wallet)')
+    .requiredOption('--coin <coin>', 'Perp symbol (for example: BTC, ETH)')
+    .requiredOption('--amount <amount>', 'Total order size in base units (split across legs)')
+    .requiredOption('--side <side>', 'Order side: long | short')
+    .requiredOption('--start-px <price>', 'Start of the price range (first leg price)')
+    .requiredOption('--end-px <price>', 'End of the price range (last leg price)')
+    .requiredOption('--orders <count>', 'Number of limit legs (2-50)')
+    .option('--size-skew <ratio>', 'Size ratio from first to last leg (1 = uniform)', '1')
+    .option('--tif <tif>', 'Time in force for all legs: Gtc | Ioc | Alo', 'Gtc')
+    .option('--reduce-only', 'Place reduce-only orders')
+    .option('--margin-mode <mode>', 'Margin mode: cross | isolated', 'cross')
+    .option('--leverage <leverage>', 'Set leverage before order (integer)')
+    .option('--dex <dex>', 'Perp dex name (main by default)')
+    .requiredOption('--wallet-id <walletId>', 'Privy wallet id')
+    .option('--out <file>', 'Write output JSON to file')
+    .action(async (options: unknown): Promise<void> => {
+      const request = HyperliquidScaleOrderCommandOptionsSchema.parse(options)
+      const response = await hyperliquidService.scalePerp({
         request,
         walletId: request.walletId
       })
