@@ -182,31 +182,6 @@ export function buildHyperliquidCommand(): Command {
     })
 
   program
-    .command('trade-spot')
-    .description('Place a spot order on Hyperliquid')
-    .requiredOption('--from <address>', 'Signer EVM address (Privy wallet)')
-    .requiredOption('--pair <pair>', 'Spot pair (for example: HYPE/USDC)')
-    .requiredOption('--amount <amount>', 'Order size in base units')
-    .requiredOption('--side <side>', 'Order side: buy | sell')
-    .option('--type <type>', 'Order type: market | limit', 'market')
-    .option('--price <price>', 'Limit price (required when --type limit)')
-    .option('--tif <tif>', 'Time in force for limit orders: Gtc | Ioc | Alo', 'Gtc')
-    .requiredOption('--wallet-id <walletId>', 'Privy wallet id')
-    .option('--out <file>', 'Write output JSON to file')
-    .action(async (options: unknown): Promise<void> => {
-      const request = HyperliquidSpotTradeCommandOptionsSchema.parse(options)
-      const response = await hyperliquidService.tradeSpot({
-        request,
-        walletId: request.walletId
-      })
-      const output = ensureJsonTreeString(response)
-      await writeOutput({
-        output,
-        outPath: request.out ?? undefined
-      })
-    })
-
-  program
     .command('withdraw')
     .description('Withdraw USDC from Hyperliquid to an EVM address')
     .requiredOption('--amount <amount>', 'USDC amount (decimal units)')
