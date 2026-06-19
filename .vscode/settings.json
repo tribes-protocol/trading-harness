@@ -1,13 +1,12 @@
 {
-    "editor.defaultFormatter": "esbenp.prettier-vscode",
-    "editor.formatOnSave": true,
-    "editor.codeActionsOnSave": {
-      "source.fixAll.eslint": "explicit"
-    },
-    "eslint.codeActionsOnSave.rules": [
-      "!unused-imports/no-unused-imports",
-      "!unused-imports/no-unused-vars",
-      "*"
-    ]
-  }
-  
+  "editor.defaultFormatter": "esbenp.prettier-vscode",
+  "editor.formatOnSave": true,
+  "editor.codeActionsOnSave": {
+    "source.fixAll.eslint": "explicit"
+  },
+  "eslint.codeActionsOnSave.rules": [
+    "!unused-imports/no-unused-imports",
+    "!unused-imports/no-unused-vars",
+    "*"
+  ]
+}
