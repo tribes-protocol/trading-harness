@@ -5,6 +5,7 @@ import { writeOutput } from '@/helpers/WriteOutput'
 import { HyperliquidService } from '@/services/HyperliquidService'
 import { TransactionService } from '@/services/TransactionService'
 import {
+  HyperliquidCancelOrderCommandOptionsSchema,
   HyperliquidDepositCommandOptionsSchema,
   HyperliquidDexCashTransferCommandOptionsSchema,
   HyperliquidListAssetsCommandOptionsSchema,
@@ -15,8 +16,12 @@ import {
   HyperliquidListPositionsCommandOptionsSchema,
   HyperliquidPerpTradeCommandOptionsSchema,
   HyperliquidScaleOrderCommandOptionsSchema,
+  HyperliquidSpotCancelOrderCommandOptionsSchema,
+  HyperliquidSpotScaleOrderCommandOptionsSchema,
   HyperliquidSpotTradeCommandOptionsSchema,
   HyperliquidSpotTransferCommandOptionsSchema,
+  HyperliquidSpotTwapCancelCommandOptionsSchema,
+  HyperliquidSpotTwapOrderCommandOptionsSchema,
   HyperliquidTwapCancelCommandOptionsSchema,
   HyperliquidTwapOrderCommandOptionsSchema,
   HyperliquidUsdClassTransferCommandOptionsSchema,
@@ -215,6 +220,30 @@ export function buildHyperliquidCommand(): Command {
     })
 
   program
+    .command('twap-spot')
+    .description('Place a TWAP spot order on Hyperliquid (slices the order over a duration)')
+    .requiredOption('--from <address>', 'Signer EVM address (Privy wallet)')
+    .requiredOption('--pair <pair>', 'Spot pair (for example: HYPE/USDC)')
+    .requiredOption('--amount <amount>', 'Total order size in base units')
+    .requiredOption('--side <side>', 'Order side: buy | sell')
+    .requiredOption('--duration-minutes <minutes>', 'TWAP duration in minutes (5-1440)')
+    .option('--randomize', 'Randomize sub-order timing')
+    .requiredOption('--wallet-id <walletId>', 'Privy wallet id')
+    .option('--out <file>', 'Write output JSON to file')
+    .action(async (options: unknown): Promise<void> => {
+      const request = HyperliquidSpotTwapOrderCommandOptionsSchema.parse(options)
+      const response = await hyperliquidService.twapSpot({
+        request,
+        walletId: request.walletId
+      })
+      const output = ensureJsonTreeString(response)
+      await writeOutput({
+        output,
+        outPath: request.out ?? undefined
+      })
+    })
+
+  program
     .command('twap-cancel')
     .description('Cancel a running TWAP perp order on Hyperliquid')
     .requiredOption('--from <address>', 'Signer EVM address (Privy wallet)')
@@ -226,6 +255,99 @@ export function buildHyperliquidCommand(): Command {
     .action(async (options: unknown): Promise<void> => {
       const request = HyperliquidTwapCancelCommandOptionsSchema.parse(options)
       const response = await hyperliquidService.twapCancel({
+        request,
+        walletId: request.walletId
+      })
+      const output = ensureJsonTreeString(response)
+      await writeOutput({
+        output,
+        outPath: request.out ?? undefined
+      })
+    })
+
+  program
+    .command('twap-cancel-spot')
+    .description('Cancel a running TWAP spot order on Hyperliquid')
+    .requiredOption('--from <address>', 'Signer EVM address (Privy wallet)')
+    .requiredOption('--pair <pair>', 'Spot pair the TWAP was placed on (for example: HYPE/USDC)')
+    .requiredOption('--twap-id <twapId>', 'TWAP id returned when the order was placed')
+    .requiredOption('--wallet-id <walletId>', 'Privy wallet id')
+    .option('--out <file>', 'Write output JSON to file')
+    .action(async (options: unknown): Promise<void> => {
+      const request = HyperliquidSpotTwapCancelCommandOptionsSchema.parse(options)
+      const response = await hyperliquidService.twapCancelSpot({
+        request,
+        walletId: request.walletId
+      })
+      const output = ensureJsonTreeString(response)
+      await writeOutput({
+        output,
+        outPath: request.out ?? undefined
+      })
+    })
+
+  program
+    .command('cancel-order')
+    .description('Cancel a resting perp order on Hyperliquid by order id')
+    .requiredOption('--from <address>', 'Signer EVM address (Privy wallet)')
+    .requiredOption('--coin <coin>', 'Perp symbol the order was placed on')
+    .requiredOption('--order-id <orderId>', 'Order id from list-open-orders')
+    .option('--dex <dex>', 'Perp dex name (main by default)')
+    .requiredOption('--wallet-id <walletId>', 'Privy wallet id')
+    .option('--out <file>', 'Write output JSON to file')
+    .action(async (options: unknown): Promise<void> => {
+      const request = HyperliquidCancelOrderCommandOptionsSchema.parse(options)
+      const response = await hyperliquidService.cancelOrder({
+        request,
+        walletId: request.walletId
+      })
+      const output = ensureJsonTreeString(response)
+      await writeOutput({
+        output,
+        outPath: request.out ?? undefined
+      })
+    })
+
+  program
+    .command('cancel-order-spot')
+    .description('Cancel a resting spot order on Hyperliquid by order id')
+    .requiredOption('--from <address>', 'Signer EVM address (Privy wallet)')
+    .requiredOption('--pair <pair>', 'Spot pair the order was placed on (for example: HYPE/USDC)')
+    .requiredOption('--order-id <orderId>', 'Order id from list-open-orders')
+    .requiredOption('--wallet-id <walletId>', 'Privy wallet id')
+    .option('--out <file>', 'Write output JSON to file')
+    .action(async (options: unknown): Promise<void> => {
+      const request = HyperliquidSpotCancelOrderCommandOptionsSchema.parse(options)
+      const response = await hyperliquidService.cancelOrderSpot({
+        request,
+        walletId: request.walletId
+      })
+      const output = ensureJsonTreeString(response)
+      await writeOutput({
+        output,
+        outPath: request.out ?? undefined
+      })
+    })
+
+  program
+    .command('scale-spot')
+    .description(
+      'Place a scale (ladder) spot order on Hyperliquid — N limit orders evenly spaced across a price range'
+    )
+    .requiredOption('--from <address>', 'Signer EVM address (Privy wallet)')
+    .requiredOption('--pair <pair>', 'Spot pair (for example: HYPE/USDC)')
+    .requiredOption('--amount <amount>', 'Total order size in base units (split across legs)')
+    .requiredOption('--side <side>', 'Order side: buy | sell')
+    .requiredOption('--start-px <price>', 'Start of the price range (first leg price)')
+    .requiredOption('--end-px <price>', 'End of the price range (last leg price)')
+    .requiredOption('--orders <count>', 'Number of limit legs (2-50)')
+    .option('--size-skew <ratio>', 'Size ratio from first to last leg (1 = uniform)', '1')
+    .option('--tif <tif>', 'Time in force for all legs: Gtc | Ioc | Alo', 'Gtc')
+    .requiredOption('--wallet-id <walletId>', 'Privy wallet id')
+    .option('--out <file>', 'Write output JSON to file')
+    .action(async (options: unknown): Promise<void> => {
+      const request = HyperliquidSpotScaleOrderCommandOptionsSchema.parse(options)
+      const response = await hyperliquidService.scaleSpot({
         request,
         walletId: request.walletId
       })
