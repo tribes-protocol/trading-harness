@@ -33,7 +33,7 @@ else
 fi
 
 # NOTE: do NOT run `pi update` here. This repo PINS pi (@earendil-works/
-# pi-coding-agent + pi-tui at 0.74.0) and the .pi extensions are written against
+# pi-coding-agent + pi-tui at 0.79.8) and the .pi extensions are written against
 # that exact API. Updating pi out from under them desyncs the runtime from the
 # pinned extension API and breaks the tribes extension's session_start hook —
 # which silently leaves .env unwritten (no bearer token → every proxy/wallet
