@@ -81,20 +81,42 @@ function firstLine(text: string): string | null {
   )
 }
 
-async function resolveUserAddress(cwd: string): Promise<string | null> {
-  // .pi/privy-wallets.json is written by wallet bootstrap/login flows.
-  const wallets = await readJson<unknown>(resolve(cwd, '.pi/privy-wallets.json'), null)
-  // Current wallet snapshot format is an array of wallet pairs written by
-  // wallet CLI list output (`evmWalletAddress` + `solWalletAddress`).
-  if (!Array.isArray(wallets)) return null
-  for (const row of wallets) {
-    if (!isRecord(row)) continue
-    const wallet = row.evmWalletAddress
-    if (typeof wallet !== 'string') continue
-    if (wallet && /^0x[0-9a-fA-F]{40}$/u.test(wallet)) return wallet
-  }
+// 'pending'  — the wallet snapshot file isn't on disk yet (warmed async at
+//              startup); the address is loading, not absent.
+// 'missing'  — the snapshot exists but holds no usable EVM address.
+// 'ready'    — resolved address.
+type AccountState =
+  | { readonly kind: 'ready'; readonly address: string }
+  | { readonly kind: 'pending' }
+  | { readonly kind: 'missing' }
 
-  return null
+async function resolveAccountState(cwd: string): Promise<AccountState> {
+  // .pi/privy-wallets.json is written by the tribes wallet-snapshot warmup
+  // (`tribes-cli wallet list`), which runs a beat AFTER session start — so an
+  // absent/unreadable file means "still loading", not "no account".
+  let raw: string
+  try {
+    raw = await readFile(resolve(cwd, '.pi/privy-wallets.json'), 'utf8')
+  } catch {
+    return { kind: 'pending' }
+  }
+  let wallets: unknown
+  try {
+    wallets = JSON.parse(raw)
+  } catch {
+    return { kind: 'pending' }
+  }
+  // Array of wallet pairs from the wallet CLI (`evmWalletAddress` + `solWalletAddress`).
+  if (Array.isArray(wallets)) {
+    for (const row of wallets) {
+      if (!isRecord(row)) continue
+      const wallet = row.evmWalletAddress
+      if (typeof wallet === 'string' && /^0x[0-9a-fA-F]{40}$/u.test(wallet)) {
+        return { kind: 'ready', address: wallet }
+      }
+    }
+  }
+  return { kind: 'missing' }
 }
 
 async function hyperliquidInfo<T>(
@@ -495,11 +517,14 @@ async function readClosedPnlSummary(
 }
 
 async function buildStatus(cwd: string): Promise<HyperliquidStatus> {
-  const user = await resolveUserAddress(cwd)
+  const accountState = await resolveAccountState(cwd)
   const dexes = DEFAULT_DEXES
   const killSwitch = await readKillSwitch(cwd)
 
-  if (!user) {
+  if (accountState.kind !== 'ready') {
+    // 'pending' renders as a loading state (no error, no scary border); only a
+    // confirmed-'missing' snapshot says "Missing account address".
+    const initializing = accountState.kind === 'pending'
     const status: HyperliquidStatus = {
       ok: false,
       schema: 'hyperliquid-status.v1',
@@ -508,7 +533,8 @@ async function buildStatus(cwd: string): Promise<HyperliquidStatus> {
       user: null,
       dexes,
       accountSource: 'unavailable',
-      accountError: 'Missing account address',
+      accountError: initializing ? null : 'Missing account address',
+      initializing,
       hyperliquidAccounts: [],
       killSwitch: killSwitch.enabled,
       killSwitchReason: killSwitch.reason,
@@ -527,11 +553,12 @@ async function buildStatus(cwd: string): Promise<HyperliquidStatus> {
       closedPnl24h: null,
       topCandidates: [],
       totalTrades: 0,
-      error: 'Missing account address'
+      ...(initializing ? {} : { error: 'Missing account address' })
     }
     await writeJson(resolveStatusPath(cwd), status)
     return status
   }
+  const user = accountState.address
 
   const costSummary = await readCostSummary(user).catch(
     (error) =>
@@ -577,6 +604,7 @@ async function buildStatus(cwd: string): Promise<HyperliquidStatus> {
 
   const status: HyperliquidStatus = {
     ok: account.accounts.length > 0,
+    initializing: false,
     schema: 'hyperliquid-status.v1',
     updatedAt: new Date().toISOString(),
     mode: 'live',
@@ -619,6 +647,7 @@ async function refreshStatusSnapshot(cwd: string): Promise<HyperliquidStatus> {
       return {
         ...cached,
         ok: false,
+        initializing: false,
         accountError: error instanceof Error ? error.message : String(error),
         error: 'Using cached status after refresh failure'
       }
@@ -663,6 +692,7 @@ export default function hyperliquidStatus(pi: ExtensionAPI): void {
   let lastStatus: HyperliquidStatus | null = null
   let widgetHandle: TUI | null = null
   let widgetRegistered = false
+  let initPollTimer: ReturnType<typeof setTimeout> | undefined
 
   function requestWidgetRender(): void {
     widgetHandle?.requestRender()
@@ -710,11 +740,40 @@ export default function hyperliquidStatus(pi: ExtensionAPI): void {
     }
   }
 
+  // The wallet snapshot lands a beat after startup, so the first refresh sees
+  // 'pending' (loading). Poll briefly so the widget flips to real data within a
+  // second or two of the snapshot appearing; after a grace window with still no
+  // snapshot, stop loading and show it as genuinely missing.
+  const INIT_POLL_MS = 1_500
+  const INIT_GRACE_MS = 25_000
+
+  function scheduleInitPoll(ctx: ExtensionContext, deadlineMs: number): void {
+    initPollTimer = setTimeout(() => {
+      void (async () => {
+        await refreshStatus(ctx)
+        if (!lastStatus?.initializing) return
+        if (Date.now() >= deadlineMs) {
+          lastStatus = {
+            ...lastStatus,
+            initializing: false,
+            accountSource: 'unavailable',
+            accountError: 'Missing account address',
+            error: 'Missing account address'
+          }
+          requestWidgetRender()
+          return
+        }
+        scheduleInitPoll(ctx, deadlineMs)
+      })()
+    }, INIT_POLL_MS)
+  }
+
   pi.on('session_start', async (_event, ctx) => {
     const cached = await readJson<HyperliquidStatus | null>(resolveStatusPath(ctx.cwd), null)
     if (cached) lastStatus = cached
     syncWidget(ctx)
     await refreshStatus(ctx)
+    if (lastStatus?.initializing) scheduleInitPoll(ctx, Date.now() + INIT_GRACE_MS)
     statusTimer = setInterval(() => {
       void refreshStatus(ctx)
     }, 60_000)
@@ -727,6 +786,8 @@ export default function hyperliquidStatus(pi: ExtensionAPI): void {
   pi.on('session_shutdown', async () => {
     if (statusTimer) clearInterval(statusTimer)
     statusTimer = undefined
+    if (initPollTimer) clearTimeout(initPollTimer)
+    initPollTimer = undefined
   })
 
   pi.registerCommand('hl-status', {

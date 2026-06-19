@@ -249,7 +249,10 @@ export function renderHyperliquidPositionsWidget(
   width: number,
   refreshing = false
 ): string[] {
-  const borderColor = (value: string): string => theme.fg(status.ok ? 'accent' : 'warning', value)
+  // Loading uses a calm dim border; a real failure (missing account / error) is
+  // a warning; a healthy account is the accent.
+  const borderTone = status.ok ? 'accent' : status.initializing ? 'dim' : 'warning'
+  const borderColor = (value: string): string => theme.fg(borderTone, value)
   const container = new Container()
   const contentWidth = Math.max(20, width - 2)
 
@@ -268,16 +271,13 @@ export function renderHyperliquidPositionsWidget(
   )
 
   if (!status.ok) {
-    container.addChild(
-      new Text(
-        theme.fg(
+    const notice = status.initializing
+      ? theme.fg('dim', 'Loading account…')
+      : theme.fg(
           'warning',
           status.accountError ?? status.error ?? 'Unable to load Hyperliquid status'
-        ),
-        1,
-        0
-      )
-    )
+        )
+    container.addChild(new Text(notice, 1, 0))
     container.addChild(new DynamicBorder(borderColor))
     return container.render(width)
   }
