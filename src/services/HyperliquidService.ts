@@ -564,8 +564,15 @@ export class HyperliquidService {
       }
     }
 
-    const twapOrders: HyperliquidPerpTwapOrder[] = []
+    const latestTwapById = new Map<number, (typeof twapHistory)[number]>()
     for (const twap of twapHistory) {
+      if (isNullish(twap.twapId)) continue
+      const existing = latestTwapById.get(twap.twapId)
+      if (isNullish(existing) || twap.time > existing.time) latestTwapById.set(twap.twapId, twap)
+    }
+
+    const twapOrders: HyperliquidPerpTwapOrder[] = []
+    for (const twap of latestTwapById.values()) {
       if (twap.status.status !== 'activated') continue
 
       const { dex, coin } = this.resolveDexAndCoin(twap.state.coin)
