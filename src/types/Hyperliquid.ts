@@ -474,6 +474,165 @@ export type HyperliquidListPositionsCommandOptions = z.infer<
   typeof HyperliquidListPositionsCommandOptionsSchema
 >
 
+export const HyperliquidListOpenOrdersCommandOptionsSchema = z.object({
+  address: EthAddressSchema,
+  dex: z.string().trim().min(1).nullish(),
+  allDexes: z.boolean().default(false),
+  out: z.string().nullish()
+})
+export type HyperliquidListOpenOrdersCommandOptions = z.infer<
+  typeof HyperliquidListOpenOrdersCommandOptionsSchema
+>
+
+export const HyperliquidOpenOrderSideSchema = z.enum(['buy', 'sell'])
+export type HyperliquidOpenOrderSide = z.infer<typeof HyperliquidOpenOrderSideSchema>
+
+export const HyperliquidOpenOrderTypeSchema = z.enum([
+  'Market',
+  'Limit',
+  'Stop Market',
+  'Stop Limit',
+  'Take Profit Market',
+  'Take Profit Limit'
+])
+export type HyperliquidOpenOrderType = z.infer<typeof HyperliquidOpenOrderTypeSchema>
+
+export const HyperliquidOpenOrderSchema = z.object({
+  dex: z.string(),
+  coin: z.string(),
+  market: HyperliquidMarketKindSchema,
+  side: HyperliquidOpenOrderSideSchema,
+  limitPx: z.string(),
+  size: z.string(),
+  origSize: z.string(),
+  orderId: z.number().int().nonnegative(),
+  timestamp: z.number().int().nonnegative(),
+  orderType: HyperliquidOpenOrderTypeSchema,
+  tif: z.enum(['Gtc', 'Ioc', 'Alo', 'FrontendMarket', 'LiquidationMarket']).nullish(),
+  reduceOnly: z.boolean(),
+  isTrigger: z.boolean(),
+  triggerPx: z.string().nullish(),
+  triggerCondition: z.string(),
+  isPositionTpsl: z.boolean(),
+  cloid: z.string().nullish()
+})
+export type HyperliquidOpenOrder = z.infer<typeof HyperliquidOpenOrderSchema>
+
+export const HyperliquidOpenOrdersResultSchema = z.object({
+  address: EthAddressSchema,
+  orders: z.array(HyperliquidOpenOrderSchema)
+})
+export type HyperliquidOpenOrdersResult = z.infer<typeof HyperliquidOpenOrdersResultSchema>
+
+export const HyperliquidListFillsCommandOptionsSchema = z
+  .object({
+    address: EthAddressSchema,
+    startTime: z.coerce.number().int().nonnegative().nullish(),
+    endTime: z.coerce.number().int().nonnegative().nullish(),
+    aggregateByTime: z.boolean().default(false),
+    reversed: z.boolean().default(false),
+    out: z.string().nullish()
+  })
+  .superRefine((value, ctx) => {
+    if (!isNullish(value.endTime) && isNullish(value.startTime)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['endTime'],
+        message: 'endTime requires startTime'
+      })
+    }
+    if (
+      !isNullish(value.startTime) &&
+      !isNullish(value.endTime) &&
+      value.endTime < value.startTime
+    ) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['endTime'],
+        message: 'endTime must be greater than or equal to startTime'
+      })
+    }
+  })
+export type HyperliquidListFillsCommandOptions = z.infer<
+  typeof HyperliquidListFillsCommandOptionsSchema
+>
+
+export const HyperliquidFillLiquidationSchema = z.object({
+  liquidatedUser: EthAddressSchema,
+  markPx: z.string(),
+  method: z.enum(['market', 'backstop'])
+})
+export type HyperliquidFillLiquidation = z.infer<typeof HyperliquidFillLiquidationSchema>
+
+export const HyperliquidFillSchema = z.object({
+  dex: z.string(),
+  coin: z.string(),
+  market: HyperliquidMarketKindSchema,
+  side: HyperliquidOpenOrderSideSchema,
+  price: z.string(),
+  size: z.string(),
+  startPosition: z.string(),
+  direction: z.string(),
+  closedPnl: z.string(),
+  fee: z.string(),
+  feeToken: z.string(),
+  builderFee: z.string().nullish(),
+  hash: z.string(),
+  orderId: z.number().int().nonnegative(),
+  tradeId: z.number().int().nonnegative(),
+  timestamp: z.number().int().nonnegative(),
+  crossed: z.boolean(),
+  twapId: z.number().int().nonnegative().nullish(),
+  cloid: z.string().nullish(),
+  liquidation: HyperliquidFillLiquidationSchema.nullish()
+})
+export type HyperliquidFill = z.infer<typeof HyperliquidFillSchema>
+
+export const HyperliquidFillsResultSchema = z.object({
+  address: EthAddressSchema,
+  fills: z.array(HyperliquidFillSchema)
+})
+export type HyperliquidFillsResult = z.infer<typeof HyperliquidFillsResultSchema>
+
+export interface HyperliquidUserFillWire {
+  readonly coin: string
+  readonly px: string
+  readonly sz: string
+  readonly side: 'B' | 'A'
+  readonly time: number
+  readonly startPosition: string
+  readonly dir: string
+  readonly closedPnl: string
+  readonly hash: string
+  readonly oid: number
+  readonly crossed: boolean
+  readonly fee: string
+  readonly builderFee?: string
+  readonly tid: number
+  readonly feeToken: string
+  readonly twapId: number | null
+  readonly cloid?: string
+  readonly liquidation?: HyperliquidFillLiquidation
+}
+
+export interface HyperliquidFrontendOpenOrderWire {
+  readonly coin: string
+  readonly side: 'B' | 'A'
+  readonly limitPx: string
+  readonly sz: string
+  readonly origSz: string
+  readonly oid: number
+  readonly timestamp: number
+  readonly orderType: HyperliquidOpenOrderType
+  readonly tif: 'Gtc' | 'Ioc' | 'Alo' | 'FrontendMarket' | 'LiquidationMarket' | null
+  readonly reduceOnly: boolean
+  readonly isTrigger: boolean
+  readonly triggerPx: string
+  readonly triggerCondition: string
+  readonly isPositionTpsl: boolean
+  readonly cloid: string | null
+}
+
 export const HyperliquidPerpPositionSchema = z.object({
   dex: z.string(),
   coin: z.string(),
@@ -599,6 +758,20 @@ export interface HyperliquidListPositionsParams {
   readonly address: EthAddress
   readonly dex: string | null | undefined
   readonly allDexes: boolean
+}
+
+export interface HyperliquidListOpenOrdersParams {
+  readonly address: EthAddress
+  readonly dex: string | null | undefined
+  readonly allDexes: boolean
+}
+
+export interface HyperliquidListFillsParams {
+  readonly address: EthAddress
+  readonly startTime: number | null | undefined
+  readonly endTime: number | null | undefined
+  readonly aggregateByTime: boolean
+  readonly reversed: boolean
 }
 
 export interface CreateExchangeClientParams {

@@ -88,6 +88,10 @@ Discovery (read-only, no wallet/signer):
   `--address` (read-only); scope perp with `--dex <name>`
 - `list-positions` — list open perp positions for an `--address` (read-only);
   scope with `--dex <name>` or sweep everything with `--all-dexes`
+- `list-open-orders` — list open resting orders (perp + spot) for an `--address`
+  (read-only); scope with `--dex <name>` or sweep with `--all-dexes`
+- `list-fills` — list trade fills for an `--address` (read-only); recent fills by
+  default, or a time range with `--start-time` / `--end-time`
 
 Execution (require `--wallet-id`; most also require signer `--from`):
 
@@ -167,6 +171,52 @@ with `dex`, `coin`, `side` (`long`/`short`), `size` (absolute), `signedSize`,
 Read-only — no wallet or signer required. Prefer this over ad-hoc inline scripts
 when you need a per-position view (for example, to enumerate positions before
 closing them with `trade-perp --reduce-only`).
+
+### List open orders
+
+```bash
+# Open orders on the main dex (includes spot resting orders)
+tribes-cli hyperliquid list-open-orders \
+  --address 0x1111111111111111111111111111111111111111
+
+# Perp open orders on a named dex (spot orders only appear on main)
+tribes-cli hyperliquid list-open-orders \
+  --address 0x1111111111111111111111111111111111111111 \
+  --dex xyz
+
+# Sweep main + every perp dex
+tribes-cli hyperliquid list-open-orders \
+  --address 0x1111111111111111111111111111111111111111 \
+  --all-dexes
+```
+
+Returns an array of open orders, each with `dex`, `coin`, `market` (`perp`|`spot`),
+`side` (`buy`|`sell`), `limitPx`, `size`, `origSize`, `orderId`, `timestamp`,
+`orderType`, `tif`, `reduceOnly`, trigger/bracket fields, and optional `cloid`.
+Use this to inspect resting limit/ trigger orders (including scale ladder legs).
+Read-only — no wallet or signer required.
+
+### List fills
+
+```bash
+# Up to 2000 most recent fills
+tribes-cli hyperliquid list-fills \
+  --address 0x1111111111111111111111111111111111111111
+
+# Fills in a time range (paginate with the last fill timestamp as the next startTime)
+tribes-cli hyperliquid list-fills \
+  --address 0x1111111111111111111111111111111111111111 \
+  --start-time 1700000000000 \
+  --end-time 1700086400000
+```
+
+Returns an array of fills in API order, each with `dex`, `coin`, `market`, `side`, `price`, `size`,
+`closedPnl`, `fee`, `feeToken`, `orderId`, `tradeId`, `timestamp`, `crossed`
+(taker), optional `twapId`, and optional `liquidation` details. Without
+`--start-time`, Hyperliquid returns up to 2000 most recent fills via `userFills`
+(order not guaranteed). With `--start-time`, `userFillsByTime` returns oldest
+first by default; pass `--reversed` for newest first (paginate using the last
+fill timestamp as the next `startTime`). Read-only — no wallet or signer required.
 
 ### Deposit Arbitrum USDC to Hyperliquid
 

@@ -10,6 +10,8 @@ import {
   HyperliquidListAssetsCommandOptionsSchema,
   HyperliquidListBalancesCommandOptionsSchema,
   HyperliquidListExchangesCommandOptionsSchema,
+  HyperliquidListFillsCommandOptionsSchema,
+  HyperliquidListOpenOrdersCommandOptionsSchema,
   HyperliquidListPositionsCommandOptionsSchema,
   HyperliquidPerpTradeCommandOptionsSchema,
   HyperliquidScaleOrderCommandOptionsSchema,
@@ -84,6 +86,58 @@ export function buildHyperliquidCommand(): Command {
         address: request.address,
         dex: request.dex,
         allDexes: request.allDexes
+      })
+      const output = ensureJsonTreeString(response)
+      await writeOutput({
+        output,
+        outPath: request.out ?? undefined
+      })
+    })
+
+  program
+    .command('list-open-orders')
+    .description('List open resting orders (perp and spot) for a Hyperliquid account')
+    .requiredOption('--address <address>', 'Hyperliquid account address to inspect')
+    .option('--dex <dex>', 'Perp dex name (main by default); spot orders appear on main only')
+    .option('--all-dexes', 'Sweep main and every perp dex')
+    .option('--out <file>', 'Write output JSON to file')
+    .action(async (options: unknown): Promise<void> => {
+      const request = HyperliquidListOpenOrdersCommandOptionsSchema.parse(options)
+      const response = await hyperliquidService.listOpenOrders({
+        address: request.address,
+        dex: request.dex,
+        allDexes: request.allDexes
+      })
+      const output = ensureJsonTreeString(response)
+      await writeOutput({
+        output,
+        outPath: request.out ?? undefined
+      })
+    })
+
+  program
+    .command('list-fills')
+    .description('List trade fills for a Hyperliquid account')
+    .requiredOption('--address <address>', 'Hyperliquid account address to inspect')
+    .option(
+      '--start-time <ms>',
+      'Start time in milliseconds (inclusive); omit for up to 2000 most recent fills'
+    )
+    .option('--end-time <ms>', 'End time in milliseconds (inclusive); requires --start-time')
+    .option('--aggregate-by-time', 'Combine partial fills from the same crossing order')
+    .option(
+      '--reversed',
+      'Return newest fills first (only with --start-time; default is oldest first)'
+    )
+    .option('--out <file>', 'Write output JSON to file')
+    .action(async (options: unknown): Promise<void> => {
+      const request = HyperliquidListFillsCommandOptionsSchema.parse(options)
+      const response = await hyperliquidService.listFills({
+        address: request.address,
+        startTime: request.startTime,
+        endTime: request.endTime,
+        aggregateByTime: request.aggregateByTime,
+        reversed: request.reversed
       })
       const output = ensureJsonTreeString(response)
       await writeOutput({

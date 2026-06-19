@@ -31,8 +31,19 @@ import {
   type HyperliquidDexCashTransferCommandOptions,
   type HyperliquidExchange,
   HyperliquidExchangeSchema,
+  type HyperliquidFill,
+  HyperliquidFillSchema,
+  type HyperliquidFillsResult,
+  HyperliquidFillsResultSchema,
+  type HyperliquidFrontendOpenOrderWire,
   type HyperliquidListBalancesParams,
+  type HyperliquidListFillsParams,
+  type HyperliquidListOpenOrdersParams,
   type HyperliquidListPositionsParams,
+  type HyperliquidOpenOrder,
+  HyperliquidOpenOrderSchema,
+  type HyperliquidOpenOrdersResult,
+  HyperliquidOpenOrdersResultSchema,
   type HyperliquidOrderTif,
   HyperliquidPerpAssetSchema,
   type HyperliquidPerpAssetsResult,
@@ -60,6 +71,7 @@ import {
   type HyperliquidUsdClassDirection,
   type HyperliquidUsdClassTransferCommandOptions,
   type HyperliquidUsdTransferCommandOptions,
+  type HyperliquidUserFillWire,
   type HyperliquidWithdrawCommandOptions,
   type HyperliquidWithSignerParams,
   type PerpOrderTypeField,
@@ -698,6 +710,55 @@ export class HyperliquidService {
     })
   }
 
+  async listOpenOrders(
+    params: HyperliquidListOpenOrdersParams
+  ): Promise<HyperliquidOpenOrdersResult> {
+    const dexNames = params.allDexes
+      ? await this.resolveAllDexNames()
+      : [this.normalizeDex(params.dex)]
+
+    const orderSets = await Promise.all(
+      dexNames.map(async (dexName) => {
+        const requestParams: { user: EthAddress; dex?: string } = { user: params.address }
+        if (dexName.length > 0) requestParams.dex = dexName
+        const orders = await this.infoClient.frontendOpenOrders(requestParams)
+        return { dexName, orders }
+      })
+    )
+
+    const openOrders: HyperliquidOpenOrder[] = []
+    for (const { dexName, orders } of orderSets) {
+      for (const order of orders) {
+        openOrders.push(this.mapFrontendOpenOrder(order, dexName))
+      }
+    }
+
+    return HyperliquidOpenOrdersResultSchema.parse({
+      address: params.address,
+      orders: openOrders
+    })
+  }
+
+  async listFills(params: HyperliquidListFillsParams): Promise<HyperliquidFillsResult> {
+    const fills = isNullish(params.startTime)
+      ? await this.infoClient.userFills({
+          user: params.address,
+          aggregateByTime: params.aggregateByTime
+        })
+      : await this.infoClient.userFillsByTime({
+          user: params.address,
+          startTime: params.startTime,
+          endTime: params.endTime ?? undefined,
+          aggregateByTime: params.aggregateByTime,
+          reversed: params.reversed
+        })
+
+    return HyperliquidFillsResultSchema.parse({
+      address: params.address,
+      fills: fills.map((fill) => this.mapUserFill(fill))
+    })
+  }
+
   private async resolveAllDexNames(): Promise<string[]> {
     const perpDexs = await this.infoClient.perpDexs()
     const dexNames = ['']
@@ -822,6 +883,73 @@ export class HyperliquidService {
     const dex = coin.slice(0, separatorIndex)
     const strippedCoin = coin.slice(separatorIndex + 1)
     return { dex, coin: strippedCoin.length > 0 ? strippedCoin : coin }
+  }
+
+  private mapFrontendOpenOrder(
+    order: HyperliquidFrontendOpenOrderWire,
+    queriedDexName: string
+  ): HyperliquidOpenOrder {
+    const { dex: coinDex, coin } = this.resolveDexAndCoin(order.coin)
+    const market = coin.includes('/') ? 'spot' : 'perp'
+    const dex =
+      market === 'spot'
+        ? 'spot'
+        : queriedDexName.length > 0
+          ? this.formatDexName(queriedDexName)
+          : coinDex
+    const triggerPx =
+      order.isTrigger && !isNullish(order.triggerPx) && order.triggerPx !== '0.0'
+        ? order.triggerPx
+        : null
+
+    return HyperliquidOpenOrderSchema.parse({
+      dex,
+      coin: market === 'spot' ? order.coin : coin,
+      market,
+      side: order.side === 'B' ? 'buy' : 'sell',
+      limitPx: order.limitPx,
+      size: order.sz,
+      origSize: order.origSz,
+      orderId: order.oid,
+      timestamp: order.timestamp,
+      orderType: order.orderType,
+      tif: order.tif,
+      reduceOnly: order.reduceOnly,
+      isTrigger: order.isTrigger,
+      triggerPx,
+      triggerCondition: order.triggerCondition,
+      isPositionTpsl: order.isPositionTpsl,
+      cloid: order.cloid
+    })
+  }
+
+  private mapUserFill(fill: HyperliquidUserFillWire): HyperliquidFill {
+    const market = fill.coin.includes('/') || fill.coin.startsWith('@') ? 'spot' : 'perp'
+    const { dex: coinDex, coin } = this.resolveDexAndCoin(fill.coin)
+    const dex = market === 'spot' ? 'spot' : coinDex
+
+    return HyperliquidFillSchema.parse({
+      dex,
+      coin: market === 'spot' ? fill.coin : coin,
+      market,
+      side: fill.side === 'B' ? 'buy' : 'sell',
+      price: fill.px,
+      size: fill.sz,
+      startPosition: fill.startPosition,
+      direction: fill.dir,
+      closedPnl: fill.closedPnl,
+      fee: fill.fee,
+      feeToken: fill.feeToken,
+      builderFee: fill.builderFee,
+      hash: fill.hash,
+      orderId: fill.oid,
+      tradeId: fill.tid,
+      timestamp: fill.time,
+      crossed: fill.crossed,
+      twapId: fill.twapId,
+      cloid: fill.cloid ?? null,
+      liquidation: fill.liquidation ?? null
+    })
   }
 
   private async resolvePerpAsset(params: ResolvePerpAssetParams): Promise<ResolvedPerpAsset> {
