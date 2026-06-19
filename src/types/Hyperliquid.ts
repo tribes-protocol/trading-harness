@@ -444,9 +444,27 @@ export const HyperliquidPerpPositionSchema = z.object({
 })
 export type HyperliquidPerpPosition = z.infer<typeof HyperliquidPerpPositionSchema>
 
+export const HyperliquidPerpTwapOrderSchema = z.object({
+  dex: z.string(),
+  coin: z.string(),
+  side: HyperliquidPerpSideSchema,
+  size: z.string(),
+  executedSize: z.string(),
+  remainingSize: z.string(),
+  executedNotional: z.string(),
+  durationMinutes: z.number().int().positive(),
+  randomize: z.boolean(),
+  reduceOnly: z.boolean(),
+  startedAt: z.number().int().nonnegative(),
+  createdAtSeconds: z.number().int().nonnegative(),
+  twapId: z.number().int().nonnegative().nullish()
+})
+export type HyperliquidPerpTwapOrder = z.infer<typeof HyperliquidPerpTwapOrderSchema>
+
 export const HyperliquidPositionsResultSchema = z.object({
   address: EthAddressSchema,
-  positions: z.array(HyperliquidPerpPositionSchema)
+  positions: z.array(HyperliquidPerpPositionSchema),
+  twapOrders: z.array(HyperliquidPerpTwapOrderSchema)
 })
 export type HyperliquidPositionsResult = z.infer<typeof HyperliquidPositionsResultSchema>
 

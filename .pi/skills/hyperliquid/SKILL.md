@@ -319,9 +319,17 @@ executed evenly over `--duration-minutes` (5–1440), reducing market impact. Ad
 existing position, and `--leverage` / `--margin-mode` to set leverage first (same
 as `trade-perp`). The response includes a `twapId` — keep it to cancel early.
 
+Minimum size: Hyperliquid runs one sub-order every 30s, so a TWAP is split into
+`durationMinutes * 2` sub-orders, and **each sub-order must be ≥ $10 notional**.
+The CLI computes this up front and rejects the request (before signing) if
+`amount / (durationMinutes * 2) * markPx < $10`, telling you the minimum
+`--amount` needed. To fix, increase `--amount` or lower `--duration-minutes`.
+For example, a 30-minute TWAP = 60 sub-orders, so it needs ≥ $600 total notional
+(60 × $10).
+
 ```bash
 # Buy 0.5 BTC spread over 30 minutes with randomized timing
-bun src/cli/Hyperliquid.ts twap-perp \
+tribes-cli hyperliquid twap-perp \
   --from 0x1111111111111111111111111111111111111111 \
   --coin BTC \
   --side long \
@@ -334,7 +342,7 @@ bun src/cli/Hyperliquid.ts twap-perp \
 ### Cancel a running TWAP order
 
 ```bash
-bun src/cli/Hyperliquid.ts twap-cancel \
+tribes-cli hyperliquid twap-cancel \
   --from 0x1111111111111111111111111111111111111111 \
   --coin BTC \
   --twap-id 1234 \
@@ -423,6 +431,8 @@ tribes-cli hyperliquid transfer-dex-cash \
   - `--duration-minutes <5-1440>` (slices the order evenly over this window)
   - `--randomize` (jitter sub-order timing), `--reduce-only`
   - `--margin-mode cross|isolated`, `--leverage <int>`, `--dex <name>`
+  - each sub-order must be ≥ $10 notional (split is `durationMinutes * 2`
+    sub-orders); the CLI rejects too-small TWAPs before signing
   - returns a `twapId`; cancel early with `twap-cancel --coin <c> --twap-id <id>`
 - `trade-spot` supports:
   - `--type market|limit`

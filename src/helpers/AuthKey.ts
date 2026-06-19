@@ -1,17 +1,22 @@
 import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import { dirname, resolve } from 'node:path'
-import { fileURLToPath } from 'node:url'
 
 import { type AgentAuthorizationKey, AgentAuthorizationKeySchema } from '@/types/JwtAuth'
 import { ensureJsonTreeString } from '@/utils/Lang'
 
-const HARNESS_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../../')
-const AGENT_AUTHORIZATION_KEY_PATH = resolve(HARNESS_ROOT, '.pi/agent-authorization-key.json')
+const AGENT_AUTHORIZATION_KEY_PATH = resolve(process.cwd(), '.pi/agent-authorization-key.json')
 
 export async function readAgentAuthorizationKey(): Promise<AgentAuthorizationKey> {
-  const text = await readFile(AGENT_AUTHORIZATION_KEY_PATH, 'utf8')
-  const parsed: unknown = JSON.parse(text)
-  return AgentAuthorizationKeySchema.parse(parsed)
+  try {
+    const text = await readFile(AGENT_AUTHORIZATION_KEY_PATH, 'utf8')
+    const parsed: unknown = JSON.parse(text)
+    return AgentAuthorizationKeySchema.parse(parsed)
+  } catch (error) {
+    throw new Error(
+      `Unable to read agent authorization key at ${AGENT_AUTHORIZATION_KEY_PATH}: ` +
+        `${error instanceof Error ? error.message : String(error)}`
+    )
+  }
 }
 
 export async function writeAgentAuthorizationKey(key: AgentAuthorizationKey): Promise<void> {

@@ -72,7 +72,7 @@ export function buildHyperliquidCommand(): Command {
 
   program
     .command('list-positions')
-    .description('List open perp positions for a Hyperliquid account')
+    .description('List open perp positions and active TWAP orders for a Hyperliquid account')
     .requiredOption('--address <address>', 'Hyperliquid account address to inspect')
     .option('--dex <dex>', 'Perp dex name (main by default)')
     .option('--all-dexes', 'Sweep main and every perp dex')

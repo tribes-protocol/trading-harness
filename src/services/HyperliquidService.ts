@@ -39,6 +39,8 @@ import {
   type HyperliquidPerpPosition,
   HyperliquidPerpPositionSchema,
   type HyperliquidPerpTradeCommandOptions,
+  type HyperliquidPerpTwapOrder,
+  HyperliquidPerpTwapOrderSchema,
   type HyperliquidPositionsResult,
   HyperliquidPositionsResultSchema,
   type HyperliquidPrivyWallet,
@@ -78,6 +80,8 @@ const HYPERLIQUID_ARBITRUM_CHAIN_ID = 42161
 const HYPERLIQUID_BRIDGE_ADDRESS = '0x2Df1c51E09aECF9cacB7bc98cB1742757f163dF7'
 const ARBITRUM_USDC_ADDRESS = '0xaf88d065e77c8cC2239327C5EDb3A432268e5831'
 const HYPERLIQUID_MAINNET_SIGNATURE_CHAIN_ID = '0xa4b1'
+const MIN_HYPERLIQUID_ORDER_NOTIONAL_USD = 10
+const HYPERLIQUID_TWAP_INTERVAL_SECONDS = 30
 
 export class HyperliquidService {
   private readonly transaction: TransactionService
@@ -377,6 +381,25 @@ export class HyperliquidService {
       dex
     })
 
+    const sliceCount = (params.request.durationMinutes * 60) / HYPERLIQUID_TWAP_INTERVAL_SECONDS
+    const sliceSize = params.request.amount.dividedBy(sliceCount)
+    const sliceNotional = sliceSize.multipliedBy(perpAsset.referencePrice)
+    if (sliceNotional.isLessThan(MIN_HYPERLIQUID_ORDER_NOTIONAL_USD)) {
+      const minTotalSize = perpAsset.referencePrice.isGreaterThan(0)
+        ? new BigNumber(MIN_HYPERLIQUID_ORDER_NOTIONAL_USD)
+            .multipliedBy(sliceCount)
+            .dividedBy(perpAsset.referencePrice)
+        : new BigNumber(0)
+      throw new Error(
+        `twap sub-order notional ~$${sliceNotional.toFixed(2)} is below Hyperliquid's ` +
+          `$${MIN_HYPERLIQUID_ORDER_NOTIONAL_USD} minimum per order. A ${params.request.durationMinutes}-minute ` +
+          `twap is split into ${sliceCount} sub-orders (one every ${HYPERLIQUID_TWAP_INTERVAL_SECONDS}s). ` +
+          `Increase --amount to at least ${minTotalSize.toFixed(perpAsset.szDecimals)} ` +
+          `(~$${new BigNumber(MIN_HYPERLIQUID_ORDER_NOTIONAL_USD).multipliedBy(sliceCount).toFixed(2)} notional) ` +
+          `or reduce --duration-minutes.`
+      )
+    }
+
     if (!isNullish(params.request.leverage)) {
       await exchange
         .updateLeverage({
@@ -499,25 +522,30 @@ export class HyperliquidService {
     const dexNames = params.allDexes
       ? await this.resolveAllDexNames()
       : [this.normalizeDex(params.dex)]
+    const selectedDexes = new Set(dexNames.map((dexName) => this.formatDexName(dexName)))
 
-    const states = await Promise.all(
-      dexNames.map(async (dexName) => {
-        const stateParams: { user: EthAddress; dex?: string } = { user: params.address }
-        if (dexName.length > 0) stateParams.dex = dexName
-        const state = await this.infoClient.clearinghouseState(stateParams)
-        return { dexName, state }
-      })
-    )
+    const [states, twapHistory] = await Promise.all([
+      Promise.all(
+        dexNames.map(async (dexName) => {
+          const stateParams: { user: EthAddress; dex?: string } = { user: params.address }
+          if (dexName.length > 0) stateParams.dex = dexName
+          const state = await this.infoClient.clearinghouseState(stateParams)
+          return { dexName, state }
+        })
+      ),
+      this.infoClient.twapHistory({ user: params.address })
+    ])
 
     const positions: HyperliquidPerpPosition[] = []
     for (const { dexName, state } of states) {
+      const formattedDexName = this.formatDexName(dexName)
       for (const assetPosition of state.assetPositions) {
         const position = assetPosition.position
         const szi = new BigNumber(position.szi)
         if (szi.isZero()) continue
         positions.push(
           HyperliquidPerpPositionSchema.parse({
-            dex: dexName.length > 0 ? dexName : 'main',
+            dex: formattedDexName,
             coin: position.coin,
             side: szi.isGreaterThan(0) ? 'long' : 'short',
             size: szi.abs().toFixed(),
@@ -536,9 +564,40 @@ export class HyperliquidService {
       }
     }
 
+    const twapOrders: HyperliquidPerpTwapOrder[] = []
+    for (const twap of twapHistory) {
+      if (twap.status.status !== 'activated') continue
+
+      const { dex, coin } = this.resolveDexAndCoin(twap.state.coin)
+      if (!params.allDexes && !selectedDexes.has(dex)) continue
+
+      const totalSize = new BigNumber(twap.state.sz)
+      const executedSize = new BigNumber(twap.state.executedSz)
+      const remainingSize = BigNumber.maximum(totalSize.minus(executedSize), new BigNumber(0))
+
+      twapOrders.push(
+        HyperliquidPerpTwapOrderSchema.parse({
+          dex,
+          coin,
+          side: twap.state.side === 'B' ? 'long' : 'short',
+          size: twap.state.sz,
+          executedSize: twap.state.executedSz,
+          remainingSize: remainingSize.toFixed(),
+          executedNotional: twap.state.executedNtl,
+          durationMinutes: twap.state.minutes,
+          randomize: twap.state.randomize,
+          reduceOnly: twap.state.reduceOnly,
+          startedAt: twap.state.timestamp,
+          createdAtSeconds: twap.time,
+          twapId: twap.twapId
+        })
+      )
+    }
+
     return HyperliquidPositionsResultSchema.parse({
       address: params.address,
-      positions
+      positions,
+      twapOrders
     })
   }
 
@@ -652,6 +711,20 @@ export class HyperliquidService {
     const normalizedDex = dex.trim()
     if (normalizedDex.length === 0 || normalizedDex === 'main') return ''
     return normalizedDex
+  }
+
+  private formatDexName(dexName: string): string {
+    return dexName.length > 0 ? dexName : 'main'
+  }
+
+  private resolveDexAndCoin(rawCoin: string): { dex: string; coin: string } {
+    const coin = rawCoin.trim()
+    const separatorIndex = coin.indexOf(':')
+    if (separatorIndex <= 0) return { dex: 'main', coin }
+
+    const dex = coin.slice(0, separatorIndex)
+    const strippedCoin = coin.slice(separatorIndex + 1)
+    return { dex, coin: strippedCoin.length > 0 ? strippedCoin : coin }
   }
 
   private async resolvePerpAsset(params: ResolvePerpAssetParams): Promise<ResolvedPerpAsset> {
