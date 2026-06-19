@@ -20,6 +20,23 @@ echo "[bootstrap] installing deps (incl. the pinned pi CLI)…"
 # deterministic); fall back to a normal install if the lockfile is ever stale.
 bun install --frozen-lockfile || bun install
 
+# Expose pi at /usr/local/bin/pi so it resolves by name from ANY shell — incl.
+# the interactive `bash -l` the sandbox drops you into between agent runs, whose
+# login-reset PATH drops node_modules/.bin. Vanilla harnesses install pi to
+# /usr/local/bin too (npm -g); match that so `which pi` is identical everywhere.
+# A symlink (not a copy) keeps pi next to its node_modules so its requires still
+# resolve.
+if ln -sf "$PWD/node_modules/.bin/pi" /usr/local/bin/pi 2>/dev/null; then
+  echo "[bootstrap] linked pi -> /usr/local/bin/pi"
+else
+  echo "[bootstrap] could not link pi into /usr/local/bin (still on PATH via node_modules/.bin)"
+fi
+
+# Pull pi's self-managed components up to date right after install (best-effort —
+# never block boot on it).
+echo "[bootstrap] updating pi…"
+pi update || echo "[bootstrap] pi update failed (continuing)"
+
 ENTRY="src/cli/Tribes.ts"
 # Build artifact. node_modules/.bin is writable and already on PATH in the
 # sandbox, so this is both the build output and the in-sandbox PATH fallback.
