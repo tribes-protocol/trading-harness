@@ -898,16 +898,19 @@ export class HyperliquidService {
   ): HyperliquidOpenOrder {
     const { dex: coinDex, coin } = this.resolveDexAndCoin(order.coin)
     const market = coin.includes('/') ? 'spot' : 'perp'
-    const dex =
-      market === 'spot'
-        ? 'spot'
-        : queriedDexName.length > 0
-          ? this.formatDexName(queriedDexName)
-          : coinDex
-    const triggerPx =
-      order.isTrigger && !isNullish(order.triggerPx) && order.triggerPx !== '0.0'
-        ? order.triggerPx
-        : null
+    let dex: string
+    switch (market) {
+      case 'spot':
+        dex = 'spot'
+        break
+      case 'perp':
+        dex = queriedDexName.length > 0 ? this.formatDexName(queriedDexName) : coinDex
+        break
+    }
+    let triggerPx: string | null = null
+    if (order.isTrigger && !isNullish(order.triggerPx) && order.triggerPx !== '0.0') {
+      triggerPx = order.triggerPx
+    }
 
     return HyperliquidOpenOrderSchema.parse({
       dex,
