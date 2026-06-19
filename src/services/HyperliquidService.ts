@@ -903,10 +903,11 @@ export class HyperliquidService {
       })
     )
 
+    const spotPairByCoin = await this.buildSpotPairNamesByCoin()
     const openOrders: HyperliquidOpenOrder[] = []
     for (const { dexName, orders } of orderSets) {
       for (const order of orders) {
-        openOrders.push(this.mapFrontendOpenOrder(order, dexName))
+        openOrders.push(this.mapFrontendOpenOrder(order, dexName, spotPairByCoin))
       }
     }
 
@@ -933,9 +934,11 @@ export class HyperliquidService {
       })
     }
 
+    const spotPairByCoin = await this.buildSpotPairNamesByCoin()
+
     return HyperliquidFillsResultSchema.parse({
       address: params.address,
-      fills: fills.map((fill) => this.mapUserFill(fill))
+      fills: fills.map((fill) => this.mapUserFill(fill, spotPairByCoin))
     })
   }
 
@@ -1069,20 +1072,30 @@ export class HyperliquidService {
     return { dex, coin: strippedCoin.length > 0 ? strippedCoin : coin }
   }
 
+  private isSpotCoin(rawCoin: string): boolean {
+    return rawCoin.startsWith('@') || rawCoin.includes('/')
+  }
+
   private mapFrontendOpenOrder(
     order: HyperliquidFrontendOpenOrderWire,
-    queriedDexName: string
+    queriedDexName: string,
+    spotPairByCoin: Map<string, string>
   ): HyperliquidOpenOrder {
+    const market = this.isSpotCoin(order.coin) ? 'spot' : 'perp'
     const { dex: coinDex, coin } = this.resolveDexAndCoin(order.coin)
-    const market = coin.includes('/') ? 'spot' : 'perp'
     let dex: string
+    let displayCoin: string
     switch (market) {
-      case 'spot':
+      case 'spot': {
         dex = 'spot'
+        displayCoin = spotPairByCoin.get(order.coin) ?? order.coin
         break
-      case 'perp':
+      }
+      case 'perp': {
         dex = queriedDexName.length > 0 ? this.formatDexName(queriedDexName) : coinDex
+        displayCoin = coin
         break
+      }
     }
     let triggerPx: string | null = null
     if (order.isTrigger && !isNullish(order.triggerPx) && order.triggerPx !== '0.0') {
@@ -1091,7 +1104,7 @@ export class HyperliquidService {
 
     return HyperliquidOpenOrderSchema.parse({
       dex,
-      coin: market === 'spot' ? order.coin : coin,
+      coin: displayCoin,
       market,
       side: order.side === 'B' ? 'buy' : 'sell',
       limitPx: order.limitPx,
@@ -1110,14 +1123,46 @@ export class HyperliquidService {
     })
   }
 
-  private mapUserFill(fill: HyperliquidUserFillWire): HyperliquidFill {
-    const market = fill.coin.includes('/') || fill.coin.startsWith('@') ? 'spot' : 'perp'
+  private async buildSpotPairNamesByCoin(): Promise<Map<string, string>> {
+    const [spotMeta] = await this.infoClient.spotMetaAndAssetCtxs()
+    const tokenNameByIndex = new Map<number, string>()
+    for (const token of spotMeta.tokens) {
+      tokenNameByIndex.set(token.index, token.name)
+    }
+
+    const pairByCoin = new Map<string, string>()
+    for (const spotMarket of spotMeta.universe) {
+      if (spotMarket.tokens.length < 2) continue
+      const baseTokenIndex = spotMarket.tokens[0]
+      const quoteTokenIndex = spotMarket.tokens[1]
+      if (isNullish(baseTokenIndex) || isNullish(quoteTokenIndex)) continue
+      const baseTokenName = tokenNameByIndex.get(baseTokenIndex)
+      const quoteTokenName = tokenNameByIndex.get(quoteTokenIndex)
+      if (isNullish(baseTokenName) || isNullish(quoteTokenName)) continue
+      const pair = `${baseTokenName}/${quoteTokenName}`
+      pairByCoin.set(`@${spotMarket.index}`, pair)
+      pairByCoin.set(spotMarket.name, pair)
+    }
+    return pairByCoin
+  }
+
+  private mapUserFill(
+    fill: HyperliquidUserFillWire,
+    spotPairByCoin: Map<string, string>
+  ): HyperliquidFill {
+    const market = this.isSpotCoin(fill.coin) ? 'spot' : 'perp'
     const { dex: coinDex, coin } = this.resolveDexAndCoin(fill.coin)
-    const dex = market === 'spot' ? 'spot' : coinDex
+    let dex: string = coinDex
+    let displayCoin: string = coin
+
+    if (market === 'spot') {
+      dex = 'spot'
+      displayCoin = spotPairByCoin.get(fill.coin) ?? fill.coin
+    }
 
     return HyperliquidFillSchema.parse({
       dex,
-      coin: market === 'spot' ? fill.coin : coin,
+      coin: displayCoin,
       market,
       side: fill.side === 'B' ? 'buy' : 'sell',
       price: fill.px,
