@@ -416,6 +416,40 @@ export type HyperliquidTwapCancelCommandOptions = z.infer<
   typeof HyperliquidTwapCancelCommandOptionsSchema
 >
 
+export const HyperliquidSpotTwapCancelCommandOptionsSchema = z.object({
+  from: EthAddressSchema,
+  pair: z.string().trim().min(1),
+  twapId: z.coerce.number().int().nonnegative(),
+  walletId: z.string().trim().min(1),
+  out: z.string().nullish()
+})
+export type HyperliquidSpotTwapCancelCommandOptions = z.infer<
+  typeof HyperliquidSpotTwapCancelCommandOptionsSchema
+>
+
+export const HyperliquidCancelOrderCommandOptionsSchema = z.object({
+  from: EthAddressSchema,
+  coin: z.string().trim().min(1),
+  orderId: z.coerce.number().int().nonnegative(),
+  dex: z.string().trim().nullish(),
+  walletId: z.string().trim().min(1),
+  out: z.string().nullish()
+})
+export type HyperliquidCancelOrderCommandOptions = z.infer<
+  typeof HyperliquidCancelOrderCommandOptionsSchema
+>
+
+export const HyperliquidSpotCancelOrderCommandOptionsSchema = z.object({
+  from: EthAddressSchema,
+  pair: z.string().trim().min(1),
+  orderId: z.coerce.number().int().nonnegative(),
+  walletId: z.string().trim().min(1),
+  out: z.string().nullish()
+})
+export type HyperliquidSpotCancelOrderCommandOptions = z.infer<
+  typeof HyperliquidSpotCancelOrderCommandOptionsSchema
+>
+
 export const HyperliquidScaleOrderCommandOptionsSchema = z
   .object({
     from: EthAddressSchema,
@@ -462,6 +496,64 @@ export const HyperliquidScaleOrderCommandOptionsSchema = z
   })
 export type HyperliquidScaleOrderCommandOptions = z.infer<
   typeof HyperliquidScaleOrderCommandOptionsSchema
+>
+
+export const HyperliquidSpotScaleOrderCommandOptionsSchema = z
+  .object({
+    from: EthAddressSchema,
+    pair: z.string().trim().min(1),
+    amount: BigNumberSchema,
+    side: HyperliquidSpotSideSchema,
+    startPx: BigNumberSchema,
+    endPx: BigNumberSchema,
+    orders: z.coerce.number().int().min(2).max(50),
+    sizeSkew: z.coerce.number().positive().default(1),
+    tif: HyperliquidPerpTifSchema.default('Gtc'),
+    walletId: z.string().trim().min(1),
+    out: z.string().nullish()
+  })
+  .superRefine((value, ctx) => {
+    const isPositive = (price: typeof value.startPx): boolean =>
+      !price.isNaN() && price.isFinite() && price.isGreaterThan(0)
+
+    if (!isPositive(value.startPx)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['startPx'],
+        message: 'startPx must be greater than 0'
+      })
+    }
+    if (!isPositive(value.endPx)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['endPx'],
+        message: 'endPx must be greater than 0'
+      })
+    }
+    if (isPositive(value.startPx) && isPositive(value.endPx) && value.startPx.eq(value.endPx)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['endPx'],
+        message: 'startPx and endPx must differ'
+      })
+    }
+  })
+export type HyperliquidSpotScaleOrderCommandOptions = z.infer<
+  typeof HyperliquidSpotScaleOrderCommandOptionsSchema
+>
+
+export const HyperliquidSpotTwapOrderCommandOptionsSchema = z.object({
+  from: EthAddressSchema,
+  pair: z.string().trim().min(1),
+  amount: BigNumberSchema,
+  side: HyperliquidSpotSideSchema,
+  durationMinutes: z.coerce.number().int().min(5).max(1440),
+  randomize: z.boolean().default(false),
+  walletId: z.string().trim().min(1),
+  out: z.string().nullish()
+})
+export type HyperliquidSpotTwapOrderCommandOptions = z.infer<
+  typeof HyperliquidSpotTwapOrderCommandOptionsSchema
 >
 
 export const HyperliquidListPositionsCommandOptionsSchema = z.object({
@@ -812,9 +904,39 @@ export interface BuildBracketExitLegParams {
   readonly size: string
 }
 
+export const ResolvedOrderAssetSchema = z.object({
+  assetId: z.number().int().nonnegative(),
+  referencePrice: BigNumberSchema,
+  szDecimals: z.number().int().nonnegative()
+})
+export type ResolvedOrderAsset = z.infer<typeof ResolvedOrderAssetSchema>
+
 export interface BuildScaleOrdersParams {
-  readonly request: HyperliquidScaleOrderCommandOptions
-  readonly perpAsset: ResolvedPerpAsset
+  readonly asset: ResolvedOrderAsset
+  readonly marketType: HyperliquidMarketType
+  readonly amount: BigNumber
+  readonly isBuy: boolean
+  readonly startPx: BigNumber
+  readonly endPx: BigNumber
+  readonly orders: number
+  readonly sizeSkew: number
+  readonly tif: HyperliquidPerpTif
+  readonly reduceOnly: boolean
+}
+
+export interface ValidateTwapNotionalParams {
+  readonly asset: ResolvedOrderAsset
+  readonly amount: BigNumber
+  readonly durationMinutes: number
+}
+
+export interface BuildTwapWireParams {
+  readonly asset: ResolvedOrderAsset
+  readonly amount: BigNumber
+  readonly isBuy: boolean
+  readonly durationMinutes: number
+  readonly randomize: boolean
+  readonly reduceOnly: boolean
 }
 
 export interface ResolvePerpOrderTypeFieldParams {

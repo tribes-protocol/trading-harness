@@ -1,4 +1,5 @@
 import {
+  type CancelSuccessResponse,
   ExchangeClient,
   HttpTransport,
   InfoClient,
@@ -21,9 +22,11 @@ import { TransactionService } from '@/services/TransactionService'
 import {
   type BuildBracketExitLegParams,
   type BuildScaleOrdersParams,
+  type BuildTwapWireParams,
   type CreateExchangeClientParams,
   type HyperliquidBalancesResult,
   HyperliquidBalancesResultSchema,
+  type HyperliquidCancelOrderCommandOptions,
   type HyperliquidDepositParams,
   type HyperliquidDepositResult,
   HyperliquidDepositResultSchema,
@@ -63,8 +66,12 @@ import {
   type HyperliquidSpotAssetsResult,
   HyperliquidSpotAssetsResultSchema,
   HyperliquidSpotBalanceSchema,
+  type HyperliquidSpotCancelOrderCommandOptions,
+  type HyperliquidSpotScaleOrderCommandOptions,
   type HyperliquidSpotTradeCommandOptions,
   type HyperliquidSpotTransferCommandOptions,
+  type HyperliquidSpotTwapCancelCommandOptions,
+  type HyperliquidSpotTwapOrderCommandOptions,
   type HyperliquidTpSl,
   type HyperliquidTwapCancelCommandOptions,
   type HyperliquidTwapOrderCommandOptions,
@@ -76,13 +83,15 @@ import {
   type HyperliquidWithSignerParams,
   type PerpOrderTypeField,
   type PerpOrderWire,
+  type ResolvedOrderAsset,
   type ResolvedPerpAsset,
   type ResolvedSpotAsset,
   type ResolveOrderPriceParams,
   type ResolveOrderTifParams,
   type ResolvePerpAssetParams,
   type ResolvePerpOrderTypeFieldParams,
-  type ResolveWirePerpAssetIdParams
+  type ResolveWirePerpAssetIdParams,
+  type ValidateTwapNotionalParams
 } from '@/types/Hyperliquid'
 import { type HexString } from '@/types/Lang'
 import { type EthSignTypedData } from '@/types/Tx'
@@ -379,11 +388,10 @@ export class HyperliquidService {
   }
 
   private buildScaleOrderParams(params: BuildScaleOrdersParams): OrderParameters {
-    const { request, perpAsset } = params
-    const isBuy = request.side === 'long'
-    const legCount = request.orders
-    const priceSpan = request.endPx.minus(request.startPx)
-    const sizeSkew = new BigNumber(request.sizeSkew)
+    const { asset, marketType } = params
+    const legCount = params.orders
+    const priceSpan = params.endPx.minus(params.startPx)
+    const sizeSkew = new BigNumber(params.sizeSkew)
     const minNotional = new BigNumber(MIN_HYPERLIQUID_ORDER_NOTIONAL_USD)
 
     const weights: BigNumber[] = []
@@ -399,12 +407,12 @@ export class HyperliquidService {
 
     for (let i = 0; i < legCount; i++) {
       const progress = new BigNumber(i).dividedBy(legCount - 1)
-      const price = request.startPx.plus(priceSpan.multipliedBy(progress))
+      const price = params.startPx.plus(priceSpan.multipliedBy(progress))
       const weight = weights[i]
       if (isNullish(weight)) {
         throw new Error(`missing scale weight for leg ${i + 1}`)
       }
-      const size = request.amount.multipliedBy(weight).dividedBy(weightSum)
+      const size = params.amount.multipliedBy(weight).dividedBy(weightSum)
       const notional = size.multipliedBy(price)
 
       if (smallestNotional === null || notional.isLessThan(smallestNotional)) {
@@ -413,12 +421,12 @@ export class HyperliquidService {
       }
 
       orders.push({
-        a: perpAsset.wireAsset,
-        b: isBuy,
-        p: formatPrice(price.toFixed(), perpAsset.szDecimals, 'perp'),
-        s: formatSize(size.toFixed(), perpAsset.szDecimals),
-        r: request.reduceOnly,
-        t: { limit: { tif: request.tif } }
+        a: asset.assetId,
+        b: params.isBuy,
+        p: formatPrice(price.toFixed(), asset.szDecimals, marketType),
+        s: formatSize(size.toFixed(), asset.szDecimals),
+        r: params.reduceOnly,
+        t: { limit: { tif: params.tif } }
       })
     }
 
@@ -430,6 +438,81 @@ export class HyperliquidService {
     }
 
     return { orders, grouping: 'na' }
+  }
+
+  private validateTwapNotional(params: ValidateTwapNotionalParams): void {
+    const sliceCount = (params.durationMinutes * 60) / HYPERLIQUID_TWAP_INTERVAL_SECONDS
+    const sliceSize = params.amount.dividedBy(sliceCount)
+    const sliceNotional = sliceSize.multipliedBy(params.asset.referencePrice)
+    if (sliceNotional.isLessThan(MIN_HYPERLIQUID_ORDER_NOTIONAL_USD)) {
+      const minTotalSize = params.asset.referencePrice.isGreaterThan(0)
+        ? new BigNumber(MIN_HYPERLIQUID_ORDER_NOTIONAL_USD)
+            .multipliedBy(sliceCount)
+            .dividedBy(params.asset.referencePrice)
+        : new BigNumber(0)
+      throw new Error(
+        `twap sub-order notional ~$${sliceNotional.toFixed(2)} is below Hyperliquid's ` +
+          `$${MIN_HYPERLIQUID_ORDER_NOTIONAL_USD} minimum per order. A ${params.durationMinutes}-minute ` +
+          `twap is split into ${sliceCount} sub-orders (one every ${HYPERLIQUID_TWAP_INTERVAL_SECONDS}s). ` +
+          `Increase --amount to at least ${minTotalSize.toFixed(params.asset.szDecimals)} ` +
+          `(~$${new BigNumber(MIN_HYPERLIQUID_ORDER_NOTIONAL_USD).multipliedBy(sliceCount).toFixed(2)} notional) ` +
+          `or reduce --duration-minutes.`
+      )
+    }
+  }
+
+  private buildTwapWire(params: BuildTwapWireParams): {
+    a: number
+    b: boolean
+    s: string
+    r: boolean
+    m: number
+    t: boolean
+  } {
+    return {
+      a: params.asset.assetId,
+      b: params.isBuy,
+      s: formatSize(params.amount.toFixed(), params.asset.szDecimals),
+      r: params.reduceOnly,
+      m: params.durationMinutes,
+      t: params.randomize
+    }
+  }
+
+  private toOrderAssetFromPerp(perpAsset: ResolvedPerpAsset): ResolvedOrderAsset {
+    return {
+      assetId: perpAsset.wireAsset,
+      referencePrice: perpAsset.referencePrice,
+      szDecimals: perpAsset.szDecimals
+    }
+  }
+
+  private toOrderAssetFromSpot(spotAsset: ResolvedSpotAsset): ResolvedOrderAsset {
+    return {
+      assetId: spotAsset.assetId,
+      referencePrice: spotAsset.referencePrice,
+      szDecimals: spotAsset.szDecimals
+    }
+  }
+
+  private async maybeUpdateLeverage(params: {
+    exchange: ExchangeClient
+    wireAsset: number
+    marginMode: 'cross' | 'isolated'
+    leverage: number | null | undefined
+  }): Promise<void> {
+    if (isNullish(params.leverage)) return
+
+    await params.exchange
+      .updateLeverage({
+        asset: params.wireAsset,
+        isCross: params.marginMode === 'cross',
+        leverage: params.leverage
+      })
+      .catch((error: unknown) => {
+        const msg = error instanceof Error ? error.message : String(error)
+        if (!msg.includes('already') && !msg.includes('leverage')) throw error
+      })
   }
 
   async twapPerp(
@@ -448,48 +531,62 @@ export class HyperliquidService {
       coin: params.request.coin,
       dex
     })
+    const asset = this.toOrderAssetFromPerp(perpAsset)
 
-    const sliceCount = (params.request.durationMinutes * 60) / HYPERLIQUID_TWAP_INTERVAL_SECONDS
-    const sliceSize = params.request.amount.dividedBy(sliceCount)
-    const sliceNotional = sliceSize.multipliedBy(perpAsset.referencePrice)
-    if (sliceNotional.isLessThan(MIN_HYPERLIQUID_ORDER_NOTIONAL_USD)) {
-      const minTotalSize = perpAsset.referencePrice.isGreaterThan(0)
-        ? new BigNumber(MIN_HYPERLIQUID_ORDER_NOTIONAL_USD)
-            .multipliedBy(sliceCount)
-            .dividedBy(perpAsset.referencePrice)
-        : new BigNumber(0)
-      throw new Error(
-        `twap sub-order notional ~$${sliceNotional.toFixed(2)} is below Hyperliquid's ` +
-          `$${MIN_HYPERLIQUID_ORDER_NOTIONAL_USD} minimum per order. A ${params.request.durationMinutes}-minute ` +
-          `twap is split into ${sliceCount} sub-orders (one every ${HYPERLIQUID_TWAP_INTERVAL_SECONDS}s). ` +
-          `Increase --amount to at least ${minTotalSize.toFixed(perpAsset.szDecimals)} ` +
-          `(~$${new BigNumber(MIN_HYPERLIQUID_ORDER_NOTIONAL_USD).multipliedBy(sliceCount).toFixed(2)} notional) ` +
-          `or reduce --duration-minutes.`
-      )
-    }
+    this.validateTwapNotional({
+      asset,
+      amount: params.request.amount,
+      durationMinutes: params.request.durationMinutes
+    })
 
-    if (!isNullish(params.request.leverage)) {
-      await exchange
-        .updateLeverage({
-          asset: perpAsset.wireAsset,
-          isCross: params.request.marginMode === 'cross',
-          leverage: params.request.leverage
-        })
-        .catch((error: unknown) => {
-          const msg = error instanceof Error ? error.message : String(error)
-          if (!msg.includes('already') && !msg.includes('leverage')) throw error
-        })
-    }
+    await this.maybeUpdateLeverage({
+      exchange,
+      wireAsset: perpAsset.wireAsset,
+      marginMode: params.request.marginMode,
+      leverage: params.request.leverage
+    })
 
     return await exchange.twapOrder({
-      twap: {
-        a: perpAsset.wireAsset,
-        b: params.request.side === 'long',
-        s: formatSize(params.request.amount.toFixed(), perpAsset.szDecimals),
-        r: params.request.reduceOnly,
-        m: params.request.durationMinutes,
-        t: params.request.randomize
-      }
+      twap: this.buildTwapWire({
+        asset,
+        amount: params.request.amount,
+        isBuy: params.request.side === 'long',
+        durationMinutes: params.request.durationMinutes,
+        randomize: params.request.randomize,
+        reduceOnly: params.request.reduceOnly
+      })
+    })
+  }
+
+  async twapSpot(
+    params: HyperliquidWithSignerParams<HyperliquidSpotTwapOrderCommandOptions>
+  ): Promise<TwapOrderSuccessResponse> {
+    if (!params.request.amount.isGreaterThan(0)) {
+      throw new Error('twap amount must be greater than 0')
+    }
+
+    const exchange = this.createExchangeClient({
+      address: params.request.from,
+      walletId: params.walletId
+    })
+    const spotAsset = await this.resolveSpotAsset(params.request.pair)
+    const asset = this.toOrderAssetFromSpot(spotAsset)
+
+    this.validateTwapNotional({
+      asset,
+      amount: params.request.amount,
+      durationMinutes: params.request.durationMinutes
+    })
+
+    return await exchange.twapOrder({
+      twap: this.buildTwapWire({
+        asset,
+        amount: params.request.amount,
+        isBuy: params.request.side === 'buy',
+        durationMinutes: params.request.durationMinutes,
+        randomize: params.request.randomize,
+        reduceOnly: false
+      })
     })
   }
 
@@ -512,6 +609,53 @@ export class HyperliquidService {
     })
   }
 
+  async twapCancelSpot(
+    params: HyperliquidWithSignerParams<HyperliquidSpotTwapCancelCommandOptions>
+  ): Promise<TwapCancelSuccessResponse> {
+    const exchange = this.createExchangeClient({
+      address: params.request.from,
+      walletId: params.walletId
+    })
+    const spotAsset = await this.resolveSpotAsset(params.request.pair)
+
+    return await exchange.twapCancel({
+      a: spotAsset.assetId,
+      t: params.request.twapId
+    })
+  }
+
+  async cancelOrder(
+    params: HyperliquidWithSignerParams<HyperliquidCancelOrderCommandOptions>
+  ): Promise<CancelSuccessResponse> {
+    const exchange = this.createExchangeClient({
+      address: params.request.from,
+      walletId: params.walletId
+    })
+    const dex = this.normalizeDex(params.request.dex)
+    const perpAsset = await this.resolvePerpAsset({
+      coin: params.request.coin,
+      dex
+    })
+
+    return await exchange.cancel({
+      cancels: [{ a: perpAsset.wireAsset, o: params.request.orderId }]
+    })
+  }
+
+  async cancelOrderSpot(
+    params: HyperliquidWithSignerParams<HyperliquidSpotCancelOrderCommandOptions>
+  ): Promise<CancelSuccessResponse> {
+    const exchange = this.createExchangeClient({
+      address: params.request.from,
+      walletId: params.walletId
+    })
+    const spotAsset = await this.resolveSpotAsset(params.request.pair)
+
+    return await exchange.cancel({
+      cancels: [{ a: spotAsset.assetId, o: params.request.orderId }]
+    })
+  }
+
   async scalePerp(
     params: HyperliquidWithSignerParams<HyperliquidScaleOrderCommandOptions>
   ): Promise<OrderSuccessResponse> {
@@ -529,20 +673,53 @@ export class HyperliquidService {
       dex
     })
 
-    if (!isNullish(params.request.leverage)) {
-      await exchange
-        .updateLeverage({
-          asset: perpAsset.wireAsset,
-          isCross: params.request.marginMode === 'cross',
-          leverage: params.request.leverage
-        })
-        .catch((error: unknown) => {
-          const msg = error instanceof Error ? error.message : String(error)
-          if (!msg.includes('already') && !msg.includes('leverage')) throw error
-        })
+    await this.maybeUpdateLeverage({
+      exchange,
+      wireAsset: perpAsset.wireAsset,
+      marginMode: params.request.marginMode,
+      leverage: params.request.leverage
+    })
+
+    const orderParams = this.buildScaleOrderParams({
+      asset: this.toOrderAssetFromPerp(perpAsset),
+      marketType: 'perp',
+      amount: params.request.amount,
+      isBuy: params.request.side === 'long',
+      startPx: params.request.startPx,
+      endPx: params.request.endPx,
+      orders: params.request.orders,
+      sizeSkew: params.request.sizeSkew,
+      tif: params.request.tif,
+      reduceOnly: params.request.reduceOnly
+    })
+    return await exchange.order(orderParams)
+  }
+
+  async scaleSpot(
+    params: HyperliquidWithSignerParams<HyperliquidSpotScaleOrderCommandOptions>
+  ): Promise<OrderSuccessResponse> {
+    if (!params.request.amount.isGreaterThan(0)) {
+      throw new Error('scale amount must be greater than 0')
     }
 
-    const orderParams = this.buildScaleOrderParams({ request: params.request, perpAsset })
+    const exchange = this.createExchangeClient({
+      address: params.request.from,
+      walletId: params.walletId
+    })
+    const spotAsset = await this.resolveSpotAsset(params.request.pair)
+
+    const orderParams = this.buildScaleOrderParams({
+      asset: this.toOrderAssetFromSpot(spotAsset),
+      marketType: 'spot',
+      amount: params.request.amount,
+      isBuy: params.request.side === 'buy',
+      startPx: params.request.startPx,
+      endPx: params.request.endPx,
+      orders: params.request.orders,
+      sizeSkew: params.request.sizeSkew,
+      tif: params.request.tif,
+      reduceOnly: false
+    })
     return await exchange.order(orderParams)
   }
 
@@ -726,10 +903,11 @@ export class HyperliquidService {
       })
     )
 
+    const spotPairByCoin = await this.buildSpotPairNamesByCoin()
     const openOrders: HyperliquidOpenOrder[] = []
     for (const { dexName, orders } of orderSets) {
       for (const order of orders) {
-        openOrders.push(this.mapFrontendOpenOrder(order, dexName))
+        openOrders.push(this.mapFrontendOpenOrder(order, dexName, spotPairByCoin))
       }
     }
 
@@ -756,9 +934,11 @@ export class HyperliquidService {
       })
     }
 
+    const spotPairByCoin = await this.buildSpotPairNamesByCoin()
+
     return HyperliquidFillsResultSchema.parse({
       address: params.address,
-      fills: fills.map((fill) => this.mapUserFill(fill))
+      fills: fills.map((fill) => this.mapUserFill(fill, spotPairByCoin))
     })
   }
 
@@ -892,20 +1072,30 @@ export class HyperliquidService {
     return { dex, coin: strippedCoin.length > 0 ? strippedCoin : coin }
   }
 
+  private isSpotCoin(rawCoin: string): boolean {
+    return rawCoin.startsWith('@') || rawCoin.includes('/')
+  }
+
   private mapFrontendOpenOrder(
     order: HyperliquidFrontendOpenOrderWire,
-    queriedDexName: string
+    queriedDexName: string,
+    spotPairByCoin: Map<string, string>
   ): HyperliquidOpenOrder {
+    const market = this.isSpotCoin(order.coin) ? 'spot' : 'perp'
     const { dex: coinDex, coin } = this.resolveDexAndCoin(order.coin)
-    const market = coin.includes('/') ? 'spot' : 'perp'
     let dex: string
+    let displayCoin: string
     switch (market) {
-      case 'spot':
+      case 'spot': {
         dex = 'spot'
+        displayCoin = spotPairByCoin.get(order.coin) ?? order.coin
         break
-      case 'perp':
+      }
+      case 'perp': {
         dex = queriedDexName.length > 0 ? this.formatDexName(queriedDexName) : coinDex
+        displayCoin = coin
         break
+      }
     }
     let triggerPx: string | null = null
     if (order.isTrigger && !isNullish(order.triggerPx) && order.triggerPx !== '0.0') {
@@ -914,7 +1104,7 @@ export class HyperliquidService {
 
     return HyperliquidOpenOrderSchema.parse({
       dex,
-      coin: market === 'spot' ? order.coin : coin,
+      coin: displayCoin,
       market,
       side: order.side === 'B' ? 'buy' : 'sell',
       limitPx: order.limitPx,
@@ -933,14 +1123,46 @@ export class HyperliquidService {
     })
   }
 
-  private mapUserFill(fill: HyperliquidUserFillWire): HyperliquidFill {
-    const market = fill.coin.includes('/') || fill.coin.startsWith('@') ? 'spot' : 'perp'
+  private async buildSpotPairNamesByCoin(): Promise<Map<string, string>> {
+    const [spotMeta] = await this.infoClient.spotMetaAndAssetCtxs()
+    const tokenNameByIndex = new Map<number, string>()
+    for (const token of spotMeta.tokens) {
+      tokenNameByIndex.set(token.index, token.name)
+    }
+
+    const pairByCoin = new Map<string, string>()
+    for (const spotMarket of spotMeta.universe) {
+      if (spotMarket.tokens.length < 2) continue
+      const baseTokenIndex = spotMarket.tokens[0]
+      const quoteTokenIndex = spotMarket.tokens[1]
+      if (isNullish(baseTokenIndex) || isNullish(quoteTokenIndex)) continue
+      const baseTokenName = tokenNameByIndex.get(baseTokenIndex)
+      const quoteTokenName = tokenNameByIndex.get(quoteTokenIndex)
+      if (isNullish(baseTokenName) || isNullish(quoteTokenName)) continue
+      const pair = `${baseTokenName}/${quoteTokenName}`
+      pairByCoin.set(`@${spotMarket.index}`, pair)
+      pairByCoin.set(spotMarket.name, pair)
+    }
+    return pairByCoin
+  }
+
+  private mapUserFill(
+    fill: HyperliquidUserFillWire,
+    spotPairByCoin: Map<string, string>
+  ): HyperliquidFill {
+    const market = this.isSpotCoin(fill.coin) ? 'spot' : 'perp'
     const { dex: coinDex, coin } = this.resolveDexAndCoin(fill.coin)
-    const dex = market === 'spot' ? 'spot' : coinDex
+    let dex: string = coinDex
+    let displayCoin: string = coin
+
+    if (market === 'spot') {
+      dex = 'spot'
+      displayCoin = spotPairByCoin.get(fill.coin) ?? fill.coin
+    }
 
     return HyperliquidFillSchema.parse({
       dex,
-      coin: market === 'spot' ? fill.coin : coin,
+      coin: displayCoin,
       market,
       side: fill.side === 'B' ? 'buy' : 'sell',
       price: fill.px,
