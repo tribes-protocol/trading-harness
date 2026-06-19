@@ -88,12 +88,19 @@ Discovery (read-only, no wallet/signer):
   `--address` (read-only); scope perp with `--dex <name>`
 - `list-positions` — list open perp positions for an `--address` (read-only);
   scope with `--dex <name>` or sweep everything with `--all-dexes`
+- `list-open-orders` — list open resting orders (perp + spot) for an `--address`
+  (read-only); scope with `--dex <name>` or sweep with `--all-dexes`
+- `list-fills` — list trade fills for an `--address` (read-only); recent fills by
+  default, or a time range with `--start-time` / `--end-time`
 
 Execution (require `--wallet-id`; most also require signer `--from`):
 
 - `deposit`
 - `withdraw`
 - `trade-perp` (single order, or atomic OCO bracket via `--tp-px`/`--sl-px`)
+- `twap-perp` / `twap-spot` / `twap-cancel` / `twap-cancel-spot`
+- `cancel-order` / `cancel-order-spot` (cancel resting limit/trigger orders by order id)
+- `scale-perp` / `scale-spot` (ladder of limit orders across a price range)
 - `trade-spot`
 - `transfer-usd-class`
 - `transfer-usd`
@@ -125,7 +132,8 @@ tribes-cli hyperliquid list-assets --market spot
 
 Each perp asset includes `name`, `szDecimals`, `maxLeverage`, and `markPx`; each
 spot asset includes `pair`, `szDecimals`, and `markPx`. Use these names with
-`trade-perp --coin` / `--dex` and `trade-spot --pair`.
+`trade-perp --coin` / `--dex`, `trade-spot --pair`, `scale-spot --pair`, and
+`twap-spot --pair`.
 
 ### List balances
 
@@ -165,6 +173,102 @@ with `dex`, `coin`, `side` (`long`/`short`), `size` (absolute), `signedSize`,
 Read-only — no wallet or signer required. Prefer this over ad-hoc inline scripts
 when you need a per-position view (for example, to enumerate positions before
 closing them with `trade-perp --reduce-only`).
+
+### List open orders
+
+```bash
+# Open orders on the main dex (includes spot resting orders)
+tribes-cli hyperliquid list-open-orders \
+  --address 0x1111111111111111111111111111111111111111
+
+# Perp open orders on a named dex (spot orders only appear on main)
+tribes-cli hyperliquid list-open-orders \
+  --address 0x1111111111111111111111111111111111111111 \
+  --dex xyz
+
+# Sweep main + every perp dex
+tribes-cli hyperliquid list-open-orders \
+  --address 0x1111111111111111111111111111111111111111 \
+  --all-dexes
+```
+
+Returns an array of open orders, each with `dex`, `coin`, `market` (`perp`|`spot`),
+`side` (`buy`|`sell`), `limitPx`, `size`, `origSize`, `orderId`, `timestamp`,
+`orderType`, `tif`, `reduceOnly`, trigger/bracket fields, and optional `cloid`.
+Use this to inspect resting limit/ trigger orders (including scale ladder legs).
+Read-only — no wallet or signer required. Use the returned `orderId`, `coin`,
+`market`, and `dex` to cancel a resting order with `cancel-order` or
+`cancel-order-spot` (see below).
+
+### Cancel an open order
+
+**Order vs position:** a resting **order** is an unfilled limit or trigger on
+the book — cancel it with `cancel-order` / `cancel-order-spot`. A filled
+**position** is an open long/short you are holding — close it with
+`trade-perp --reduce-only` (see `list-positions`). Do not confuse the two.
+
+When the user asks to "close/cancel an open order", run this two-step flow.
+Do not explore help or balances first — go straight to listing and cancelling.
+
+1. **List** resting orders to get `orderId`, `coin`/`pair`, `market`, and `dex`:
+
+```bash
+tribes-cli hyperliquid list-open-orders \
+  --address 0x1111111111111111111111111111111111111111 \
+  --all-dexes
+```
+
+2. **Cancel** the target order. Pick the command from `market`:
+
+```bash
+# Perp resting order (limit, trigger, scale leg, etc.)
+tribes-cli hyperliquid cancel-order \
+  --from 0x1111111111111111111111111111111111111111 \
+  --coin BTC \
+  --order-id 123456789 \
+  --wallet-id "<evmWalletId from wallet list>"
+
+# Perp on a named dex — pass --dex from list-open-orders
+tribes-cli hyperliquid cancel-order \
+  --from 0x1111111111111111111111111111111111111111 \
+  --dex xyz \
+  --coin MSFT \
+  --order-id 123456789 \
+  --wallet-id "<evmWalletId from wallet list>"
+
+# Spot resting order — use the pair from list-open-orders (coin field)
+tribes-cli hyperliquid cancel-order-spot \
+  --from 0x1111111111111111111111111111111111111111 \
+  --pair HYPE/USDC \
+  --order-id 123456789 \
+  --wallet-id "<evmWalletId from wallet list>"
+```
+
+To cancel multiple resting orders, repeat step 2 once per `orderId`. Running
+TWAPs are **not** resting orders — cancel those with `twap-cancel` /
+`twap-cancel-spot` using the `twapId` from `list-positions`.
+
+### List fills
+
+```bash
+# Up to 2000 most recent fills
+tribes-cli hyperliquid list-fills \
+  --address 0x1111111111111111111111111111111111111111
+
+# Fills in a time range (paginate with the last fill timestamp as the next startTime)
+tribes-cli hyperliquid list-fills \
+  --address 0x1111111111111111111111111111111111111111 \
+  --start-time 1700000000000 \
+  --end-time 1700086400000
+```
+
+Returns an array of fills in API order, each with `dex`, `coin`, `market`, `side`, `price`, `size`,
+`closedPnl`, `fee`, `feeToken`, `orderId`, `tradeId`, `timestamp`, `crossed`
+(taker), optional `twapId`, and optional `liquidation` details. Without
+`--start-time`, Hyperliquid returns up to 2000 most recent fills via `userFills`
+(order not guaranteed). With `--start-time`, `userFillsByTime` returns oldest
+first by default; pass `--reversed` for newest first (paginate using the last
+fill timestamp as the next `startTime`). Read-only — no wallet or signer required.
 
 ### Deposit Arbitrum USDC to Hyperliquid
 
@@ -310,6 +414,75 @@ tribes-cli hyperliquid trade-perp \
   --wallet-id "<evmWalletId from wallet list>"
 ```
 
+### Place a TWAP perp order
+
+A TWAP (time-weighted average price) order slices `--amount` into sub-orders
+executed evenly over `--duration-minutes` (5–1440), reducing market impact. Add
+`--randomize` to jitter the sub-order timing, `--reduce-only` to only close an
+existing position, and `--leverage` / `--margin-mode` to set leverage first (same
+as `trade-perp`). The response includes a `twapId` — keep it to cancel early.
+
+Minimum size: Hyperliquid runs one sub-order every 30s, so a TWAP is split into
+`durationMinutes * 2` sub-orders, and **each sub-order must be ≥ $10 notional**.
+The CLI computes this up front and rejects the request (before signing) if
+`amount / (durationMinutes * 2) * markPx < $10`, telling you the minimum
+`--amount` needed. To fix, increase `--amount` or lower `--duration-minutes`.
+For example, a 30-minute TWAP = 60 sub-orders, so it needs ≥ $600 total notional
+(60 × $10).
+
+```bash
+# Buy 0.5 BTC spread over 30 minutes with randomized timing
+tribes-cli hyperliquid twap-perp \
+  --from 0x1111111111111111111111111111111111111111 \
+  --coin BTC \
+  --side long \
+  --amount 0.5 \
+  --duration-minutes 30 \
+  --randomize \
+  --wallet-id "<evmWalletId from wallet list>"
+```
+
+### Cancel a running TWAP order
+
+```bash
+# Cancel a perp TWAP
+tribes-cli hyperliquid twap-cancel \
+  --from 0x1111111111111111111111111111111111111111 \
+  --coin BTC \
+  --twap-id 1234 \
+  --wallet-id "<evmWalletId from wallet list>"
+
+# Cancel a spot TWAP
+tribes-cli hyperliquid twap-cancel-spot \
+  --from 0x1111111111111111111111111111111111111111 \
+  --pair HYPE/USDC \
+  --twap-id 1234 \
+  --wallet-id "<evmWalletId from wallet list>"
+```
+
+### Place a scale (ladder) perp order
+
+A scale order splits `--amount` into `--orders` resting limit legs whose prices
+step linearly from `--start-px` to `--end-px`. Use `--size-skew` to tilt more
+size toward the end of the range (`1` = uniform legs). All legs are submitted
+atomically in one signed action. Each leg must be ≥ $10 notional; the CLI
+rejects too-small scales before signing — increase `--amount` or reduce
+`--orders` if you hit this.
+
+```bash
+# Long 0.01 BTC across 5 limit orders from 95000 to 98000, skewed toward higher prices
+tribes-cli hyperliquid scale-perp \
+  --from 0x1111111111111111111111111111111111111111 \
+  --coin BTC \
+  --side long \
+  --amount 0.01 \
+  --start-px 95000 \
+  --end-px 98000 \
+  --orders 5 \
+  --size-skew 1.5 \
+  --wallet-id "<evmWalletId from wallet list>"
+```
+
 ### Place a spot order
 
 ```bash
@@ -319,6 +492,40 @@ tribes-cli hyperliquid trade-spot \
   --side buy \
   --type market \
   --amount 10 \
+  --wallet-id "<evmWalletId from wallet list>"
+```
+
+### Place a TWAP spot order
+
+Same slicing rules as `twap-perp` (one sub-order every 30s, each ≥ $10 notional).
+The response includes a `twapId` — cancel with `twap-cancel-spot --pair <pair> --twap-id <id>`.
+
+```bash
+tribes-cli hyperliquid twap-spot \
+  --from 0x1111111111111111111111111111111111111111 \
+  --pair HYPE/USDC \
+  --side buy \
+  --amount 100 \
+  --duration-minutes 30 \
+  --randomize \
+  --wallet-id "<evmWalletId from wallet list>"
+```
+
+### Place a scale (ladder) spot order
+
+Same ladder mechanics as `scale-perp`: `--amount` split across `--orders` limit
+legs from `--start-px` to `--end-px`. Each leg must be ≥ $10 notional.
+
+```bash
+tribes-cli hyperliquid scale-spot \
+  --from 0x1111111111111111111111111111111111111111 \
+  --pair HYPE/USDC \
+  --side buy \
+  --amount 100 \
+  --start-px 20 \
+  --end-px 22 \
+  --orders 5 \
+  --size-skew 1.5 \
   --wallet-id "<evmWalletId from wallet list>"
 ```
 
@@ -387,10 +594,42 @@ tribes-cli hyperliquid transfer-dex-cash \
   - `--margin-mode cross|isolated`, `--leverage <int>`, `--dex <name>`
   - entry + TP/SL are sent atomically with `grouping: normalTpsl`; TP/SL are
     reduce-only OCO exits sized to the entry
+- `twap-perp` supports:
+  - `--amount` (total size, base units), `--side long|short`
+  - `--duration-minutes <5-1440>` (slices the order evenly over this window)
+  - `--randomize` (jitter sub-order timing), `--reduce-only`
+  - `--margin-mode cross|isolated`, `--leverage <int>`, `--dex <name>`
+  - each sub-order must be ≥ $10 notional (split is `durationMinutes * 2`
+    sub-orders); the CLI rejects too-small TWAPs before signing
+  - returns a `twapId`; cancel early with `twap-cancel --coin <c> --twap-id <id>`
+- `twap-spot` supports:
+  - `--amount` (total size, base units), `--side buy|sell`, `--pair <pair>`
+  - `--duration-minutes <5-1440>`, `--randomize`
+  - same $10-per-sub-order minimum as `twap-perp`
+  - returns a `twapId`; cancel with `twap-cancel-spot --pair <pair> --twap-id <id>`
+- `scale-perp` supports:
+  - `--amount` (total size, base units), `--side long|short`
+  - `--start-px` / `--end-px` (price range endpoints; must differ)
+  - `--orders <2-50>` (number of evenly spaced limit legs)
+  - `--size-skew <ratio>` (last-leg size / first-leg size; `1` = uniform)
+  - `--tif Gtc|Ioc|Alo`, `--reduce-only`
+  - `--margin-mode cross|isolated`, `--leverage <int>`, `--dex <name>`
+  - each leg must be ≥ $10 notional; the CLI rejects too-small scales before signing
+- `scale-spot` supports:
+  - `--amount` (total size, base units), `--side buy|sell`, `--pair <pair>`
+  - `--start-px` / `--end-px`, `--orders <2-50>`, `--size-skew <ratio>`
+  - `--tif Gtc|Ioc|Alo`
+  - each leg must be ≥ $10 notional; the CLI rejects too-small scales before signing
 - `trade-spot` supports:
   - `--type market|limit`
   - `--price` (required for `--type limit`)
   - `--tif Gtc|Ioc|Alo`
+- `cancel-order` supports:
+  - `--coin`, `--order-id` (from `list-open-orders`), `--dex <name>` (main default)
+  - cancels one resting perp order; requires `--from` and `--wallet-id`
+- `cancel-order-spot` supports:
+  - `--pair`, `--order-id` (from `list-open-orders`)
+  - cancels one resting spot order; requires `--from` and `--wallet-id`
 
 ## Gas preflight (conditional)
 
@@ -502,6 +741,9 @@ Operational notes:
     required; once triggered it rests as a limit order at `--price`.
   - `stop_*` orders trigger as stop-loss and `take_*` as take-profit; pair with
     `--reduce-only` for protective exits on an open position.
+- `cancel-order` / `cancel-order-spot` cancel a single resting order by
+  `orderId` from `list-open-orders`. They do not close filled positions — use
+  `trade-perp --reduce-only` for that.
 - `transfer-usd` and `transfer-spot` send funds to another Hyperliquid account
   (`--destination`); they do not withdraw to an external chain.
 - `transfer-dex-cash` requires different source and destination dex values.

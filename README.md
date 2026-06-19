@@ -85,6 +85,19 @@ Place an atomic bracket (entry + linked take-profit and stop-loss as OCO) by add
 tribes-cli hyperliquid trade-perp --from <0x-privy-wallet> --dex xyz --coin MSFT --side long --type market --amount 1.307 --tp-px 405.56 --sl-px 371.13
 ```
 
+Place a TWAP perp order (slices the order over a duration) and cancel it by id. Each sub-order must be ≥ $10 notional (a TWAP is split into `durationMinutes * 2` sub-orders), and the CLI rejects too-small TWAPs before signing:
+
+```bash
+tribes-cli hyperliquid twap-perp --from <0x-privy-wallet> --coin BTC --side long --amount 0.5 --duration-minutes 30 --randomize
+tribes-cli hyperliquid twap-cancel --from <0x-privy-wallet> --coin BTC --twap-id 1234
+```
+
+List open perp positions (read-only; `--all-dexes` sweeps main + every perp dex):
+
+```bash
+tribes-cli hyperliquid list-positions --address <0x-evm-address> --all-dexes
+```
+
 Place a spot order:
 
 ```bash

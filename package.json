@@ -7,6 +7,7 @@
   "scripts": {
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "build": "bun run typecheck",
+    "dev": "sh scripts/dev.sh",
     "test": "bun run typecheck",
     "lint": "eslint . --ext .ts,.mts --max-warnings 0 --no-warn-ignored",
     "lint:fix": "eslint . --ext .ts,.mts --fix --max-warnings 0 --no-warn-ignored",
@@ -17,6 +18,7 @@
   "dependencies": {
     "@nktkas/hyperliquid": "0.32.2",
     "@privy-io/node": "0.7.0",
+    "@solana/spl-token": "0.4.14",
     "@solana/web3.js": "1.98.4",
     "bignumber.js": "9.3.1",
     "bs58": "4.0.1",

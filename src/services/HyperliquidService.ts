@@ -1,4 +1,5 @@
 import {
+  type CancelSuccessResponse,
   ExchangeClient,
   HttpTransport,
   InfoClient,
@@ -7,6 +8,8 @@ import {
   type OrderSuccessResponse,
   type SendAssetSuccessResponse,
   type SpotSendSuccessResponse,
+  type TwapCancelSuccessResponse,
+  type TwapOrderSuccessResponse,
   type UsdClassTransferSuccessResponse,
   type UsdSendSuccessResponse,
   type Withdraw3SuccessResponse
@@ -16,115 +19,83 @@ import BigNumber from 'bignumber.js'
 import { encodeFunctionData, erc20Abi, parseUnits } from 'viem'
 
 import { TransactionService } from '@/services/TransactionService'
-import { type EthAddress } from '@/types/Eth'
 import {
+  type BuildBracketExitLegParams,
+  type BuildScaleOrdersParams,
+  type BuildTwapWireParams,
+  type CreateExchangeClientParams,
   type HyperliquidBalancesResult,
   HyperliquidBalancesResultSchema,
+  type HyperliquidCancelOrderCommandOptions,
+  type HyperliquidDepositParams,
   type HyperliquidDepositResult,
   HyperliquidDepositResultSchema,
   type HyperliquidDexCashTransferCommandOptions,
   type HyperliquidExchange,
   HyperliquidExchangeSchema,
+  type HyperliquidFill,
+  HyperliquidFillSchema,
+  type HyperliquidFillsResult,
+  HyperliquidFillsResultSchema,
+  type HyperliquidFrontendOpenOrderWire,
+  type HyperliquidInfoUserDexParams,
+  type HyperliquidListBalancesParams,
+  type HyperliquidListFillsParams,
+  type HyperliquidListOpenOrdersParams,
+  type HyperliquidListPositionsParams,
+  type HyperliquidOpenOrder,
+  HyperliquidOpenOrderSchema,
+  type HyperliquidOpenOrdersResult,
+  HyperliquidOpenOrdersResultSchema,
   type HyperliquidOrderTif,
   HyperliquidPerpAssetSchema,
   type HyperliquidPerpAssetsResult,
   HyperliquidPerpAssetsResultSchema,
-  type HyperliquidPerpOrderType,
   type HyperliquidPerpPosition,
   HyperliquidPerpPositionSchema,
-  type HyperliquidPerpTif,
   type HyperliquidPerpTradeCommandOptions,
+  type HyperliquidPerpTwapOrder,
+  HyperliquidPerpTwapOrderSchema,
   type HyperliquidPositionsResult,
   HyperliquidPositionsResultSchema,
   type HyperliquidPrivyWallet,
+  type HyperliquidScaleOrderCommandOptions,
+  type HyperliquidServiceParams,
   type HyperliquidSpotAsset,
   HyperliquidSpotAssetSchema,
   type HyperliquidSpotAssetsResult,
   HyperliquidSpotAssetsResultSchema,
   HyperliquidSpotBalanceSchema,
+  type HyperliquidSpotCancelOrderCommandOptions,
+  type HyperliquidSpotScaleOrderCommandOptions,
   type HyperliquidSpotTradeCommandOptions,
   type HyperliquidSpotTransferCommandOptions,
+  type HyperliquidSpotTwapCancelCommandOptions,
+  type HyperliquidSpotTwapOrderCommandOptions,
   type HyperliquidTpSl,
+  type HyperliquidTwapCancelCommandOptions,
+  type HyperliquidTwapOrderCommandOptions,
   type HyperliquidUsdClassDirection,
   type HyperliquidUsdClassTransferCommandOptions,
   type HyperliquidUsdTransferCommandOptions,
+  type HyperliquidUserFillWire,
   type HyperliquidWithdrawCommandOptions,
+  type HyperliquidWithSignerParams,
+  type PerpOrderTypeField,
+  type PerpOrderWire,
+  type ResolvedOrderAsset,
   type ResolvedPerpAsset,
   type ResolvedSpotAsset,
   type ResolveOrderPriceParams,
   type ResolveOrderTifParams,
   type ResolvePerpAssetParams,
-  type ResolveWirePerpAssetIdParams
+  type ResolvePerpOrderTypeFieldParams,
+  type ResolveWirePerpAssetIdParams,
+  type ValidateTwapNotionalParams
 } from '@/types/Hyperliquid'
 import { type HexString } from '@/types/Lang'
 import { type EthSignTypedData } from '@/types/Tx'
 import { isNullish } from '@/utils/Lang'
-
-interface HyperliquidServiceParams {
-  readonly transaction: TransactionService
-}
-
-interface HyperliquidDepositParams {
-  readonly amount: BigNumber
-  readonly from: EthAddress
-  readonly walletId: string
-}
-
-interface HyperliquidWithSignerParams<TRequest> {
-  readonly request: TRequest
-  readonly walletId: string
-}
-
-interface HyperliquidListBalancesParams {
-  readonly address: EthAddress
-  readonly dex: string | null | undefined
-}
-
-interface HyperliquidListPositionsParams {
-  readonly address: EthAddress
-  readonly dex: string | null | undefined
-  readonly allDexes: boolean
-}
-
-interface CreateExchangeClientParams {
-  readonly address: EthAddress
-  readonly walletId: string
-}
-
-type PerpOrderTypeField =
-  | { readonly limit: { readonly tif: HyperliquidOrderTif } }
-  | {
-      readonly trigger: {
-        readonly isMarket: boolean
-        readonly triggerPx: string
-        readonly tpsl: HyperliquidTpSl
-      }
-    }
-
-interface PerpOrderWire {
-  readonly a: number
-  readonly b: boolean
-  readonly p: string
-  readonly s: string
-  readonly r: boolean
-  readonly t: PerpOrderTypeField
-}
-
-interface BuildBracketExitLegParams {
-  readonly orderType: HyperliquidPerpOrderType
-  readonly triggerPx: BigNumber
-  readonly limitPx: BigNumber | null | undefined
-  readonly exitIsBuy: boolean
-  readonly perpAsset: ResolvedPerpAsset
-  readonly size: string
-}
-
-interface ResolvePerpOrderTypeFieldParams {
-  readonly orderType: HyperliquidPerpOrderType
-  readonly tif: HyperliquidPerpTif
-  readonly triggerPx: BigNumber | null | undefined
-  readonly szDecimals: number
-}
 
 const ARBITRUM_USDC_DECIMALS = 6
 const MIN_HYPERLIQUID_DEPOSIT_USDC = '5'
@@ -132,6 +103,8 @@ const HYPERLIQUID_ARBITRUM_CHAIN_ID = 42161
 const HYPERLIQUID_BRIDGE_ADDRESS = '0x2Df1c51E09aECF9cacB7bc98cB1742757f163dF7'
 const ARBITRUM_USDC_ADDRESS = '0xaf88d065e77c8cC2239327C5EDb3A432268e5831'
 const HYPERLIQUID_MAINNET_SIGNATURE_CHAIN_ID = '0xa4b1'
+const MIN_HYPERLIQUID_ORDER_NOTIONAL_USD = 10
+const HYPERLIQUID_TWAP_INTERVAL_SECONDS = 30
 
 export class HyperliquidService {
   private readonly transaction: TransactionService
@@ -414,6 +387,342 @@ export class HyperliquidService {
     return { orders, grouping: 'normalTpsl' }
   }
 
+  private buildScaleOrderParams(params: BuildScaleOrdersParams): OrderParameters {
+    const { asset, marketType } = params
+    const legCount = params.orders
+    const priceSpan = params.endPx.minus(params.startPx)
+    const sizeSkew = new BigNumber(params.sizeSkew)
+    const minNotional = new BigNumber(MIN_HYPERLIQUID_ORDER_NOTIONAL_USD)
+
+    const weights: BigNumber[] = []
+    for (let i = 0; i < legCount; i++) {
+      const progress = new BigNumber(i).dividedBy(legCount - 1)
+      weights.push(new BigNumber(1).plus(sizeSkew.minus(1).multipliedBy(progress)))
+    }
+    const weightSum = weights.reduce((sum, weight) => sum.plus(weight), new BigNumber(0))
+
+    const orders: PerpOrderWire[] = []
+    let smallestNotional: BigNumber | null = null
+    let smallestLegIndex = 0
+
+    for (let i = 0; i < legCount; i++) {
+      const progress = new BigNumber(i).dividedBy(legCount - 1)
+      const price = params.startPx.plus(priceSpan.multipliedBy(progress))
+      const weight = weights[i]
+      if (isNullish(weight)) {
+        throw new Error(`missing scale weight for leg ${i + 1}`)
+      }
+      const size = params.amount.multipliedBy(weight).dividedBy(weightSum)
+      const notional = size.multipliedBy(price)
+
+      if (smallestNotional === null || notional.isLessThan(smallestNotional)) {
+        smallestNotional = notional
+        smallestLegIndex = i
+      }
+
+      orders.push({
+        a: asset.assetId,
+        b: params.isBuy,
+        p: formatPrice(price.toFixed(), asset.szDecimals, marketType),
+        s: formatSize(size.toFixed(), asset.szDecimals),
+        r: params.reduceOnly,
+        t: { limit: { tif: params.tif } }
+      })
+    }
+
+    if (smallestNotional !== null && smallestNotional.isLessThan(minNotional)) {
+      throw new Error(
+        `scale leg ${smallestLegIndex + 1} notional ~$${smallestNotional.toFixed(2)} is below Hyperliquid's ` +
+          `$${MIN_HYPERLIQUID_ORDER_NOTIONAL_USD} minimum per order. Increase --amount or reduce --orders.`
+      )
+    }
+
+    return { orders, grouping: 'na' }
+  }
+
+  private validateTwapNotional(params: ValidateTwapNotionalParams): void {
+    const sliceCount = (params.durationMinutes * 60) / HYPERLIQUID_TWAP_INTERVAL_SECONDS
+    const sliceSize = params.amount.dividedBy(sliceCount)
+    const sliceNotional = sliceSize.multipliedBy(params.asset.referencePrice)
+    if (sliceNotional.isLessThan(MIN_HYPERLIQUID_ORDER_NOTIONAL_USD)) {
+      const minTotalSize = params.asset.referencePrice.isGreaterThan(0)
+        ? new BigNumber(MIN_HYPERLIQUID_ORDER_NOTIONAL_USD)
+            .multipliedBy(sliceCount)
+            .dividedBy(params.asset.referencePrice)
+        : new BigNumber(0)
+      throw new Error(
+        `twap sub-order notional ~$${sliceNotional.toFixed(2)} is below Hyperliquid's ` +
+          `$${MIN_HYPERLIQUID_ORDER_NOTIONAL_USD} minimum per order. A ${params.durationMinutes}-minute ` +
+          `twap is split into ${sliceCount} sub-orders (one every ${HYPERLIQUID_TWAP_INTERVAL_SECONDS}s). ` +
+          `Increase --amount to at least ${minTotalSize.toFixed(params.asset.szDecimals)} ` +
+          `(~$${new BigNumber(MIN_HYPERLIQUID_ORDER_NOTIONAL_USD).multipliedBy(sliceCount).toFixed(2)} notional) ` +
+          `or reduce --duration-minutes.`
+      )
+    }
+  }
+
+  private buildTwapWire(params: BuildTwapWireParams): {
+    a: number
+    b: boolean
+    s: string
+    r: boolean
+    m: number
+    t: boolean
+  } {
+    return {
+      a: params.asset.assetId,
+      b: params.isBuy,
+      s: formatSize(params.amount.toFixed(), params.asset.szDecimals),
+      r: params.reduceOnly,
+      m: params.durationMinutes,
+      t: params.randomize
+    }
+  }
+
+  private toOrderAssetFromPerp(perpAsset: ResolvedPerpAsset): ResolvedOrderAsset {
+    return {
+      assetId: perpAsset.wireAsset,
+      referencePrice: perpAsset.referencePrice,
+      szDecimals: perpAsset.szDecimals
+    }
+  }
+
+  private toOrderAssetFromSpot(spotAsset: ResolvedSpotAsset): ResolvedOrderAsset {
+    return {
+      assetId: spotAsset.assetId,
+      referencePrice: spotAsset.referencePrice,
+      szDecimals: spotAsset.szDecimals
+    }
+  }
+
+  private async maybeUpdateLeverage(params: {
+    exchange: ExchangeClient
+    wireAsset: number
+    marginMode: 'cross' | 'isolated'
+    leverage: number | null | undefined
+  }): Promise<void> {
+    if (isNullish(params.leverage)) return
+
+    await params.exchange
+      .updateLeverage({
+        asset: params.wireAsset,
+        isCross: params.marginMode === 'cross',
+        leverage: params.leverage
+      })
+      .catch((error: unknown) => {
+        const msg = error instanceof Error ? error.message : String(error)
+        if (!msg.includes('already') && !msg.includes('leverage')) throw error
+      })
+  }
+
+  async twapPerp(
+    params: HyperliquidWithSignerParams<HyperliquidTwapOrderCommandOptions>
+  ): Promise<TwapOrderSuccessResponse> {
+    if (!params.request.amount.isGreaterThan(0)) {
+      throw new Error('twap amount must be greater than 0')
+    }
+
+    const exchange = this.createExchangeClient({
+      address: params.request.from,
+      walletId: params.walletId
+    })
+    const dex = this.normalizeDex(params.request.dex)
+    const perpAsset = await this.resolvePerpAsset({
+      coin: params.request.coin,
+      dex
+    })
+    const asset = this.toOrderAssetFromPerp(perpAsset)
+
+    this.validateTwapNotional({
+      asset,
+      amount: params.request.amount,
+      durationMinutes: params.request.durationMinutes
+    })
+
+    await this.maybeUpdateLeverage({
+      exchange,
+      wireAsset: perpAsset.wireAsset,
+      marginMode: params.request.marginMode,
+      leverage: params.request.leverage
+    })
+
+    return await exchange.twapOrder({
+      twap: this.buildTwapWire({
+        asset,
+        amount: params.request.amount,
+        isBuy: params.request.side === 'long',
+        durationMinutes: params.request.durationMinutes,
+        randomize: params.request.randomize,
+        reduceOnly: params.request.reduceOnly
+      })
+    })
+  }
+
+  async twapSpot(
+    params: HyperliquidWithSignerParams<HyperliquidSpotTwapOrderCommandOptions>
+  ): Promise<TwapOrderSuccessResponse> {
+    if (!params.request.amount.isGreaterThan(0)) {
+      throw new Error('twap amount must be greater than 0')
+    }
+
+    const exchange = this.createExchangeClient({
+      address: params.request.from,
+      walletId: params.walletId
+    })
+    const spotAsset = await this.resolveSpotAsset(params.request.pair)
+    const asset = this.toOrderAssetFromSpot(spotAsset)
+
+    this.validateTwapNotional({
+      asset,
+      amount: params.request.amount,
+      durationMinutes: params.request.durationMinutes
+    })
+
+    return await exchange.twapOrder({
+      twap: this.buildTwapWire({
+        asset,
+        amount: params.request.amount,
+        isBuy: params.request.side === 'buy',
+        durationMinutes: params.request.durationMinutes,
+        randomize: params.request.randomize,
+        reduceOnly: false
+      })
+    })
+  }
+
+  async twapCancel(
+    params: HyperliquidWithSignerParams<HyperliquidTwapCancelCommandOptions>
+  ): Promise<TwapCancelSuccessResponse> {
+    const exchange = this.createExchangeClient({
+      address: params.request.from,
+      walletId: params.walletId
+    })
+    const dex = this.normalizeDex(params.request.dex)
+    const perpAsset = await this.resolvePerpAsset({
+      coin: params.request.coin,
+      dex
+    })
+
+    return await exchange.twapCancel({
+      a: perpAsset.wireAsset,
+      t: params.request.twapId
+    })
+  }
+
+  async twapCancelSpot(
+    params: HyperliquidWithSignerParams<HyperliquidSpotTwapCancelCommandOptions>
+  ): Promise<TwapCancelSuccessResponse> {
+    const exchange = this.createExchangeClient({
+      address: params.request.from,
+      walletId: params.walletId
+    })
+    const spotAsset = await this.resolveSpotAsset(params.request.pair)
+
+    return await exchange.twapCancel({
+      a: spotAsset.assetId,
+      t: params.request.twapId
+    })
+  }
+
+  async cancelOrder(
+    params: HyperliquidWithSignerParams<HyperliquidCancelOrderCommandOptions>
+  ): Promise<CancelSuccessResponse> {
+    const exchange = this.createExchangeClient({
+      address: params.request.from,
+      walletId: params.walletId
+    })
+    const dex = this.normalizeDex(params.request.dex)
+    const perpAsset = await this.resolvePerpAsset({
+      coin: params.request.coin,
+      dex
+    })
+
+    return await exchange.cancel({
+      cancels: [{ a: perpAsset.wireAsset, o: params.request.orderId }]
+    })
+  }
+
+  async cancelOrderSpot(
+    params: HyperliquidWithSignerParams<HyperliquidSpotCancelOrderCommandOptions>
+  ): Promise<CancelSuccessResponse> {
+    const exchange = this.createExchangeClient({
+      address: params.request.from,
+      walletId: params.walletId
+    })
+    const spotAsset = await this.resolveSpotAsset(params.request.pair)
+
+    return await exchange.cancel({
+      cancels: [{ a: spotAsset.assetId, o: params.request.orderId }]
+    })
+  }
+
+  async scalePerp(
+    params: HyperliquidWithSignerParams<HyperliquidScaleOrderCommandOptions>
+  ): Promise<OrderSuccessResponse> {
+    if (!params.request.amount.isGreaterThan(0)) {
+      throw new Error('scale amount must be greater than 0')
+    }
+
+    const exchange = this.createExchangeClient({
+      address: params.request.from,
+      walletId: params.walletId
+    })
+    const dex = this.normalizeDex(params.request.dex)
+    const perpAsset = await this.resolvePerpAsset({
+      coin: params.request.coin,
+      dex
+    })
+
+    await this.maybeUpdateLeverage({
+      exchange,
+      wireAsset: perpAsset.wireAsset,
+      marginMode: params.request.marginMode,
+      leverage: params.request.leverage
+    })
+
+    const orderParams = this.buildScaleOrderParams({
+      asset: this.toOrderAssetFromPerp(perpAsset),
+      marketType: 'perp',
+      amount: params.request.amount,
+      isBuy: params.request.side === 'long',
+      startPx: params.request.startPx,
+      endPx: params.request.endPx,
+      orders: params.request.orders,
+      sizeSkew: params.request.sizeSkew,
+      tif: params.request.tif,
+      reduceOnly: params.request.reduceOnly
+    })
+    return await exchange.order(orderParams)
+  }
+
+  async scaleSpot(
+    params: HyperliquidWithSignerParams<HyperliquidSpotScaleOrderCommandOptions>
+  ): Promise<OrderSuccessResponse> {
+    if (!params.request.amount.isGreaterThan(0)) {
+      throw new Error('scale amount must be greater than 0')
+    }
+
+    const exchange = this.createExchangeClient({
+      address: params.request.from,
+      walletId: params.walletId
+    })
+    const spotAsset = await this.resolveSpotAsset(params.request.pair)
+
+    const orderParams = this.buildScaleOrderParams({
+      asset: this.toOrderAssetFromSpot(spotAsset),
+      marketType: 'spot',
+      amount: params.request.amount,
+      isBuy: params.request.side === 'buy',
+      startPx: params.request.startPx,
+      endPx: params.request.endPx,
+      orders: params.request.orders,
+      sizeSkew: params.request.sizeSkew,
+      tif: params.request.tif,
+      reduceOnly: false
+    })
+    return await exchange.order(orderParams)
+  }
+
   async tradeSpot(
     params: HyperliquidWithSignerParams<HyperliquidSpotTradeCommandOptions>
   ): Promise<OrderSuccessResponse> {
@@ -457,7 +766,7 @@ export class HyperliquidService {
 
   async listBalances(params: HyperliquidListBalancesParams): Promise<HyperliquidBalancesResult> {
     const normalizedDex = this.normalizeDex(params.dex)
-    const perpParams: { user: EthAddress; dex?: string } = { user: params.address }
+    const perpParams: HyperliquidInfoUserDexParams = { user: params.address }
     if (normalizedDex.length > 0) perpParams.dex = normalizedDex
 
     const [perpState, spotState] = await Promise.all([
@@ -492,25 +801,30 @@ export class HyperliquidService {
     const dexNames = params.allDexes
       ? await this.resolveAllDexNames()
       : [this.normalizeDex(params.dex)]
+    const selectedDexes = new Set(dexNames.map((dexName) => this.formatDexName(dexName)))
 
-    const states = await Promise.all(
-      dexNames.map(async (dexName) => {
-        const stateParams: { user: EthAddress; dex?: string } = { user: params.address }
-        if (dexName.length > 0) stateParams.dex = dexName
-        const state = await this.infoClient.clearinghouseState(stateParams)
-        return { dexName, state }
-      })
-    )
+    const [states, twapHistory] = await Promise.all([
+      Promise.all(
+        dexNames.map(async (dexName) => {
+          const stateParams: HyperliquidInfoUserDexParams = { user: params.address }
+          if (dexName.length > 0) stateParams.dex = dexName
+          const state = await this.infoClient.clearinghouseState(stateParams)
+          return { dexName, state }
+        })
+      ),
+      this.infoClient.twapHistory({ user: params.address })
+    ])
 
     const positions: HyperliquidPerpPosition[] = []
     for (const { dexName, state } of states) {
+      const formattedDexName = this.formatDexName(dexName)
       for (const assetPosition of state.assetPositions) {
         const position = assetPosition.position
         const szi = new BigNumber(position.szi)
         if (szi.isZero()) continue
         positions.push(
           HyperliquidPerpPositionSchema.parse({
-            dex: dexName.length > 0 ? dexName : 'main',
+            dex: formattedDexName,
             coin: position.coin,
             side: szi.isGreaterThan(0) ? 'long' : 'short',
             size: szi.abs().toFixed(),
@@ -529,9 +843,102 @@ export class HyperliquidService {
       }
     }
 
+    const latestTwapById = new Map<number, (typeof twapHistory)[number]>()
+    for (const twap of twapHistory) {
+      if (isNullish(twap.twapId)) continue
+      const existing = latestTwapById.get(twap.twapId)
+      if (isNullish(existing) || twap.time > existing.time) latestTwapById.set(twap.twapId, twap)
+    }
+
+    const twapOrders: HyperliquidPerpTwapOrder[] = []
+    for (const twap of latestTwapById.values()) {
+      if (twap.status.status !== 'activated') continue
+
+      const { dex, coin } = this.resolveDexAndCoin(twap.state.coin)
+      if (!params.allDexes && !selectedDexes.has(dex)) continue
+
+      const totalSize = new BigNumber(twap.state.sz)
+      const executedSize = new BigNumber(twap.state.executedSz)
+      const remainingSize = BigNumber.maximum(totalSize.minus(executedSize), new BigNumber(0))
+
+      twapOrders.push(
+        HyperliquidPerpTwapOrderSchema.parse({
+          dex,
+          coin,
+          side: twap.state.side === 'B' ? 'long' : 'short',
+          size: twap.state.sz,
+          executedSize: twap.state.executedSz,
+          remainingSize: remainingSize.toFixed(),
+          executedNotional: twap.state.executedNtl,
+          durationMinutes: twap.state.minutes,
+          randomize: twap.state.randomize,
+          reduceOnly: twap.state.reduceOnly,
+          startedAt: twap.state.timestamp,
+          createdAtSeconds: twap.time,
+          twapId: twap.twapId
+        })
+      )
+    }
+
     return HyperliquidPositionsResultSchema.parse({
       address: params.address,
-      positions
+      positions,
+      twapOrders
+    })
+  }
+
+  async listOpenOrders(
+    params: HyperliquidListOpenOrdersParams
+  ): Promise<HyperliquidOpenOrdersResult> {
+    const dexNames = params.allDexes
+      ? await this.resolveAllDexNames()
+      : [this.normalizeDex(params.dex)]
+
+    const orderSets = await Promise.all(
+      dexNames.map(async (dexName) => {
+        const requestParams: HyperliquidInfoUserDexParams = { user: params.address }
+        if (dexName.length > 0) requestParams.dex = dexName
+        const orders = await this.infoClient.frontendOpenOrders(requestParams)
+        return { dexName, orders }
+      })
+    )
+
+    const spotPairByCoin = await this.buildSpotPairNamesByCoin()
+    const openOrders: HyperliquidOpenOrder[] = []
+    for (const { dexName, orders } of orderSets) {
+      for (const order of orders) {
+        openOrders.push(this.mapFrontendOpenOrder(order, dexName, spotPairByCoin))
+      }
+    }
+
+    return HyperliquidOpenOrdersResultSchema.parse({
+      address: params.address,
+      orders: openOrders
+    })
+  }
+
+  async listFills(params: HyperliquidListFillsParams): Promise<HyperliquidFillsResult> {
+    let fills: HyperliquidUserFillWire[]
+    if (isNullish(params.startTime)) {
+      fills = await this.infoClient.userFills({
+        user: params.address,
+        aggregateByTime: params.aggregateByTime
+      })
+    } else {
+      fills = await this.infoClient.userFillsByTime({
+        user: params.address,
+        startTime: params.startTime,
+        endTime: params.endTime ?? undefined,
+        aggregateByTime: params.aggregateByTime,
+        reversed: params.reversed
+      })
+    }
+
+    const spotPairByCoin = await this.buildSpotPairNamesByCoin()
+
+    return HyperliquidFillsResultSchema.parse({
+      address: params.address,
+      fills: fills.map((fill) => this.mapUserFill(fill, spotPairByCoin))
     })
   }
 
@@ -565,7 +972,10 @@ export class HyperliquidService {
 
     const assets = meta.universe.map((asset, index) => {
       const assetContext = assetContexts[index]
-      const markPx = isNullish(assetContext) ? null : (assetContext.midPx ?? assetContext.markPx)
+      let markPx: string | null = null
+      if (!isNullish(assetContext)) {
+        markPx = assetContext.midPx ?? assetContext.markPx
+      }
       return HyperliquidPerpAssetSchema.parse({
         name: asset.name,
         szDecimals: asset.szDecimals,
@@ -603,9 +1013,10 @@ export class HyperliquidService {
         continue
       }
       const spotAssetContext = spotAssetContexts[spotMarket.index]
-      const markPx = isNullish(spotAssetContext)
-        ? null
-        : (spotAssetContext.midPx ?? spotAssetContext.markPx)
+      let markPx: string | null = null
+      if (!isNullish(spotAssetContext)) {
+        markPx = spotAssetContext.midPx ?? spotAssetContext.markPx
+      }
       assets.push(
         HyperliquidSpotAssetSchema.parse({
           pair: `${baseTokenName}/${quoteTokenName}`,
@@ -645,6 +1056,132 @@ export class HyperliquidService {
     const normalizedDex = dex.trim()
     if (normalizedDex.length === 0 || normalizedDex === 'main') return ''
     return normalizedDex
+  }
+
+  private formatDexName(dexName: string): string {
+    return dexName.length > 0 ? dexName : 'main'
+  }
+
+  private resolveDexAndCoin(rawCoin: string): { dex: string; coin: string } {
+    const coin = rawCoin.trim()
+    const separatorIndex = coin.indexOf(':')
+    if (separatorIndex <= 0) return { dex: 'main', coin }
+
+    const dex = coin.slice(0, separatorIndex)
+    const strippedCoin = coin.slice(separatorIndex + 1)
+    return { dex, coin: strippedCoin.length > 0 ? strippedCoin : coin }
+  }
+
+  private isSpotCoin(rawCoin: string): boolean {
+    return rawCoin.startsWith('@') || rawCoin.includes('/')
+  }
+
+  private mapFrontendOpenOrder(
+    order: HyperliquidFrontendOpenOrderWire,
+    queriedDexName: string,
+    spotPairByCoin: Map<string, string>
+  ): HyperliquidOpenOrder {
+    const market = this.isSpotCoin(order.coin) ? 'spot' : 'perp'
+    const { dex: coinDex, coin } = this.resolveDexAndCoin(order.coin)
+    let dex: string
+    let displayCoin: string
+    switch (market) {
+      case 'spot': {
+        dex = 'spot'
+        displayCoin = spotPairByCoin.get(order.coin) ?? order.coin
+        break
+      }
+      case 'perp': {
+        dex = queriedDexName.length > 0 ? this.formatDexName(queriedDexName) : coinDex
+        displayCoin = coin
+        break
+      }
+    }
+    let triggerPx: string | null = null
+    if (order.isTrigger && !isNullish(order.triggerPx) && order.triggerPx !== '0.0') {
+      triggerPx = order.triggerPx
+    }
+
+    return HyperliquidOpenOrderSchema.parse({
+      dex,
+      coin: displayCoin,
+      market,
+      side: order.side === 'B' ? 'buy' : 'sell',
+      limitPx: order.limitPx,
+      size: order.sz,
+      origSize: order.origSz,
+      orderId: order.oid,
+      timestamp: order.timestamp,
+      orderType: order.orderType,
+      tif: order.tif,
+      reduceOnly: order.reduceOnly,
+      isTrigger: order.isTrigger,
+      triggerPx,
+      triggerCondition: order.triggerCondition,
+      isPositionTpsl: order.isPositionTpsl,
+      cloid: order.cloid
+    })
+  }
+
+  private async buildSpotPairNamesByCoin(): Promise<Map<string, string>> {
+    const [spotMeta] = await this.infoClient.spotMetaAndAssetCtxs()
+    const tokenNameByIndex = new Map<number, string>()
+    for (const token of spotMeta.tokens) {
+      tokenNameByIndex.set(token.index, token.name)
+    }
+
+    const pairByCoin = new Map<string, string>()
+    for (const spotMarket of spotMeta.universe) {
+      if (spotMarket.tokens.length < 2) continue
+      const baseTokenIndex = spotMarket.tokens[0]
+      const quoteTokenIndex = spotMarket.tokens[1]
+      if (isNullish(baseTokenIndex) || isNullish(quoteTokenIndex)) continue
+      const baseTokenName = tokenNameByIndex.get(baseTokenIndex)
+      const quoteTokenName = tokenNameByIndex.get(quoteTokenIndex)
+      if (isNullish(baseTokenName) || isNullish(quoteTokenName)) continue
+      const pair = `${baseTokenName}/${quoteTokenName}`
+      pairByCoin.set(`@${spotMarket.index}`, pair)
+      pairByCoin.set(spotMarket.name, pair)
+    }
+    return pairByCoin
+  }
+
+  private mapUserFill(
+    fill: HyperliquidUserFillWire,
+    spotPairByCoin: Map<string, string>
+  ): HyperliquidFill {
+    const market = this.isSpotCoin(fill.coin) ? 'spot' : 'perp'
+    const { dex: coinDex, coin } = this.resolveDexAndCoin(fill.coin)
+    let dex: string = coinDex
+    let displayCoin: string = coin
+
+    if (market === 'spot') {
+      dex = 'spot'
+      displayCoin = spotPairByCoin.get(fill.coin) ?? fill.coin
+    }
+
+    return HyperliquidFillSchema.parse({
+      dex,
+      coin: displayCoin,
+      market,
+      side: fill.side === 'B' ? 'buy' : 'sell',
+      price: fill.px,
+      size: fill.sz,
+      startPosition: fill.startPosition,
+      direction: fill.dir,
+      closedPnl: fill.closedPnl,
+      fee: fill.fee,
+      feeToken: fill.feeToken,
+      builderFee: fill.builderFee,
+      hash: fill.hash,
+      orderId: fill.oid,
+      tradeId: fill.tid,
+      timestamp: fill.time,
+      crossed: fill.crossed,
+      twapId: fill.twapId,
+      cloid: fill.cloid ?? null,
+      liquidation: fill.liquidation ?? null
+    })
   }
 
   private async resolvePerpAsset(params: ResolvePerpAssetParams): Promise<ResolvedPerpAsset> {
