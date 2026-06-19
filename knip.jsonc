@@ -1,9 +1,15 @@
 {
   "$schema": "https://unpkg.com/knip@5/schema.json",
-  // All executable code lives in a single root `src/`. Entry points: the ata +
-  // skill CLIs (invoked at runtime via `bun src/cli/<Name>.ts`) and the Pi extensions
-  // (auto-discovered by Pi via their `index.ts` default export). Tests live under
-  // tests/ and are detected by knip's vitest plugin.
-  "entry": ["src/cli/*.ts", ".pi/extensions/*/index.ts", "tests/**/*.test.ts"],
+  // All executable code lives in a single root `src/`. Entry points: src/cli/Tribes.ts
+  // (compiled into the `tribes-cli` binary) plus the per-group builders it composes, the
+  // Pi extensions (auto-discovered via their `index.ts` default export), and the proxy
+  // token script the tribes extension spawns directly. Tests live under tests/ and are
+  // detected by knip's vitest plugin.
+  "entry": [
+    "src/cli/*.ts",
+    ".pi/extensions/*/index.ts",
+    ".pi/extensions/tribes/AgentProxyToken.ts",
+    "tests/**/*.test.ts"
+  ],
   "project": ["src/**/*.ts", ".pi/extensions/**/*.ts", "tests/**/*.ts"]
 }

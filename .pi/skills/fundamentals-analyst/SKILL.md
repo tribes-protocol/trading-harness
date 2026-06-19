@@ -66,13 +66,13 @@ For live on-chain holder/trader/security analysis, switch to `token-analyst`.
 ### Show CLI help
 
 ```bash
-bun src/cli/FundamentalsAnalyst.ts --help
+tribes-cli fundamentals-analyst --help
 ```
 
 ### Ask the specialist
 
 ```bash
-bun src/cli/FundamentalsAnalyst.ts ask \
+tribes-cli fundamentals-analyst ask \
   --query "fundamentals and supply trend for ethereum over 90d"
 ```
 

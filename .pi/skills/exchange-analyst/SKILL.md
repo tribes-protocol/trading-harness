@@ -60,13 +60,13 @@ For token-level on-chain holder/trader/security depth, switch to `token-analyst`
 ### Show CLI help
 
 ```bash
-bun src/cli/ExchangeAnalyst.ts --help
+tribes-cli exchange-analyst --help
 ```
 
 ### Ask the specialist
 
 ```bash
-bun src/cli/ExchangeAnalyst.ts ask \
+tribes-cli exchange-analyst ask \
   --query "compare top derivatives exchanges by open interest"
 ```
 

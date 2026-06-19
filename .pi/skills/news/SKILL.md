@@ -34,7 +34,7 @@ For fallback mode:
 From the harness root:
 
 ```bash
-bun src/cli/News.ts fetch \
+tribes-cli news fetch \
   --kind perp \
   --coin BTC
 ```
@@ -42,7 +42,7 @@ bun src/cli/News.ts fetch \
 Token example:
 
 ```bash
-bun src/cli/News.ts fetch \
+tribes-cli news fetch \
   --kind token \
   --chain-id 1 \
   --token-id 0xA0b86991c6218b36c1d19d4a2e9eb0ce3606eb48
@@ -51,7 +51,7 @@ bun src/cli/News.ts fetch \
 Stock example:
 
 ```bash
-bun src/cli/News.ts fetch \
+tribes-cli news fetch \
   --kind stock \
   --ticker NVDA
 ```

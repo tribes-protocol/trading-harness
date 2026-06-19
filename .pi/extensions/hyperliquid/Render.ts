@@ -154,22 +154,19 @@ function renderPositionsTable(
     const margin = marginUsd !== null ? `${fmtUsd(marginUsd)}${leverageLabel}` : '—'
 
     // Liq display contract:
-    //   - HL returned a value  →  same render the column has always used
-    //     (distance from mark for longs with liq<mark, raw price otherwise).
+    //   - HL returned a value  →  the actual liquidation price (matches what
+    //     hyperliquid.xyz and the position detail table show).
     //   - HL returned null but we synthesized a cross-margin estimate
-    //     →  same shape, prefixed with `~` so the operator sees it's an estimate.
+    //     →  the estimated price, prefixed with `~` so the operator sees it's
+    //     an estimate.
     //   - HL returned null AND no estimate was possible (cross position so
     //     well-collateralized HL declines to compute one) → `safe` (dim).
     //   - Truly missing data (no mark, no estimate, isolated and HL null)
     //     →  `—` (dim) like before.
     const liqRaw = coerceNumber(position.liquidationPrice)
     const liqEstimate = coerceNumber(position.estimatedLiquidationPrice)
-    const markPrice = coerceNumber(position.markPrice)
     const renderLiq = (px: number, isEstimate: boolean): string => {
       const tag = isEstimate ? '~' : ''
-      if (position.side === 'long' && markPrice !== null && px > 0 && px < markPrice) {
-        return `${tag}${fmtPrice(markPrice - px)}`
-      }
       return `${tag}${fmtPrice(px)}`
     }
     const liqDisplay =
@@ -252,7 +249,10 @@ export function renderHyperliquidPositionsWidget(
   width: number,
   refreshing = false
 ): string[] {
-  const borderColor = (value: string): string => theme.fg(status.ok ? 'accent' : 'warning', value)
+  // Loading uses a calm dim border; a real failure (missing account / error) is
+  // a warning; a healthy account is the accent.
+  const borderTone = status.ok ? 'accent' : status.initializing ? 'dim' : 'warning'
+  const borderColor = (value: string): string => theme.fg(borderTone, value)
   const container = new Container()
   const contentWidth = Math.max(20, width - 2)
 
@@ -271,16 +271,13 @@ export function renderHyperliquidPositionsWidget(
   )
 
   if (!status.ok) {
-    container.addChild(
-      new Text(
-        theme.fg(
+    const notice = status.initializing
+      ? theme.fg('dim', 'Loading account…')
+      : theme.fg(
           'warning',
           status.accountError ?? status.error ?? 'Unable to load Hyperliquid status'
-        ),
-        1,
-        0
-      )
-    )
+        )
+    container.addChild(new Text(notice, 1, 0))
     container.addChild(new DynamicBorder(borderColor))
     return container.render(width)
   }
