@@ -13,10 +13,25 @@ allowed-tools: bash read
 
 Use Microsoft's `@playwright/cli` for token-efficient browser automation from the shell.
 
-`playwright-cli` is NOT preinstalled — sandbox images ship without Playwright or
-Chromium to keep the rootfs small. The first use of this skill installs both
-(see Setup below); expect that one-time install to take a few minutes. Always
-run the Setup check before the first browser command of a session.
+`playwright-cli` is NOT preinstalled. Sandbox images ship without Playwright or
+Chromium to keep the rootfs small, so installing the CLI and browser is part of
+using this skill. Do not skip browser automation only because the CLI is missing:
+run the Setup steps once, then continue with the task. Future browser work in
+the same environment reuses that install.
+
+Every `playwright-cli` command that opens, navigates, snapshots, evaluates, or
+otherwise uses a browser session must pass a valid desktop `USER_AGENT` through
+`PLAYWRIGHT_MCP_USER_AGENT`. Use the wrapper below instead of calling
+`playwright-cli` directly:
+
+```bash
+USER_AGENT="${USER_AGENT:-Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36}"
+pwcli() {
+  PLAYWRIGHT_MCP_USER_AGENT="$USER_AGENT" \
+  PLAYWRIGHT_MCP_VIEWPORT_SIZE="${PLAYWRIGHT_MCP_VIEWPORT_SIZE:-1365x768}" \
+  playwright-cli "$@"
+}
+```
 
 ## Use as fetcher fallback
 
@@ -27,7 +42,7 @@ Treat Playwright as your web browser for that task: use a dedicated named sessio
 Before relying on the page, verify the live context (user agent, viewport) matches intent:
 
 ```bash
-playwright-cli -s=<session> run-code "async page => {
+pwcli -s=<session> run-code "async page => {
   return await page.evaluate(() => ({
     userAgent: navigator.userAgent,
     language: navigator.language,
@@ -36,7 +51,9 @@ playwright-cli -s=<session> run-code "async page => {
 }"
 ```
 
-Set a realistic user agent and viewport for the session. One-shot env vars for `open` (see `@playwright/cli` README for `PLAYWRIGHT_MCP_*`):
+Set a realistic user agent and viewport for the session. One-shot env vars for
+`open` are acceptable when not using the wrapper, but the user agent is still
+required (see `@playwright/cli` README for `PLAYWRIGHT_MCP_*`):
 
 ```bash
 PLAYWRIGHT_MCP_USER_AGENT='Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36' \
@@ -51,8 +68,8 @@ Do not use this fallback to solve CAPTCHAs, bypass paywalls or access controls y
 Primary command:
 
 ```bash
-playwright-cli <command>
-playwright-cli -s=<session> <command>
+pwcli <command>
+pwcli -s=<session> <command>
 ```
 
 Verify the global CLI before use:
@@ -64,11 +81,11 @@ playwright-cli --help
 
 ## Setup
 
-The CLI is installed on demand. Before using it, check whether it already
-exists and only install if it is missing. In a Tribes sandbox you are root on a
-Debian (glibc) system with node/npm available, so the steps below work as-is —
-use `--with-deps` for the browser install since the image carries no GUI
-libraries.
+The CLI is installed on demand. Before using it, check whether it already exists
+and only install if it is missing. Treat this as normal setup work for the skill,
+not as a reason to avoid the browser path. In a Tribes sandbox you are root on a
+Debian (glibc) system with node/npm available, so the steps below work as-is; use
+`--with-deps` for the browser install since the image carries no GUI libraries.
 
 1. Check for the CLI:
 
@@ -126,18 +143,24 @@ https://github.com/microsoft/playwright-cli
 Example:
 
 ```bash
-PWCLI="playwright-cli"
-$PWCLI -s=browser-task open https://example.com
-$PWCLI -s=browser-task snapshot --depth=4
-$PWCLI -s=browser-task click e15
-$PWCLI -s=browser-task screenshot --filename=.pi/skills/browser/.playwright/example.png
-$PWCLI -s=browser-task close
+USER_AGENT="${USER_AGENT:-Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36}"
+pwcli() {
+  PLAYWRIGHT_MCP_USER_AGENT="$USER_AGENT" \
+  PLAYWRIGHT_MCP_VIEWPORT_SIZE="${PLAYWRIGHT_MCP_VIEWPORT_SIZE:-1365x768}" \
+  playwright-cli "$@"
+}
+
+pwcli -s=browser-task open https://example.com
+pwcli -s=browser-task snapshot --depth=4
+pwcli -s=browser-task click e15
+pwcli -s=browser-task screenshot --filename=.pi/skills/browser/.playwright/example.png
+pwcli -s=browser-task close
 ```
 
 Use `--headed` with `open` only when the user wants to watch or manually intervene:
 
 ```bash
-$PWCLI -s=manual open https://example.com --headed
+pwcli -s=manual open https://example.com --headed
 ```
 
 ## Common commands
