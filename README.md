@@ -21,10 +21,10 @@ Pi reads `.pi/settings.json` and `AGENTS.md`, then starts the trading harness. E
 
 Set these in the sandbox/runtime env (never commit secrets):
 
-| Variable          | Purpose                                      |
-| ----------------- | -------------------------------------------- |
-| `API_BASE_URL`    | Tribes API base (LLM proxy + wallet backend) |
-| `PRIVY_APP_ID`    | Privy app for the agent wallet               |
+| Variable       | Purpose                                      |
+| -------------- | -------------------------------------------- |
+| `API_BASE_URL` | Tribes API base (LLM proxy + wallet backend) |
+| `PRIVY_APP_ID` | Privy app for the agent wallet               |
 
 On startup the `tribes` extension writes `API_BASE_URL`, `PRIVY_APP_ID`, and a freshly
 minted `API_BEARER_TOKEN` into `.env` (refreshed every 24h). The `tribes-cli` binary
