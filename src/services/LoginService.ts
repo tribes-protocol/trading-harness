@@ -30,10 +30,6 @@ export class LoginService {
       type: 'spki',
       format: 'pem'
     })
-    const publicKeyDer = publicKey.export({
-      type: 'spki',
-      format: 'der'
-    })
 
     await writeCliLoginKey({
       schema: 'cli-login-key.v1',
@@ -43,12 +39,12 @@ export class LoginService {
       createdAt: new Date().toISOString()
     })
 
-    const publicKeyBase64Url = publicKeyDer.toString('base64url')
+    const publicKeyPemString = publicKeyPem.toString()
     const loginUrl = new URL('/agents/login-cli', resolveLoginBaseUrl())
-    loginUrl.searchParams.set('pubkey', publicKeyBase64Url)
+    loginUrl.searchParams.set('pubkey', publicKeyPemString)
 
     return CliLoginResultSchema.parse({
-      publicKeyBase64Url,
+      publicKeyPem: publicKeyPemString,
       loginUrl: loginUrl.toString(),
       keyPath: CLI_LOGIN_KEY_PATH
     })

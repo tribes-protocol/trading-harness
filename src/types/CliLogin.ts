@@ -10,7 +10,7 @@ export const CliLoginKeySchema = z.object({
 export type CliLoginKey = z.infer<typeof CliLoginKeySchema>
 
 export const CliLoginResultSchema = z.object({
-  publicKeyBase64Url: z.string().min(1),
+  publicKeyPem: z.string().min(1),
   loginUrl: z.string().url(),
   keyPath: z.string().min(1)
 })
