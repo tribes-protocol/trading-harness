@@ -4,7 +4,7 @@ import { dirname, resolve } from 'node:path'
 import { type CliLoginKey, CliLoginKeySchema } from '@/types/CliLogin'
 import { ensureJsonTreeString } from '@/utils/Lang'
 
-export const CLI_LOGIN_KEY_PATH = resolve(process.cwd(), '.pi/cli-login-key.json')
+const CLI_LOGIN_KEY_PATH = resolve(process.cwd(), '.pi/cli-login-key.json')
 
 export async function readCliLoginKey(): Promise<CliLoginKey> {
   try {
