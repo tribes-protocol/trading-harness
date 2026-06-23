@@ -87,7 +87,7 @@ async function writeDiskCache(params: WriteDiskCacheParams): Promise<void> {
 
 async function mintTokenCache(key: AgentAuthorizationKey): Promise<JwtTokenCache> {
   const privateKey = await importPKCS8(key.privateKeyPem, 'ES256')
-  const token = await new SignJWT({ sandboxId: key.sandboxId })
+  const token = await new SignJWT({ sandboxId: key.sandboxId, app: 'sandboxd' })
     .setProtectedHeader({ alg: 'ES256' })
     .setSubject(key.userId)
     .setIssuedAt()
