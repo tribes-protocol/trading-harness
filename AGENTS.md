@@ -16,6 +16,18 @@ This repository is an autonomous Hyperliquid trading harness based on the [Pi ha
 
 This repo is the agent's workspace: in a Tribes sandbox the control plane clones it into `/workspace`, runs `bootstrap.sh` once, injects auth/RPC env, and launches `pi`. `AGENTS.md` is the operating constitution Pi reads at startup; the human talks to Pi, and Pi drives the `tribes-cli` binary built from this repo.
 
+## Runtime Preconditions
+
+Before running any `tribes-cli` subcommand other than `tribes-cli login`, ensure authentication is established.
+
+- In a fresh environment/session, run `tribes-cli login` once before other `tribes-cli` commands.
+- If `API_BEARER_TOKEN` is missing or empty, run `tribes-cli login` to fetch and persist a fresh token before proceeding.
+
+## Error Recovery
+
+- If a `tribes-cli` command fails due to authentication state (unauthorized, missing token, invalid token, or expired token), run `tribes-cli login` and retry the original command once.
+- If the retry still fails for auth reasons, stop and report an authentication failure clearly instead of looping.
+
 ## Commands
 
 Package manager is **bun**. There is no compile-to-`dist` step for development; TypeScript runs directly.
@@ -95,7 +107,7 @@ Prettier: no semicolons, single quotes, no trailing commas, width 100. TypeScrip
 
 ## Environment
 
-Required env, validated by `@/common/Env`: `API_BASE_URL`, `API_BEARER_TOKEN`, `PRIVY_APP_ID`, plus `ALCHEMY_API_KEY` and `HELIUS_API_KEY`. `API_BEARER_TOKEN` is auto-minted by the Tribes extension. Wallet private keys live in Privy, never locally. `.env*` and `.pi/*.json` snapshots are gitignored.
+Required env, validated by `@/common/Env`: `API_BEARER_TOKEN`, `PRIVY_APP_ID`. `API_BEARER_TOKEN` is typically auto-minted by the Tribes extension; if it is missing, run `tribes-cli login` first so a fresh token is fetched and persisted before other `tribes-cli` actions. Wallet private keys live in Privy, never locally. `.env*` and `.pi/*.json` snapshots are gitignored.
 
 ## Gotchas
 
