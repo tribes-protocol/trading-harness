@@ -5,33 +5,25 @@
  *
  * This token authorizes EVERY proxy call the agent makes — the LLM proxy AND the
  * wallet/transaction backend — so it is the single credential the whole harness
- * runs on. `.env` (API_BEARER_TOKEN) is the source of truth; the tribes extension
- * mints it from the agent's P-256 key and refreshes it every 24h. This script
- * serves that value so the LLM provider and the CLIs share one token. `--force`
- * ignores .env + cache and mints a fresh token (how the extension refreshes .env).
+ * runs on. It is the static per-sandbox API key the control plane injects into
+ * the VM env as TRIBES_API_KEY (opaque, no expiry; the proxy verifies it by hash
+ * and revokes it on shutdown). No minting, no 24h refresh — the key arrives
+ * ready-to-use. Falls back to API_BEARER_TOKEN for local dev where no static key
+ * is injected.
  *
- * Extension-only infra (not a `tribes-cli` command): it MINTS the bearer token
- * before `.env` exists, so it must run without that token already present. The
- * tribes extension runs it directly via bun — Provider wires it as the proxy
- * apiKey `!command`, and AuthBootstrap runs it with --force to (re)write .env.
+ * Extension-only infra (not a `tribes-cli` command): the tribes extension runs it
+ * directly via bun — Provider wires it as the proxy apiKey `!command`, and
+ * AuthBootstrap runs it to (re)write .env so the CLIs share the one token.
  */
 
-import { getApiBearerToken } from '@/helpers/Jwt'
-
-async function main(): Promise<void> {
-  const forceRefresh = process.argv.includes('--force')
-
-  // bun auto-loads .env from the workspace, so process.env.API_BEARER_TOKEN is
-  // the current .env value when present.
-  const fromEnv = process.env.API_BEARER_TOKEN
-  if (!forceRefresh && fromEnv) {
-    process.stdout.write(fromEnv)
-    return
+function main(): void {
+  const token = process.env.TRIBES_API_KEY ?? process.env.API_BEARER_TOKEN
+  if (!token) {
+    process.stderr.write('TRIBES_API_KEY is not set\n')
+    process.exit(1)
   }
-
-  const token = await getApiBearerToken({ forceRefresh })
   // No trailing newline: the value is used verbatim as a Bearer token.
   process.stdout.write(token)
 }
 
-void main()
+main()
