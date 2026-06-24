@@ -4,7 +4,7 @@
  *   - registers the `tribes-llm-proxy` model provider (./Provider.ts)
  *   - renders the welcome header on startup (./Welcome.ts)
  *   - warms the wallet snapshot on startup (./WalletSnapshot.ts)
- *   - exposes a `/login` command so a logged-out user can authenticate in-app
+ *   - exposes a `/login-tribes` command so a logged-out user can authenticate in-app
  *
  * Sibling modules are imported relatively: Pi loads extensions via jiti, which
  * resolves relative paths but not the harness's `@/` tsconfig alias.
@@ -37,7 +37,7 @@ export default async function tribes(pi: TribesApi): Promise<void> {
   installAgentKey(cwd)
 
   // Only register the LLM provider when logged in. Logged out, Pi boots with no
-  // Tribes models — the user can't switch to or message the LLM until /login.
+  // Tribes models — the user can't switch to or message the LLM until /login-tribes.
   // Genuine failures (corrupt key, network) surface as an error notice rather
   // than crashing extension load.
   let startupNotice: StartupNotice | null = null
@@ -52,7 +52,7 @@ export default async function tribes(pi: TribesApi): Promise<void> {
     }
   } else {
     startupNotice = {
-      message: 'Not logged in. Run /tribes-login to enable the agent.',
+      message: 'Log in with /login-tribes to use agentic trading.',
       level: 'warning'
     }
   }
@@ -70,10 +70,16 @@ export default async function tribes(pi: TribesApi): Promise<void> {
   pi.on('session_start', async (event, ctx) => {
     if (event.reason !== 'startup') return
     if (ctx.hasUI) showWelcome(ctx)
-    if (ctx.hasUI && startupNotice) ctx.ui.notify(startupNotice.message, startupNotice.level)
+    if (ctx.hasUI && startupNotice) {
+      const notice = startupNotice
+      // Pi prints its built-in "No models available" warning immediately AFTER
+      // session_start returns (in interactive run()). Defer ours by a macrotask
+      // so it lands just below that default warning rather than above it.
+      setTimeout(() => ctx.ui.notify(notice.message, notice.level), 0)
+    }
 
-    // Logged out: nothing to materialize yet. /login wires everything up once the
-    // user authenticates.
+    // Logged out: nothing to materialize yet. /login-tribes wires everything up
+    // once the user authenticates.
     if (!hasAgentKey(ctx.cwd)) return
 
     try {
@@ -98,7 +104,7 @@ export default async function tribes(pi: TribesApi): Promise<void> {
     authRefreshTimer = undefined
   })
 
-  pi.registerCommand('tribes-login', {
+  pi.registerCommand('login-tribes', {
     description: 'Log in to Tribes to enable the agent',
     handler: async (_args, ctx) => {
       if (hasAgentKey(ctx.cwd)) {
