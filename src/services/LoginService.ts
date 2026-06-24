@@ -124,6 +124,7 @@ export class LoginService {
       curve: 'P-256',
       privateKeyPem: loginRequest.privateKeyPem,
       publicKeyPem: loginRequest.publicKeyPem,
+      app: 'external',
       sandboxId: pollResult.sandboxId,
       userId: pollResult.userId,
       createdAt: new Date().toISOString()
