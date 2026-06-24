@@ -15,10 +15,6 @@ import { ensureJsonTreeString, isNullish } from '@/utils/Lang'
 
 const TOKEN_TTL = '7d'
 const TOKEN_REFRESH_BUFFER_SECONDS = 60
-// Resolve against the working directory (like AuthKey/CliLoginKey) rather than
-// import.meta.url: in the compiled tribes-cli binary import.meta.url points into
-// the bundle's virtual filesystem, so '../../' resolved to '/' and writes hit a
-// read-only '/.tribes' (EROFS). cwd is the workspace root for every CLI invocation.
 const TOKEN_CACHE_PATH = resolve(process.cwd(), '.tribes/jwt-token-cache.json')
 
 let memoryCache: JwtTokenCache | null = null
