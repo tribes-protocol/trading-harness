@@ -1,18 +1,21 @@
 import { generateKeyPair } from 'node:crypto'
+import { readFile, writeFile } from 'node:fs/promises'
+import { resolve } from 'node:path'
 import { promisify } from 'node:util'
 
+import { API_BASE_URL, WEB_BASE_URL } from '@/common/Env'
 import { retry } from '@/helpers/AsyncControl'
 import { writeAgentAuthorizationKey } from '@/helpers/AuthKey'
 import { writeCliLoginKey } from '@/helpers/CliLoginKey'
+import { getApiBearerToken } from '@/helpers/Jwt'
 import { type CliLoginPollResponse, CliLoginPollResponseSchema } from '@/types/CliLogin'
 
 const LOGIN_POLL_INTERVAL_MS = 2_000
 const LOGIN_POLL_TIMEOUT_MS = 3 * 60_000
 const LOGIN_POLL_MAX_RETRIES = LOGIN_POLL_TIMEOUT_MS / LOGIN_POLL_INTERVAL_MS
-const API_BASE_URL =
-  process.env.NODE_ENV === 'development' ? 'http://localhost:8787' : 'https://api.tribes.xyz'
-const WEB_BASE_URL =
-  process.env.NODE_ENV === 'development' ? 'http://localhost:3000' : 'https://app.tribes.xyz'
+
+const ENV_PATH = resolve(process.cwd(), '.env')
+const ENV_PASSTHROUGH = ['PRIVY_APP_ID'] as const
 
 const generateKeyPairAsync = promisify(generateKeyPair)
 
@@ -29,6 +32,35 @@ export type LoginRequestContext = {
 }
 
 export class LoginService {
+  private async readDotEnv(): Promise<Map<string, string>> {
+    const env = new Map<string, string>()
+    try {
+      const content = await readFile(ENV_PATH, 'utf8')
+      for (const line of content.split(/\r?\n/u)) {
+        const separator = line.indexOf('=')
+        const key = line.slice(0, separator).trim()
+        if (separator > 0 && key.length > 0 && !key.startsWith('#')) {
+          env.set(key, line.slice(separator + 1))
+        }
+      }
+    } catch {
+      // No existing .env yet — start fresh.
+    }
+    return env
+  }
+
+  private async writeAuthEnv(): Promise<void> {
+    const env = await this.readDotEnv()
+    for (const name of ENV_PASSTHROUGH) {
+      const value = process.env[name]
+      if (value) env.set(name, value)
+    }
+    env.set('API_BEARER_TOKEN', await getApiBearerToken({ forceRefresh: true }))
+
+    const body = [...env].map(([key, value]) => `${key}=${value}`).join('\n')
+    await writeFile(ENV_PATH, `${body}\n`, { mode: 0o600 })
+  }
+
   private async pollLoginResult(publicKeyCompact: string): Promise<CliLoginPollResponse> {
     const resultUrl = new URL('/agent/remote/login/result', API_BASE_URL)
     resultUrl.searchParams.set('pubKey', publicKeyCompact)
@@ -129,5 +161,7 @@ export class LoginService {
       userId: pollResult.userId,
       createdAt: new Date().toISOString()
     })
+
+    await this.writeAuthEnv()
   }
 }

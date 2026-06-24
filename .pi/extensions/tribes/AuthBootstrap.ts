@@ -170,8 +170,9 @@ export async function writeAuthEnv(cwd: string): Promise<void> {
 /**
  * Drive `tribes-cli login` from inside Pi: surface the browser URL from stdout,
  * try to open that URL in the default browser, then wait for login completion
- * and enable the LLM live (write .env + register the provider) with no restart.
- * `tribes-cli login` runs while logged out and writes the agent key on success.
+ * and enable the LLM live (register provider + warm wallet) with no restart.
+ * `tribes-cli login` runs while logged out, writes the agent key, and materializes
+ * .env for provider auth.
  */
 export async function runLogin(
   pi: TribesApi,
@@ -231,7 +232,6 @@ export async function runLogin(
   }
 
   try {
-    await writeAuthEnv(ctx.cwd)
     await registerTribesProvider(pi)
   } catch (err) {
     let errorMessage = String(err)
