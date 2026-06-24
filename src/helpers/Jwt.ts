@@ -15,7 +15,7 @@ import { ensureJsonTreeString, isNullish } from '@/utils/Lang'
 
 const TOKEN_TTL = '7d'
 const TOKEN_REFRESH_BUFFER_SECONDS = 60
-const TOKEN_CACHE_PATH = resolve(process.cwd(), '.pi/jwt-token-cache.json')
+const TOKEN_CACHE_PATH = resolve(process.cwd(), '.tribes/jwt-token-cache.json')
 
 let memoryCache: JwtTokenCache | null = null
 
