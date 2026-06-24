@@ -43,15 +43,16 @@ interface ProviderConfig {
 
 export type TribesApi = ExtensionAPI & {
   registerProvider(name: string, config: ProviderConfig): void
+  setModel(model: unknown): Promise<boolean>
 }
 
 const execFileAsync = promisify(execFile)
 
 // `!command` apiKey: Pi runs this to read the bearer token. AgentProxyToken.ts
 // serves API_BEARER_TOKEN from .env (the single source the tribes extension
-// refreshes every 24h). The harness dir is surfaced AS /workspace in the sandbox
-// (see scripts/sandbox-agent-shell.sh).
-const TOKEN_COMMAND = '!bun /workspace/.pi/extensions/tribes/AgentProxyToken.ts'
+// refreshes every 24h). Use a cwd-relative path so this works both in sandboxed
+// /workspace sessions and local desktop paths.
+const TOKEN_COMMAND = '!bun .pi/extensions/tribes/AgentProxyToken.ts'
 
 const ZERO_COST: ProviderModelCost = { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 }
 const MODEL_FETCH_TIMEOUT_MS = 30_000

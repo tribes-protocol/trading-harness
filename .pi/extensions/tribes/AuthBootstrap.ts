@@ -1,8 +1,13 @@
-import { execFile } from 'node:child_process'
-import { copyFileSync, mkdirSync } from 'node:fs'
-import { writeFile } from 'node:fs/promises'
+import { execFile, spawn } from 'node:child_process'
+import { copyFileSync, existsSync, mkdirSync } from 'node:fs'
+import { readFile, writeFile } from 'node:fs/promises'
 import { dirname, resolve } from 'node:path'
 import { promisify } from 'node:util'
+
+import { ExtensionCommandContext } from '@earendil-works/pi-coding-agent'
+
+import { registerTribesProvider, TribesApi } from './Provider'
+import { warmWalletSnapshot } from './WalletSnapshot'
 
 const execFileAsync = promisify(execFile)
 
@@ -12,15 +17,81 @@ const execFileAsync = promisify(execFile)
 const HOST_KEY_PATH = '/var/lib/tribes/agent-authorization-key.json'
 const MINT_TIMEOUT_MS = 30_000
 const MINT_MAX_BUFFER_BYTES = 1024 * 1024
+const OPEN_URL_TIMEOUT_MS = 5_000
 
 // Vars the CLIs need (src/common/env.ts). API_BASE_URL + PRIVY_APP_ID arrive in
 // the process env (the host seeds them on the kernel cmdline as
 // tribes.agent_env; the in-VM bridge injects them into pi, so this extension
 // inherits them). API_BEARER_TOKEN is minted from the agent key below.
-const ENV_PASSTHROUGH = ['API_BASE_URL', 'PRIVY_APP_ID'] as const
+const ENV_PASSTHROUGH = ['PRIVY_APP_ID'] as const
 
 // Re-mint + rewrite .env on this cadence so the bearer token never goes stale.
 export const AUTH_REFRESH_INTERVAL_MS = 24 * 60 * 60 * 1000
+
+const LOGIN_WIDGET_KEY = 'tribes-login'
+function bold(text: string): string {
+  return `\x1b[1m${text}\x1b[22m`
+}
+
+function blue(text: string): string {
+  return `\x1b[34m${text}\x1b[39m`
+}
+
+async function openUrlInBrowser(url: string): Promise<boolean> {
+  try {
+    if (process.platform === 'darwin') {
+      await execFileAsync('open', [url], { timeout: OPEN_URL_TIMEOUT_MS })
+      return true
+    }
+    if (process.platform === 'win32') {
+      await execFileAsync('cmd', ['/c', 'start', '', url], { timeout: OPEN_URL_TIMEOUT_MS })
+      return true
+    }
+    await execFileAsync('xdg-open', [url], { timeout: OPEN_URL_TIMEOUT_MS })
+    return true
+  } catch {
+    return false
+  }
+}
+
+interface PiSettingsDefaults {
+  readonly defaultProvider: string | null
+  readonly defaultModel: string | null
+}
+
+async function readPiSettingsDefaults(cwd: string): Promise<PiSettingsDefaults> {
+  const path = resolve(cwd, '.pi/settings.json')
+  try {
+    const text = await readFile(path, 'utf8')
+    const parsed: PiSettingsDefaults = JSON.parse(text)
+    return parsed
+  } catch {
+    return { defaultProvider: null, defaultModel: null }
+  }
+}
+
+async function autoSelectTribesModel(
+  pi: TribesApi,
+  ctx: ExtensionCommandContext
+): Promise<string | null> {
+  const defaults = await readPiSettingsDefaults(ctx.cwd)
+
+  const preferredModel =
+    defaults.defaultProvider === 'tribes-llm-proxy' && defaults.defaultModel
+      ? ctx.modelRegistry.find('tribes-llm-proxy', defaults.defaultModel)
+      : undefined
+
+  const fallbackModel = ctx.modelRegistry
+    .getAll()
+    .find((model) => model.provider === 'tribes-llm-proxy')
+
+  const selectedModel = preferredModel ?? fallbackModel
+  if (!selectedModel) return null
+
+  const switched = await pi.setModel(selectedModel)
+  if (!switched) return null
+  return selectedModel.id
+}
 
 /**
  * Copy the host-minted agent key into <root>/.pi. Sync + best-effort so the key
@@ -39,11 +110,40 @@ export function installAgentKey(cwd: string): void {
 }
 
 /**
+ * Whether an agent authorization key is present (i.e. the user is logged in).
+ * Extensions load via jiti and cannot use the `@/` alias, so this checks the
+ * canonical key path directly, mirroring installAgentKey. A present-but-corrupt
+ * key returns true and fails loudly later via the provider/token path.
+ */
+export function hasAgentKey(cwd: string): boolean {
+  return existsSync(resolve(cwd, '.pi/agent-authorization-key.json'))
+}
+
+/** Parse <root>/.env into an ordered key -> value map. Missing file = empty. */
+async function readDotEnv(cwd: string): Promise<Map<string, string>> {
+  const env = new Map<string, string>()
+  try {
+    const content = await readFile(resolve(cwd, '.env'), 'utf8')
+    for (const line of content.split(/\r?\n/u)) {
+      const separator = line.indexOf('=')
+      const key = line.slice(0, separator).trim()
+      if (separator > 0 && key.length > 0 && !key.startsWith('#')) {
+        env.set(key, line.slice(separator + 1))
+      }
+    }
+  } catch {
+    // No existing .env yet — start fresh.
+  }
+  return env
+}
+
+/**
  * Materialize <root>/.env so every CLI (and the LLM proxy) reads its config
  * straight from .env (bun auto-loads .env from the workspace) with no per-command
- * token prefix: the passthrough vars from the process env plus a freshly minted
- * API_BEARER_TOKEN. `--force` mints a brand-new token (ignoring .env + cache) so
- * each call genuinely refreshes the key.
+ * token prefix. Existing values are preserved; only the keys this harness owns
+ * are overridden — passthrough vars from the process env (when present) and a
+ * freshly minted API_BEARER_TOKEN. `--force` mints a brand-new token (ignoring
+ * .env + cache) so each call genuinely refreshes the key.
  */
 export async function writeAuthEnv(cwd: string): Promise<void> {
   const { stdout } = await execFileAsync(
@@ -56,12 +156,108 @@ export async function writeAuthEnv(cwd: string): Promise<void> {
     }
   )
 
-  const lines: string[] = []
+  const env = await readDotEnv(cwd)
   for (const name of ENV_PASSTHROUGH) {
     const value = process.env[name]
-    if (value) lines.push(`${name}=${value}`)
+    if (value) env.set(name, value)
   }
-  lines.push(`API_BEARER_TOKEN=${stdout.trim()}`)
+  env.set('API_BEARER_TOKEN', stdout.trim())
 
-  await writeFile(resolve(cwd, '.env'), `${lines.join('\n')}\n`, { mode: 0o600 })
+  const body = [...env].map(([key, value]) => `${key}=${value}`).join('\n')
+  await writeFile(resolve(cwd, '.env'), `${body}\n`, { mode: 0o600 })
+}
+
+/**
+ * Drive `tribes-cli login` from inside Pi: surface the browser URL from stdout,
+ * try to open that URL in the default browser, then wait for login completion
+ * and enable the LLM live (write .env + register the provider) with no restart.
+ * `tribes-cli login` runs while logged out and writes the agent key on success.
+ */
+export async function runLogin(
+  pi: TribesApi,
+  ctx: ExtensionCommandContext,
+  startAuthRefreshTimer: (cwd: string) => void
+): Promise<void> {
+  // Use bash -lc so the same login-shell PATH resolution applies as startup warmups.
+  const child = spawn('bash', ['-lc', 'tribes-cli login'], { cwd: ctx.cwd })
+
+  let stdoutBuf = ''
+  let stderrBuf = ''
+  let urlShown = false
+
+  const showUrl = (url: string): void => {
+    if (urlShown) return
+    urlShown = true
+    void openUrlInBrowser(url).then((opened) => {
+      if (!opened) {
+        ctx.ui.notify(
+          'Could not auto-open browser. Use the URL in the widget to continue.',
+          'warning'
+        )
+      }
+    })
+    // A non-interactive widget (no Yes/No prompt) — cleared once login finishes.
+    ctx.ui.setWidget(LOGIN_WIDGET_KEY, [
+      `${bold('Log in to Tribes')}\n`,
+      `${bold('Open this URL and approve this agent:')}\n`,
+      '\n',
+      `${bold('URL:')}\u00A0${blue(url)}\n`,
+      '\n',
+      'Waiting for you to finish signing in...'
+    ])
+  }
+
+  child.stdout?.on('data', (chunk: Buffer) => {
+    stdoutBuf += chunk.toString()
+    const match = stdoutBuf.match(/https?:\/\/\S+/u)
+    if (match) showUrl(match[0])
+  })
+  child.stderr?.on('data', (chunk: Buffer) => {
+    stderrBuf += chunk.toString()
+  })
+
+  const exitCode = await new Promise<number>((resolveExit) => {
+    child.on('error', () => resolveExit(1))
+    child.on('close', (code) => resolveExit(code ?? 1))
+  })
+
+  // Clear the URL widget regardless of outcome.
+  ctx.ui.setWidget(LOGIN_WIDGET_KEY, undefined)
+
+  if (exitCode !== 0) {
+    const detail = (stderrBuf.trim() || stdoutBuf.trim()).slice(-500)
+    ctx.ui.notify(`Login failed: ${detail || 'unknown error'}`, 'error')
+    return
+  }
+
+  try {
+    await writeAuthEnv(ctx.cwd)
+    await registerTribesProvider(pi)
+  } catch (err) {
+    let errorMessage = String(err)
+    if (err instanceof Error) {
+      errorMessage = err.message
+    }
+    ctx.ui.notify(`Logged in, but enabling the agent failed: ${errorMessage}`, 'error')
+    return
+  }
+
+  const autoSelectedModelId = await autoSelectTribesModel(pi, ctx)
+  if (autoSelectedModelId === null) {
+    ctx.ui.notify(
+      'Logged in, but no model was auto-selected. Pick a Tribes model in the selector.',
+      'warning'
+    )
+  }
+
+  startAuthRefreshTimer(ctx.cwd)
+  try {
+    await warmWalletSnapshot(ctx.cwd)
+  } catch {
+    // Warm-up is best-effort.
+  }
+  ctx.ui.notify(
+    autoSelectedModelId ? `Logged in. Auto-selected model: ${autoSelectedModelId}` : 'Logged in.',
+    'info'
+  )
 }
