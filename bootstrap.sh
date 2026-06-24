@@ -85,10 +85,16 @@ ENTRY="src/cli/Tribes.ts"
 # Build artifact. node_modules/.bin is writable and already on PATH in the
 # sandbox, so this is both the build output and the in-sandbox PATH fallback.
 ARTIFACT="$PWD/node_modules/.bin/tribes-cli"
+COMPILED_ARTIFACT="$PWD/node_modules/.bin/tribes-cli-compiled"
 
 echo "[bootstrap] compiling the harness into a single tribes-cli binary…"
-if bun build --compile --external bigint-buffer --outfile "$ARTIFACT" "$ENTRY"; then
-  echo "[bootstrap] compiled $ENTRY -> $ARTIFACT"
+if bun build --compile --external bigint-buffer --outfile "$COMPILED_ARTIFACT" "$ENTRY"; then
+  # The compiled binary must run from the repo root so the externalized native
+  # bigint-buffer package resolves to node_modules/bigint-buffer and can load
+  # its rebuilt .node binding.
+  printf '#!/bin/sh\ncd "%s"\nexec "%s" "$@"\n' "$PWD" "$COMPILED_ARTIFACT" >"$ARTIFACT"
+  chmod +x "$ARTIFACT"
+  echo "[bootstrap] compiled $ENTRY -> $COMPILED_ARTIFACT"
 else
   # --compile unavailable (older bun / unsupported target): fall back to a shim
   # that runs the same entry through bun. Same `tribes-cli` interface either way.
