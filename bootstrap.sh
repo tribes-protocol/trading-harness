@@ -20,6 +20,48 @@ echo "[bootstrap] installing deps (incl. the pinned pi CLI)…"
 # deterministic); fall back to a normal install if the lockfile is ever stale.
 bun install --frozen-lockfile || bun install
 
+# @solana/web3.js pulls in bigint-buffer, which has an optional native binding.
+# If that binding is missing, every tribes-cli run prints:
+#   bigint: Failed to load bindings, pure JS will be used
+# Build it explicitly during bootstrap so the runtime is quiet and faster. Keep
+# node-gyp's downloaded Node headers under node_modules so sandboxed installs do
+# not write into the user's home cache.
+rebuild_bigint_buffer() {
+  [ -d "$PWD/node_modules/bigint-buffer" ] || return 0
+
+  NODE_GYP_DEV_DIR="$PWD/node_modules/.cache/node-gyp"
+  mkdir -p "$NODE_GYP_DEV_DIR"
+
+  PYTHON_BIN=""
+  for candidate in python3.11 python3.10 python3.9 python3; do
+    if command -v "$candidate" >/dev/null 2>&1; then
+      if "$candidate" - <<'PY' >/dev/null 2>&1
+import sys
+sys.exit(0 if sys.version_info < (3, 12) else 1)
+PY
+      then
+        PYTHON_BIN="$(command -v "$candidate")"
+        break
+      fi
+    fi
+  done
+
+  echo "[bootstrap] rebuilding bigint-buffer native binding…"
+  if [ -n "$PYTHON_BIN" ]; then
+    (
+      cd "$PWD/node_modules/bigint-buffer"
+      npm_config_devdir="$NODE_GYP_DEV_DIR" npm_config_python="$PYTHON_BIN" bun run rebuild
+    )
+  else
+    (
+      cd "$PWD/node_modules/bigint-buffer"
+      npm_config_devdir="$NODE_GYP_DEV_DIR" bun run rebuild
+    )
+  fi
+}
+
+rebuild_bigint_buffer
+
 # Expose pi at /usr/local/bin/pi so it resolves by name from ANY shell — incl.
 # the interactive `bash -l` the sandbox drops you into between agent runs, whose
 # login-reset PATH drops node_modules/.bin. Vanilla harnesses install pi to
@@ -45,7 +87,7 @@ ENTRY="src/cli/Tribes.ts"
 ARTIFACT="$PWD/node_modules/.bin/tribes-cli"
 
 echo "[bootstrap] compiling the harness into a single tribes-cli binary…"
-if bun build --compile --outfile "$ARTIFACT" "$ENTRY"; then
+if bun build --compile --external bigint-buffer --outfile "$ARTIFACT" "$ENTRY"; then
   echo "[bootstrap] compiled $ENTRY -> $ARTIFACT"
 else
   # --compile unavailable (older bun / unsupported target): fall back to a shim
