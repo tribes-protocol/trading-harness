@@ -16,6 +16,18 @@ This repository is an autonomous Hyperliquid trading harness based on the [Pi ha
 
 This repo is the agent's workspace: in a Tribes sandbox the control plane clones it into `/workspace`, runs `bootstrap.sh` once, injects auth/RPC env, and launches `pi`. `AGENTS.md` is the operating constitution Pi reads at startup; the human talks to Pi, and Pi drives the `tribes-cli` binary built from this repo.
 
+## Installation (clients other than the Tribes web app)
+
+When the Tribes web app provisions this repo, the sandbox clones it, runs `bootstrap.sh`, injects auth/RPC env, and launches `pi` for you — there is nothing to install. Any other client (Claude Code, Cursor, a local shell, etc.) that clones this repo gets none of that automation.
+
+In that case, run `bootstrap.sh` once before using any `tribes-cli` command. It installs dependencies with bun and compiles the project into the native `tribes-cli` binary on PATH:
+
+```bash
+bun run bootstrap.sh
+```
+
+Auth is not pre-wired outside the Tribes sandbox, so after bootstrap establish a token with `tribes-cli login` (see Runtime Preconditions below).
+
 ## Runtime Preconditions
 
 Before running any `tribes-cli` subcommand other than `tribes-cli login`, ensure authentication is established.
