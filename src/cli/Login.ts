@@ -12,11 +12,7 @@ export function buildLoginCommand(): Command {
     .description('Generate a CLI login keypair and print a browser login URL')
     .version(VERSION)
     .action(async (): Promise<void> => {
-      const loginRequest = await loginService.createLoginRequest()
-      process.stdout.write(`Open this URL to login:\n\n  ${loginRequest.loginUrl}\n\n`)
-      process.stdout.write('Waiting for completion...\n')
-      await loginService.finalizeLogin(loginRequest)
-      process.stdout.write('Login completed.\n')
+      await loginService.runLogin()
     })
 
   return program

@@ -17,7 +17,6 @@ const execFileAsync = promisify(execFile)
 const HOST_KEY_PATH = '/var/lib/tribes/agent-authorization-key.json'
 const MINT_TIMEOUT_MS = 30_000
 const MINT_MAX_BUFFER_BYTES = 1024 * 1024
-const OPEN_URL_TIMEOUT_MS = 5_000
 
 // Vars the CLIs need (src/common/env.ts). API_BASE_URL + PRIVY_APP_ID arrive in
 // the process env (the host seeds them on the kernel cmdline as
@@ -29,29 +28,12 @@ const ENV_PASSTHROUGH = ['PRIVY_APP_ID'] as const
 export const AUTH_REFRESH_INTERVAL_MS = 24 * 60 * 60 * 1000
 
 const LOGIN_WIDGET_KEY = 'tribes-login'
-function bold(text: string): string {
-  return `\x1b[1m${text}\x1b[22m`
-}
 
-function blue(text: string): string {
-  return `\x1b[34m${text}\x1b[39m`
-}
+// Built from a non-literal ESC so the source has no control char (eslint).
+const ANSI_PATTERN = new RegExp(`${String.fromCharCode(27)}\\[[0-9;]*m`, 'gu')
 
-async function openUrlInBrowser(url: string): Promise<boolean> {
-  try {
-    if (process.platform === 'darwin') {
-      await execFileAsync('open', [url], { timeout: OPEN_URL_TIMEOUT_MS })
-      return true
-    }
-    if (process.platform === 'win32') {
-      await execFileAsync('cmd', ['/c', 'start', '', url], { timeout: OPEN_URL_TIMEOUT_MS })
-      return true
-    }
-    await execFileAsync('xdg-open', [url], { timeout: OPEN_URL_TIMEOUT_MS })
-    return true
-  } catch {
-    return false
-  }
+function stripAnsi(text: string): string {
+  return text.replace(ANSI_PATTERN, '')
 }
 
 interface PiSettingsDefaults {
@@ -168,10 +150,10 @@ export async function writeAuthEnv(cwd: string): Promise<void> {
 }
 
 /**
- * Drive `tribes-cli login` from inside Pi: surface the browser URL from stdout,
- * try to open that URL in the default browser, then wait for login completion
- * and enable the LLM live (write .env + register the provider) with no restart.
- * `tribes-cli login` runs while logged out and writes the agent key on success.
+ * Drive `tribes-cli login` from inside Pi, then enable the LLM live
+ * (register provider + warm wallet) with no restart.
+ * `tribes-cli login` runs while logged out, writes the agent key, and materializes
+ * .env for provider auth.
  */
 export async function runLogin(
   pi: TribesApi,
@@ -183,34 +165,10 @@ export async function runLogin(
 
   let stdoutBuf = ''
   let stderrBuf = ''
-  let urlShown = false
-
-  const showUrl = (url: string): void => {
-    if (urlShown) return
-    urlShown = true
-    void openUrlInBrowser(url).then((opened) => {
-      if (!opened) {
-        ctx.ui.notify(
-          'Could not auto-open browser. Use the URL in the widget to continue.',
-          'warning'
-        )
-      }
-    })
-    // A non-interactive widget (no Yes/No prompt) — cleared once login finishes.
-    ctx.ui.setWidget(LOGIN_WIDGET_KEY, [
-      `${bold('Log in to Tribes')}\n`,
-      `${bold('Open this URL and approve this agent:')}\n`,
-      '\n',
-      `${bold('URL:')}\u00A0${blue(url)}\n`,
-      '\n',
-      'Waiting for you to finish signing in...'
-    ])
-  }
 
   child.stdout?.on('data', (chunk: Buffer) => {
     stdoutBuf += chunk.toString()
-    const match = stdoutBuf.match(/https?:\/\/\S+/u)
-    if (match) showUrl(match[0])
+    ctx.ui.setWidget(LOGIN_WIDGET_KEY, [stdoutBuf.replace(/\s+$/u, '')])
   })
   child.stderr?.on('data', (chunk: Buffer) => {
     stderrBuf += chunk.toString()
@@ -221,17 +179,15 @@ export async function runLogin(
     child.on('close', (code) => resolveExit(code ?? 1))
   })
 
-  // Clear the URL widget regardless of outcome.
   ctx.ui.setWidget(LOGIN_WIDGET_KEY, undefined)
 
   if (exitCode !== 0) {
-    const detail = (stderrBuf.trim() || stdoutBuf.trim()).slice(-500)
+    const detail = stripAnsi(stderrBuf.trim() || stdoutBuf.trim()).slice(-500)
     ctx.ui.notify(`Login failed: ${detail || 'unknown error'}`, 'error')
     return
   }
 
   try {
-    await writeAuthEnv(ctx.cwd)
     await registerTribesProvider(pi)
   } catch (err) {
     let errorMessage = String(err)
