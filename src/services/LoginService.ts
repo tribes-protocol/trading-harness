@@ -7,7 +7,7 @@ import { writeCliLoginKey } from '@/helpers/CliLoginKey'
 import { type CliLoginPollResponse, CliLoginPollResponseSchema } from '@/types/CliLogin'
 
 const LOGIN_POLL_INTERVAL_MS = 2_000
-const LOGIN_POLL_TIMEOUT_MS = 5 * 60_000
+const LOGIN_POLL_TIMEOUT_MS = 3 * 60_000
 const LOGIN_POLL_MAX_RETRIES = LOGIN_POLL_TIMEOUT_MS / LOGIN_POLL_INTERVAL_MS
 const API_BASE_URL =
   process.env.NODE_ENV === 'development' ? 'http://localhost:8787' : 'https://api.tribes.xyz'
@@ -23,13 +23,15 @@ function parseLoginPollResponse(data: unknown): CliLoginPollResponse {
 export type LoginRequestContext = {
   readonly privateKeyPem: string
   readonly publicKeyPem: string
+  // base64url(DER) of the SPKI public key
+  readonly publicKeyCompact: string
   readonly loginUrl: string
 }
 
 export class LoginService {
-  private async pollLoginResult(publicKeyPem: string): Promise<CliLoginPollResponse> {
+  private async pollLoginResult(publicKeyCompact: string): Promise<CliLoginPollResponse> {
     const resultUrl = new URL('/agent/remote/login/result', API_BASE_URL)
-    resultUrl.searchParams.set('pubKey', publicKeyPem)
+    resultUrl.searchParams.set('pubKey', publicKeyCompact)
 
     try {
       return await retry<CliLoginPollResponse>({
@@ -88,6 +90,12 @@ export class LoginService {
         format: 'pem'
       })
       .toString()
+    const publicKeyCompact = publicKey
+      .export({
+        type: 'spki',
+        format: 'der'
+      })
+      .toString('base64url')
 
     await writeCliLoginKey({
       schema: 'cli-login-key.v1',
@@ -98,17 +106,18 @@ export class LoginService {
     })
 
     const loginUrl = new URL('/agents/login', WEB_BASE_URL)
-    loginUrl.searchParams.set('pubkey', publicKeyPem)
+    loginUrl.searchParams.set('pubkey', publicKeyCompact)
 
     return {
       privateKeyPem,
       publicKeyPem,
+      publicKeyCompact,
       loginUrl: loginUrl.toString()
     }
   }
 
   async finalizeLogin(loginRequest: LoginRequestContext): Promise<void> {
-    const pollResult = await this.pollLoginResult(loginRequest.publicKeyPem)
+    const pollResult = await this.pollLoginResult(loginRequest.publicKeyCompact)
 
     await writeAgentAuthorizationKey({
       schema: 'agent-authorization-key.v1',
