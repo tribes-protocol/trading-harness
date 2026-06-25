@@ -48,6 +48,7 @@ export function generateEthSendTransactionSignature(
     body: {
       method: 'eth_sendTransaction',
       caip2: `eip155:${params.txData.chainId}`,
+      sponsor: true,
       chain_type: 'ethereum',
       params: {
         transaction: {
@@ -85,6 +86,7 @@ export function generateEthSendCallsSignature(params: GenerateEthSendCallsSignat
     body: {
       method: 'wallet_sendCalls',
       caip2: `eip155:${chainId}`,
+      sponsor: true,
       chain_type: 'ethereum',
       params: {
         calls: params.calls.map((call) => ({
@@ -114,6 +116,7 @@ export function generateSolSendTransactionSignature(
     body: {
       method: 'signAndSendTransaction',
       caip2: 'solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp',
+      sponsor: true,
       chain_type: 'solana',
       params: {
         transaction: params.transaction,

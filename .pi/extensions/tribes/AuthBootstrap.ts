@@ -1,6 +1,6 @@
 import { execFile } from 'node:child_process'
 import { copyFileSync, mkdirSync } from 'node:fs'
-import { writeFile } from 'node:fs/promises'
+import { readFile, writeFile } from 'node:fs/promises'
 import { dirname, resolve } from 'node:path'
 import { promisify } from 'node:util'
 
@@ -38,12 +38,31 @@ export function installAgentKey(cwd: string): void {
   }
 }
 
+/** Parse <root>/.env into an ordered key -> value map. Missing file = empty. */
+async function readDotEnv(cwd: string): Promise<Map<string, string>> {
+  const env = new Map<string, string>()
+  try {
+    const content = await readFile(resolve(cwd, '.env'), 'utf8')
+    for (const line of content.split(/\r?\n/u)) {
+      const separator = line.indexOf('=')
+      const key = line.slice(0, separator).trim()
+      if (separator > 0 && key.length > 0 && !key.startsWith('#')) {
+        env.set(key, line.slice(separator + 1))
+      }
+    }
+  } catch {
+    // No existing .env yet — start fresh.
+  }
+  return env
+}
+
 /**
  * Materialize <root>/.env so every CLI (and the LLM proxy) reads its config
  * straight from .env (bun auto-loads .env from the workspace) with no per-command
- * token prefix: the passthrough vars from the process env plus a freshly minted
- * API_BEARER_TOKEN. `--force` mints a brand-new token (ignoring .env + cache) so
- * each call genuinely refreshes the key.
+ * token prefix. Existing values are preserved; only the keys this harness owns
+ * are overridden — passthrough vars from the process env (when present) and a
+ * freshly minted API_BEARER_TOKEN. `--force` mints a brand-new token (ignoring
+ * .env + cache) so each call genuinely refreshes the key.
  */
 export async function writeAuthEnv(cwd: string): Promise<void> {
   const { stdout } = await execFileAsync(
@@ -56,12 +75,13 @@ export async function writeAuthEnv(cwd: string): Promise<void> {
     }
   )
 
-  const lines: string[] = []
+  const env = await readDotEnv(cwd)
   for (const name of ENV_PASSTHROUGH) {
     const value = process.env[name]
-    if (value) lines.push(`${name}=${value}`)
+    if (value) env.set(name, value)
   }
-  lines.push(`API_BEARER_TOKEN=${stdout.trim()}`)
+  env.set('API_BEARER_TOKEN', stdout.trim())
 
-  await writeFile(resolve(cwd, '.env'), `${lines.join('\n')}\n`, { mode: 0o600 })
+  const body = [...env].map(([key, value]) => `${key}=${value}`).join('\n')
+  await writeFile(resolve(cwd, '.env'), `${body}\n`, { mode: 0o600 })
 }
