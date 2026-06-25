@@ -16,8 +16,6 @@ const TRIBES_LOGO_LINES = [
   '   ████    ████    ████'
 ]
 
-const brightWhite = (text: string): string => `\x1b[97m${text}\x1b[0m`
-
 function readHarnessVersion(): string {
   try {
     const pkg: unknown = JSON.parse(
@@ -41,7 +39,7 @@ export function showWelcome(ctx: ExtensionContext): void {
   const version = readHarnessVersion()
   ctx.ui.setHeader((_tui, theme) => ({
     render(_width: number): string[] {
-      const logo = TRIBES_LOGO_LINES.map((line) => brightWhite(line))
+      const logo = TRIBES_LOGO_LINES.map((line) => theme.fg('text', line))
       const subtitle = `  ${theme.fg('muted', 'welcome to tribes')}${theme.fg('dim', ` v${version}`)}`
       return ['', ...logo, '', subtitle, '']
     },
