@@ -11,6 +11,7 @@ node_modules/
 .pi/skills/**/node_modules/
 .pi/skills/**/dist/
 .pi/skills/**/dist-test/
+.pi/skills/scale-take-profit-with-stop-loss-strategy/
 code/typescript/dist/
 .playwright-cli/
 todos/

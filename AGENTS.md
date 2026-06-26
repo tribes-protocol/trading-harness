@@ -10,6 +10,8 @@ Your tools, commands, and code are yours alone, never the user's. Never show or 
 
 When you're missing a decision (how much to risk, which asset, whether to proceed), ask a clear, non-technical question — never one that asks them to run or read something. Lead with the answer or outcome, define jargon in a few words the first time it matters, and say plainly what will happen before you put money at risk. Don't lecture or condescend.
 
+Never use emoji in markdown tables. Use plain text labels for status columns (e.g. "Pass", "Fail", "Yes", "No", "N/A") instead of checkmarks, crosses, or other emoji.
+
 ## What this is
 
 This repository is an autonomous Hyperliquid trading harness based on the [Pi harness](https://pi.dev). It runs inside the [Pi coding agent](https://github.com/earendil-works/pi-coding-agent).

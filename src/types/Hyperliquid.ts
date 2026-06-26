@@ -945,3 +945,63 @@ export interface ResolvePerpOrderTypeFieldParams {
   readonly triggerPx: BigNumber | null | undefined
   readonly szDecimals: number
 }
+
+const HyperliquidCandleIntervalSchema = z.enum([
+  '1m',
+  '3m',
+  '5m',
+  '15m',
+  '30m',
+  '1h',
+  '2h',
+  '4h',
+  '8h',
+  '12h',
+  '1d',
+  '3d',
+  '1w',
+  '1M'
+])
+export type HyperliquidCandleInterval = z.infer<typeof HyperliquidCandleIntervalSchema>
+
+export const HyperliquidListCandlesCommandOptionsSchema = z.object({
+  coin: z.string().trim().min(1),
+  interval: HyperliquidCandleIntervalSchema,
+  startTime: z
+    .string()
+    .nullish()
+    .transform((value) => (isNullish(value) ? undefined : Number(value))),
+  endTime: z
+    .string()
+    .nullish()
+    .transform((value) => (isNullish(value) ? undefined : Number(value))),
+  limit: z
+    .string()
+    .nullish()
+    .transform((value) => (isNullish(value) ? undefined : Number(value))),
+  out: z.string().nullish()
+})
+export type HyperliquidListCandlesCommandOptions = z.infer<
+  typeof HyperliquidListCandlesCommandOptionsSchema
+>
+
+export const HyperliquidCandleSchema = z.object({
+  t: z.number().int(),
+  T: z.number().int(),
+  s: z.string(),
+  i: z.string(),
+  o: z.string(),
+  c: z.string(),
+  h: z.string(),
+  l: z.string(),
+  v: z.string(),
+  n: z.number().int()
+})
+export type HyperliquidCandle = z.infer<typeof HyperliquidCandleSchema>
+
+export const HyperliquidCandlesResultSchema = z.object({
+  coin: z.string(),
+  interval: z.string(),
+  candles: z.array(HyperliquidCandleSchema)
+})
+export type HyperliquidCandlesResult = z.infer<typeof HyperliquidCandlesResultSchema>

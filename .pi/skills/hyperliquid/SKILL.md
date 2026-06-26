@@ -92,6 +92,9 @@ Discovery (read-only, no wallet/signer):
   (read-only); scope with `--dex <name>` or sweep with `--all-dexes`
 - `list-fills` — list trade fills for an `--address` (read-only); recent fills by
   default, or a time range with `--start-time` / `--end-time`
+- `list-candles` — fetch OHLCV candle snapshots for any asset across all dexes
+  (read-only); requires `--coin` and `--interval`, optional `--start-time` /
+  `--end-time` / `--limit`
 
 Execution (require `--wallet-id`; most also require signer `--from`):
 
@@ -269,6 +272,34 @@ Returns an array of fills in API order, each with `dex`, `coin`, `market`, `side
 (order not guaranteed). With `--start-time`, `userFillsByTime` returns oldest
 first by default; pass `--reversed` for newest first (paginate using the last
 fill timestamp as the next `startTime`). Read-only — no wallet or signer required.
+
+### List candles
+
+```bash
+# HIP-3 perp (xyz dex) — use the dex:coin format
+tribes-cli hyperliquid list-candles \
+  --coin xyz:COIN \
+  --interval 1h \
+  --limit 200
+
+# Main dex perp — use bare coin name
+tribes-cli hyperliquid list-candles \
+  --coin BTC \
+  --interval 1d \
+  --limit 90
+
+# Custom time range with explicit timestamps
+tribes-cli hyperliquid list-candles \
+  --coin xyz:COIN \
+  --interval 4h \
+  --start-time 1750000000000 \
+  --end-time 1750896000000
+```
+
+Returns `{ coin, interval, candles: [{ t, T, s, i, o, c, h, l, v, n }, ...] }`.
+Uses the `api-ui.hyperliquid.xyz` endpoint so HIP-3 (xyz) and main-dex candles
+both work. `--limit` estimates the start time from the interval and clamps the
+result array. Read-only — no wallet or signer required.
 
 ### Deposit Arbitrum USDC to Hyperliquid
 

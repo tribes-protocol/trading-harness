@@ -1,5 +1,7 @@
 import {
   type CancelSuccessResponse,
+  type CandleSnapshotParameters,
+  type CandleSnapshotResponse,
   ExchangeClient,
   HttpTransport,
   InfoClient,
@@ -27,6 +29,9 @@ import {
   type HyperliquidBalancesResult,
   HyperliquidBalancesResultSchema,
   type HyperliquidCancelOrderCommandOptions,
+  HyperliquidCandleSchema,
+  type HyperliquidCandlesResult,
+  HyperliquidCandlesResultSchema,
   type HyperliquidDepositParams,
   type HyperliquidDepositResult,
   HyperliquidDepositResultSchema,
@@ -106,13 +111,20 @@ const HYPERLIQUID_MAINNET_SIGNATURE_CHAIN_ID = '0xa4b1'
 const MIN_HYPERLIQUID_ORDER_NOTIONAL_USD = 10
 const HYPERLIQUID_TWAP_INTERVAL_SECONDS = 30
 
+const HYPERLIQUID_UI_API_URL = 'https://api-ui.hyperliquid.xyz'
+
 export class HyperliquidService {
   private readonly transaction: TransactionService
 
   private readonly infoClient: InfoClient
 
+  private readonly candleInfoClient: InfoClient
+
   constructor(params: HyperliquidServiceParams) {
     this.infoClient = new InfoClient({ transport: new HttpTransport() })
+    this.candleInfoClient = new InfoClient({
+      transport: new HttpTransport({ apiUrl: HYPERLIQUID_UI_API_URL })
+    })
     this.transaction = params.transaction
   }
 
@@ -762,6 +774,16 @@ export class HyperliquidService {
       grouping: 'na'
     }
     return await exchange.order(orderParams)
+  }
+
+  async fetchCandles(params: CandleSnapshotParameters): Promise<HyperliquidCandlesResult> {
+    const response: CandleSnapshotResponse = await this.candleInfoClient.candleSnapshot(params)
+    const candles = response.map((candle) => HyperliquidCandleSchema.parse(candle))
+    return HyperliquidCandlesResultSchema.parse({
+      coin: params.coin,
+      interval: params.interval,
+      candles
+    })
   }
 
   async listBalances(params: HyperliquidListBalancesParams): Promise<HyperliquidBalancesResult> {

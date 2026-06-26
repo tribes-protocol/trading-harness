@@ -10,6 +10,7 @@ import {
   HyperliquidDexCashTransferCommandOptionsSchema,
   HyperliquidListAssetsCommandOptionsSchema,
   HyperliquidListBalancesCommandOptionsSchema,
+  HyperliquidListCandlesCommandOptionsSchema,
   HyperliquidListExchangesCommandOptionsSchema,
   HyperliquidListFillsCommandOptionsSchema,
   HyperliquidListOpenOrdersCommandOptionsSchema,
@@ -28,7 +29,7 @@ import {
   HyperliquidUsdTransferCommandOptionsSchema,
   HyperliquidWithdrawCommandOptionsSchema
 } from '@/types/Hyperliquid'
-import { ensureJsonTreeString } from '@/utils/Lang'
+import { ensureJsonTreeString, isNullish } from '@/utils/Lang'
 
 const VERSION = '1.0.0'
 
@@ -164,6 +165,65 @@ export function buildHyperliquidCommand(): Command {
           ? await hyperliquidService.listSpotAssets()
           : await hyperliquidService.listPerpAssets(request.dex)
       const output = ensureJsonTreeString(response)
+      await writeOutput({
+        output,
+        outPath: request.out ?? undefined
+      })
+    })
+
+  program
+    .command('list-candles')
+    .description('Fetch OHLCV candle snapshots for any asset across all dexes')
+    .requiredOption('--coin <coin>', 'Asset symbol (e.g., xyz:COIN, BTC, ETH)')
+    .requiredOption(
+      '--interval <interval>',
+      'Candle interval: 1m | 3m | 5m | 15m | 30m | 1h | 2h | 4h | 8h | 12h | 1d | 3d | 1w | 1M'
+    )
+    .option('--start-time <ms>', 'Start time in milliseconds (default: 30 days ago)')
+    .option('--end-time <ms>', 'End time in milliseconds (default: now)')
+    .option('--limit <count>', 'Max candles to return (estimates start-time from interval)')
+    .option('--out <file>', 'Write output JSON to file')
+    .action(async (options: unknown): Promise<void> => {
+      const request = HyperliquidListCandlesCommandOptionsSchema.parse(options)
+      const endTime = request.endTime ?? Date.now()
+      const candleIntervalMs = ((): number => {
+        const match = request.interval.match(/^(\d+)(m|h|d|w)$/)
+        if (!match) return 3600000
+        const value = Number(match[1])
+        const unit: string | undefined = match[2]
+        if (isNullish(unit)) return 3600000
+        switch (unit) {
+          case 'm':
+            return value * 60 * 1000
+          case 'h':
+            return value * 3600 * 1000
+          case 'd':
+            return value * 86400 * 1000
+          case 'w':
+            return value * 604800 * 1000
+          default:
+            return 3600000
+        }
+      })()
+      const startTime =
+        request.startTime ??
+        (request.limit
+          ? endTime - request.limit * candleIntervalMs
+          : endTime - 30 * 24 * 60 * 60 * 1000)
+
+      const response = await hyperliquidService.fetchCandles({
+        coin: request.coin,
+        interval: request.interval,
+        startTime,
+        endTime
+      })
+
+      let result = response
+      if (!isNullish(request.limit) && response.candles.length > request.limit) {
+        result = { ...response, candles: response.candles.slice(-request.limit) }
+      }
+
+      const output = ensureJsonTreeString(result)
       await writeOutput({
         output,
         outPath: request.out ?? undefined
