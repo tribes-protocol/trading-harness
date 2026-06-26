@@ -51,7 +51,7 @@ const execFileAsync = promisify(execFile)
 // serves API_BEARER_TOKEN from .env (the single source the tribes extension
 // refreshes every 24h). The harness dir is surfaced AS /workspace in the sandbox
 // (see scripts/sandbox-agent-shell.sh).
-const TOKEN_COMMAND = '!bun /workspace/.pi/extensions/tribes/AgentProxyToken.ts'
+const TOKEN_COMMAND = '!bun .pi/extensions/tribes/AgentProxyToken.ts'
 
 const ZERO_COST: ProviderModelCost = { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 }
 const MODEL_FETCH_TIMEOUT_MS = 30_000
