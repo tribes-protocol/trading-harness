@@ -26,6 +26,18 @@ bun install --frozen-lockfile || bun install
 # Build it explicitly during bootstrap so the runtime is quiet and faster. Keep
 # node-gyp's downloaded Node headers under node_modules so sandboxed installs do
 # not write into the user's home cache.
+install_native_build_toolchain() {
+  if ! command -v apt-get >/dev/null 2>&1 || [ "$(id -u)" -ne 0 ]; then
+    echo "[bootstrap] apt-get unavailable or not root; skipping native build toolchain install"
+    return 0
+  fi
+
+  echo "[bootstrap] installing native build toolchain for optional bigint-buffer binding..."
+  apt-get update
+  apt-get install -y build-essential
+  npm install -g node-gyp
+}
+
 rebuild_bigint_buffer() {
   [ -d "$PWD/node_modules/bigint-buffer" ] || return 0
 
@@ -60,6 +72,7 @@ PY
   fi
 }
 
+install_native_build_toolchain
 rebuild_bigint_buffer
 
 # Expose pi at /usr/local/bin/pi so it resolves by name from ANY shell — incl.
