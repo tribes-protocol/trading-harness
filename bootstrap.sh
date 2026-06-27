@@ -130,3 +130,8 @@ else
 fi
 
 echo "[bootstrap] done — run the harness with: pi"
+
+# First-boot install is done. Remove this once-only installer so it does not
+# clutter the user's /workspace (the dispatcher gates re-runs on package.json,
+# not on this script's presence).
+rm -f -- "$0"
