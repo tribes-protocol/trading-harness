@@ -51,6 +51,19 @@ else
   echo "[bootstrap] could not link pi into /usr/local/bin (still on PATH via node_modules/.bin)"
 fi
 
+# Pre-install the Pi extensions this agent declares in .pi/agent/settings.json
+# (currently npm:pi-subagents) so the npm fetch is paid here at boot rather than
+# on the first `pi` session. `pi install` is idempotent against the committed
+# `packages` list and writes the package under .pi/agent/npm (gitignored). Keep
+# it non-fatal: a registry hiccup must not block the trading harness from
+# starting, and Pi will auto-install any still-missing declared package on launch.
+echo "[bootstrap] installing declared pi extensions (pi-subagents)…"
+if pi install npm:pi-subagents; then
+  echo "[bootstrap] installed pi-subagents"
+else
+  echo "[bootstrap] could not install pi-subagents now; pi will retry it on first launch"
+fi
+
 # NOTE: do NOT run `pi update` here. This repo PINS pi (@earendil-works/
 # pi-coding-agent + pi-tui at 0.79.8) and the .pi extensions are written against
 # that exact API. Updating pi out from under them desyncs the runtime from the
