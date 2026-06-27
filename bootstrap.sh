@@ -60,7 +60,7 @@ PY
   fi
 }
 
-rebuild_bigint_buffer
+rebuild_bigint_buffer || echo "[bootstrap] bigint-buffer native rebuild skipped (pure JS fallback will be used)"
 
 # Expose pi at /usr/local/bin/pi so it resolves by name from ANY shell — incl.
 # the interactive `bash -l` the sandbox drops you into between agent runs, whose
