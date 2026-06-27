@@ -20,60 +20,24 @@ echo "[bootstrap] installing deps (incl. the pinned pi CLI)…"
 # deterministic); fall back to a normal install if the lockfile is ever stale.
 bun install --frozen-lockfile || bun install
 
-# @solana/web3.js pulls in bigint-buffer, which has an optional native binding.
-# If that binding is missing, every tribes-cli run prints:
-#   bigint: Failed to load bindings, pure JS will be used
-# Build it explicitly during bootstrap so the runtime is quiet and faster. Keep
-# node-gyp's downloaded Node headers under node_modules so sandboxed installs do
-# not write into the user's home cache.
-install_native_build_toolchain() {
-  if ! command -v apt-get >/dev/null 2>&1 || [ "$(id -u)" -ne 0 ]; then
-    echo "[bootstrap] apt-get unavailable or not root; skipping native build toolchain install"
-    return 0
-  fi
+# @solana/web3.js pulls in bigint-buffer, whose native binding is optional.
+# Bundle the package into tribes-cli so the compiled binary can use the pure JS
+# fallback instead of depending on a runtime .node artifact. Patch only the
+# package's noisy warning before compile so Pi startup stays quiet.
+quiet_bigint_buffer_warning() {
+  TARGET="$PWD/node_modules/bigint-buffer/dist/node.js"
+  [ -f "$TARGET" ] || return 0
 
-  echo "[bootstrap] installing native build toolchain for optional bigint-buffer binding..."
-  apt-get update
-  apt-get install -y build-essential
-  npm install -g node-gyp
+  bun --eval '
+const fs = require("fs")
+const target = process.argv[1]
+const warning = "        console.warn('\''bigint: Failed to load bindings, pure JS will be used (try npm run rebuild?)'\'');"
+const source = fs.readFileSync(target, "utf8")
+fs.writeFileSync(target, source.replace(warning, "        // Native bigint-buffer binding is optional; use the bundled JS fallback."))
+' "$TARGET"
 }
 
-rebuild_bigint_buffer() {
-  [ -d "$PWD/node_modules/bigint-buffer" ] || return 0
-
-  NODE_GYP_DEV_DIR="$PWD/node_modules/.cache/node-gyp"
-  mkdir -p "$NODE_GYP_DEV_DIR"
-
-  PYTHON_BIN=""
-  for candidate in python3.11 python3.10 python3.9 python3; do
-    if command -v "$candidate" >/dev/null 2>&1; then
-      if "$candidate" - <<'PY' >/dev/null 2>&1
-import sys
-sys.exit(0 if sys.version_info < (3, 12) else 1)
-PY
-      then
-        PYTHON_BIN="$(command -v "$candidate")"
-        break
-      fi
-    fi
-  done
-
-  echo "[bootstrap] rebuilding bigint-buffer native binding…"
-  if [ -n "$PYTHON_BIN" ]; then
-    (
-      cd "$PWD/node_modules/bigint-buffer"
-      npm_config_devdir="$NODE_GYP_DEV_DIR" npm_config_python="$PYTHON_BIN" bun run rebuild
-    )
-  else
-    (
-      cd "$PWD/node_modules/bigint-buffer"
-      npm_config_devdir="$NODE_GYP_DEV_DIR" bun run rebuild
-    )
-  fi
-}
-
-install_native_build_toolchain
-rebuild_bigint_buffer
+quiet_bigint_buffer_warning
 
 # Expose pi at /usr/local/bin/pi so it resolves by name from ANY shell — incl.
 # the interactive `bash -l` the sandbox drops you into between agent runs, whose
@@ -101,10 +65,8 @@ ARTIFACT="$PWD/node_modules/.bin/tribes-cli"
 COMPILED_ARTIFACT="$PWD/node_modules/.bin/tribes-cli-compiled"
 
 echo "[bootstrap] compiling the harness into a single tribes-cli binary…"
-if bun build --compile --external bigint-buffer --outfile "$COMPILED_ARTIFACT" "$ENTRY"; then
-  # The compiled binary must run from the repo root so the externalized native
-  # bigint-buffer package resolves to node_modules/bigint-buffer and can load
-  # its rebuilt .node binding.
+rm -f "$ARTIFACT" "$COMPILED_ARTIFACT"
+if bun build --compile --outfile "$COMPILED_ARTIFACT" "$ENTRY"; then
   printf '#!/bin/sh\ncd "%s"\nexec "%s" "$@"\n' "$PWD" "$COMPILED_ARTIFACT" >"$ARTIFACT"
   chmod +x "$ARTIFACT"
   echo "[bootstrap] compiled $ENTRY -> $COMPILED_ARTIFACT"
