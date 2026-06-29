@@ -4,6 +4,7 @@ import { promisify } from 'node:util'
 import { retry } from '@/helpers/AsyncControl'
 import { writeAgentAuthorizationKey } from '@/helpers/AuthKey'
 import { writeCliLoginKey } from '@/helpers/CliLoginKey'
+import { openUrlInBrowser } from '@/helpers/OpenUrlInBrowser'
 import { type CliLoginPollResponse, CliLoginPollResponseSchema } from '@/types/CliLogin'
 
 const LOGIN_POLL_INTERVAL_MS = 2_000
@@ -15,6 +16,14 @@ const WEB_BASE_URL =
   process.env.NODE_ENV === 'development' ? 'http://localhost:3000' : 'https://app.tribes.xyz'
 
 const generateKeyPairAsync = promisify(generateKeyPair)
+
+function bold(text: string): string {
+  return `\x1b[1m${text}\x1b[22m`
+}
+
+function blue(text: string): string {
+  return `\x1b[34m${text}\x1b[39m`
+}
 
 function parseLoginPollResponse(data: unknown): CliLoginPollResponse {
   return CliLoginPollResponseSchema.parse(data)
@@ -73,7 +82,24 @@ export class LoginService {
     }
   }
 
-  async createLoginRequest(): Promise<LoginRequestContext> {
+  async runLogin(): Promise<void> {
+    const loginRequest = await this.createLoginRequest()
+
+    process.stdout.write(`${bold('Log in to Tribes')}\n`)
+    process.stdout.write(`${bold('Open this URL and approve this agent:')}\n\n`)
+    process.stdout.write(`${bold('URL:')}\u00A0${blue(loginRequest.loginUrl)}\n\n`)
+    process.stdout.write('Waiting for you to finish signing in...\n')
+
+    const opened = await openUrlInBrowser(loginRequest.loginUrl)
+    if (!opened) {
+      process.stdout.write('Could not auto-open browser. Use the URL above to continue.\n')
+    }
+
+    await this.finalizeLogin(loginRequest)
+    process.stdout.write('Logged in.\n')
+  }
+
+  private async createLoginRequest(): Promise<LoginRequestContext> {
     const { privateKey, publicKey } = await generateKeyPairAsync('ec', {
       namedCurve: 'P-256'
     })
@@ -116,7 +142,7 @@ export class LoginService {
     }
   }
 
-  async finalizeLogin(loginRequest: LoginRequestContext): Promise<void> {
+  private async finalizeLogin(loginRequest: LoginRequestContext): Promise<void> {
     const pollResult = await this.pollLoginResult(loginRequest.publicKeyCompact)
 
     await writeAgentAuthorizationKey({
