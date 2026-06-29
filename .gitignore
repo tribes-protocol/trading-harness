@@ -2,15 +2,18 @@
 .env
 *.env.local
 runtime/
-.pi/privy-wallets.json
-.pi/agent-authorization-key.json
-.pi/jwt-token-cache.json
-.pi/cli-login-key.json
+.tribes
 
 # Dependencies / build artifacts
 node_modules/
 dist/
 *.tgz
+.pi/agent/auth.json
+.pi/agent/sessions/
+
+# Dependencies / build artifacts
+node_modules/
+.pi/agent/npm/
 .pi/skills/**/node_modules/
 .pi/skills/**/dist/
 .pi/skills/**/dist-test/

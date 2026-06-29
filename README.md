@@ -15,7 +15,7 @@ bun run bootstrap.sh   # install deps + compile the tribes-cli binary, then inst
 pi                      # start the harness
 ```
 
-Pi reads `.pi/settings.json` and `AGENTS.md`, then starts the trading harness. Everything below is a prompt to Pi.
+Pi reads `.pi/agent/settings.json` and `AGENTS.md`, then starts the trading harness. Everything below is a prompt to Pi.
 
 ## Environment
 
@@ -118,18 +118,21 @@ src/                       # ALL code: command builders + shared foundation (@/*
                            #   Macros, WebSearch, Prediction, 9 analysts
   common/ helpers/ services/ types/ utils/
 .pi/
-  settings.json            # Pi provider/model config
+  agent/
+    settings.json          # Pi provider/model config
+    trust.json             # Trust the sandbox workspace on first boot
   extensions/
     tribes/                # LLM provider + proxy bearer token + welcome + wallet warm-up
     hyperliquid/           # live Hyperliquid positions/status widget
   skills/<slug>/SKILL.md   # skill docs only (no code); run via tribes-cli <group>
+.tribes/                   # runtime auth/wallet cache files (gitignored)
 ```
 
 ## Security
 
 - Never paste secrets into Pi prompts, summaries, or commits.
 - Wallet private keys live in Privy; RPC/API keys come from the environment.
-- `.env*` and `.pi/*.json` wallet/key snapshots are gitignored.
+- `.env*` and `.tribes/*.json` wallet/key snapshots are gitignored.
 
 ## References
 

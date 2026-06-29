@@ -1,6 +1,7 @@
 import type { Tx } from '@/types/Tx'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
+import * as authKey from '@/helpers/AuthKey'
 import * as terminalApiRequest from '@/helpers/TerminalApiRequest'
 import { TransactionService } from '@/services/TransactionService'
 import * as privySignature from '@/utils/PrivySignature'
@@ -30,6 +31,15 @@ describe('TransactionService', () => {
   })
 
   it('sends eth transaction via terminal api with generated signature', async () => {
+    vi.spyOn(authKey, 'readAgentAuthorizationKey').mockResolvedValue({
+      schema: 'agent-authorization-key.v1',
+      curve: 'P-256',
+      privateKeyPem: PRIVATE_KEY_PEM,
+      publicKeyPem: 'public-key-pem',
+      sandboxId: 'sandbox-id',
+      userId: 'user-id',
+      createdAt: '2026-01-01T00:00:00.000Z'
+    })
     const signatureSpy = vi
       .spyOn(privySignature, 'generateEthSendTransactionSignature')
       .mockReturnValue('privy-signature')
@@ -49,8 +59,7 @@ describe('TransactionService', () => {
     })
     const result = await service.sendEthTransaction({
       txData: ETH_REQUEST,
-      walletId: WALLET_ID,
-      privateKeyPem: PRIVATE_KEY_PEM
+      walletId: WALLET_ID
     })
 
     expect(result).toBe('0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb')

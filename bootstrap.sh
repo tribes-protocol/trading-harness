@@ -20,6 +20,25 @@ echo "[bootstrap] installing deps (incl. the pinned pi CLI)…"
 # deterministic); fall back to a normal install if the lockfile is ever stale.
 bun install --frozen-lockfile || bun install
 
+# @solana/web3.js pulls in bigint-buffer, whose native binding is optional.
+# Bundle the package into tribes-cli so the compiled binary can use the pure JS
+# fallback instead of depending on a runtime .node artifact. Patch only the
+# package's noisy warning before compile so Pi startup stays quiet.
+quiet_bigint_buffer_warning() {
+  TARGET="$PWD/node_modules/bigint-buffer/dist/node.js"
+  [ -f "$TARGET" ] || return 0
+
+  bun --eval '
+const fs = require("fs")
+const target = process.argv[1]
+const warning = "        console.warn('\''bigint: Failed to load bindings, pure JS will be used (try npm run rebuild?)'\'');"
+const source = fs.readFileSync(target, "utf8")
+fs.writeFileSync(target, source.replace(warning, "        // Native bigint-buffer binding is optional; use the bundled JS fallback."))
+' "$TARGET"
+}
+
+quiet_bigint_buffer_warning
+
 # Expose pi at /usr/local/bin/pi so it resolves by name from ANY shell — incl.
 # the interactive `bash -l` the sandbox drops you into between agent runs, whose
 # login-reset PATH drops node_modules/.bin. Vanilla harnesses install pi to
@@ -30,6 +49,19 @@ if ln -sf "$PWD/node_modules/.bin/pi" /usr/local/bin/pi 2>/dev/null; then
   echo "[bootstrap] linked pi -> /usr/local/bin/pi"
 else
   echo "[bootstrap] could not link pi into /usr/local/bin (still on PATH via node_modules/.bin)"
+fi
+
+# Pre-install the Pi extensions this agent declares in .pi/agent/settings.json
+# (currently npm:pi-subagents) so the npm fetch is paid here at boot rather than
+# on the first `pi` session. `pi install` is idempotent against the committed
+# `packages` list and writes the package under .pi/agent/npm (gitignored). Keep
+# it non-fatal: a registry hiccup must not block the trading harness from
+# starting, and Pi will auto-install any still-missing declared package on launch.
+echo "[bootstrap] installing declared pi extensions (pi-subagents)…"
+if pi install npm:pi-subagents; then
+  echo "[bootstrap] installed pi-subagents"
+else
+  echo "[bootstrap] could not install pi-subagents now; pi will retry it on first launch"
 fi
 
 # NOTE: do NOT run `pi update` here. This repo PINS pi (@earendil-works/
@@ -43,10 +75,14 @@ ENTRY="src/cli/Tribes.ts"
 # Build artifact. node_modules/.bin is writable and already on PATH in the
 # sandbox, so this is both the build output and the in-sandbox PATH fallback.
 ARTIFACT="$PWD/node_modules/.bin/tribes-cli"
+COMPILED_ARTIFACT="$PWD/node_modules/.bin/tribes-cli-compiled"
 
 echo "[bootstrap] compiling the harness into a single tribes-cli binary…"
-if bun build --compile --outfile "$ARTIFACT" "$ENTRY"; then
-  echo "[bootstrap] compiled $ENTRY -> $ARTIFACT"
+rm -f "$ARTIFACT" "$COMPILED_ARTIFACT"
+if bun build --compile --outfile "$COMPILED_ARTIFACT" "$ENTRY"; then
+  printf '#!/bin/sh\ncd "%s"\nexec "%s" "$@"\n' "$PWD" "$COMPILED_ARTIFACT" >"$ARTIFACT"
+  chmod +x "$ARTIFACT"
+  echo "[bootstrap] compiled $ENTRY -> $COMPILED_ARTIFACT"
 else
   # --compile unavailable (older bun / unsupported target): fall back to a shim
   # that runs the same entry through bun. Same `tribes-cli` interface either way.
@@ -82,3 +118,8 @@ else
 fi
 
 echo "[bootstrap] done — run the harness with: pi"
+
+# First-boot install is done. Remove this once-only installer so it does not
+# clutter the user's /workspace (the dispatcher gates re-runs on package.json,
+# not on this script's presence).
+rm -f -- "$0"

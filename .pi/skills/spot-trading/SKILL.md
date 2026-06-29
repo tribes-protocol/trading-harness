@@ -10,7 +10,7 @@ Use this skill for swap/bridge execution flow. Wallet auth/session and balance d
 
 ## Required flow
 
-1. Resolve wallet addresses (usually from `tribes-cli wallet list` or `.pi/privy-wallets.json`).
+1. Resolve wallet addresses (usually from `tribes-cli wallet list` or `.tribes/privy-wallets.json`).
 2. Fetch balances with `tribes-cli wallet assets`.
 3. If chain/token intent is ambiguous, ask clarifying questions before any quote.
 4. Resolve source and destination token metadata (`address`, `decimals`) from balance rows.

@@ -125,9 +125,18 @@ Prettier: no semicolons, single quotes, no trailing commas, width 100. TypeScrip
 
 ## Environment
 
-Required env, validated by `@/common/Env`: `API_BEARER_TOKEN`, `PRIVY_APP_ID`. `API_BEARER_TOKEN` is typically auto-minted by the Tribes extension; if it is missing, run `tribes-cli login` first so a fresh token is fetched and persisted before other `tribes-cli` actions. Wallet private keys live in Privy, never locally. `.env*` and `.pi/*.json` snapshots are gitignored.
+Required env, validated by `@/common/Env`: `API_BEARER_TOKEN`, `PRIVY_APP_ID`. `API_BEARER_TOKEN` is typically auto-minted by the Tribes extension; if it is missing, run `tribes-cli login` first so a fresh token is fetched and persisted before other `tribes-cli` actions. Wallet private keys live in Privy, never locally. `.env*` and `.tribes/*.json` snapshots are gitignored.
 
 ## Gotchas
 
 - Do not run `pi update`. Pi (`@earendil-works/pi-coding-agent` + `pi-tui`) is pinned at a specific version and the `.pi/` extensions are written against that exact API. Updating it can desync the runtime and break the `session_start` hook that writes `.env`.
 - The `runtime/` directory is generated and is gitignored / lint-ignored.
+
+## Showing tokens, pools & perps
+
+When you show an ETH or SOL address for a token, liquidity pool, or Hyperliquid perp, always render it as a clickable Markdown link to its tribes.xyz page — never a bare address:
+
+- Token (EVM): `[label](https://tribes.xyz/<chainId>/token/<address>)` — `<chainId>` is numeric (`1` Ethereum, `8453` Base, `42161` Arbitrum, `10` Optimism, `56` BNB, `137` Polygon).
+- Token (Solana): `[label](https://tribes.xyz/solana/token/<address>)`.
+- Pool (EVM): `[label](https://tribes.xyz/<chainId>/pool/<poolAddress>)`.
+- Hyperliquid perp: `[coin](https://tribes.xyz/perps/<coin>)` — e.g. `BTC`, `ETH`, `SOL`.
