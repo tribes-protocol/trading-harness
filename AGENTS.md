@@ -16,6 +16,36 @@ This repository is an autonomous Hyperliquid trading harness based on the [Pi ha
 
 This repo is the agent's workspace: in a Tribes sandbox the control plane clones it into `/workspace`, runs `bootstrap.sh` once, injects auth/RPC env, and launches `pi`. `AGENTS.md` is the operating constitution Pi reads at startup; the human talks to Pi, and Pi drives the `tribes-cli` binary built from this repo.
 
+## Installation (clients other than the Tribes web app)
+
+When the Tribes web app provisions this repo, the sandbox clones it, runs `bootstrap.sh`, injects auth/RPC env, and launches `pi` for you — there is nothing to install. Any other client (Claude Code, Cursor, a local shell, etc.) that clones this repo gets none of that automation.
+
+In that case, run `bootstrap.sh` once before using any `tribes-cli` command. It installs dependencies with bun and compiles the project into the native `tribes-cli` binary on PATH:
+
+```bash
+bun run bootstrap.sh
+```
+
+Auth is not pre-wired outside the Tribes sandbox, so after bootstrap establish a token with `tribes-cli login` (see Runtime Preconditions below).
+
+### Installing the skills
+
+The skill docs are vendored per client, one directory of `<slug>/SKILL.md` files per supported agent — `.pi/skills/` for Pi, `.claude/skills/` for Claude Code, and the matching `.<client>/skills/` for each other client. They ship in this repo, so cloning installs them: a client auto-discovers the skills in its own directory with no extra step.
+
+If your client reads skills from a directory that this repo does not already provide, copy (or symlink) the contents of `.pi/skills/` into that location. The skill files are documentation only — each one points at the matching `tribes-cli <group>` command — so they work as soon as `bootstrap.sh` has built `tribes-cli`.
+
+## Runtime Preconditions
+
+Before running any `tribes-cli` subcommand other than `tribes-cli login`, ensure authentication is established.
+
+- In a fresh environment/session, run `tribes-cli login` once before other `tribes-cli` commands.
+- If `API_BEARER_TOKEN` is missing or empty, run `tribes-cli login` to fetch and persist a fresh token before proceeding.
+
+## Error Recovery
+
+- If a `tribes-cli` command fails due to authentication state (unauthorized, missing token, invalid token, or expired token), run `tribes-cli login` and retry the original command once.
+- If the retry still fails for auth reasons, stop and report an authentication failure clearly instead of looping.
+
 ## Commands
 
 Package manager is **bun**. There is no compile-to-`dist` step for development; TypeScript runs directly.
@@ -95,7 +125,7 @@ Prettier: no semicolons, single quotes, no trailing commas, width 100. TypeScrip
 
 ## Environment
 
-Required env, validated by `@/common/Env`: `API_BASE_URL`, `API_BEARER_TOKEN`, and `PRIVY_APP_ID`. `API_BEARER_TOKEN` is auto-minted by the Tribes extension. Wallet private keys live in Privy, never locally. `.env*` and `.tribes/*.json` snapshots are gitignored.
+Required env, validated by `@/common/Env`: `API_BEARER_TOKEN`, `PRIVY_APP_ID`. `API_BEARER_TOKEN` is typically auto-minted by the Tribes extension; if it is missing, run `tribes-cli login` first so a fresh token is fetched and persisted before other `tribes-cli` actions. Wallet private keys live in Privy, never locally. `.env*` and `.tribes/*.json` snapshots are gitignored.
 
 ## Gotchas
 
