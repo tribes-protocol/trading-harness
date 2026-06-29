@@ -143,22 +143,12 @@ The quote output shape is defined by `QuoteResponseSchema` and includes:
 - `toAmountMin`
 - `transactionRequests[]`
 
-## Acquiring native gas (top-up)
+## Gas is sponsored
 
-Use this flow to fund the native gas token on a destination chain. It is needed
-only when destination-chain gas is low/insufficient or for a cross-chain flow,
-not on every trade. See the transaction skill's gas / native token
-preflight for the full decision order (bridge native, swap ERC-20, or ask the
-user to deposit when no native gas exists anywhere).
-
-- Set `--to-chain` to the destination chain that needs gas.
-- Set `--to-token` to the destination chain's native gas token:
-  - EVM destination -> `network`
-  - Solana destination -> `So11111111111111111111111111111111111111111`
-- `--from-token` is `network` to bridge native -> native, or an ERC-20/SPL
-  address/mint to convert a tradable token into native gas.
-- Size `--from-amount` so the received native covers at least ~5 trades on the
-  destination chain when plenty of gas/ERC-20 is available; avoid tiny top-ups.
+Gas is sponsored by the harness, so there is no native-gas top-up flow. Never
+bridge or swap to fund native gas before a trade, and never ask the user to
+deposit native gas. (Swapping into a native token because the user actually
+wants to hold ETH/SOL is a normal trade and still uses the flow above.)
 
 ## 4) Broadcast transactions with contiguous chain batching
 

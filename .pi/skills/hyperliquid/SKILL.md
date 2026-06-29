@@ -631,30 +631,40 @@ tribes-cli hyperliquid transfer-dex-cash \
   - `--pair`, `--order-id` (from `list-open-orders`)
   - cancels one resting spot order; requires `--from` and `--wallet-id`
 
-## Gas preflight (conditional)
+## Gas is sponsored
 
-Hyperliquid deposits and on-chain trades are broadcast as transactions and need
-native gas (ETH on Arbitrum, chain id `42161`) on the chain they run on. Do not
-re-check gas on every step. Run the transaction skill's gas acquisition flow
-only when native gas on the destination chain is low/insufficient or for a
-cross-chain flow; otherwise proceed. If no native gas token exists
-on any chain, STOP and ask the user to deposit native gas instead of improvising
-workarounds.
+Hyperliquid deposits and on-chain trades are broadcast as transactions, but gas
+is sponsored by the harness, so they need no native gas (ETH on Arbitrum, chain
+id `42161`) on the chain they run on. Do no gas preflight, never bridge/swap to
+fund gas, and never ask the user to deposit native gas; proceed directly.
+
+## Trade failed for insufficient balance
+
+A trade can fail because the Hyperliquid account lacks enough margin/USDC (this
+is the trading balance, not gas — gas is sponsored). When a trade fails with a
+no/low balance error:
+
+1. Run `wallet assets` to check what the wallet holds across chains.
+2. If there are fundable assets (Arbitrum USDC, another token, or funds on
+   another chain), tell the user the trade needs more balance on Hyperliquid and
+   suggest depositing, naming the assets you found.
+3. With the user's confirmation, fund the Hyperliquid account by following the
+   deposit path below (pick Path A/B/C by where the source funds are), then
+   retry the trade.
+4. If the wallet has no fundable assets anywhere, STOP and ask the user to
+   deposit funds; do not improvise workarounds.
 
 ## Choose the deposit path (where the source funds are)
 
 Make the funding path explicit before any quote/deposit. Pick one:
 
 - Path A - Arbitrum (`42161`), already native USDC: run `deposit` directly. No
-  swap/bridge, no cross-chain gas funding.
+  swap/bridge needed.
 - Path B - Arbitrum (`42161`), different token (ETH, other ERC-20): same-chain
   swap to Arbitrum USDC via `spot-trading quote` with `--from-chain 42161
---to-chain 42161`, then `deposit`. Same-chain, so the gas preflight only acts
-  if ETH on Arbitrum is low.
+--to-chain 42161`, then `deposit`.
 - Path C - any other chain (EVM or Solana): cross-chain swap/bridge to Arbitrum
-  USDC with `--from-chain <other> --to-chain 42161`, then `deposit`. This is a
-  cross-chain flow, so ensure gas on the source chain for the bridge leg and ETH
-  on Arbitrum for the deposit leg (gas preflight).
+  USDC with `--from-chain <other> --to-chain 42161`, then `deposit`.
 
 Paths B and C use the conversion flow below; after conversion the `5` USDC
 minimum deposit still applies. Path A skips straight to `deposit`.
@@ -750,7 +760,7 @@ Operational notes:
 
 ## Live broadcast safety
 
-- Run the transaction skill's gas acquisition flow only when native gas (ETH on Arbitrum) on the destination chain is low/insufficient or for a cross-chain flow; otherwise proceed, and stop to ask the user to deposit gas if none exists anywhere.
+- Gas is sponsored; do no gas preflight and never ask the user to deposit native gas.
 - Do not broadcast vague natural-language intent; always show and review the exact command payload first.
 - For any ambiguous fund-movement request (e.g. "transfer/move/send all funds"), STOP and ask for the missing action/scope/amount/destination details before running any command, including read-only balance or help lookups. See "Clarify ambiguous requests before acting".
 - Never mix wallet ids across chains; use the exact EVM wallet id that matches `--from`.
