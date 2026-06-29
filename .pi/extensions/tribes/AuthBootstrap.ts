@@ -13,7 +13,7 @@ const execFileAsync = promisify(execFile)
 
 // The host mints the agent's real P-256 key at this canonical microVM path (the
 // baked tribes-agent-key minter writes it once at VM boot). The harness reads
-// the key from <root>/.pi/agent-authorization-key.json.
+// the key from <root>/.tribes/agent-authorization-key.json.
 const HOST_KEY_PATH = '/var/lib/tribes/agent-authorization-key.json'
 const MINT_TIMEOUT_MS = 30_000
 const MINT_MAX_BUFFER_BYTES = 1024 * 1024
@@ -75,13 +75,13 @@ async function autoSelectTribesModel(
 }
 
 /**
- * Copy the host-minted agent key into <root>/.pi. Sync + best-effort so the key
+ * Copy the host-minted agent key into <root>/.tribes. Sync + best-effort so the key
  * is in place before the LLM provider's `!bun … AgentProxyToken.ts` token
  * command can run. A missing host key (local dev / already provisioned) leaves
  * any existing key untouched.
  */
 export function installAgentKey(cwd: string): void {
-  const keyPath = resolve(cwd, '.pi/agent-authorization-key.json')
+  const keyPath = resolve(cwd, '.tribes/agent-authorization-key.json')
   try {
     mkdirSync(dirname(keyPath), { recursive: true })
     copyFileSync(HOST_KEY_PATH, keyPath)
@@ -97,7 +97,7 @@ export function installAgentKey(cwd: string): void {
  * key returns true and fails loudly later via the provider/token path.
  */
 export function hasAgentKey(cwd: string): boolean {
-  return existsSync(resolve(cwd, '.pi/agent-authorization-key.json'))
+  return existsSync(resolve(cwd, '.tribes/agent-authorization-key.json'))
 }
 
 /** Parse <root>/.env into an ordered key -> value map. Missing file = empty. */

@@ -95,7 +95,7 @@ Prettier: no semicolons, single quotes, no trailing commas, width 100. TypeScrip
 
 ## Environment
 
-Required env, validated by `@/common/Env`: `API_BASE_URL`, `API_BEARER_TOKEN`, and `PRIVY_APP_ID`. `API_BEARER_TOKEN` is auto-minted by the Tribes extension. Wallet private keys live in Privy, never locally. `.env*` and `.pi/*.json` snapshots are gitignored.
+Required env, validated by `@/common/Env`: `API_BASE_URL`, `API_BEARER_TOKEN`, and `PRIVY_APP_ID`. `API_BEARER_TOKEN` is auto-minted by the Tribes extension. Wallet private keys live in Privy, never locally. `.env*` and `.tribes/*.json` snapshots are gitignored.
 
 ## Gotchas
 

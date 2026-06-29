@@ -23,7 +23,7 @@ import type {
 import { ensureJsonTreeString, isNullish } from '@/utils/Lang'
 import { isSolanaWalletAddress } from '@/utils/Solana'
 
-const WALLET_SNAPSHOT_PATH = '.pi/privy-wallets.json'
+const WALLET_SNAPSHOT_PATH = '.tribes/privy-wallets.json'
 
 interface WalletServiceParams {
   readonly cwd: string

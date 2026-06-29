@@ -56,7 +56,7 @@ balances and build the command payload.
 - Depends on the `wallet` skill for wallet discovery.
 - Depends on transaction signing via `the transaction skill`.
 - Use wallet CLI output as the source of `walletId` and signer `from` address.
-- Do not read `.pi/privy-wallets.json` directly in the workflow.
+- Do not read `.tribes/privy-wallets.json` directly in the workflow.
 
 ## Requirements
 

@@ -4,7 +4,7 @@ import { dirname, resolve } from 'node:path'
 import { type AgentAuthorizationKey, AgentAuthorizationKeySchema } from '@/types/JwtAuth'
 import { ensureJsonTreeString } from '@/utils/Lang'
 
-const AGENT_AUTHORIZATION_KEY_PATH = resolve(process.cwd(), '.pi/agent-authorization-key.json')
+const AGENT_AUTHORIZATION_KEY_PATH = resolve(process.cwd(), '.tribes/agent-authorization-key.json')
 
 function isFileNotFoundError(error: unknown): boolean {
   return typeof error === 'object' && error !== null && 'code' in error && error.code === 'ENOENT'

@@ -123,13 +123,14 @@ src/                       # ALL code: command builders + shared foundation (@/*
     tribes/                # LLM provider + proxy bearer token + welcome + wallet warm-up
     hyperliquid/           # live Hyperliquid positions/status widget
   skills/<slug>/SKILL.md   # skill docs only (no code); run via tribes-cli <group>
+.tribes/                   # runtime auth/wallet cache files (gitignored)
 ```
 
 ## Security
 
 - Never paste secrets into Pi prompts, summaries, or commits.
 - Wallet private keys live in Privy; RPC/API keys come from the environment.
-- `.env*` and `.pi/*.json` wallet/key snapshots are gitignored.
+- `.env*` and `.tribes/*.json` wallet/key snapshots are gitignored.
 
 ## References
 

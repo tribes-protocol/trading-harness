@@ -13,7 +13,7 @@ Use this skill when the agent must send a transaction or check transaction statu
 
 - Depends on the `wallet` skill for wallet discovery.
 - Use wallet CLI output as the source of `walletId` / `walletAddress` context.
-- Do not read `.pi/privy-wallets.json` directly in the workflow.
+- Do not read `.tribes/privy-wallets.json` directly in the workflow.
 
 ## Requirements
 
