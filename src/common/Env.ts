@@ -1,6 +1,6 @@
 import { ensureString } from '@/utils/Lang'
 
-const NODE_ENV = process.env['NODE_ENV']
+const NODE_ENV = process.env.NODE_ENV
 const USE_DEFAULT_VALUES = NODE_ENV === undefined || NODE_ENV === '' || NODE_ENV === 'developement'
 const IS_PRODUCTION = NODE_ENV === 'production' || USE_DEFAULT_VALUES
 
