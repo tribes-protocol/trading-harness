@@ -1,7 +1,7 @@
 import { ensureString } from '@/utils/Lang'
 
 const NODE_ENV = process.env.NODE_ENV
-const USE_DEFAULT_VALUES = NODE_ENV === undefined || NODE_ENV === '' || NODE_ENV === 'development'
+const USE_DEFAULT_VALUES = NODE_ENV === undefined || NODE_ENV === ''
 const IS_PRODUCTION = NODE_ENV === 'production' || USE_DEFAULT_VALUES
 
 export const API_BASE_URL = IS_PRODUCTION ? 'https://api.tribes.xyz' : 'http://localhost:8787'
