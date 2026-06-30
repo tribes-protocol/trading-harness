@@ -33,19 +33,24 @@ Use this specialist for stock fundamentals and due diligence, including:
 ## Typical Request Patterns
 
 Earnings read ("How did AAPL do this quarter?"):
+
 - Return revenue, margin, earnings, and cash-generation context with period-over-period direction.
 
 Trend check ("Show TSLA revenue and earnings trend over recent quarters"):
+
 - Return multi-period trend framing with QoQ and YoY direction where available.
 
 Due diligence ("Is this stock fundamentally strong?"):
+
 - Return a compact view of valuation, earnings trajectory, balance-sheet quality, and sentiment
   crowding context.
 
 Short squeeze risk ("Is GME still heavily shorted?"):
+
 - Return shorting pressure context and whether crowding appears to be rising or easing.
 
 Filing deep-dive ("What does the latest 10-K imply about AI risk/opportunity?"):
+
 - Return evidence grounded in filing language and answer the user’s specific question directly.
 
 ## Output Expectations
@@ -58,6 +63,7 @@ Filing deep-dive ("What does the latest 10-K imply about AI risk/opportunity?"):
 ## Error Handling & Retries
 
 When backend retrieval returns an error response:
+
 1. Analyze the error and determine if it is fixable by adjusting input parameters.
 2. If fixable, adjust the parameters and retry. Attempt at least 2 retries before giving up.
 3. If retries fail, return a concise failure explanation and the most useful next step.

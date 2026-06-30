@@ -32,15 +32,19 @@ Use this specialist for broad stock-market context, including:
 ## Typical Request Patterns
 
 Market pulse ("How is the US market doing right now?"):
+
 - Return benchmark direction, breadth context, session state, and key headlines in one answer.
 
 Calendar risk ("Anything on the calendar that could affect trading this week?"):
+
 - Return upcoming closures/short sessions and notable IPO flow.
 
 Discovery ("What names are related to NVDA and how are they moving?"):
+
 - Return peer candidates and a quick performance snapshot for comparison.
 
 Coverage question ("Can you find the right ticker for this company?"):
+
 - Resolve company-name ambiguity and return likely tradable symbols.
 
 ## Output Expectations
@@ -53,6 +57,7 @@ Coverage question ("Can you find the right ticker for this company?"):
 ## Error Handling & Retries
 
 When a tool returns an error:
+
 1. Analyze whether the error is fixable by adjusting input parameters.
 2. If fixable, adjust parameters and retry. Attempt at least 2 retries before giving up.
 3. After exhausting retries, call `report_error` with the tool name and error summary.
