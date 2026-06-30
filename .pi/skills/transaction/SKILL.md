@@ -50,59 +50,22 @@ calls land or the whole batch reverts.
   - When `chainId` changes, close the current run and start a new run.
 - Never reorder across chain boundaries to create bigger batches.
 
-## Gas / native token preflight (conditional)
+## Gas is sponsored
 
-Do not evaluate gas on every transaction. When the signer already holds ample
-native gas on the destination chain (clearly above this transaction's cost),
-skip the acquisition flow below and proceed directly with the send.
+Gas for every transaction is sponsored by the harness, so the signer never needs
+to hold native gas (ETH on EVM, SOL on Solana) to send. This applies to single
+sends (`sendEthTransaction`), atomic batches (`sendCalls`), and Solana sends
+(`sendSolTransaction`).
 
-Any transaction needs native gas on the chain it executes on. For a cross-chain
-flow (a bridge/transfer followed by a transaction on the destination chain) this
-means both the source/current chain (for the initial bridge leg) and the
-destination chain (for the follow-up). Make sure each chain that runs a leg has
-enough native gas for that leg.
+- Do not check native balances for gas before sending.
+- Do not bridge or swap to acquire native gas.
+- Do not ask the user to deposit native gas.
 
-Run the gas acquisition flow only when either is true:
-
-- Native gas on a chain that will run a leg is low/insufficient for the operation.
-- It is a cross-chain flow: a bridge/transfer from one chain to another that
-  requires a follow-up transaction on the destination chain. The destination
-  chain may have no native gas, so fund it before the follow-up.
-
-When you do run it, follow the order below instead of improvising multi-step
-workarounds.
-
-- Native gas token is ETH on EVM chains and SOL on Solana.
-- In `wallet assets`, the native balance is the row whose token `address` is
-  `network` (EVM) or `So11111111111111111111111111111111111111111` (Solana).
-  Treat those as the native gas token in quotes.
-- Check the native balance on the destination chain first. If it already covers
-  the operation, proceed with the send.
-- Otherwise acquire gas on the destination chain in this priority order:
-  1. No native gas token (ETH/SOL) on any chain at all -> STOP and ask the user
-     to deposit the native gas token. Do not attempt swaps/bridges, because every
-     transaction needs native gas to execute.
-  2. Native gas held on the current (or another) chain -> bridge native -> native
-     to the destination chain using the trade cli (`--from-token network`,
-     `--to-token network` for an EVM destination).
-  3. Only tradable ERC-20/SPL available (with enough native somewhere to pay the
-     swap's own gas) -> swap the ERC-20 into the destination chain's native gas
-     token using the trade cli.
-  4. Sizing: whenever bridging or converting gas and there is plenty of
-     gas/ERC-20 available, send enough native for at least ~5 trades on the
-     destination chain. Avoid repeated tiny top-ups.
-- trade cli `to-token` value when acquiring native gas:
-  - EVM destination -> `network`
-  - Solana destination -> `So11111111111111111111111111111111111111111`
-- Use the trade cli (`spot-trading quote`) to retrieve the quote, then broadcast
-  via the spot-trading execution flow (contiguous same-chain batching + status
-  polling).
+Proceed directly with the send.
 
 ## Workflow
 
-1. Only run the gas acquisition flow above when native gas on a chain that will
-   run a leg is low/insufficient or for a cross-chain flow; otherwise proceed
-   directly.
+1. Gas is sponsored; do no gas preflight and proceed directly to the send.
 2. Resolve wallet context through the wallet CLI:
    - Run `wallet list` to get `evmWalletId` and `evmWalletAddress`.
    - If `chainId` is unknown, run `wallet assets` for the EVM address and select an EVM `chainId` from returned ERC-20 balances.
@@ -174,7 +137,4 @@ tribes-cli transaction sendEthTransaction \
 - Never swap wallet ids across chains (`evmWalletId` vs `solWalletId`).
 - Do not proceed if required inputs are missing; ask for confirmation
   instead.
-- When native gas is actually low/absent (or for a cross-chain flow), never
-  improvise multi-step workarounds. Follow the gas
-  acquisition order exactly, and stop to ask the user to deposit gas when no
-  native gas token exists on any chain.
+- Gas is sponsored; never acquire native gas or ask the user to deposit it.

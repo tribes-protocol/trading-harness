@@ -16,14 +16,24 @@
  * AuthBootstrap runs it to (re)write .env so the CLIs share the one token.
  */
 
-function main(): void {
-  const token = process.env.TRIBES_API_KEY ?? process.env.API_BEARER_TOKEN
-  if (!token) {
-    process.stderr.write('TRIBES_API_KEY is not set\n')
-    process.exit(1)
+import { getApiBearerToken } from '@/helpers/Jwt'
+
+async function main(): Promise<void> {
+  const injectedToken = process.env.TRIBES_API_KEY
+  if (injectedToken) {
+    process.stdout.write(injectedToken)
+    return
   }
+
+  const fromEnv = process.env.API_BEARER_TOKEN
+  if (fromEnv) {
+    process.stdout.write(fromEnv)
+    return
+  }
+
+  const token = await getApiBearerToken()
   // No trailing newline: the value is used verbatim as a Bearer token.
   process.stdout.write(token)
 }
 
-main()
+void main()
