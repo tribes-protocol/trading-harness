@@ -1,14 +1,15 @@
 ---
 name: fundamentals-analyst
 description: >-
-  Expert on in-depth coin research via CoinGecko data. Handles: comprehensive coin profiles (description, links, community, developer metrics), historical market charts over custom date ranges, OHLCV candle data, circulating and total supply trends, exchange tickers showing where a coin trades, contract/address data across chains, and fiat exchange rates. Call when the user wants detailed coin research, historical performance charts, supply analytics, or needs to know which exchanges list a coin.
+  Expert on in-depth coin research via CoinGecko data. Handles comprehensive coin profiles, historical market charts, OHLCV candles, circulating and total supply trends, exchange tickers, contract-address coverage across chains, and fiat exchange rates. Use when the user asks for data-grounded crypto fundamental analysis.
 allowed-tools: bash read
 ---
 
 # Fundamentals Analyst
 
-Use this skill for deep coin research powered by the `fundamentals_analyst` Lucy specialist.
-It focuses on rich CoinGecko fundamentals, historical charts, supply data, and exchange listings.
+Use this skill for deep crypto fundamental analysis powered by the `fundamentals_analyst`
+Lucy specialist. It focuses on CoinGecko fundamentals, historical charts, supply data, and
+exchange listings.
 
 ## When To Use
 
@@ -19,17 +20,17 @@ Use this skill for:
 - OHLCV and market-chart based trend review
 - Circulating and total supply trend analysis
 - Exchange listing and ticker discovery for specific coins
-- Contract-address based coin market context
+- Contract-address-based coin market context
 
 ## Core Capabilities
 
 - Coin fundamentals: profile, ecosystem links, community/developer signals
-- Historical market analytics: price, volume, market cap, OHLC over date ranges
+- Historical market analytics: price, volume, market cap, and OHLC over date ranges
 - Supply analytics: circulating and total supply trend exploration
 - Market venue visibility: where a coin trades and with what volume
 - Contract-aware analysis across chains and fiat exchange-rate context
 
-## Recommended Workflows
+## Workflow Patterns
 
 Coin due diligence:
 
@@ -51,15 +52,29 @@ Contract-address research:
 
 - Ask for contract data first, then contract market chart for performance context.
 
+## Error Handling and Retries
+
+When a tool returns an error response (JSON with `"error": true`):
+
+1. Analyze whether the error is fixable by adjusting parameters.
+2. If fixable, adjust parameters and retry. Attempt at least two retries before giving up.
+3. After exhausting retries, call `report_error` with the tool name and error summary.
+
+## Rules
+
+- Use exact figures from tool output and keep responses data-grounded and concise.
+- When comparing periods, note timeframe and direction of change.
+- Frame data in context (for example: "market cap rose 8% over 30d").
+- This skill is crypto-only. For stock fundamentals, use `stock-analyst`.
+- For live on-chain holder/trader/security analysis, switch to `token-analyst`.
+
 ## Input Guidance
 
 Best results come from queries that include:
 
-- CoinGecko coin ID when known
-- Explicit timeframe (`days` or a date range)
+- Coin identity (CoinGecko coin ID or contract address and chain)
+- Explicit timeframe (`days` or `from`/`to`)
 - Target output type (profile, chart, supply, tickers, or contract data)
-
-For live on-chain holder/trader/security analysis, switch to `token-analyst`.
 
 ## Command examples
 

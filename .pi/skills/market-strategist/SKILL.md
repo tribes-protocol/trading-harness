@@ -60,6 +60,13 @@ Best results come from queries that include:
 
 For token-specific on-chain depth (holders/traders/security), switch to `token-analyst`.
 
+## Tradability guardrail
+
+- If you output trade candidates (not just market commentary), verify each candidate is tradable on
+  Hyperliquid first.
+- Present candidates in two buckets: `Tradable on Hyperliquid now` and `Not tradable on Hyperliquid`.
+- Prefer tradable candidates in rankings; treat non-tradable names as watchlist context only.
+
 ## Command examples
 
 ### Show CLI help
