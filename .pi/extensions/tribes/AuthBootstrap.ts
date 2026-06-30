@@ -41,7 +41,7 @@ interface PiSettingsDefaults {
 }
 
 async function readPiSettingsDefaults(cwd: string): Promise<PiSettingsDefaults> {
-  const path = resolve(cwd, '.pi/settings.json')
+  const path = resolve(cwd, '.pi/agent/settings.json')
   try {
     const text = await readFile(path, 'utf8')
     const parsed: PiSettingsDefaults = JSON.parse(text)
