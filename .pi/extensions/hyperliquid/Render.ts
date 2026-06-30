@@ -314,26 +314,23 @@ export function renderHyperliquidPositionsWidget(
   ].join('  ·  ')
 
   container.addChild(new Text(theme.fg('dim', statusLine), 1, 0))
-  if (costSummary) {
-    const feeText = `fees ${fmtUsd(costSummary.tradingFeesPaidUsd)}`
-    const fundingText = `funding ${fmtSignedUsd(costSummary.fundingNetUsd)}`
-    const rateText = `fee rate ${fmtBps(costSummary.feeBpsOnTradedNotional)}`
-    const netText = `net ${fmtCostUsd(costSummary.netCostUsd)}`
-    const dragLine = [
-      `Cost drag ${costSummary.lookbackDays}d: ${feeText}`,
-      fundingText,
-      netText,
-      rateText
-    ].join(' · ')
-    container.addChild(new Text(theme.fg('dim', dragLine), 1, 0))
-  }
   container.addChild(new Text(renderPositionsTable(status.positions, contentWidth, theme), 1, 0))
+
+  const accountSections: string[] = []
+  if (
+    typeof status.spotBalanceUsd === 'number' &&
+    Number.isFinite(status.spotBalanceUsd) &&
+    status.spotBalanceUsd > 0
+  ) {
+    accountSections.push(`spot ${fmtUsd(status.spotBalanceUsd)}`)
+  }
 
   const accounts = status.hyperliquidAccounts.map(
     (account) =>
       `${account.dex || 'main'}: eq ${fmtUsd(account.equityUsd)}, margin ${fmtUsd(account.marginUsedUsd)}`
   )
-  const accountLine = accounts.join('  ·  ')
+  accountSections.push(...accounts)
+  const accountLine = accountSections.join('  ·  ')
   if (accountLine.length > 0) {
     container.addChild(new Text(theme.fg('dim', accountLine), 1, 0))
   }

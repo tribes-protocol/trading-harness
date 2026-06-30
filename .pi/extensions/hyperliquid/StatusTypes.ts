@@ -104,6 +104,7 @@ export interface HyperliquidStatus {
   readonly killSwitchReason: string | null
   readonly clear: boolean
   readonly equityUsd: number | null
+  readonly spotBalanceUsd: number | null
   readonly withdrawableUsd: number | null
   readonly dailyPnlUsd: number
   readonly dailyPnlPct: number
