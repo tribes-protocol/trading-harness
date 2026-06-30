@@ -14,6 +14,7 @@ import { type CliLoginPollResponse, CliLoginPollResponseSchema } from '@/types/C
 const LOGIN_POLL_INTERVAL_MS = 2_000
 const LOGIN_POLL_TIMEOUT_MS = 3 * 60_000
 const LOGIN_POLL_MAX_RETRIES = LOGIN_POLL_TIMEOUT_MS / LOGIN_POLL_INTERVAL_MS
+
 const ENV_PATH = resolve(process.cwd(), '.env')
 const ENV_PASSTHROUGH = ['PRIVY_APP_ID'] as const
 
