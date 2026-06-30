@@ -3,7 +3,8 @@ import type { AnalystConfig } from '@/types/Analyst'
 export const ANALYSTS = {
   alphaScout: {
     cliName: 'alpha-scout-cli',
-    description: 'Discovers emerging opportunities and tracks smart money signals.',
+    description:
+      'Discovers emerging opportunities across crypto and stocks and tracks smart money signals.',
     endpointPath: '/agent/lucy/alpha-scout',
     errorLabel: 'Alpha scout',
     askDescription: 'Send a query to the alpha_scout specialist agent endpoint'
@@ -28,6 +29,22 @@ export const ANALYSTS = {
     endpointPath: '/agent/lucy/fundamentals-analyst',
     errorLabel: 'Fundamentals analyst',
     askDescription: 'Send a query to the fundamentals_analyst specialist agent endpoint'
+  },
+  stockAnalyst: {
+    cliName: 'stock-analyst-cli',
+    description:
+      'Expert on stock fundamentals research including statements, valuation, shorting, and filings.',
+    endpointPath: '/agent/lucy/stock-fundamentals-analyst',
+    errorLabel: 'Stock analyst',
+    askDescription: 'Send a query to the stock_fundamentals_analyst specialist agent endpoint'
+  },
+  stockMarketStrategist: {
+    cliName: 'stock-market-strategist-cli',
+    description:
+      'Expert on the big-picture stock market including indices, movers, market status, and stock news.',
+    endpointPath: '/agent/lucy/stock-market-strategist',
+    errorLabel: 'Stock market strategist',
+    askDescription: 'Send a query to the stock_market_strategist specialist agent endpoint'
   },
   marketStrategist: {
     cliName: 'market-strategist-cli',

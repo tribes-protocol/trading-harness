@@ -16,6 +16,27 @@ Requires `API_BASE_URL` in the environment (or harness `.env` loaded in the shel
 
 Use the local news CLI as the default path. It calls the API, retries while analysis is in-flight, and keeps polling until sentiment is no longer unknown (or retry budget is exhausted).
 
+Resolve request inputs before calling `news fetch`:
+
+- **`kind: token`**
+  - Require exact `chainId` and `tokenId` (address/mint).
+  - If the request starts from symbol/name only, resolve to the exact token on an
+    exact chain first; if multiple matches exist, ask a short clarification.
+  - Call with `--kind token --chain-id <CHAIN_ID> --token-id <TOKEN_ID>`.
+- **`kind: perp`**
+  - Require exact perp coin symbol.
+  - Normalize coin casing and preserve dex prefix when provided (for example
+    `xyz:MSFT`).
+  - If multiple plausible perps exist, ask a short clarification.
+  - Call with `--kind perp --coin <COIN>`.
+- **`kind: stock`**
+  - Resolve exact tradable ticker from company name/alias/fuzzy text first.
+  - Normalize ticker to uppercase and trim whitespace.
+  - If multiple valid tickers are possible, ask a short clarification.
+  - Call with `--kind stock --ticker <TICKER>`.
+- Use only the fields supported by `news fetch` for the selected kind; do not
+  pass free-form search/query fields to this command.
+
 If the CLI/API path is unavailable, switch to fallback web collection from public pages and feeds.
 
 For fallback mode:
