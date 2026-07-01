@@ -111,6 +111,32 @@ function formatLocalTimestamp(value: unknown): string {
   }).format(new Date(parsed))
 }
 
+function formatTradeTimestamp(isoString: string): string {
+  const parsed = Date.parse(isoString)
+  if (!Number.isFinite(parsed)) return isoString
+  const d = new Date(parsed)
+  const now = new Date()
+  const isToday =
+    d.getFullYear() === now.getFullYear() &&
+    d.getMonth() === now.getMonth() &&
+    d.getDate() === now.getDate()
+  if (isToday) {
+    return new Intl.DateTimeFormat('en-US', {
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: false
+    }).format(d)
+  }
+  return new Intl.DateTimeFormat('en-US', {
+    month: 'short',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false
+  }).format(d)
+}
+
 function renderPositionsTable(
   positions: readonly StatusPosition[],
   contentWidth: number,
@@ -257,29 +283,28 @@ function fmtDuration(ms: number | null): string {
 
 function renderRecentTrades(trades: readonly RecentTrade[], theme: Theme): string {
   const columns = [
-    { key: 'time', label: 'Time', width: 20 },
+    { key: 'time', label: 'Time', width: 13 },
     { key: 'dir', label: 'Dir', width: 12 },
-    { key: 'symbol', label: 'Symbol', width: 12 },
-    { key: 'size', label: 'Size', width: 12 },
-    { key: 'value', label: 'Value', width: 12 },
-    { key: 'entry', label: 'AvgEntry', width: 12 },
-    { key: 'exit', label: 'AvgExit', width: 12 },
-    { key: 'pnl', label: 'PnL', width: 12 },
-    { key: 'hold', label: 'Hold', width: 12 }
+    { key: 'symbol', label: 'Symbol', width: 10 },
+    { key: 'size', label: 'Size', width: 10 },
+    { key: 'value', label: 'Value', width: 10 },
+    { key: 'entry', label: 'Entry', width: 10 },
+    { key: 'exit', label: 'Exit', width: 10 },
+    { key: 'pnl', label: 'PnL', width: 10 },
+    { key: 'hold', label: 'Hold', width: 8 }
   ]
 
   const lines = [
-    theme.fg('dim', 'Recent trades'),
+    theme.fg('dim', theme.bold(`Recent trades`)) + theme.fg('dim', ` (${trades.length})`),
     theme.fg('dim', columns.map((col) => cell(col.label, col.width)).join(' '))
   ]
 
   for (const trade of trades) {
-    // Hyperliquid `dir` reads like "Open Short" / "Close Long"; color the row's
-    // Dir cell by side the same way the positions table colors Side.
+    const isClose = /close/iu.test(trade.dir)
     const isShort = /short/iu.test(trade.dir)
     const pnl = trade.closedPnlUsd
     const values: Record<string, string> = {
-      time: formatLocalTimestamp(new Date(trade.time).toISOString()),
+      time: formatTradeTimestamp(new Date(trade.time).toISOString()),
       dir: trade.dir,
       symbol: trade.coin,
       size: fmtSize(trade.size),
@@ -294,9 +319,15 @@ function renderRecentTrades(trades: readonly RecentTrade[], theme: Theme): strin
       columns
         .map((col) => {
           if (col.key === 'dir') {
-            return cell(values[col.key], col.width, (value) =>
-              theme.fg(isShort ? 'error' : 'success', value)
-            )
+            // Close trades: color by P&L outcome (did the trade make money?).
+            // Open trades: color by side (short=red, long=green) to match the positions table.
+            let dirTone: 'error' | 'success' | 'dim'
+            if (isClose) {
+              dirTone = Math.abs(pnl) < 0.005 ? 'dim' : pnl > 0 ? 'success' : 'error'
+            } else {
+              dirTone = isShort ? 'error' : 'success'
+            }
+            return cell(values[col.key], col.width, (value) => theme.fg(dirTone, value))
           }
           if (col.key === 'pnl') {
             if (Math.abs(pnl) < 0.005) {
