@@ -234,6 +234,11 @@ export type HyperliquidPerpTif = z.infer<typeof HyperliquidPerpTifSchema>
 export const HyperliquidPerpMarginModeSchema = z.enum(['cross', 'isolated'])
 export type HyperliquidPerpMarginMode = z.infer<typeof HyperliquidPerpMarginModeSchema>
 
+export const HyperliquidMarginAdjustmentDirectionSchema = z.enum(['add', 'remove'])
+export type HyperliquidMarginAdjustmentDirection = z.infer<
+  typeof HyperliquidMarginAdjustmentDirectionSchema
+>
+
 export const HyperliquidMarketTypeSchema = z.enum(['perp', 'spot'])
 export type HyperliquidMarketType = z.infer<typeof HyperliquidMarketTypeSchema>
 
@@ -356,6 +361,33 @@ export const HyperliquidPerpTradeCommandOptionsSchema = z
   })
 export type HyperliquidPerpTradeCommandOptions = z.infer<
   typeof HyperliquidPerpTradeCommandOptionsSchema
+>
+
+export const HyperliquidSetLeverageCommandOptionsSchema = z.object({
+  from: EthAddressSchema,
+  coin: z.string().trim().min(1),
+  leverage: z.coerce.number().int().positive(),
+  marginMode: HyperliquidPerpMarginModeSchema.default('cross'),
+  dex: z.string().trim().nullish(),
+  walletId: z.string().trim().min(1),
+  out: z.string().nullish()
+})
+export type HyperliquidSetLeverageCommandOptions = z.infer<
+  typeof HyperliquidSetLeverageCommandOptionsSchema
+>
+
+export const HyperliquidAdjustMarginCommandOptionsSchema = z.object({
+  from: EthAddressSchema,
+  coin: z.string().trim().min(1),
+  amount: BigNumberSchema,
+  direction: HyperliquidMarginAdjustmentDirectionSchema.default('add'),
+  side: HyperliquidPerpSideSchema,
+  dex: z.string().trim().nullish(),
+  walletId: z.string().trim().min(1),
+  out: z.string().nullish()
+})
+export type HyperliquidAdjustMarginCommandOptions = z.infer<
+  typeof HyperliquidAdjustMarginCommandOptionsSchema
 >
 
 export const HyperliquidSpotTradeCommandOptionsSchema = z
