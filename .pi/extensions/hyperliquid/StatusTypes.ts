@@ -90,6 +90,31 @@ export interface ClosedPnlSummary {
   readonly error: string | null
 }
 
+export interface RecentTrade {
+  readonly coin: string
+  /** Hyperliquid fill direction, e.g. 'Open Long' / 'Close Short'. */
+  readonly dir: string
+  readonly size: number
+  readonly price: number
+  /** Fill time in epoch milliseconds. */
+  readonly time: number
+  readonly closedPnlUsd: number
+  /**
+   * For a closing fill, how long the position was held before this fill, in
+   * milliseconds. Null for opening fills or when it can't be reconstructed
+   * from the available history.
+   */
+  readonly holdMs: number | null
+  /**
+   * Weighted-average entry price of the position this fill relates to. For a
+   * closing fill it's the segment's average entry basis; for an opening fill
+   * it's the fill's own price. Null when it can't be reconstructed.
+   */
+  readonly avgEntryPrice: number | null
+  /** Average exit price — the fill price for a closing fill; null for opens. */
+  readonly avgExitPrice: number | null
+}
+
 export interface HyperliquidStatus {
   readonly ok: boolean
   readonly schema: 'hyperliquid-status.v1'
@@ -117,6 +142,8 @@ export interface HyperliquidStatus {
   readonly closedPnl24h: ClosedPnlSummary | null
   readonly topCandidates: readonly string[]
   readonly totalTrades: number
+  /** Most recent fills, newest first. The widget shows the last two under balances. */
+  readonly recentTrades: readonly RecentTrade[]
   readonly error?: string
   // True while the wallet snapshot (.tribes/privy-wallets.json) hasn't been written
   // yet — the account address is being resolved, not genuinely absent. Drives a
