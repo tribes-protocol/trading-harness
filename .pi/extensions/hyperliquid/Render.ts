@@ -322,7 +322,8 @@ export function renderHyperliquidPositionsWidget(
   status: HyperliquidStatus,
   theme: Theme,
   width: number,
-  refreshing = false
+  refreshing = false,
+  showRecentTrades = false
 ): string[] {
   // Loading uses a calm dim border; a real failure (missing account / error) is
   // a warning; a healthy account is the accent.
@@ -414,7 +415,9 @@ export function renderHyperliquidPositionsWidget(
   }
 
   const recentTrades = status.recentTrades ?? []
-  if (recentTrades.length > 0) {
+  if (showRecentTrades && recentTrades.length > 0) {
+    // Dotted rule sets the recent-trades section apart from the main widget.
+    container.addChild(new Text(theme.fg('dim', '┈'.repeat(contentWidth)), 1, 0))
     container.addChild(new Text(renderRecentTrades(recentTrades, theme), 1, 0))
   }
   container.addChild(new DynamicBorder(borderColor))

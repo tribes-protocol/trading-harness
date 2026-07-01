@@ -780,6 +780,7 @@ async function refreshStatusSnapshot(cwd: string): Promise<HyperliquidStatus> {
 
 export default function hyperliquidStatus(pi: ExtensionAPI): void {
   let showWidget = true
+  let showRecentTrades = false
   let statusTimer: ReturnType<typeof setInterval> | undefined
   let refreshing = false
   let lastStatus: HyperliquidStatus | null = null
@@ -810,7 +811,13 @@ export default function hyperliquidStatus(pi: ExtensionAPI): void {
         return {
           render: (width: number): string[] =>
             lastStatus
-              ? renderHyperliquidPositionsWidget(lastStatus, widgetTheme, width, refreshing)
+              ? renderHyperliquidPositionsWidget(
+                  lastStatus,
+                  widgetTheme,
+                  width,
+                  refreshing,
+                  showRecentTrades
+                )
               : [widgetTheme.fg('dim', 'Hyperliquid Status (loading...)')],
           invalidate: (): void => {}
         }
@@ -893,6 +900,15 @@ export default function hyperliquidStatus(pi: ExtensionAPI): void {
         showWidget ? 'Hyperliquid status widget shown' : 'Hyperliquid status widget hidden',
         'info'
       )
+    }
+  })
+
+  pi.registerCommand('hl-trades', {
+    description: 'Toggle the recent trades list in the Hyperliquid status widget',
+    handler: async (_args, ctx) => {
+      showRecentTrades = !showRecentTrades
+      requestWidgetRender()
+      ctx.ui.notify(showRecentTrades ? 'Recent trades shown' : 'Recent trades hidden', 'info')
     }
   })
 
