@@ -21,6 +21,7 @@ import type {
 
 const RUNTIME_STATUS_DIR = 'runtime/hyperliquid'
 const STATUS_FILE = 'live-status.json'
+const CONFIG_FILE = 'config.json'
 const KILL_SWITCH_FILE = 'kill-switch.enabled'
 const DEFAULT_DEXES = ['', 'xyz'] as const
 const COST_LOOKBACK_DAYS = 7
@@ -154,8 +155,23 @@ function resolveStatusPath(cwd: string): string {
   return resolve(resolveStatusDir(cwd), STATUS_FILE)
 }
 
+function resolveConfigPath(cwd: string): string {
+  return resolve(resolveStatusDir(cwd), CONFIG_FILE)
+}
+
 function resolveKillSwitchPath(cwd: string): string {
   return resolve(resolveStatusDir(cwd), KILL_SWITCH_FILE)
+}
+
+type WidgetConfig = {
+  showWidget: boolean
+  showRecentTrades: boolean
+}
+
+const DEFAULT_CONFIG: WidgetConfig = { showWidget: true, showRecentTrades: false }
+
+async function saveWidgetConfig(cwd: string, config: WidgetConfig): Promise<void> {
+  await writeJson(resolveConfigPath(cwd), config)
 }
 
 async function readKillSwitch(
@@ -869,6 +885,9 @@ export default function hyperliquidStatus(pi: ExtensionAPI): void {
   }
 
   pi.on('session_start', async (_event, ctx) => {
+    const config = await readJson<WidgetConfig>(resolveConfigPath(ctx.cwd), DEFAULT_CONFIG)
+    showWidget = config.showWidget
+    showRecentTrades = config.showRecentTrades
     const cached = await readJson<HyperliquidStatus | null>(resolveStatusPath(ctx.cwd), null)
     if (cached) lastStatus = cached
     syncWidget(ctx)
@@ -894,6 +913,7 @@ export default function hyperliquidStatus(pi: ExtensionAPI): void {
     description: 'Toggle Hyperliquid detailed status widget',
     handler: async (_args, ctx) => {
       showWidget = !showWidget
+      await saveWidgetConfig(ctx.cwd, { showWidget, showRecentTrades })
       if (!lastStatus) lastStatus = await refreshStatusSnapshot(ctx.cwd)
       syncWidget(ctx)
       ctx.ui.notify(
@@ -907,6 +927,7 @@ export default function hyperliquidStatus(pi: ExtensionAPI): void {
     description: 'Toggle the recent trades list in the Hyperliquid status widget',
     handler: async (_args, ctx) => {
       showRecentTrades = !showRecentTrades
+      await saveWidgetConfig(ctx.cwd, { showWidget, showRecentTrades })
       requestWidgetRender()
       ctx.ui.notify(showRecentTrades ? 'Recent trades shown' : 'Recent trades hidden', 'info')
     }
