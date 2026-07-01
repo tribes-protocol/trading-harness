@@ -15,15 +15,18 @@ import type {
   HyperliquidStatus,
   MarketContext,
   PositionCostStats,
+  RecentTrade,
   StatusPosition
 } from './StatusTypes.ts'
 
 const RUNTIME_STATUS_DIR = 'runtime/hyperliquid'
 const STATUS_FILE = 'live-status.json'
+const CONFIG_FILE = 'config.json'
 const KILL_SWITCH_FILE = 'kill-switch.enabled'
 const DEFAULT_DEXES = ['', 'xyz'] as const
 const COST_LOOKBACK_DAYS = 7
 const CLOSED_PNL_LOOKBACK_HOURS = 24
+const RECENT_TRADES_LIMIT = 2
 const HYPERLIQUID_INFO_URL = 'https://api.hyperliquid.xyz/info'
 
 // Types live in ./types.ts; renderer in ./Render.ts. CrossBucket +
@@ -152,8 +155,23 @@ function resolveStatusPath(cwd: string): string {
   return resolve(resolveStatusDir(cwd), STATUS_FILE)
 }
 
+function resolveConfigPath(cwd: string): string {
+  return resolve(resolveStatusDir(cwd), CONFIG_FILE)
+}
+
 function resolveKillSwitchPath(cwd: string): string {
   return resolve(resolveStatusDir(cwd), KILL_SWITCH_FILE)
+}
+
+type WidgetConfig = {
+  showWidget: boolean
+  showRecentTrades: boolean
+}
+
+const DEFAULT_CONFIG: WidgetConfig = { showWidget: true, showRecentTrades: false }
+
+async function saveWidgetConfig(cwd: string, config: WidgetConfig): Promise<void> {
+  await writeJson(resolveConfigPath(cwd), config)
 }
 
 async function readKillSwitch(
@@ -516,6 +534,93 @@ async function readClosedPnlSummary(
   }
 }
 
+async function readRecentTrades(
+  user: string,
+  limit = RECENT_TRADES_LIMIT
+): Promise<readonly RecentTrade[]> {
+  // `userFills` returns the account's most recent fills regardless of age, so
+  // the "last N trades" are available even when nothing traded recently.
+  const fills = await hyperliquidInfo<unknown[]>({ type: 'userFills', user })
+  if (!Array.isArray(fills)) return []
+  const rows = fills.filter(isRecord)
+
+  // Hyperliquid fills carry no "hold time" field, so reconstruct it: walk the
+  // fills in chronological order, track the signed position per coin, and
+  // remember when the current position segment opened (from flat, or after a
+  // sign flip). A fill that reduces the position closes part of that segment,
+  // so its hold time = fillTime - segmentOpenTime. Keyed by trade id (tid).
+  const holdByTid = new Map<number, number>()
+  const entryByTid = new Map<number, number>()
+  const exitByTid = new Map<number, number>()
+  const segmentOpenByCoin = new Map<string, number>()
+  const segmentEntryByCoin = new Map<string, number>()
+  const chronological = [...rows].sort((a, b) => safeNumber(a.time, 0) - safeNumber(b.time, 0))
+  for (const fill of chronological) {
+    const coin = typeof fill.coin === 'string' ? fill.coin : null
+    if (!coin) continue
+    const tid = safeNumber(fill.tid, 0)
+    const time = safeNumber(fill.time, 0)
+    const px = safeNumber(fill.px, 0)
+    const before = safeNumber(fill.startPosition, 0)
+    const signedSize = fill.side === 'B' ? safeNumber(fill.sz, 0) : -safeNumber(fill.sz, 0)
+    const after = before + signedSize
+    const reduces = Math.abs(after) < Math.abs(before)
+    const segmentOpen = segmentOpenByCoin.get(coin)
+    if (reduces) {
+      // Closing (part of) a segment: entry is the segment's average basis, exit
+      // is this fill's price, hold is the elapsed time since the segment opened.
+      entryByTid.set(tid, segmentEntryByCoin.get(coin) ?? px)
+      exitByTid.set(tid, px)
+      if (segmentOpen !== undefined) holdByTid.set(tid, time - segmentOpen)
+    } else {
+      // Opening or adding to a position: this fill's own price is its entry.
+      entryByTid.set(tid, px)
+    }
+    const flipped = before !== 0 && after !== 0 && Math.sign(before) !== Math.sign(after)
+    if (Math.abs(after) < 1e-9) {
+      segmentOpenByCoin.delete(coin)
+      segmentEntryByCoin.delete(coin)
+    } else if (before === 0 || flipped) {
+      segmentOpenByCoin.set(coin, time)
+      segmentEntryByCoin.set(coin, px)
+    } else if (Math.abs(after) > Math.abs(before)) {
+      // Increased same-direction exposure: blend the segment's average entry.
+      const priorEntry = segmentEntryByCoin.get(coin) ?? px
+      const blended = (priorEntry * Math.abs(before) + px * Math.abs(signedSize)) / Math.abs(after)
+      segmentEntryByCoin.set(coin, blended)
+      if (!segmentOpenByCoin.has(coin)) segmentOpenByCoin.set(coin, time)
+    } else {
+      if (!segmentOpenByCoin.has(coin)) segmentOpenByCoin.set(coin, time)
+      if (!segmentEntryByCoin.has(coin)) segmentEntryByCoin.set(coin, px)
+    }
+  }
+
+  const trades: RecentTrade[] = []
+  for (const rawFill of rows) {
+    const coin = typeof rawFill.coin === 'string' ? rawFill.coin : null
+    if (!coin) continue
+    const tid = safeNumber(rawFill.tid, 0)
+    const dir =
+      typeof rawFill.dir === 'string' && rawFill.dir.length > 0
+        ? rawFill.dir
+        : rawFill.side === 'B'
+          ? 'Buy'
+          : 'Sell'
+    trades.push({
+      coin,
+      dir,
+      size: safeNumber(rawFill.sz, 0),
+      price: safeNumber(rawFill.px, 0),
+      time: safeNumber(rawFill.time, 0),
+      closedPnlUsd: safeNumber(rawFill.closedPnl, 0),
+      holdMs: holdByTid.get(tid) ?? null,
+      avgEntryPrice: entryByTid.get(tid) ?? null,
+      avgExitPrice: exitByTid.get(tid) ?? null
+    })
+  }
+  return trades.sort((a, b) => b.time - a.time).slice(0, limit)
+}
+
 async function buildStatus(cwd: string): Promise<HyperliquidStatus> {
   const accountState = await resolveAccountState(cwd)
   const dexes = DEFAULT_DEXES
@@ -553,6 +658,7 @@ async function buildStatus(cwd: string): Promise<HyperliquidStatus> {
       closedPnl24h: null,
       topCandidates: [],
       totalTrades: 0,
+      recentTrades: [],
       ...(initializing ? {} : { error: 'Missing account address' })
     }
     await writeJson(resolveStatusPath(cwd), status)
@@ -601,6 +707,7 @@ async function buildStatus(cwd: string): Promise<HyperliquidStatus> {
         error: error instanceof Error ? error.message : String(error)
       }) satisfies ClosedPnlSummary
   )
+  const recentTrades: readonly RecentTrade[] = await readRecentTrades(user).catch(() => [])
 
   const status: HyperliquidStatus = {
     ok: account.accounts.length > 0,
@@ -630,6 +737,7 @@ async function buildStatus(cwd: string): Promise<HyperliquidStatus> {
     closedPnl24h,
     topCandidates: [],
     totalTrades: 0,
+    recentTrades,
     ...(account.accounts.length === 0
       ? { error: account.error ?? 'Hyperliquid account unavailable' }
       : {})
@@ -678,6 +786,7 @@ async function refreshStatusSnapshot(cwd: string): Promise<HyperliquidStatus> {
       closedPnl24h: null,
       topCandidates: [],
       totalTrades: 0,
+      recentTrades: [],
       error: 'Refresh failed'
     }
     await writeJson(resolveStatusPath(cwd), status)
@@ -687,6 +796,7 @@ async function refreshStatusSnapshot(cwd: string): Promise<HyperliquidStatus> {
 
 export default function hyperliquidStatus(pi: ExtensionAPI): void {
   let showWidget = true
+  let showRecentTrades = false
   let statusTimer: ReturnType<typeof setInterval> | undefined
   let refreshing = false
   let lastStatus: HyperliquidStatus | null = null
@@ -717,7 +827,13 @@ export default function hyperliquidStatus(pi: ExtensionAPI): void {
         return {
           render: (width: number): string[] =>
             lastStatus
-              ? renderHyperliquidPositionsWidget(lastStatus, widgetTheme, width, refreshing)
+              ? renderHyperliquidPositionsWidget(
+                  lastStatus,
+                  widgetTheme,
+                  width,
+                  refreshing,
+                  showRecentTrades
+                )
               : [widgetTheme.fg('dim', 'Hyperliquid Status (loading...)')],
           invalidate: (): void => {}
         }
@@ -769,6 +885,9 @@ export default function hyperliquidStatus(pi: ExtensionAPI): void {
   }
 
   pi.on('session_start', async (_event, ctx) => {
+    const config = await readJson<WidgetConfig>(resolveConfigPath(ctx.cwd), DEFAULT_CONFIG)
+    showWidget = config.showWidget
+    showRecentTrades = config.showRecentTrades
     const cached = await readJson<HyperliquidStatus | null>(resolveStatusPath(ctx.cwd), null)
     if (cached) lastStatus = cached
     syncWidget(ctx)
@@ -794,12 +913,23 @@ export default function hyperliquidStatus(pi: ExtensionAPI): void {
     description: 'Toggle Hyperliquid detailed status widget',
     handler: async (_args, ctx) => {
       showWidget = !showWidget
+      await saveWidgetConfig(ctx.cwd, { showWidget, showRecentTrades })
       if (!lastStatus) lastStatus = await refreshStatusSnapshot(ctx.cwd)
       syncWidget(ctx)
       ctx.ui.notify(
         showWidget ? 'Hyperliquid status widget shown' : 'Hyperliquid status widget hidden',
         'info'
       )
+    }
+  })
+
+  pi.registerCommand('hl-trades', {
+    description: 'Toggle the recent trades list in the Hyperliquid status widget',
+    handler: async (_args, ctx) => {
+      showRecentTrades = !showRecentTrades
+      await saveWidgetConfig(ctx.cwd, { showWidget, showRecentTrades })
+      requestWidgetRender()
+      ctx.ui.notify(showRecentTrades ? 'Recent trades shown' : 'Recent trades hidden', 'info')
     }
   })
 
