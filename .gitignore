@@ -9,6 +9,8 @@ runtime/
 
 # Dependencies / build artifacts
 node_modules/
+dist/
+*.tgz
 .pi/agent/npm/
 .pi/skills/**/node_modules/
 .pi/skills/**/dist/

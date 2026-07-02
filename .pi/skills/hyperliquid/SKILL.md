@@ -1,6 +1,6 @@
 ---
 name: hyperliquid
-description: Hyperliquid market discovery (list exchanges/perp dexes and tradable perp/spot assets) plus live execution for deposits, withdrawals, perp/spot orders, and internal balance transfers. Use when listing Hyperliquid markets or placing/moving live Hyperliquid funds.
+description: Hyperliquid market discovery (list exchanges/perp dexes and tradable perp/spot assets) plus live execution for deposits, withdrawals, perp/spot orders, and internal balance transfers. Stocks/equities in this harness are traded as Hyperliquid perps on named dexes. Use when listing Hyperliquid markets or placing/moving live Hyperliquid funds.
 compatibility: Designed for the autonomous-trading-agent harness. Requires Bun, `API_BASE_URL` + `PRIVY_APP_ID`, the transaction skill, and wallet skill output for `evmWalletId` + signer address.
 allowed-tools: bash read
 ---
@@ -71,6 +71,40 @@ balances and build the command payload.
 3. Build and review the exact command payload before broadcast.
 4. Run the chosen Hyperliquid command with `--wallet-id`.
 
+## Order batching (minimize broadcasts)
+
+Before placing orders, map the user's intent to the **fewest atomic CLI calls**
+possible. Each execution command (`trade-perp`, `scale-perp`, `twap-perp`, etc.)
+is one signed action. Prefer batching legs inside that action over chaining
+separate commands for the same intent.
+
+**Batch inside one command when supported:**
+
+| Intent                                             | Batch with                                                        | Do not split into                                              |
+| -------------------------------------------------- | ----------------------------------------------------------------- | -------------------------------------------------------------- |
+| Entry + take-profit and/or stop-loss on that entry | One `trade-perp` with `--tp-px` and/or `--sl-px` (atomic bracket) | Bare entry, then separate `stop_*` / `take_*` / trigger orders |
+| Multiple limit legs across a price range           | One `scale-perp` or `scale-spot` (`--orders N`)                   | N separate limit `trade-perp` / `trade-spot` calls             |
+| Time-sliced execution                              | One `twap-perp` or `twap-spot`                                    | Many manual market/limit clips                                 |
+
+**Rules:**
+
+- **Default to bracket batching** for a new entry that includes any protective
+  or fixed exit on the entry size: attach `--tp-px` and/or `--sl-px` on the same
+  `trade-perp` call. Do not open the position first and add exits in a follow-up
+  command unless the user explicitly asks for staged placement.
+- **Do not double-book the same exit** on the same size. If take-profit is
+  handled by one mechanism (bracket `--tp-px`, a scale ladder, or standalone
+  trigger orders), do not also attach a bracket TP or duplicate trigger orders
+  for that same portion.
+- **Combine only what the CLI supports in one action.** Bracket mode covers
+  entry + linked TP/SL only; scale and TWAP are separate commands. When the
+  plan needs multiple mechanisms (for example bracket stop-loss plus a scale
+  ladder for staged exits), use one command per mechanism — not one command per
+  leg.
+- **Standalone `stop_*` / `take_*` orders** are for adding or adjusting exits on
+  an **existing** position, or when the user explicitly wants a separate resting
+  trigger — not as a substitute for bracket batching on a new entry.
+
 ## CLI
 
 ```bash
@@ -98,6 +132,8 @@ Execution (require `--wallet-id`; most also require signer `--from`):
 - `deposit`
 - `withdraw`
 - `trade-perp` (single order, or atomic OCO bracket via `--tp-px`/`--sl-px`)
+- `set-leverage` (update perp leverage only; no order placement)
+- `adjust-margin` (add/remove isolated margin on an open perp position)
 - `twap-perp` / `twap-spot` / `twap-cancel` / `twap-cancel-spot`
 - `cancel-order` / `cancel-order-spot` (cancel resting limit/trigger orders by order id)
 - `scale-perp` / `scale-spot` (ladder of limit orders across a price range)
@@ -326,10 +362,50 @@ tribes-cli hyperliquid trade-perp \
   --wallet-id "<evmWalletId from wallet list>"
 ```
 
+### Update leverage without placing an order
+
+Use this to change leverage on an existing position without changing size.
+
+```bash
+tribes-cli hyperliquid set-leverage \
+  --from 0x1111111111111111111111111111111111111111 \
+  --coin BTC \
+  --leverage 5 \
+  --margin-mode isolated \
+  --wallet-id "<evmWalletId from wallet list>"
+```
+
+### Add or remove isolated margin on an open position
+
+Use `--direction add` to top up margin and `--direction remove` to withdraw
+excess isolated margin. `--side` must match the existing position side.
+
+```bash
+# Add 3 USDC isolated margin to a long BTC position
+tribes-cli hyperliquid adjust-margin \
+  --from 0x1111111111111111111111111111111111111111 \
+  --coin BTC \
+  --side long \
+  --amount 3 \
+  --direction add \
+  --wallet-id "<evmWalletId from wallet list>"
+
+# Remove 1 USDC isolated margin from the same long position
+tribes-cli hyperliquid adjust-margin \
+  --from 0x1111111111111111111111111111111111111111 \
+  --coin BTC \
+  --side long \
+  --amount 1 \
+  --direction remove \
+  --wallet-id "<evmWalletId from wallet list>"
+```
+
 ### Place a stop-market perp order
 
 Triggers a market order once `--trigger-px` is crossed. Use `--reduce-only` for a
-protective stop on an existing position.
+protective stop on an existing position. For a **new entry** with a stop on the
+entry size, batch with bracket `--sl-px` on `trade-perp` instead (see Order
+batching).
 
 ```bash
 tribes-cli hyperliquid trade-perp \
@@ -364,6 +440,10 @@ tribes-cli hyperliquid trade-perp \
 
 `take_market` fills at market once `--trigger-px` is crossed; `take_limit` rests a
 limit order at `--price`. Use `--reduce-only` to take profit on an open position.
+For a **new entry** with a fixed take-profit on the entry size, batch with
+bracket `--tp-px` on `trade-perp` instead (see Order batching). For multiple
+take-profit levels, batch with one `scale-perp --reduce-only` instead of many
+separate trigger orders.
 
 ```bash
 # Take-profit market: close a long when BTC rises to 72000
@@ -391,6 +471,13 @@ tribes-cli hyperliquid trade-perp \
 ```
 
 ### Place an atomic bracket (entry + linked TP/SL)
+
+When an entry includes take-profit and/or stop-loss on the **entry size**, batch
+them in **one** `trade-perp` call with `--tp-px` and/or `--sl-px` (see Order
+batching). Do not place the entry first and attach exits in a follow-up command
+unless the user explicitly asks for staged placement. Batching avoids an
+unprotected window between fill and exit placement and prevents dangling exit
+orders if a follow-up fails.
 
 Add `--tp-px` and/or `--sl-px` to `trade-perp` to attach a bracket. It then
 submits the entry and its take-profit and/or stop-loss in a single `order`
@@ -465,9 +552,10 @@ tribes-cli hyperliquid twap-cancel-spot \
 A scale order splits `--amount` into `--orders` resting limit legs whose prices
 step linearly from `--start-px` to `--end-px`. Use `--size-skew` to tilt more
 size toward the end of the range (`1` = uniform legs). All legs are submitted
-atomically in one signed action. Each leg must be ≥ $10 notional; the CLI
-rejects too-small scales before signing — increase `--amount` or reduce
-`--orders` if you hit this.
+atomically in one signed action — do not place each leg as a separate
+`trade-perp`. Add `--reduce-only` when scaling out of an existing position. Each
+leg must be ≥ $10 notional; the CLI rejects too-small scales before signing —
+increase `--amount` or reduce `--orders` if you hit this.
 
 ```bash
 # Long 0.01 BTC across 5 limit orders from 95000 to 98000, skewed toward higher prices
@@ -572,6 +660,29 @@ tribes-cli hyperliquid transfer-dex-cash \
   --wallet-id "<evmWalletId from wallet list>"
 ```
 
+## Leverage and margin precheck
+
+Before lowering leverage or removing isolated margin, run a safety precheck from
+`list-positions`:
+
+1. Select the exact position (`dex`, `coin`, and side).
+2. Compute required margin with the formula `margin = notional / leverage`:
+   - `requiredMargin = positionValue / targetLeverage`
+3. Compare to current position margin (`marginUsed`):
+   - `extraNeeded = requiredMargin - marginUsed`
+4. If `extraNeeded > 0`, lowering leverage or removing margin will fail unless
+   available funds cover the gap.
+   - Check `list-balances` for account `withdrawable`.
+   - If `withdrawable < extraNeeded`, add margin first with `adjust-margin
+--direction add` or reduce position size with a reduce-only order.
+
+Notes:
+
+- Raising leverage does not require additional margin, but must satisfy
+  `targetLeverage <= maxLeverage`.
+- `adjust-margin` applies to isolated positions; pass the correct `--side` for
+  the open position.
+
 ## Order options
 
 - `trade-perp` supports:
@@ -586,7 +697,8 @@ tribes-cli hyperliquid transfer-dex-cash \
   - `--margin-mode cross|isolated`
   - `--leverage <int>`
   - `--dex <name>` (`main` default, `xyz` supported)
-  - bracket mode (attach linked TP/SL to the entry):
+  - bracket mode (attach linked TP/SL to the entry — batch on the same call; see
+    Order batching):
     - `--tp-px` / `--sl-px` (trigger prices; either or both turns on the bracket)
     - `--tp-limit-px` / `--sl-limit-px` (optional; rest that leg as a limit instead
       of a market exit — each requires its matching `--tp-px` / `--sl-px`)
@@ -610,7 +722,7 @@ tribes-cli hyperliquid transfer-dex-cash \
 - `scale-perp` supports:
   - `--amount` (total size, base units), `--side long|short`
   - `--start-px` / `--end-px` (price range endpoints; must differ)
-  - `--orders <2-50>` (number of evenly spaced limit legs)
+  - `--orders <2-50>` (number of evenly spaced limit legs — all batched in one call)
   - `--size-skew <ratio>` (last-leg size / first-leg size; `1` = uniform)
   - `--tif Gtc|Ioc|Alo`, `--reduce-only`
   - `--margin-mode cross|isolated`, `--leverage <int>`, `--dex <name>`
@@ -630,6 +742,13 @@ tribes-cli hyperliquid transfer-dex-cash \
 - `cancel-order-spot` supports:
   - `--pair`, `--order-id` (from `list-open-orders`)
   - cancels one resting spot order; requires `--from` and `--wallet-id`
+- `set-leverage` supports:
+  - `--coin`, `--leverage <int>`, `--margin-mode cross|isolated`, `--dex <name>`
+  - updates leverage only (no new order, no close/reopen)
+- `adjust-margin` supports:
+  - `--coin`, `--side long|short`, `--amount <usd>`, `--direction add|remove`,
+    `--dex <name>`
+  - adjusts isolated margin on an existing perp position
 
 ## Gas is sponsored
 
@@ -740,7 +859,15 @@ Operational notes:
 
 ## Execution notes
 
-- `trade-perp --dex` defaults to `main`; pass `--dex xyz` for HIP-3 perps.
+- Stocks and equities are traded as Hyperliquid perps on named (non-main) dexes.
+  - Do not hardcode a single equities dex. Discover dynamically with
+    `list-exchanges`, then run `list-assets --dex <name>` to find the ticker's
+    host dex.
+  - For stock intent (for example Apple/AAPL, Tesla/TSLA, or MSFT), execute as
+    `trade-perp --dex <resolvedDex> --coin <TICKER>`.
+  - `trade-perp --dex` defaults to `main`; pass the resolved named dex
+    (for example `--dex xyz`) for HIP-3 perps.
+  - Canonical example in this file: `MSFT` traded with `--dex xyz`.
 - `trade-spot` supports `market` and `limit`; `trade-perp` also supports
   `stop_market`, `stop_limit`, `take_market`, and `take_limit`:
   - For `--type limit`, `--price` is required and must be > 0.

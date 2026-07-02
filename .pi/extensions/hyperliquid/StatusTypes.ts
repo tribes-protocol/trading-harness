@@ -126,6 +126,7 @@ export interface HyperliquidStatus {
   readonly accountError: string | null
   readonly hyperliquidAccounts: readonly AccountSummary[]
   readonly equityUsd: number | null
+  readonly spotBalanceUsd: number | null
   readonly withdrawableUsd: number | null
   readonly dailyPnlUsd: number
   readonly dailyPnlPct: number

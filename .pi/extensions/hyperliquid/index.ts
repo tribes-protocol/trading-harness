@@ -352,6 +352,25 @@ async function readPortfolioPnl(
   }
 }
 
+async function readSpotBalanceUsd(user: string): Promise<number | null> {
+  const data = await hyperliquidInfo<unknown>({ type: 'spotClearinghouseState', user })
+  if (!isRecord(data) || !Array.isArray(data.balances)) return null
+
+  let totalAvailable = 0
+  let foundSpotUsd = false
+  for (const rawBalance of data.balances) {
+    if (!isRecord(rawBalance)) continue
+    const coin = typeof rawBalance.coin === 'string' ? rawBalance.coin.toUpperCase() : ''
+    if (!coin.includes('USDC')) continue
+    const total = safeNumber(rawBalance.total, 0)
+    const hold = safeNumber(rawBalance.hold, 0)
+    totalAvailable += Math.max(0, total - hold)
+    foundSpotUsd = true
+  }
+
+  return foundSpotUsd ? totalAvailable : null
+}
+
 function positionCostKey(coin: string): string {
   return coin
 }
@@ -612,6 +631,7 @@ async function buildStatus(cwd: string): Promise<HyperliquidStatus> {
       initializing,
       hyperliquidAccounts: [],
       equityUsd: null,
+      spotBalanceUsd: null,
       withdrawableUsd: null,
       dailyPnlUsd: 0,
       dailyPnlPct: 0,
@@ -651,6 +671,7 @@ async function buildStatus(cwd: string): Promise<HyperliquidStatus> {
   )
   const costByCoin = new Map(Object.entries(costSummary.byCoin))
   const account = await readAccounts(user, dexes, costByCoin)
+  const spotBalanceUsd = await readSpotBalanceUsd(user).catch(() => null)
   const equityUsd = account.accounts.reduce((sum, item) => sum + item.equityUsd, 0)
   const withdrawableUsd = account.accounts.reduce((sum, item) => sum + item.withdrawableUsd, 0)
   const grossExposureUsd = account.accounts.reduce((sum, item) => sum + item.grossExposureUsd, 0)
@@ -688,6 +709,7 @@ async function buildStatus(cwd: string): Promise<HyperliquidStatus> {
     accountError: account.error,
     hyperliquidAccounts: account.accounts,
     equityUsd: account.accounts.length > 0 ? equityUsd : null,
+    spotBalanceUsd,
     withdrawableUsd: account.accounts.length > 0 ? withdrawableUsd : null,
     dailyPnlUsd,
     dailyPnlPct: equityUsd - dailyPnlUsd > 0 ? (dailyPnlUsd / (equityUsd - dailyPnlUsd)) * 100 : 0,
@@ -734,6 +756,7 @@ async function refreshStatusSnapshot(cwd: string): Promise<HyperliquidStatus> {
       accountError: error instanceof Error ? error.message : String(error),
       hyperliquidAccounts: [],
       equityUsd: null,
+      spotBalanceUsd: null,
       withdrawableUsd: null,
       dailyPnlUsd: 0,
       dailyPnlPct: 0,
