@@ -13,6 +13,7 @@
 import { Command } from 'commander'
 
 import { buildHyperliquidCommand } from '@/cli/Hyperliquid'
+import { buildLoginCommand } from '@/cli/Login'
 import { buildMacrosCommand } from '@/cli/Macros'
 import { buildNewsCommand } from '@/cli/News'
 import { buildPredictionCommand } from '@/cli/Prediction'
@@ -50,12 +51,17 @@ function buildTribesCli(): Command {
     program.addCommand(buildAnalystCommand(config))
   }
 
+  program.addCommand(buildLoginCommand())
+
   return program
 }
 
-void buildTribesCli()
-  .parseAsync(process.argv)
-  .catch((error: unknown) => {
-    process.stderr.write(`${error instanceof Error ? error.message : 'Unknown error'}\n`)
-    process.exit(1)
-  })
+async function runCli(): Promise<void> {
+  const program = buildTribesCli()
+  await program.parseAsync(process.argv)
+}
+
+void runCli().catch((error: unknown) => {
+  process.stderr.write(`${error instanceof Error ? error.message : 'Unknown error'}\n`)
+  process.exit(1)
+})

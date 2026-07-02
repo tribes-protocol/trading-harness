@@ -91,12 +91,12 @@ type AccountState =
   | { readonly kind: 'missing' }
 
 async function resolveAccountState(cwd: string): Promise<AccountState> {
-  // .pi/privy-wallets.json is written by the tribes wallet-snapshot warmup
+  // .tribes/privy-wallets.json is written by the tribes wallet-snapshot warmup
   // (`tribes-cli wallet list`), which runs a beat AFTER session start — so an
   // absent/unreadable file means "still loading", not "no account".
   let raw: string
   try {
-    raw = await readFile(resolve(cwd, '.pi/privy-wallets.json'), 'utf8')
+    raw = await readFile(resolve(cwd, '.tribes/privy-wallets.json'), 'utf8')
   } catch {
     return { kind: 'pending' }
   }

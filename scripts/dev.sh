@@ -24,4 +24,4 @@ install_global() {
 ) &
 trap 'kill $! 2>/dev/null || true' EXIT INT TERM
 
-bun build --compile --watch --no-clear-screen --outfile "$ARTIFACT" "$ENTRY"
+NODE_ENV=development bun build --compile --watch --no-clear-screen --outfile "$ARTIFACT" "$ENTRY"

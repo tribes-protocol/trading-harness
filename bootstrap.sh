@@ -79,7 +79,7 @@ COMPILED_ARTIFACT="$PWD/node_modules/.bin/tribes-cli-compiled"
 
 echo "[bootstrap] compiling the harness into a single tribes-cli binary…"
 rm -f "$ARTIFACT" "$COMPILED_ARTIFACT"
-if bun build --compile --outfile "$COMPILED_ARTIFACT" "$ENTRY"; then
+if NODE_ENV=production bun build --compile --outfile "$COMPILED_ARTIFACT" "$ENTRY"; then
   printf '#!/bin/sh\ncd "%s"\nexec "%s" "$@"\n' "$PWD" "$COMPILED_ARTIFACT" >"$ARTIFACT"
   chmod +x "$ARTIFACT"
   echo "[bootstrap] compiled $ENTRY -> $COMPILED_ARTIFACT"
