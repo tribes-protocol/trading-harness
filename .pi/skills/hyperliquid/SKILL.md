@@ -1,6 +1,6 @@
 ---
 name: hyperliquid
-description: Hyperliquid market discovery (list exchanges/perp dexes and tradable perp/spot assets) plus live execution for deposits, withdrawals, perp/spot orders, and internal balance transfers. Use when listing Hyperliquid markets or placing/moving live Hyperliquid funds.
+description: Hyperliquid market discovery (list exchanges/perp dexes and tradable perp/spot assets) plus live execution for deposits, withdrawals, perp/spot orders, and internal balance transfers. Stocks/equities in this harness are traded as Hyperliquid perps on named dexes. Use when listing Hyperliquid markets or placing/moving live Hyperliquid funds.
 compatibility: Designed for the autonomous-trading-agent harness. Requires Bun, `API_BASE_URL` + `PRIVY_APP_ID`, the transaction skill, and wallet skill output for `evmWalletId` + signer address.
 allowed-tools: bash read
 ---
@@ -740,7 +740,15 @@ Operational notes:
 
 ## Execution notes
 
-- `trade-perp --dex` defaults to `main`; pass `--dex xyz` for HIP-3 perps.
+- Stocks and equities are traded as Hyperliquid perps on named (non-main) dexes.
+  - Do not hardcode a single equities dex. Discover dynamically with
+    `list-exchanges`, then run `list-assets --dex <name>` to find the ticker's
+    host dex.
+  - For stock intent (for example Apple/AAPL, Tesla/TSLA, or MSFT), execute as
+    `trade-perp --dex <resolvedDex> --coin <TICKER>`.
+  - `trade-perp --dex` defaults to `main`; pass the resolved named dex
+    (for example `--dex xyz`) for HIP-3 perps.
+  - Canonical example in this file: `MSFT` traded with `--dex xyz`.
 - `trade-spot` supports `market` and `limit`; `trade-perp` also supports
   `stop_market`, `stop_limit`, `take_market`, and `take_limit`:
   - For `--type limit`, `--price` is required and must be > 0.
