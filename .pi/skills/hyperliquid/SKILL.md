@@ -80,11 +80,11 @@ separate commands for the same intent.
 
 **Batch inside one command when supported:**
 
-| Intent | Batch with | Do not split into |
-|--------|------------|-------------------|
+| Intent                                             | Batch with                                                        | Do not split into                                              |
+| -------------------------------------------------- | ----------------------------------------------------------------- | -------------------------------------------------------------- |
 | Entry + take-profit and/or stop-loss on that entry | One `trade-perp` with `--tp-px` and/or `--sl-px` (atomic bracket) | Bare entry, then separate `stop_*` / `take_*` / trigger orders |
-| Multiple limit legs across a price range | One `scale-perp` or `scale-spot` (`--orders N`) | N separate limit `trade-perp` / `trade-spot` calls |
-| Time-sliced execution | One `twap-perp` or `twap-spot` | Many manual market/limit clips |
+| Multiple limit legs across a price range           | One `scale-perp` or `scale-spot` (`--orders N`)                   | N separate limit `trade-perp` / `trade-spot` calls             |
+| Time-sliced execution                              | One `twap-perp` or `twap-spot`                                    | Many manual market/limit clips                                 |
 
 **Rules:**
 
