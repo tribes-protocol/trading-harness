@@ -1,4 +1,4 @@
-import { mkdir, readFile, rm, writeFile } from 'node:fs/promises'
+import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import { dirname, resolve } from 'node:path'
 
 import type { ExtensionAPI, ExtensionContext, Theme } from '@earendil-works/pi-coding-agent'
@@ -22,7 +22,6 @@ import type {
 const RUNTIME_STATUS_DIR = 'runtime/hyperliquid'
 const STATUS_FILE = 'live-status.json'
 const CONFIG_FILE = 'config.json'
-const KILL_SWITCH_FILE = 'kill-switch.enabled'
 const DEFAULT_DEXES = ['', 'xyz'] as const
 const COST_LOOKBACK_DAYS = 7
 const CLOSED_PNL_LOOKBACK_HOURS = 24
@@ -36,14 +35,6 @@ const HYPERLIQUID_INFO_URL = 'https://api.hyperliquid.xyz/info'
 
 async function ensureDir(path: string): Promise<void> {
   await mkdir(path, { recursive: true })
-}
-
-async function readText(path: string, fallback = ''): Promise<string> {
-  try {
-    return await readFile(path, 'utf8')
-  } catch {
-    return fallback
-  }
 }
 
 async function readJson<T>(path: string, fallback: T): Promise<T> {
@@ -73,15 +64,6 @@ function nullableNumber(value: unknown): number | null {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
-}
-
-function firstLine(text: string): string | null {
-  return (
-    text
-      .split(/\r?\n/u)
-      .map((line) => line.trim())
-      .find(Boolean) ?? null
-  )
 }
 
 // 'pending'  — the wallet snapshot file isn't on disk yet (warmed async at
@@ -159,10 +141,6 @@ function resolveConfigPath(cwd: string): string {
   return resolve(resolveStatusDir(cwd), CONFIG_FILE)
 }
 
-function resolveKillSwitchPath(cwd: string): string {
-  return resolve(resolveStatusDir(cwd), KILL_SWITCH_FILE)
-}
-
 type WidgetConfig = {
   showWidget: boolean
   showRecentTrades: boolean
@@ -172,13 +150,6 @@ const DEFAULT_CONFIG: WidgetConfig = { showWidget: true, showRecentTrades: false
 
 async function saveWidgetConfig(cwd: string, config: WidgetConfig): Promise<void> {
   await writeJson(resolveConfigPath(cwd), config)
-}
-
-async function readKillSwitch(
-  cwd: string
-): Promise<{ readonly enabled: boolean; readonly reason: string | null }> {
-  const text = await readText(resolveKillSwitchPath(cwd), '')
-  return { enabled: text.length > 0, reason: text.length > 0 ? firstLine(text) : null }
 }
 
 async function readMarketContexts(dex: string): Promise<Map<string, MarketContext>> {
@@ -624,7 +595,6 @@ async function readRecentTrades(
 async function buildStatus(cwd: string): Promise<HyperliquidStatus> {
   const accountState = await resolveAccountState(cwd)
   const dexes = DEFAULT_DEXES
-  const killSwitch = await readKillSwitch(cwd)
 
   if (accountState.kind !== 'ready') {
     // 'pending' renders as a loading state (no error, no scary border); only a
@@ -641,9 +611,6 @@ async function buildStatus(cwd: string): Promise<HyperliquidStatus> {
       accountError: initializing ? null : 'Missing account address',
       initializing,
       hyperliquidAccounts: [],
-      killSwitch: killSwitch.enabled,
-      killSwitchReason: killSwitch.reason,
-      clear: false,
       equityUsd: null,
       withdrawableUsd: null,
       dailyPnlUsd: 0,
@@ -720,9 +687,6 @@ async function buildStatus(cwd: string): Promise<HyperliquidStatus> {
     accountSource: account.accounts.length > 0 ? 'hyperliquid-clearinghouse' : 'unavailable',
     accountError: account.error,
     hyperliquidAccounts: account.accounts,
-    killSwitch: killSwitch.enabled,
-    killSwitchReason: killSwitch.reason,
-    clear: !killSwitch.enabled && account.accounts.length > 0,
     equityUsd: account.accounts.length > 0 ? equityUsd : null,
     withdrawableUsd: account.accounts.length > 0 ? withdrawableUsd : null,
     dailyPnlUsd,
@@ -769,9 +733,6 @@ async function refreshStatusSnapshot(cwd: string): Promise<HyperliquidStatus> {
       accountSource: 'unavailable',
       accountError: error instanceof Error ? error.message : String(error),
       hyperliquidAccounts: [],
-      killSwitch: false,
-      killSwitchReason: null,
-      clear: false,
       equityUsd: null,
       withdrawableUsd: null,
       dailyPnlUsd: 0,
@@ -938,34 +899,6 @@ export default function hyperliquidStatus(pi: ExtensionAPI): void {
     handler: async (_args, ctx) => {
       await refreshStatus(ctx)
       ctx.ui.notify('Hyperliquid status refreshed', 'info')
-    }
-  })
-
-  pi.registerCommand('hl-kill', {
-    description: 'Enable Hyperliquid status kill-switch after confirmation',
-    handler: async (_args, ctx) => {
-      const ok = await ctx.ui.confirm(
-        'Enable kill-switch?',
-        'This marks Hyperliquid status as blocked until /hl-unkill is run.'
-      )
-      if (!ok) return
-      await ensureDir(resolveStatusDir(ctx.cwd))
-      await writeFile(
-        resolveKillSwitchPath(ctx.cwd),
-        `enabled by /hl-kill at ${new Date().toISOString()}\n`,
-        'utf8'
-      )
-      await refreshStatus(ctx)
-      ctx.ui.notify('Hyperliquid kill-switch enabled', 'warning')
-    }
-  })
-
-  pi.registerCommand('hl-unkill', {
-    description: 'Clear the Hyperliquid status kill-switch',
-    handler: async (_args, ctx) => {
-      await rm(resolveKillSwitchPath(ctx.cwd), { force: true })
-      await refreshStatus(ctx)
-      ctx.ui.notify('Hyperliquid kill-switch cleared', 'info')
     }
   })
 }

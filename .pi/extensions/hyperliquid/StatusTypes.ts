@@ -125,9 +125,6 @@ export interface HyperliquidStatus {
   readonly accountSource: 'hyperliquid-clearinghouse' | 'unavailable'
   readonly accountError: string | null
   readonly hyperliquidAccounts: readonly AccountSummary[]
-  readonly killSwitch: boolean
-  readonly killSwitchReason: string | null
-  readonly clear: boolean
   readonly equityUsd: number | null
   readonly withdrawableUsd: number | null
   readonly dailyPnlUsd: number
