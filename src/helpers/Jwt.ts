@@ -1,6 +1,5 @@
 import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import { dirname, resolve } from 'node:path'
-import { fileURLToPath } from 'node:url'
 
 import { decodeJwt, importPKCS8, SignJWT } from 'jose'
 
@@ -16,8 +15,7 @@ import { ensureJsonTreeString, isNullish } from '@/utils/Lang'
 
 const TOKEN_TTL = '7d'
 const TOKEN_REFRESH_BUFFER_SECONDS = 60
-const HARNESS_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../../')
-const TOKEN_CACHE_PATH = resolve(HARNESS_ROOT, '.pi/jwt-token-cache.json')
+const TOKEN_CACHE_PATH = resolve(process.cwd(), '.tribes/jwt-token-cache.json')
 
 let memoryCache: JwtTokenCache | null = null
 
@@ -87,7 +85,8 @@ async function writeDiskCache(params: WriteDiskCacheParams): Promise<void> {
 
 async function mintTokenCache(key: AgentAuthorizationKey): Promise<JwtTokenCache> {
   const privateKey = await importPKCS8(key.privateKeyPem, 'ES256')
-  const token = await new SignJWT({ sandboxId: key.sandboxId })
+  const app = key.app ?? undefined
+  const token = await new SignJWT({ sandboxId: key.sandboxId, app })
     .setProtectedHeader({ alg: 'ES256' })
     .setSubject(key.userId)
     .setIssuedAt()
@@ -104,6 +103,7 @@ async function mintTokenCache(key: AgentAuthorizationKey): Promise<JwtTokenCache
     schema: 'jwt-token-cache.v1',
     token,
     expiresAtEpochSeconds: claims.exp,
+    app,
     sandboxId: key.sandboxId,
     userId: key.userId,
     createdAt: nowIso,

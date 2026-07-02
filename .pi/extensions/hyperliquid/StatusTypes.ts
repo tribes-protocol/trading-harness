@@ -104,6 +104,7 @@ export interface HyperliquidStatus {
   readonly killSwitchReason: string | null
   readonly clear: boolean
   readonly equityUsd: number | null
+  readonly spotBalanceUsd: number | null
   readonly withdrawableUsd: number | null
   readonly dailyPnlUsd: number
   readonly dailyPnlPct: number
@@ -118,7 +119,7 @@ export interface HyperliquidStatus {
   readonly topCandidates: readonly string[]
   readonly totalTrades: number
   readonly error?: string
-  // True while the wallet snapshot (.pi/privy-wallets.json) hasn't been written
+  // True while the wallet snapshot (.tribes/privy-wallets.json) hasn't been written
   // yet — the account address is being resolved, not genuinely absent. Drives a
   // "loading" widget state instead of "Missing account address".
   readonly initializing?: boolean

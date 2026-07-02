@@ -2,9 +2,8 @@
 .env
 *.env.local
 runtime/
-.pi/privy-wallets.json
-.pi/agent-authorization-key.json
-.pi/jwt-token-cache.json
+.tribes
+
 .pi/agent/auth.json
 .pi/agent/sessions/
 
