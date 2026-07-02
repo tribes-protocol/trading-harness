@@ -132,6 +132,8 @@ Execution (require `--wallet-id`; most also require signer `--from`):
 - `deposit`
 - `withdraw`
 - `trade-perp` (single order, or atomic OCO bracket via `--tp-px`/`--sl-px`)
+- `set-leverage` (update perp leverage only; no order placement)
+- `adjust-margin` (add/remove isolated margin on an open perp position)
 - `twap-perp` / `twap-spot` / `twap-cancel` / `twap-cancel-spot`
 - `cancel-order` / `cancel-order-spot` (cancel resting limit/trigger orders by order id)
 - `scale-perp` / `scale-spot` (ladder of limit orders across a price range)
@@ -357,6 +359,44 @@ tribes-cli hyperliquid trade-perp \
   --side long \
   --type market \
   --amount 0.001 \
+  --wallet-id "<evmWalletId from wallet list>"
+```
+
+### Update leverage without placing an order
+
+Use this to change leverage on an existing position without changing size.
+
+```bash
+tribes-cli hyperliquid set-leverage \
+  --from 0x1111111111111111111111111111111111111111 \
+  --coin BTC \
+  --leverage 5 \
+  --margin-mode isolated \
+  --wallet-id "<evmWalletId from wallet list>"
+```
+
+### Add or remove isolated margin on an open position
+
+Use `--direction add` to top up margin and `--direction remove` to withdraw
+excess isolated margin. `--side` must match the existing position side.
+
+```bash
+# Add 3 USDC isolated margin to a long BTC position
+tribes-cli hyperliquid adjust-margin \
+  --from 0x1111111111111111111111111111111111111111 \
+  --coin BTC \
+  --side long \
+  --amount 3 \
+  --direction add \
+  --wallet-id "<evmWalletId from wallet list>"
+
+# Remove 1 USDC isolated margin from the same long position
+tribes-cli hyperliquid adjust-margin \
+  --from 0x1111111111111111111111111111111111111111 \
+  --coin BTC \
+  --side long \
+  --amount 1 \
+  --direction remove \
   --wallet-id "<evmWalletId from wallet list>"
 ```
 
@@ -620,6 +660,29 @@ tribes-cli hyperliquid transfer-dex-cash \
   --wallet-id "<evmWalletId from wallet list>"
 ```
 
+## Leverage and margin precheck
+
+Before lowering leverage or removing isolated margin, run a safety precheck from
+`list-positions`:
+
+1. Select the exact position (`dex`, `coin`, and side).
+2. Compute required margin with the formula `margin = notional / leverage`:
+   - `requiredMargin = positionValue / targetLeverage`
+3. Compare to current position margin (`marginUsed`):
+   - `extraNeeded = requiredMargin - marginUsed`
+4. If `extraNeeded > 0`, lowering leverage or removing margin will fail unless
+   available funds cover the gap.
+   - Check `list-balances` for account `withdrawable`.
+   - If `withdrawable < extraNeeded`, add margin first with `adjust-margin
+--direction add` or reduce position size with a reduce-only order.
+
+Notes:
+
+- Raising leverage does not require additional margin, but must satisfy
+  `targetLeverage <= maxLeverage`.
+- `adjust-margin` applies to isolated positions; pass the correct `--side` for
+  the open position.
+
 ## Order options
 
 - `trade-perp` supports:
@@ -679,6 +742,13 @@ tribes-cli hyperliquid transfer-dex-cash \
 - `cancel-order-spot` supports:
   - `--pair`, `--order-id` (from `list-open-orders`)
   - cancels one resting spot order; requires `--from` and `--wallet-id`
+- `set-leverage` supports:
+  - `--coin`, `--leverage <int>`, `--margin-mode cross|isolated`, `--dex <name>`
+  - updates leverage only (no new order, no close/reopen)
+- `adjust-margin` supports:
+  - `--coin`, `--side long|short`, `--amount <usd>`, `--direction add|remove`,
+    `--dex <name>`
+  - adjusts isolated margin on an existing perp position
 
 ## Gas is sponsored
 
