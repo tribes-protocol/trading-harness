@@ -634,7 +634,7 @@ Before lowering leverage or removing isolated margin, run a safety precheck from
    available funds cover the gap.
    - Check `list-balances` for account `withdrawable`.
    - If `withdrawable < extraNeeded`, add margin first with `adjust-margin
-     --direction add` or reduce position size with a reduce-only order.
+--direction add` or reduce position size with a reduce-only order.
 
 Notes:
 
