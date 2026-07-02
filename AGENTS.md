@@ -46,7 +46,7 @@ bun run bootstrap.sh
 
 ### The `tribes-cli` binary is the product
 
-Everything the trading agent can do is a subcommand of one CLI. `src/cli/Tribes.ts` is the single entry point: it composes one `build...Command()` builder per group: Wallet, Hyperliquid, Transaction, SpotTrading, News, Macros, Token, WebSearch, Prediction, plus 9 analyst agents. `bootstrap.sh` compiles this into a native `tribes-cli` binary on PATH so the agent runs `tribes-cli <group> <command> ...` with no per-call transpile or `@/` alias resolution.
+Everything the trading agent can do is a subcommand of one CLI. `src/cli/Tribes.ts` is the single entry point: it composes one `build...Command()` builder per group: Wallet, Hyperliquid, Transaction, SpotTrading, News, Macros, Token, WebSearch, Prediction, plus 10 analyst agents. `bootstrap.sh` compiles this into a native `tribes-cli` binary on PATH so the agent runs `tribes-cli <group> <command> ...` with no per-call transpile or `@/` alias resolution.
 
 The `.pi/skills/<slug>/SKILL.md` files are documentation only. Each one points the agent at the matching `tribes-cli <group>` command. There is no executable code under `.pi/skills/`.
 
@@ -69,7 +69,7 @@ Services are dependency-injected by hand. A CLI builder constructs the services 
 
 ### Adding a new analyst
 
-The 9 analyst commands are data-driven, not hand-written. Add an entry to `ANALYSTS` in `src/common/Analysts.ts` with `cliName`, `endpointPath`, `description`, etc. `Tribes.ts` loops over the registry and `buildAnalystCommand` generates the command. They all proxy to `/agent/lucy/*` endpoints.
+The 10 analyst commands are data-driven, not hand-written. Add an entry to `ANALYSTS` in `src/common/Analysts.ts` with `cliName`, `endpointPath`, `description`, etc. `Tribes.ts` loops over the registry and `buildAnalystCommand` generates the command. They all proxy to `/agent/lucy/*` endpoints.
 
 ### Pi extensions
 
