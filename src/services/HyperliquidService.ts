@@ -10,6 +10,8 @@ import {
   type SpotSendSuccessResponse,
   type TwapCancelSuccessResponse,
   type TwapOrderSuccessResponse,
+  type UpdateIsolatedMarginSuccessResponse,
+  type UpdateLeverageSuccessResponse,
   type UsdClassTransferSuccessResponse,
   type UsdSendSuccessResponse,
   type Withdraw3SuccessResponse
@@ -24,6 +26,7 @@ import {
   type BuildScaleOrdersParams,
   type BuildTwapWireParams,
   type CreateExchangeClientParams,
+  type HyperliquidAdjustMarginCommandOptions,
   type HyperliquidBalancesResult,
   HyperliquidBalancesResultSchema,
   type HyperliquidCancelOrderCommandOptions,
@@ -61,6 +64,7 @@ import {
   type HyperliquidPrivyWallet,
   type HyperliquidScaleOrderCommandOptions,
   type HyperliquidServiceParams,
+  type HyperliquidSetLeverageCommandOptions,
   type HyperliquidSpotAsset,
   HyperliquidSpotAssetSchema,
   type HyperliquidSpotAssetsResult,
@@ -262,6 +266,53 @@ export class HyperliquidService {
       token: params.request.token,
       amount: params.request.amount.toFixed(),
       fromSubAccount: ''
+    })
+  }
+
+  async setLeverage(
+    params: HyperliquidWithSignerParams<HyperliquidSetLeverageCommandOptions>
+  ): Promise<UpdateLeverageSuccessResponse> {
+    const exchange = this.createExchangeClient({
+      address: params.request.from,
+      walletId: params.walletId
+    })
+    const dex = this.normalizeDex(params.request.dex)
+    const perpAsset = await this.resolvePerpAsset({
+      coin: params.request.coin,
+      dex
+    })
+    return await exchange.updateLeverage({
+      asset: perpAsset.wireAsset,
+      isCross: params.request.marginMode === 'cross',
+      leverage: params.request.leverage
+    })
+  }
+
+  async adjustMargin(
+    params: HyperliquidWithSignerParams<HyperliquidAdjustMarginCommandOptions>
+  ): Promise<UpdateIsolatedMarginSuccessResponse> {
+    if (!params.request.amount.isGreaterThan(0)) {
+      throw new Error('margin amount must be greater than 0')
+    }
+
+    const exchange = this.createExchangeClient({
+      address: params.request.from,
+      walletId: params.walletId
+    })
+    const dex = this.normalizeDex(params.request.dex)
+    const perpAsset = await this.resolvePerpAsset({
+      coin: params.request.coin,
+      dex
+    })
+    const signedAmount =
+      params.request.direction === 'remove'
+        ? params.request.amount.negated()
+        : params.request.amount
+    const ntli = signedAmount.times(1_000_000).integerValue(BigNumber.ROUND_DOWN).toNumber()
+    return await exchange.updateIsolatedMargin({
+      asset: perpAsset.wireAsset,
+      isBuy: params.request.side === 'long',
+      ntli
     })
   }
 

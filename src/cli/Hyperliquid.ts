@@ -5,6 +5,7 @@ import { writeOutput } from '@/helpers/WriteOutput'
 import { HyperliquidService } from '@/services/HyperliquidService'
 import { TransactionService } from '@/services/TransactionService'
 import {
+  HyperliquidAdjustMarginCommandOptionsSchema,
   HyperliquidCancelOrderCommandOptionsSchema,
   HyperliquidDepositCommandOptionsSchema,
   HyperliquidDexCashTransferCommandOptionsSchema,
@@ -16,6 +17,7 @@ import {
   HyperliquidListPositionsCommandOptionsSchema,
   HyperliquidPerpTradeCommandOptionsSchema,
   HyperliquidScaleOrderCommandOptionsSchema,
+  HyperliquidSetLeverageCommandOptionsSchema,
   HyperliquidSpotCancelOrderCommandOptionsSchema,
   HyperliquidSpotScaleOrderCommandOptionsSchema,
   HyperliquidSpotTradeCommandOptionsSchema,
@@ -182,6 +184,53 @@ export function buildHyperliquidCommand(): Command {
       const response = await hyperliquidService.deposit({
         amount: request.amount,
         from: request.from,
+        walletId: request.walletId
+      })
+      const output = ensureJsonTreeString(response)
+      await writeOutput({
+        output,
+        outPath: request.out ?? undefined
+      })
+    })
+
+  program
+    .command('set-leverage')
+    .description('Update leverage on a perp without placing an order')
+    .requiredOption('--from <address>', 'Signer EVM address (Privy wallet)')
+    .requiredOption('--coin <coin>', 'Perp symbol (for example: BTC, ETH)')
+    .requiredOption('--leverage <leverage>', 'Target leverage (integer)')
+    .option('--margin-mode <mode>', 'Margin mode: cross | isolated', 'cross')
+    .option('--dex <dex>', 'Perp dex name (main by default)')
+    .requiredOption('--wallet-id <walletId>', 'Privy wallet id')
+    .option('--out <file>', 'Write output JSON to file')
+    .action(async (options: unknown): Promise<void> => {
+      const request = HyperliquidSetLeverageCommandOptionsSchema.parse(options)
+      const response = await hyperliquidService.setLeverage({
+        request,
+        walletId: request.walletId
+      })
+      const output = ensureJsonTreeString(response)
+      await writeOutput({
+        output,
+        outPath: request.out ?? undefined
+      })
+    })
+
+  program
+    .command('adjust-margin')
+    .description('Add or remove isolated margin on an open perp position')
+    .requiredOption('--from <address>', 'Signer EVM address (Privy wallet)')
+    .requiredOption('--coin <coin>', 'Perp symbol (for example: BTC, ETH)')
+    .requiredOption('--amount <amount>', 'Margin delta in USDC (decimal units)')
+    .requiredOption('--side <side>', 'Position side: long | short')
+    .option('--direction <direction>', 'Margin direction: add | remove', 'add')
+    .option('--dex <dex>', 'Perp dex name (main by default)')
+    .requiredOption('--wallet-id <walletId>', 'Privy wallet id')
+    .option('--out <file>', 'Write output JSON to file')
+    .action(async (options: unknown): Promise<void> => {
+      const request = HyperliquidAdjustMarginCommandOptionsSchema.parse(options)
+      const response = await hyperliquidService.adjustMargin({
+        request,
         walletId: request.walletId
       })
       const output = ensureJsonTreeString(response)

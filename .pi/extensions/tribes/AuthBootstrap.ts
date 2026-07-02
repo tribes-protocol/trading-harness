@@ -28,7 +28,6 @@ const ENV_PASSTHROUGH = ['PRIVY_APP_ID'] as const
 export const AUTH_REFRESH_INTERVAL_MS = 24 * 60 * 60 * 1000
 
 const LOGIN_WIDGET_KEY = 'tribes-login'
-
 // Built from a non-literal ESC so the source has no control char (eslint).
 const ANSI_PATTERN = new RegExp(`${String.fromCharCode(27)}\\[[0-9;]*m`, 'gu')
 
@@ -151,9 +150,8 @@ export async function writeAuthEnv(cwd: string): Promise<void> {
 
 /**
  * Drive `tribes-cli login` from inside Pi, then enable the LLM live
- * (register provider + warm wallet) with no restart.
- * `tribes-cli login` runs while logged out, writes the agent key, and materializes
- * .env for provider auth.
+ * (write .env + register the provider) with no restart.
+ * `tribes-cli login` runs while logged out and writes the agent key on success.
  */
 export async function runLogin(
   pi: TribesApi,
@@ -188,6 +186,7 @@ export async function runLogin(
   }
 
   try {
+    await writeAuthEnv(ctx.cwd)
     await registerTribesProvider(pi)
   } catch (err) {
     let errorMessage = String(err)

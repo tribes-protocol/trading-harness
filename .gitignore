@@ -4,15 +4,13 @@
 runtime/
 .tribes
 
-# Dependencies / build artifacts
-node_modules/
-dist/
-*.tgz
 .pi/agent/auth.json
 .pi/agent/sessions/
 
 # Dependencies / build artifacts
 node_modules/
+dist/
+*.tgz
 .pi/agent/npm/
 .pi/skills/**/node_modules/
 .pi/skills/**/dist/

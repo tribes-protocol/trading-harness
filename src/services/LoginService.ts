@@ -1,4 +1,4 @@
-import { generateKeyPair } from 'node:crypto'
+import { generateKeyPair, randomUUID } from 'node:crypto'
 import { readFile, writeFile } from 'node:fs/promises'
 import { resolve } from 'node:path'
 import { promisify } from 'node:util'
@@ -14,7 +14,6 @@ import { type CliLoginPollResponse, CliLoginPollResponseSchema } from '@/types/C
 const LOGIN_POLL_INTERVAL_MS = 2_000
 const LOGIN_POLL_TIMEOUT_MS = 3 * 60_000
 const LOGIN_POLL_MAX_RETRIES = LOGIN_POLL_TIMEOUT_MS / LOGIN_POLL_INTERVAL_MS
-
 const ENV_PATH = resolve(process.cwd(), '.env')
 const ENV_PASSTHROUGH = ['PRIVY_APP_ID'] as const
 
@@ -33,6 +32,7 @@ function parseLoginPollResponse(data: unknown): CliLoginPollResponse {
 }
 
 export type LoginRequestContext = {
+  readonly requestId: string
   readonly privateKeyPem: string
   readonly publicKeyPem: string
   // base64url(DER) of the SPKI public key
@@ -64,15 +64,15 @@ export class LoginService {
       const value = process.env[name]
       if (value) env.set(name, value)
     }
-    env.set('API_BEARER_TOKEN', await getApiBearerToken({ forceRefresh: true }))
+    env.set('API_BEARER_TOKEN', await getApiBearerToken())
 
     const body = [...env].map(([key, value]) => `${key}=${value}`).join('\n')
     await writeFile(ENV_PATH, `${body}\n`, { mode: 0o600 })
   }
 
-  private async pollLoginResult(publicKeyCompact: string): Promise<CliLoginPollResponse> {
+  private async pollLoginResult(requestId: string): Promise<CliLoginPollResponse> {
     const resultUrl = new URL('/agent/remote/login/result', API_BASE_URL)
-    resultUrl.searchParams.set('pubKey', publicKeyCompact)
+    resultUrl.searchParams.set('id', requestId)
 
     try {
       return await retry<CliLoginPollResponse>({
@@ -132,6 +132,7 @@ export class LoginService {
   }
 
   private async createLoginRequest(): Promise<LoginRequestContext> {
+    const requestId = randomUUID()
     const { privateKey, publicKey } = await generateKeyPairAsync('ec', {
       namedCurve: 'P-256'
     })
@@ -164,9 +165,11 @@ export class LoginService {
     })
 
     const loginUrl = new URL('/agents/login', WEB_BASE_URL)
-    loginUrl.searchParams.set('pubkey', publicKeyCompact)
+    loginUrl.searchParams.set('id', requestId)
+    loginUrl.searchParams.set('pubKey', publicKeyCompact)
 
     return {
+      requestId,
       privateKeyPem,
       publicKeyPem,
       publicKeyCompact,
@@ -175,7 +178,7 @@ export class LoginService {
   }
 
   private async finalizeLogin(loginRequest: LoginRequestContext): Promise<void> {
-    const pollResult = await this.pollLoginResult(loginRequest.publicKeyCompact)
+    const pollResult = await this.pollLoginResult(loginRequest.requestId)
 
     await writeAgentAuthorizationKey({
       schema: 'agent-authorization-key.v1',

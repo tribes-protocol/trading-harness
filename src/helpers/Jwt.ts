@@ -111,35 +111,31 @@ async function mintTokenCache(key: AgentAuthorizationKey): Promise<JwtTokenCache
   })
 }
 
-export async function getApiBearerToken(
-  options: { readonly forceRefresh?: boolean } = {}
-): Promise<string> {
+export async function getApiBearerToken(): Promise<string> {
   const key = await readAgentAuthorizationKey()
   if (isNullish(key)) {
     throw new Error('Authorization key missing')
   }
 
-  if (options.forceRefresh !== true) {
-    if (!isNullish(memoryCache)) {
-      const reusableMemoryCache = isReusableCache({
-        key,
-        cache: memoryCache
-      })
-      if (reusableMemoryCache) {
-        return memoryCache.token
-      }
+  if (!isNullish(memoryCache)) {
+    const reusableMemoryCache = isReusableCache({
+      key,
+      cache: memoryCache
+    })
+    if (reusableMemoryCache) {
+      return memoryCache.token
     }
+  }
 
-    const diskCache = await readDiskCache()
-    if (!isNullish(diskCache)) {
-      const reusableDiskCache = isReusableCache({
-        key,
-        cache: diskCache
-      })
-      if (reusableDiskCache) {
-        memoryCache = diskCache
-        return diskCache.token
-      }
+  const diskCache = await readDiskCache()
+  if (!isNullish(diskCache)) {
+    const reusableDiskCache = isReusableCache({
+      key,
+      cache: diskCache
+    })
+    if (reusableDiskCache) {
+      memoryCache = diskCache
+      return diskCache.token
     }
   }
 
