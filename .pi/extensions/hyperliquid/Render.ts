@@ -10,7 +10,7 @@ import type { Theme } from '@earendil-works/pi-coding-agent'
 import { DynamicBorder } from '@earendil-works/pi-coding-agent'
 import { Container, Text, truncateToWidth, visibleWidth } from '@earendil-works/pi-tui'
 
-import type { HyperliquidStatus, StatusPosition } from './StatusTypes.ts'
+import type { HyperliquidStatus, RecentTrade, StatusPosition } from './StatusTypes.ts'
 
 export function fmtUsd(n: number | null | undefined): string {
   if (typeof n !== 'number' || !Number.isFinite(n)) return '$0'
@@ -109,6 +109,32 @@ function formatLocalTimestamp(value: unknown): string {
     second: '2-digit',
     hour12: true
   }).format(new Date(parsed))
+}
+
+function formatTradeTimestamp(isoString: string): string {
+  const parsed = Date.parse(isoString)
+  if (!Number.isFinite(parsed)) return isoString
+  const d = new Date(parsed)
+  const now = new Date()
+  const isToday =
+    d.getFullYear() === now.getFullYear() &&
+    d.getMonth() === now.getMonth() &&
+    d.getDate() === now.getDate()
+  if (isToday) {
+    return new Intl.DateTimeFormat('en-US', {
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: false
+    }).format(d)
+  }
+  return new Intl.DateTimeFormat('en-US', {
+    month: 'short',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false
+  }).format(d)
 }
 
 function renderPositionsTable(
@@ -243,11 +269,92 @@ function renderPositionsTable(
   return lines.join('\n')
 }
 
+function fmtDuration(ms: number | null): string {
+  if (ms === null || !Number.isFinite(ms) || ms < 0) return '—'
+  const totalSeconds = Math.floor(ms / 1000)
+  if (totalSeconds < 60) return `${totalSeconds}s`
+  const totalMinutes = Math.floor(totalSeconds / 60)
+  if (totalMinutes < 60) return `${totalMinutes}m`
+  const totalHours = Math.floor(totalMinutes / 60)
+  if (totalHours < 24) return `${totalHours}h ${totalMinutes % 60}m`
+  const days = Math.floor(totalHours / 24)
+  return `${days}d ${totalHours % 24}h`
+}
+
+function renderRecentTrades(trades: readonly RecentTrade[], theme: Theme): string {
+  const columns = [
+    { key: 'time', label: 'Time', width: 13 },
+    { key: 'dir', label: 'Dir', width: 12 },
+    { key: 'symbol', label: 'Symbol', width: 10 },
+    { key: 'size', label: 'Size', width: 10 },
+    { key: 'value', label: 'Value', width: 10 },
+    { key: 'entry', label: 'Entry', width: 10 },
+    { key: 'exit', label: 'Exit', width: 10 },
+    { key: 'pnl', label: 'PnL', width: 10 },
+    { key: 'hold', label: 'Hold', width: 8 }
+  ]
+
+  const lines = [
+    theme.fg('dim', theme.bold(`Recent trades`)) + theme.fg('dim', ` (${trades.length})`),
+    theme.fg('dim', columns.map((col) => cell(col.label, col.width)).join(' '))
+  ]
+
+  for (const trade of trades) {
+    const isClose = /close/iu.test(trade.dir)
+    const isShort = /short/iu.test(trade.dir)
+    const pnl = trade.closedPnlUsd
+    const values: Record<string, string> = {
+      time: formatTradeTimestamp(new Date(trade.time).toISOString()),
+      dir: trade.dir,
+      symbol: trade.coin,
+      size: fmtSize(trade.size),
+      value: fmtUsd(trade.price * trade.size),
+      entry: trade.avgEntryPrice !== null ? fmtPrice(trade.avgEntryPrice) : '—',
+      exit: trade.avgExitPrice !== null ? fmtPrice(trade.avgExitPrice) : '—',
+      hold: fmtDuration(trade.holdMs),
+      pnl: Math.abs(pnl) < 0.005 ? '—' : fmtSignedUsd(pnl)
+    }
+
+    lines.push(
+      columns
+        .map((col) => {
+          if (col.key === 'dir') {
+            // Close trades: color by P&L outcome (did the trade make money?).
+            // Open trades: color by side (short=red, long=green) to match the positions table.
+            let dirTone: 'error' | 'success' | 'dim'
+            if (isClose) {
+              dirTone = Math.abs(pnl) < 0.005 ? 'dim' : pnl > 0 ? 'success' : 'error'
+            } else {
+              dirTone = isShort ? 'error' : 'success'
+            }
+            return cell(values[col.key], col.width, (value) => theme.fg(dirTone, value))
+          }
+          if (col.key === 'pnl') {
+            if (Math.abs(pnl) < 0.005) {
+              return cell(values[col.key], col.width, (value) => theme.fg('muted', value))
+            }
+            return cell(values[col.key], col.width, (value) =>
+              pnl < 0 ? theme.fg('error', value) : fgPositive(value)
+            )
+          }
+          if (col.key === 'time') {
+            return cell(values[col.key], col.width, (value) => theme.fg('dim', value))
+          }
+          return cell(values[col.key], col.width)
+        })
+        .join(' ')
+    )
+  }
+
+  return lines.join('\n')
+}
+
 export function renderHyperliquidPositionsWidget(
   status: HyperliquidStatus,
   theme: Theme,
   width: number,
-  refreshing = false
+  refreshing = false,
+  showRecentTrades = false
 ): string[] {
   // Loading uses a calm dim border; a real failure (missing account / error) is
   // a warning; a healthy account is the accent.
@@ -336,6 +443,13 @@ export function renderHyperliquidPositionsWidget(
   const accountLine = accounts.join('  ·  ')
   if (accountLine.length > 0) {
     container.addChild(new Text(theme.fg('dim', accountLine), 1, 0))
+  }
+
+  const recentTrades = status.recentTrades ?? []
+  if (showRecentTrades && recentTrades.length > 0) {
+    // Dotted rule sets the recent-trades section apart from the main widget.
+    container.addChild(new Text(theme.fg('dim', '┈'.repeat(contentWidth)), 1, 0))
+    container.addChild(new Text(renderRecentTrades(recentTrades, theme), 1, 0))
   }
   container.addChild(new DynamicBorder(borderColor))
 
