@@ -71,6 +71,40 @@ balances and build the command payload.
 3. Build and review the exact command payload before broadcast.
 4. Run the chosen Hyperliquid command with `--wallet-id`.
 
+## Order batching (minimize broadcasts)
+
+Before placing orders, map the user's intent to the **fewest atomic CLI calls**
+possible. Each execution command (`trade-perp`, `scale-perp`, `twap-perp`, etc.)
+is one signed action. Prefer batching legs inside that action over chaining
+separate commands for the same intent.
+
+**Batch inside one command when supported:**
+
+| Intent | Batch with | Do not split into |
+|--------|------------|-------------------|
+| Entry + take-profit and/or stop-loss on that entry | One `trade-perp` with `--tp-px` and/or `--sl-px` (atomic bracket) | Bare entry, then separate `stop_*` / `take_*` / trigger orders |
+| Multiple limit legs across a price range | One `scale-perp` or `scale-spot` (`--orders N`) | N separate limit `trade-perp` / `trade-spot` calls |
+| Time-sliced execution | One `twap-perp` or `twap-spot` | Many manual market/limit clips |
+
+**Rules:**
+
+- **Default to bracket batching** for a new entry that includes any protective
+  or fixed exit on the entry size: attach `--tp-px` and/or `--sl-px` on the same
+  `trade-perp` call. Do not open the position first and add exits in a follow-up
+  command unless the user explicitly asks for staged placement.
+- **Do not double-book the same exit** on the same size. If take-profit is
+  handled by one mechanism (bracket `--tp-px`, a scale ladder, or standalone
+  trigger orders), do not also attach a bracket TP or duplicate trigger orders
+  for that same portion.
+- **Combine only what the CLI supports in one action.** Bracket mode covers
+  entry + linked TP/SL only; scale and TWAP are separate commands. When the
+  plan needs multiple mechanisms (for example bracket stop-loss plus a scale
+  ladder for staged exits), use one command per mechanism — not one command per
+  leg.
+- **Standalone `stop_*` / `take_*` orders** are for adding or adjusting exits on
+  an **existing** position, or when the user explicitly wants a separate resting
+  trigger — not as a substitute for bracket batching on a new entry.
+
 ## CLI
 
 ```bash
@@ -329,7 +363,9 @@ tribes-cli hyperliquid trade-perp \
 ### Place a stop-market perp order
 
 Triggers a market order once `--trigger-px` is crossed. Use `--reduce-only` for a
-protective stop on an existing position.
+protective stop on an existing position. For a **new entry** with a stop on the
+entry size, batch with bracket `--sl-px` on `trade-perp` instead (see Order
+batching).
 
 ```bash
 tribes-cli hyperliquid trade-perp \
@@ -364,6 +400,10 @@ tribes-cli hyperliquid trade-perp \
 
 `take_market` fills at market once `--trigger-px` is crossed; `take_limit` rests a
 limit order at `--price`. Use `--reduce-only` to take profit on an open position.
+For a **new entry** with a fixed take-profit on the entry size, batch with
+bracket `--tp-px` on `trade-perp` instead (see Order batching). For multiple
+take-profit levels, batch with one `scale-perp --reduce-only` instead of many
+separate trigger orders.
 
 ```bash
 # Take-profit market: close a long when BTC rises to 72000
@@ -391,6 +431,13 @@ tribes-cli hyperliquid trade-perp \
 ```
 
 ### Place an atomic bracket (entry + linked TP/SL)
+
+When an entry includes take-profit and/or stop-loss on the **entry size**, batch
+them in **one** `trade-perp` call with `--tp-px` and/or `--sl-px` (see Order
+batching). Do not place the entry first and attach exits in a follow-up command
+unless the user explicitly asks for staged placement. Batching avoids an
+unprotected window between fill and exit placement and prevents dangling exit
+orders if a follow-up fails.
 
 Add `--tp-px` and/or `--sl-px` to `trade-perp` to attach a bracket. It then
 submits the entry and its take-profit and/or stop-loss in a single `order`
@@ -465,9 +512,10 @@ tribes-cli hyperliquid twap-cancel-spot \
 A scale order splits `--amount` into `--orders` resting limit legs whose prices
 step linearly from `--start-px` to `--end-px`. Use `--size-skew` to tilt more
 size toward the end of the range (`1` = uniform legs). All legs are submitted
-atomically in one signed action. Each leg must be ≥ $10 notional; the CLI
-rejects too-small scales before signing — increase `--amount` or reduce
-`--orders` if you hit this.
+atomically in one signed action — do not place each leg as a separate
+`trade-perp`. Add `--reduce-only` when scaling out of an existing position. Each
+leg must be ≥ $10 notional; the CLI rejects too-small scales before signing —
+increase `--amount` or reduce `--orders` if you hit this.
 
 ```bash
 # Long 0.01 BTC across 5 limit orders from 95000 to 98000, skewed toward higher prices
@@ -586,7 +634,8 @@ tribes-cli hyperliquid transfer-dex-cash \
   - `--margin-mode cross|isolated`
   - `--leverage <int>`
   - `--dex <name>` (`main` default, `xyz` supported)
-  - bracket mode (attach linked TP/SL to the entry):
+  - bracket mode (attach linked TP/SL to the entry — batch on the same call; see
+    Order batching):
     - `--tp-px` / `--sl-px` (trigger prices; either or both turns on the bracket)
     - `--tp-limit-px` / `--sl-limit-px` (optional; rest that leg as a limit instead
       of a market exit — each requires its matching `--tp-px` / `--sl-px`)
@@ -610,7 +659,7 @@ tribes-cli hyperliquid transfer-dex-cash \
 - `scale-perp` supports:
   - `--amount` (total size, base units), `--side long|short`
   - `--start-px` / `--end-px` (price range endpoints; must differ)
-  - `--orders <2-50>` (number of evenly spaced limit legs)
+  - `--orders <2-50>` (number of evenly spaced limit legs — all batched in one call)
   - `--size-skew <ratio>` (last-leg size / first-leg size; `1` = uniform)
   - `--tif Gtc|Ioc|Alo`, `--reduce-only`
   - `--margin-mode cross|isolated`, `--leverage <int>`, `--dex <name>`
