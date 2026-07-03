@@ -98,8 +98,7 @@ export default async function tribes(pi: TribesApi): Promise<void> {
         try {
           await registerTribesProvider(pi)
           providerFailed = false
-          if (ctx.hasUI)
-            ctx.ui.notify('Tribes provider loaded successfully', 'info')
+          if (ctx.hasUI) ctx.ui.notify('Tribes provider loaded successfully', 'info')
         } catch {
           // Still failing — the startup notice was already shown.
         }

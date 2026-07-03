@@ -82,11 +82,7 @@ function readDotEnvValue(key: string): string | null {
 function resolveApiBaseUrl(): string {
   // Check process.env first (set by the host via bridge runtime env or manual
   // export), then .env (persisted by writeAuthEnv), then the production default.
-  return (
-    process.env.API_BASE_URL ??
-    readDotEnvValue('API_BASE_URL') ??
-    PRODUCTION_API_BASE_URL
-  )
+  return process.env.API_BASE_URL ?? readDotEnvValue('API_BASE_URL') ?? PRODUCTION_API_BASE_URL
 }
 
 function resolveProxyBaseUrl(): string {
