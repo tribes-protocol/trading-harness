@@ -164,7 +164,7 @@ async function saveWidgetConfig(cwd: string, config: WidgetConfig): Promise<void
   await writeJson(resolveConfigPath(cwd), config)
 }
 
-// Parses a row-count argument for /hl-trades and /hl-orders, e.g. "10".
+// Parses a row-count argument for /hyperliquid:trades and /hyperliquid:orders, e.g. "10".
 // Returns null for blank/invalid input so callers can fall back to the
 // bare-command toggle behavior.
 function parseListLimit(args: string): number | null {
@@ -1054,7 +1054,7 @@ export default function hyperliquidStatus(pi: ExtensionAPI): void {
     initPollTimer = undefined
   })
 
-  pi.registerCommand('hl-status', {
+  pi.registerCommand('hyperliquid:status', {
     description: 'Toggle Hyperliquid detailed status widget',
     handler: async (_args, ctx) => {
       showWidget = !showWidget
@@ -1078,8 +1078,8 @@ export default function hyperliquidStatus(pi: ExtensionAPI): void {
     }
   })
 
-  pi.registerCommand('hl-trades', {
-    description: 'Toggle the recent trades list, or set its row limit: /hl-trades <n>',
+  pi.registerCommand('hyperliquid:trades', {
+    description: 'Toggle the recent trades list, or set its row limit: /hyperliquid:trades <n>',
     handler: async (args, ctx) => {
       const limit = parseListLimit(args)
       if (limit !== null) {
@@ -1097,7 +1097,7 @@ export default function hyperliquidStatus(pi: ExtensionAPI): void {
         return
       }
       if (args.trim().length > 0) {
-        ctx.ui.notify(`Usage: /hl-trades [row count, max ${MAX_LIST_LIMIT}]`, 'error')
+        ctx.ui.notify(`Usage: /hyperliquid:trades [row count, max ${MAX_LIST_LIMIT}]`, 'error')
         return
       }
       showRecentTrades = !showRecentTrades
@@ -1113,8 +1113,8 @@ export default function hyperliquidStatus(pi: ExtensionAPI): void {
     }
   })
 
-  pi.registerCommand('hl-orders', {
-    description: 'Toggle the open orders list, or set its row limit: /hl-orders <n>',
+  pi.registerCommand('hyperliquid:orders', {
+    description: 'Toggle the open orders list, or set its row limit: /hyperliquid:orders <n>',
     handler: async (args, ctx) => {
       const limit = parseListLimit(args)
       if (limit !== null) {
@@ -1132,7 +1132,7 @@ export default function hyperliquidStatus(pi: ExtensionAPI): void {
         return
       }
       if (args.trim().length > 0) {
-        ctx.ui.notify(`Usage: /hl-orders [row count, max ${MAX_LIST_LIMIT}]`, 'error')
+        ctx.ui.notify(`Usage: /hyperliquid:orders [row count, max ${MAX_LIST_LIMIT}]`, 'error')
         return
       }
       showOrders = !showOrders
@@ -1148,7 +1148,7 @@ export default function hyperliquidStatus(pi: ExtensionAPI): void {
     }
   })
 
-  pi.registerCommand('hl-refresh', {
+  pi.registerCommand('hyperliquid:refresh', {
     description: 'Fetch fresh Hyperliquid account status and update widget',
     handler: async (_args, ctx) => {
       await refreshStatus(ctx)
