@@ -1051,7 +1051,7 @@ export default function hyperliquidStatus(pi: ExtensionAPI): void {
     requestWidgetRender()
   }
 
-  pi.registerCommand('hl-status', {
+  pi.registerCommand('hyperliquid:status', {
     description: 'Toggle Hyperliquid detailed status widget',
     handler: async (_args, ctx) => {
       showWidget = !showWidget
@@ -1065,7 +1065,7 @@ export default function hyperliquidStatus(pi: ExtensionAPI): void {
     }
   })
 
-  pi.registerCommand('hl-tab', {
+  pi.registerCommand('hyperliquid:tab', {
     description: 'Switch the Hyperliquid widget tab (positions|transactions|orders|deposits|spot)',
     getArgumentCompletions: (prefix) =>
       TAB_ORDER.filter((tab) => tab.startsWith(prefix.toLowerCase())).map((tab) => ({
@@ -1101,7 +1101,7 @@ export default function hyperliquidStatus(pi: ExtensionAPI): void {
     handler: () => scrollTab(-1)
   })
 
-  pi.registerCommand('hl-refresh', {
+  pi.registerCommand('hyperliquid:refresh', {
     description: 'Fetch fresh Hyperliquid account status and update widget',
     handler: async (_args, ctx) => {
       await refreshStatus(ctx)

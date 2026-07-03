@@ -790,7 +790,7 @@ export function renderHyperliquidPositionsWidget(
 
   // Bottom section: tab bar (with the nav hint tucked right when it fits) + table.
   const tabs = renderTabBar(status, activeTab, theme)
-  const hint = theme.fg('dim', 'ctrl+shift+←/→ · /hl-tab')
+  const hint = theme.fg('dim', 'ctrl+shift+←/→ · /hyperliquid:tab')
   const tabsWidth = visibleWidth(tabs)
   const hintWidth = visibleWidth(hint)
   const tabLine =
