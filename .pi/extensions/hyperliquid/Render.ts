@@ -363,8 +363,8 @@ function renderOpenOrders(orders: readonly StatusOrder[], theme: Theme): string 
     { key: 'size', label: 'Size', width: 10 },
     { key: 'price', label: 'Price', width: 10 },
     { key: 'trigger', label: 'Trigger', width: 10 },
-    { key: 'type', label: 'Type', width: 12 },
-    { key: 'flags', label: 'Flags', width: 8 }
+    { key: 'flags', label: 'Flags', width: 8 },
+    { key: 'type', label: 'Type', width: 12 }
   ]
 
   const lines = [

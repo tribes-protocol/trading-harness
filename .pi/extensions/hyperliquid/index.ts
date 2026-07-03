@@ -27,6 +27,8 @@ const DEFAULT_DEXES = ['', 'xyz'] as const
 const COST_LOOKBACK_DAYS = 7
 const CLOSED_PNL_LOOKBACK_HOURS = 24
 const RECENT_TRADES_LIMIT = 2
+const DEFAULT_OPEN_ORDERS_LIMIT = 2
+const MAX_LIST_LIMIT = 50
 const HYPERLIQUID_INFO_URL = 'https://api.hyperliquid.xyz/info'
 
 // Types live in ./types.ts; renderer in ./Render.ts. CrossBucket +
@@ -146,16 +148,31 @@ type WidgetConfig = {
   showWidget: boolean
   showRecentTrades: boolean
   showOrders: boolean
+  recentTradesLimit: number
+  openOrdersLimit: number
 }
 
 const DEFAULT_CONFIG: WidgetConfig = {
   showWidget: true,
   showRecentTrades: false,
-  showOrders: false
+  showOrders: false,
+  recentTradesLimit: RECENT_TRADES_LIMIT,
+  openOrdersLimit: DEFAULT_OPEN_ORDERS_LIMIT
 }
 
 async function saveWidgetConfig(cwd: string, config: WidgetConfig): Promise<void> {
   await writeJson(resolveConfigPath(cwd), config)
+}
+
+// Parses a row-count argument for /hl-trades and /hl-orders, e.g. "10".
+// Returns null for blank/invalid input so callers can fall back to the
+// bare-command toggle behavior.
+function parseListLimit(args: string): number | null {
+  const trimmed = args.trim()
+  if (trimmed.length === 0) return null
+  const n = Number(trimmed)
+  if (!Number.isInteger(n) || n < 1) return null
+  return Math.min(n, MAX_LIST_LIMIT)
 }
 
 async function readMarketContexts(dex: string): Promise<Map<string, MarketContext>> {
@@ -697,7 +714,8 @@ function normalizeOpenOrder(
 
 async function readOpenOrders(
   user: string,
-  dexes: readonly string[]
+  dexes: readonly string[],
+  limit: number = DEFAULT_OPEN_ORDERS_LIMIT
 ): Promise<readonly StatusOrder[]> {
   const spotPairByCoin = await readSpotPairNamesByCoin().catch(() => new Map<string, string>())
   const orders: StatusOrder[] = []
@@ -717,10 +735,20 @@ async function readOpenOrders(
     }
   }
 
-  return orders.sort((a, b) => b.timestamp - a.timestamp)
+  return orders.sort((a, b) => b.timestamp - a.timestamp).slice(0, limit)
 }
 
-async function buildStatus(cwd: string): Promise<HyperliquidStatus> {
+type ListLimits = { readonly recentTrades: number; readonly openOrders: number }
+
+const DEFAULT_LIST_LIMITS: ListLimits = {
+  recentTrades: RECENT_TRADES_LIMIT,
+  openOrders: DEFAULT_OPEN_ORDERS_LIMIT
+}
+
+async function buildStatus(
+  cwd: string,
+  limits: ListLimits = DEFAULT_LIST_LIMITS
+): Promise<HyperliquidStatus> {
   const accountState = await resolveAccountState(cwd)
   const dexes = DEFAULT_DEXES
 
@@ -805,8 +833,15 @@ async function buildStatus(cwd: string): Promise<HyperliquidStatus> {
         error: error instanceof Error ? error.message : String(error)
       }) satisfies ClosedPnlSummary
   )
-  const recentTrades: readonly RecentTrade[] = await readRecentTrades(user).catch(() => [])
-  const openOrders: readonly StatusOrder[] = await readOpenOrders(user, dexes).catch(() => [])
+  const recentTrades: readonly RecentTrade[] = await readRecentTrades(
+    user,
+    limits.recentTrades
+  ).catch(() => [])
+  const openOrders: readonly StatusOrder[] = await readOpenOrders(
+    user,
+    dexes,
+    limits.openOrders
+  ).catch(() => [])
 
   const status: HyperliquidStatus = {
     ok: account.accounts.length > 0,
@@ -844,9 +879,12 @@ async function buildStatus(cwd: string): Promise<HyperliquidStatus> {
   return status
 }
 
-async function refreshStatusSnapshot(cwd: string): Promise<HyperliquidStatus> {
+async function refreshStatusSnapshot(
+  cwd: string,
+  limits: ListLimits = DEFAULT_LIST_LIMITS
+): Promise<HyperliquidStatus> {
   try {
-    return await buildStatus(cwd)
+    return await buildStatus(cwd, limits)
   } catch (error) {
     const cached = await readJson<HyperliquidStatus | null>(resolveStatusPath(cwd), null)
     if (cached)
@@ -895,6 +933,8 @@ export default function hyperliquidStatus(pi: ExtensionAPI): void {
   let showWidget = true
   let showRecentTrades = false
   let showOrders = false
+  let recentTradesLimit = RECENT_TRADES_LIMIT
+  let openOrdersLimit = DEFAULT_OPEN_ORDERS_LIMIT
   let statusTimer: ReturnType<typeof setInterval> | undefined
   let refreshing = false
   let lastStatus: HyperliquidStatus | null = null
@@ -948,7 +988,10 @@ export default function hyperliquidStatus(pi: ExtensionAPI): void {
     syncWidget(ctx)
     requestWidgetRender()
     try {
-      lastStatus = await refreshStatusSnapshot(ctx.cwd)
+      lastStatus = await refreshStatusSnapshot(ctx.cwd, {
+        recentTrades: recentTradesLimit,
+        openOrders: openOrdersLimit
+      })
     } finally {
       refreshing = false
       requestWidgetRender()
@@ -988,6 +1031,8 @@ export default function hyperliquidStatus(pi: ExtensionAPI): void {
     showWidget = config.showWidget ?? DEFAULT_CONFIG.showWidget
     showRecentTrades = config.showRecentTrades ?? DEFAULT_CONFIG.showRecentTrades
     showOrders = config.showOrders ?? DEFAULT_CONFIG.showOrders
+    recentTradesLimit = config.recentTradesLimit ?? DEFAULT_CONFIG.recentTradesLimit
+    openOrdersLimit = config.openOrdersLimit ?? DEFAULT_CONFIG.openOrdersLimit
     const cached = await readJson<HyperliquidStatus | null>(resolveStatusPath(ctx.cwd), null)
     if (cached) lastStatus = cached
     syncWidget(ctx)
@@ -1013,8 +1058,18 @@ export default function hyperliquidStatus(pi: ExtensionAPI): void {
     description: 'Toggle Hyperliquid detailed status widget',
     handler: async (_args, ctx) => {
       showWidget = !showWidget
-      await saveWidgetConfig(ctx.cwd, { showWidget, showRecentTrades, showOrders })
-      if (!lastStatus) lastStatus = await refreshStatusSnapshot(ctx.cwd)
+      await saveWidgetConfig(ctx.cwd, {
+        showWidget,
+        showRecentTrades,
+        showOrders,
+        recentTradesLimit,
+        openOrdersLimit
+      })
+      if (!lastStatus)
+        lastStatus = await refreshStatusSnapshot(ctx.cwd, {
+          recentTrades: recentTradesLimit,
+          openOrders: openOrdersLimit
+        })
       syncWidget(ctx)
       ctx.ui.notify(
         showWidget ? 'Hyperliquid status widget shown' : 'Hyperliquid status widget hidden',
@@ -1024,20 +1079,70 @@ export default function hyperliquidStatus(pi: ExtensionAPI): void {
   })
 
   pi.registerCommand('hl-trades', {
-    description: 'Toggle the recent trades list in the Hyperliquid status widget',
-    handler: async (_args, ctx) => {
+    description: 'Toggle the recent trades list, or set its row limit: /hl-trades <n>',
+    handler: async (args, ctx) => {
+      const limit = parseListLimit(args)
+      if (limit !== null) {
+        recentTradesLimit = limit
+        showRecentTrades = true
+        await saveWidgetConfig(ctx.cwd, {
+          showWidget,
+          showRecentTrades,
+          showOrders,
+          recentTradesLimit,
+          openOrdersLimit
+        })
+        ctx.ui.notify(`Recent trades limit set to ${limit}`, 'info')
+        await refreshStatus(ctx)
+        return
+      }
+      if (args.trim().length > 0) {
+        ctx.ui.notify(`Usage: /hl-trades [row count, max ${MAX_LIST_LIMIT}]`, 'error')
+        return
+      }
       showRecentTrades = !showRecentTrades
-      await saveWidgetConfig(ctx.cwd, { showWidget, showRecentTrades, showOrders })
+      await saveWidgetConfig(ctx.cwd, {
+        showWidget,
+        showRecentTrades,
+        showOrders,
+        recentTradesLimit,
+        openOrdersLimit
+      })
       requestWidgetRender()
       ctx.ui.notify(showRecentTrades ? 'Recent trades shown' : 'Recent trades hidden', 'info')
     }
   })
 
   pi.registerCommand('hl-orders', {
-    description: 'Toggle the open orders list in the Hyperliquid status widget',
-    handler: async (_args, ctx) => {
+    description: 'Toggle the open orders list, or set its row limit: /hl-orders <n>',
+    handler: async (args, ctx) => {
+      const limit = parseListLimit(args)
+      if (limit !== null) {
+        openOrdersLimit = limit
+        showOrders = true
+        await saveWidgetConfig(ctx.cwd, {
+          showWidget,
+          showRecentTrades,
+          showOrders,
+          recentTradesLimit,
+          openOrdersLimit
+        })
+        ctx.ui.notify(`Open orders limit set to ${limit}`, 'info')
+        await refreshStatus(ctx)
+        return
+      }
+      if (args.trim().length > 0) {
+        ctx.ui.notify(`Usage: /hl-orders [row count, max ${MAX_LIST_LIMIT}]`, 'error')
+        return
+      }
       showOrders = !showOrders
-      await saveWidgetConfig(ctx.cwd, { showWidget, showRecentTrades, showOrders })
+      await saveWidgetConfig(ctx.cwd, {
+        showWidget,
+        showRecentTrades,
+        showOrders,
+        recentTradesLimit,
+        openOrdersLimit
+      })
       requestWidgetRender()
       ctx.ui.notify(showOrders ? 'Open orders shown' : 'Open orders hidden', 'info')
     }
