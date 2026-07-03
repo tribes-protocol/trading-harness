@@ -10,7 +10,7 @@ import type { Theme } from '@earendil-works/pi-coding-agent'
 import { DynamicBorder } from '@earendil-works/pi-coding-agent'
 import { Container, Text, truncateToWidth, visibleWidth } from '@earendil-works/pi-tui'
 
-import type { HyperliquidStatus, RecentTrade, StatusPosition } from './StatusTypes.ts'
+import type { HyperliquidStatus, RecentTrade, StatusOrder, StatusPosition } from './StatusTypes.ts'
 
 export function fmtUsd(n: number | null | undefined): string {
   if (typeof n !== 'number' || !Number.isFinite(n)) return '$0'
@@ -109,6 +109,10 @@ function formatLocalTimestamp(value: unknown): string {
     second: '2-digit',
     hour12: true
   }).format(new Date(parsed))
+}
+
+function renderSectionHeader(title: string, suffix: string, theme: Theme): string {
+  return theme.fg('accent', theme.bold(title)) + theme.fg('dim', suffix)
 }
 
 function formatTradeTimestamp(isoString: string): string {
@@ -295,7 +299,7 @@ function renderRecentTrades(trades: readonly RecentTrade[], theme: Theme): strin
   ]
 
   const lines = [
-    theme.fg('dim', theme.bold(`Recent trades`)) + theme.fg('dim', ` (${trades.length})`),
+    renderSectionHeader('Hyperliquid / Recent trades', ` (${trades.length})`, theme),
     theme.fg('dim', columns.map((col) => cell(col.label, col.width)).join(' '))
   ]
 
@@ -349,12 +353,80 @@ function renderRecentTrades(trades: readonly RecentTrade[], theme: Theme): strin
   return lines.join('\n')
 }
 
+function renderOpenOrders(orders: readonly StatusOrder[], theme: Theme): string {
+  // Column order mirrors renderRecentTrades: Time, Side/Dir, Symbol, Size
+  // first, then the columns specific to this table.
+  const columns = [
+    { key: 'time', label: 'Time', width: 13 },
+    { key: 'side', label: 'Side', width: 12 },
+    { key: 'symbol', label: 'Symbol', width: 10 },
+    { key: 'size', label: 'Size', width: 10 },
+    { key: 'price', label: 'Price', width: 10 },
+    { key: 'trigger', label: 'Trigger', width: 10 },
+    { key: 'type', label: 'Type', width: 12 },
+    { key: 'flags', label: 'Flags', width: 8 }
+  ]
+
+  const lines = [
+    renderSectionHeader('Hyperliquid / Orders', ` (${orders.length})`, theme),
+    theme.fg('dim', columns.map((col) => cell(col.label, col.width)).join(' '))
+  ]
+
+  if (orders.length === 0) {
+    lines.push(theme.fg('muted', 'No open orders'))
+    return lines.join('\n')
+  }
+
+  for (const order of orders) {
+    const side = order.side.toUpperCase()
+    const flags = [
+      order.reduceOnly ? 'RO' : null,
+      order.tif !== null && order.tif.length > 0 ? order.tif : null
+    ]
+      .filter((value): value is string => value !== null)
+      .join(',')
+
+    const values: Record<string, string> = {
+      time: formatTradeTimestamp(new Date(order.timestamp).toISOString()),
+      side,
+      symbol: order.coin,
+      size: fmtSize(order.size),
+      price: fmtPrice(order.limitPx),
+      trigger: order.isTrigger ? fmtPrice(order.triggerPx) : '—',
+      type: order.orderType,
+      flags: flags.length > 0 ? flags : '—'
+    }
+
+    lines.push(
+      columns
+        .map((col) => {
+          if (col.key === 'side') {
+            return cell(values[col.key], col.width, (value) =>
+              theme.fg(order.side === 'sell' ? 'error' : 'success', value)
+            )
+          }
+          if (col.key === 'time') {
+            return cell(values[col.key], col.width, (value) => theme.fg('dim', value))
+          }
+          if (col.key === 'trigger' && !order.isTrigger) {
+            return cell(values[col.key], col.width, (value) => theme.fg('muted', value))
+          }
+          return cell(values[col.key], col.width)
+        })
+        .join(' ')
+    )
+  }
+
+  return lines.join('\n')
+}
+
 export function renderHyperliquidPositionsWidget(
   status: HyperliquidStatus,
   theme: Theme,
   width: number,
   refreshing = false,
-  showRecentTrades = false
+  showRecentTrades = false,
+  showOrders = false
 ): string[] {
   // Loading uses a calm dim border; a real failure (missing account / error) is
   // a warning; a healthy account is the accent.
@@ -370,11 +442,7 @@ export function renderHyperliquidPositionsWidget(
     ? padRight(refreshingSuffix, Math.max(visibleWidth(openSuffix), visibleWidth(refreshingSuffix)))
     : padRight(openSuffix, Math.max(visibleWidth(openSuffix), visibleWidth(refreshingSuffix)))
   container.addChild(
-    new Text(
-      theme.fg('accent', theme.bold('Hyperliquid Status')) + theme.fg('dim', titleSuffix),
-      1,
-      0
-    )
+    new Text(renderSectionHeader('Hyperliquid / Positions', titleSuffix, theme), 1, 0)
   )
 
   if (!status.ok) {
@@ -447,6 +515,12 @@ export function renderHyperliquidPositionsWidget(
     // Dotted rule sets the recent-trades section apart from the main widget.
     container.addChild(new Text(theme.fg('dim', '┈'.repeat(contentWidth)), 1, 0))
     container.addChild(new Text(renderRecentTrades(recentTrades, theme), 1, 0))
+  }
+
+  const openOrders = status.openOrders ?? []
+  if (showOrders) {
+    container.addChild(new Text(theme.fg('dim', '┈'.repeat(contentWidth)), 1, 0))
+    container.addChild(new Text(renderOpenOrders(openOrders, theme), 1, 0))
   }
   container.addChild(new DynamicBorder(borderColor))
 

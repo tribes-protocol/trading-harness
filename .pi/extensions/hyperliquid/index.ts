@@ -16,6 +16,7 @@ import type {
   MarketContext,
   PositionCostStats,
   RecentTrade,
+  StatusOrder,
   StatusPosition
 } from './StatusTypes.ts'
 
@@ -144,9 +145,14 @@ function resolveConfigPath(cwd: string): string {
 type WidgetConfig = {
   showWidget: boolean
   showRecentTrades: boolean
+  showOrders: boolean
 }
 
-const DEFAULT_CONFIG: WidgetConfig = { showWidget: true, showRecentTrades: false }
+const DEFAULT_CONFIG: WidgetConfig = {
+  showWidget: true,
+  showRecentTrades: false,
+  showOrders: false
+}
 
 async function saveWidgetConfig(cwd: string, config: WidgetConfig): Promise<void> {
   await writeJson(resolveConfigPath(cwd), config)
@@ -611,6 +617,109 @@ async function readRecentTrades(
   return trades.sort((a, b) => b.time - a.time).slice(0, limit)
 }
 
+function isSpotCoin(rawCoin: string): boolean {
+  return rawCoin.startsWith('@') || rawCoin.includes('/')
+}
+
+async function readSpotPairNamesByCoin(): Promise<Map<string, string>> {
+  const data = await hyperliquidInfo<unknown>({ type: 'spotMetaAndAssetCtxs' })
+  if (!Array.isArray(data) || data.length < 1 || !isRecord(data[0])) return new Map()
+
+  const spotMeta = data[0]
+  const tokens = Array.isArray(spotMeta.tokens) ? spotMeta.tokens : []
+  const universe = Array.isArray(spotMeta.universe) ? spotMeta.universe : []
+  const tokenNameByIndex = new Map<number, string>()
+  for (const rawToken of tokens) {
+    if (!isRecord(rawToken)) continue
+    const index = safeNumber(rawToken.index, -1)
+    const name = typeof rawToken.name === 'string' ? rawToken.name : null
+    if (index >= 0 && name) tokenNameByIndex.set(index, name)
+  }
+
+  const pairByCoin = new Map<string, string>()
+  for (const rawMarket of universe) {
+    if (!isRecord(rawMarket) || !Array.isArray(rawMarket.tokens) || rawMarket.tokens.length < 2)
+      continue
+    const baseTokenIndex = safeNumber(rawMarket.tokens[0], -1)
+    const quoteTokenIndex = safeNumber(rawMarket.tokens[1], -1)
+    if (baseTokenIndex < 0 || quoteTokenIndex < 0) continue
+    const baseTokenName = tokenNameByIndex.get(baseTokenIndex)
+    const quoteTokenName = tokenNameByIndex.get(quoteTokenIndex)
+    if (!baseTokenName || !quoteTokenName) continue
+    const pair = `${baseTokenName}/${quoteTokenName}`
+    const marketIndex = safeNumber(rawMarket.index, -1)
+    if (marketIndex >= 0) pairByCoin.set(`@${marketIndex}`, pair)
+    if (typeof rawMarket.name === 'string') pairByCoin.set(rawMarket.name, pair)
+  }
+  return pairByCoin
+}
+
+function normalizeOpenOrder(
+  raw: Record<string, unknown>,
+  dex: string,
+  spotPairByCoin: ReadonlyMap<string, string>
+): StatusOrder | null {
+  const rawCoin = typeof raw.coin === 'string' ? raw.coin : null
+  if (!rawCoin) return null
+
+  const market = isSpotCoin(rawCoin) ? 'spot' : 'perp'
+  let coin = rawCoin
+  if (market === 'spot') {
+    coin = spotPairByCoin.get(rawCoin) ?? rawCoin
+  } else if (dex.length > 0 && !rawCoin.startsWith(`${dex}:`)) {
+    coin = `${dex}:${rawCoin}`
+  }
+
+  const side = raw.side === 'B' ? 'buy' : raw.side === 'A' ? 'sell' : null
+  if (!side) return null
+
+  const isTrigger = raw.isTrigger === true
+  const rawTriggerPx = typeof raw.triggerPx === 'string' ? raw.triggerPx : null
+  const triggerPx =
+    isTrigger && rawTriggerPx !== null && rawTriggerPx !== '0.0'
+      ? nullableNumber(rawTriggerPx)
+      : null
+
+  return {
+    coin,
+    dex: market === 'spot' ? 'spot' : dex,
+    side,
+    size: safeNumber(raw.sz, 0),
+    limitPx: nullableNumber(raw.limitPx),
+    orderType: typeof raw.orderType === 'string' ? raw.orderType : 'Unknown',
+    timestamp: safeNumber(raw.timestamp, 0),
+    reduceOnly: raw.reduceOnly === true,
+    isTrigger,
+    triggerPx,
+    tif: typeof raw.tif === 'string' ? raw.tif : null
+  }
+}
+
+async function readOpenOrders(
+  user: string,
+  dexes: readonly string[]
+): Promise<readonly StatusOrder[]> {
+  const spotPairByCoin = await readSpotPairNamesByCoin().catch(() => new Map<string, string>())
+  const orders: StatusOrder[] = []
+
+  for (const dex of dexes) {
+    const body: { type: 'frontendOpenOrders' } & Record<string, unknown> = {
+      type: 'frontendOpenOrders',
+      user
+    }
+    if (dex.length > 0) body.dex = dex
+    const rows = await hyperliquidInfo<unknown>(body)
+    if (!Array.isArray(rows)) continue
+    for (const raw of rows) {
+      if (!isRecord(raw)) continue
+      const normalized = normalizeOpenOrder(raw, dex, spotPairByCoin)
+      if (normalized) orders.push(normalized)
+    }
+  }
+
+  return orders.sort((a, b) => b.timestamp - a.timestamp)
+}
+
 async function buildStatus(cwd: string): Promise<HyperliquidStatus> {
   const accountState = await resolveAccountState(cwd)
   const dexes = DEFAULT_DEXES
@@ -646,6 +755,7 @@ async function buildStatus(cwd: string): Promise<HyperliquidStatus> {
       topCandidates: [],
       totalTrades: 0,
       recentTrades: [],
+      openOrders: [],
       ...(initializing ? {} : { error: 'Missing account address' })
     }
     await writeJson(resolveStatusPath(cwd), status)
@@ -696,6 +806,7 @@ async function buildStatus(cwd: string): Promise<HyperliquidStatus> {
       }) satisfies ClosedPnlSummary
   )
   const recentTrades: readonly RecentTrade[] = await readRecentTrades(user).catch(() => [])
+  const openOrders: readonly StatusOrder[] = await readOpenOrders(user, dexes).catch(() => [])
 
   const status: HyperliquidStatus = {
     ok: account.accounts.length > 0,
@@ -724,6 +835,7 @@ async function buildStatus(cwd: string): Promise<HyperliquidStatus> {
     topCandidates: [],
     totalTrades: 0,
     recentTrades,
+    openOrders,
     ...(account.accounts.length === 0
       ? { error: account.error ?? 'Hyperliquid account unavailable' }
       : {})
@@ -771,6 +883,7 @@ async function refreshStatusSnapshot(cwd: string): Promise<HyperliquidStatus> {
       topCandidates: [],
       totalTrades: 0,
       recentTrades: [],
+      openOrders: [],
       error: 'Refresh failed'
     }
     await writeJson(resolveStatusPath(cwd), status)
@@ -781,6 +894,7 @@ async function refreshStatusSnapshot(cwd: string): Promise<HyperliquidStatus> {
 export default function hyperliquidStatus(pi: ExtensionAPI): void {
   let showWidget = true
   let showRecentTrades = false
+  let showOrders = false
   let statusTimer: ReturnType<typeof setInterval> | undefined
   let refreshing = false
   let lastStatus: HyperliquidStatus | null = null
@@ -816,9 +930,10 @@ export default function hyperliquidStatus(pi: ExtensionAPI): void {
                   widgetTheme,
                   width,
                   refreshing,
-                  showRecentTrades
+                  showRecentTrades,
+                  showOrders
                 )
-              : [widgetTheme.fg('dim', 'Hyperliquid Status (loading...)')],
+              : [widgetTheme.fg('dim', 'Hyperliquid / Positions (loading...)')],
           invalidate: (): void => {}
         }
       },
@@ -869,9 +984,10 @@ export default function hyperliquidStatus(pi: ExtensionAPI): void {
   }
 
   pi.on('session_start', async (_event, ctx) => {
-    const config = await readJson<WidgetConfig>(resolveConfigPath(ctx.cwd), DEFAULT_CONFIG)
-    showWidget = config.showWidget
-    showRecentTrades = config.showRecentTrades
+    const config = await readJson<Partial<WidgetConfig>>(resolveConfigPath(ctx.cwd), DEFAULT_CONFIG)
+    showWidget = config.showWidget ?? DEFAULT_CONFIG.showWidget
+    showRecentTrades = config.showRecentTrades ?? DEFAULT_CONFIG.showRecentTrades
+    showOrders = config.showOrders ?? DEFAULT_CONFIG.showOrders
     const cached = await readJson<HyperliquidStatus | null>(resolveStatusPath(ctx.cwd), null)
     if (cached) lastStatus = cached
     syncWidget(ctx)
@@ -897,7 +1013,7 @@ export default function hyperliquidStatus(pi: ExtensionAPI): void {
     description: 'Toggle Hyperliquid detailed status widget',
     handler: async (_args, ctx) => {
       showWidget = !showWidget
-      await saveWidgetConfig(ctx.cwd, { showWidget, showRecentTrades })
+      await saveWidgetConfig(ctx.cwd, { showWidget, showRecentTrades, showOrders })
       if (!lastStatus) lastStatus = await refreshStatusSnapshot(ctx.cwd)
       syncWidget(ctx)
       ctx.ui.notify(
@@ -911,9 +1027,19 @@ export default function hyperliquidStatus(pi: ExtensionAPI): void {
     description: 'Toggle the recent trades list in the Hyperliquid status widget',
     handler: async (_args, ctx) => {
       showRecentTrades = !showRecentTrades
-      await saveWidgetConfig(ctx.cwd, { showWidget, showRecentTrades })
+      await saveWidgetConfig(ctx.cwd, { showWidget, showRecentTrades, showOrders })
       requestWidgetRender()
       ctx.ui.notify(showRecentTrades ? 'Recent trades shown' : 'Recent trades hidden', 'info')
+    }
+  })
+
+  pi.registerCommand('hl-orders', {
+    description: 'Toggle the open orders list in the Hyperliquid status widget',
+    handler: async (_args, ctx) => {
+      showOrders = !showOrders
+      await saveWidgetConfig(ctx.cwd, { showWidget, showRecentTrades, showOrders })
+      requestWidgetRender()
+      ctx.ui.notify(showOrders ? 'Open orders shown' : 'Open orders hidden', 'info')
     }
   })
 

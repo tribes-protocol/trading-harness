@@ -90,6 +90,20 @@ export interface ClosedPnlSummary {
   readonly error: string | null
 }
 
+export interface StatusOrder {
+  readonly coin: string
+  readonly dex: Dex
+  readonly side: 'buy' | 'sell'
+  readonly size: number
+  readonly limitPx: number | null
+  readonly orderType: string
+  readonly timestamp: number
+  readonly reduceOnly: boolean
+  readonly isTrigger: boolean
+  readonly triggerPx: number | null
+  readonly tif: string | null
+}
+
 export interface RecentTrade {
   readonly coin: string
   /** Hyperliquid fill direction, e.g. 'Open Long' / 'Close Short'. */
@@ -142,6 +156,8 @@ export interface HyperliquidStatus {
   readonly totalTrades: number
   /** Most recent fills, newest first. The widget shows the last two under balances. */
   readonly recentTrades: readonly RecentTrade[]
+  /** Open resting orders across configured dexes, newest first. */
+  readonly openOrders: readonly StatusOrder[]
   readonly error?: string
   // True while the wallet snapshot (.tribes/privy-wallets.json) hasn't been written
   // yet — the account address is being resolved, not genuinely absent. Drives a
