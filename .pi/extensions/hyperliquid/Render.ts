@@ -8,9 +8,36 @@
 
 import type { Theme } from '@earendil-works/pi-coding-agent'
 import { DynamicBorder } from '@earendil-works/pi-coding-agent'
-import { Container, Text, truncateToWidth, visibleWidth } from '@earendil-works/pi-tui'
+import { Container, hyperlink, Text, truncateToWidth, visibleWidth } from '@earendil-works/pi-tui'
 
-import type { HyperliquidStatus, RecentTrade, StatusPosition } from './StatusTypes.ts'
+import type {
+  HlTab,
+  HyperliquidStatus,
+  LedgerUpdate,
+  OpenOrder,
+  RecentTrade,
+  SpotHolding,
+  StatusPosition
+} from './StatusTypes.ts'
+
+// Bottom-section tabs, ordered to match the CoinGlass Hyperliquid address page.
+const TAB_SEQUENCE: readonly HlTab[] = ['positions', 'transactions', 'orders', 'deposits', 'spot']
+const TAB_LABELS: Readonly<Record<HlTab, string>> = {
+  positions: 'Positions',
+  transactions: 'Transactions',
+  orders: 'Open Orders',
+  deposits: 'Deposits',
+  spot: 'Spot'
+}
+// Cap rows per tab so the below-editor widget never grows unbounded.
+const MAX_TAB_ROWS = 12
+const TRIBES_PERP_URL = 'https://tribes.xyz/perps'
+
+/** Wrap a perp symbol in an OSC 8 hyperlink to its tribes.xyz page (clickable in supporting terminals). */
+function perpLink(symbol: string, text: string): string {
+  const bare = symbol.includes(':') ? symbol.slice(symbol.indexOf(':') + 1) : symbol
+  return hyperlink(text, `${TRIBES_PERP_URL}/${encodeURIComponent(bare)}`)
+}
 
 export function fmtUsd(n: number | null | undefined): string {
   if (typeof n !== 'number' || !Number.isFinite(n)) return '$0'
@@ -222,6 +249,9 @@ function renderPositionsTable(
     lines.push(
       finalColumns
         .map((col) => {
+          if (col.key === 'symbol') {
+            return cell(values[col.key], col.width, (value) => perpLink(position.symbol, value))
+          }
           if (col.key === 'side') {
             return cell(values[col.key], col.width, (value) =>
               theme.fg(side === 'SHORT' ? 'error' : 'success', value)
@@ -349,12 +379,184 @@ function renderRecentTrades(trades: readonly RecentTrade[], theme: Theme): strin
   return lines.join('\n')
 }
 
+function truncateHash(hash: string | null): string {
+  if (hash === null || hash.length === 0) return '—'
+  return hash.length <= 12 ? hash : `${hash.slice(0, 6)}…${hash.slice(-4)}`
+}
+
+function renderOpenOrders(orders: readonly OpenOrder[], theme: Theme): string {
+  if (orders.length === 0) return theme.fg('muted', 'No open orders')
+  const columns = [
+    { key: 'time', label: 'Placed', width: 13 },
+    { key: 'symbol', label: 'Symbol', width: 14 },
+    { key: 'side', label: 'Side', width: 5 },
+    { key: 'type', label: 'Type', width: 12 },
+    { key: 'size', label: 'Size', width: 10 },
+    { key: 'price', label: 'Price', width: 11 },
+    { key: 'flags', label: 'Flags', width: 8 }
+  ]
+  const lines = [theme.fg('dim', columns.map((col) => cell(col.label, col.width)).join(' '))]
+  for (const order of orders.slice(0, MAX_TAB_ROWS)) {
+    const isTrigger = order.isTrigger
+    const priceSource = isTrigger ? order.triggerPrice : order.limitPrice
+    const flags = [order.reduceOnly ? 'RO' : '', isTrigger ? 'TRG' : ''].filter(Boolean).join(' ')
+    const values: Record<string, string> = {
+      time: formatTradeTimestamp(new Date(order.timestamp).toISOString()),
+      symbol: order.symbol,
+      side: order.side.toUpperCase(),
+      type: order.orderType,
+      size: fmtSize(order.size),
+      price: priceSource !== null ? fmtPrice(priceSource) : '—',
+      flags: flags.length > 0 ? flags : '—'
+    }
+    lines.push(
+      columns
+        .map((col) => {
+          if (col.key === 'symbol') {
+            return cell(values[col.key], col.width, (value) => perpLink(order.symbol, value))
+          }
+          if (col.key === 'side') {
+            return cell(values[col.key], col.width, (value) =>
+              theme.fg(order.side === 'sell' ? 'error' : 'success', value)
+            )
+          }
+          if (col.key === 'time') {
+            return cell(values[col.key], col.width, (value) => theme.fg('dim', value))
+          }
+          return cell(values[col.key], col.width)
+        })
+        .join(' ')
+    )
+  }
+  if (orders.length > MAX_TAB_ROWS) {
+    lines.push(theme.fg('dim', `… +${orders.length - MAX_TAB_ROWS} more`))
+  }
+  return lines.join('\n')
+}
+
+function renderLedgerUpdates(updates: readonly LedgerUpdate[], theme: Theme): string {
+  if (updates.length === 0) return theme.fg('muted', 'No deposits or withdrawals')
+  const columns = [
+    { key: 'time', label: 'Time', width: 13 },
+    { key: 'type', label: 'Type', width: 10 },
+    { key: 'amount', label: 'Amount', width: 12 },
+    { key: 'hash', label: 'Tx', width: 14 }
+  ]
+  const lines = [theme.fg('dim', columns.map((col) => cell(col.label, col.width)).join(' '))]
+  for (const update of updates.slice(0, MAX_TAB_ROWS)) {
+    const values: Record<string, string> = {
+      time: formatTradeTimestamp(new Date(update.time).toISOString()),
+      type: update.type === 'deposit' ? 'Deposit' : 'Withdraw',
+      amount: fmtUsd(update.amountUsd),
+      hash: truncateHash(update.hash)
+    }
+    lines.push(
+      columns
+        .map((col) => {
+          if (col.key === 'type') {
+            return cell(values[col.key], col.width, (value) =>
+              theme.fg(update.type === 'deposit' ? 'success' : 'error', value)
+            )
+          }
+          if (col.key === 'time' || col.key === 'hash') {
+            return cell(values[col.key], col.width, (value) => theme.fg('dim', value))
+          }
+          return cell(values[col.key], col.width)
+        })
+        .join(' ')
+    )
+  }
+  if (updates.length > MAX_TAB_ROWS) {
+    lines.push(theme.fg('dim', `… +${updates.length - MAX_TAB_ROWS} more`))
+  }
+  return lines.join('\n')
+}
+
+function renderSpotHoldings(holdings: readonly SpotHolding[], theme: Theme): string {
+  if (holdings.length === 0) return theme.fg('muted', 'No spot holdings')
+  const columns = [
+    { key: 'coin', label: 'Coin', width: 14 },
+    { key: 'total', label: 'Total', width: 16 },
+    { key: 'available', label: 'Available', width: 16 },
+    { key: 'entry', label: 'Entry Value', width: 12 }
+  ]
+  const lines = [theme.fg('dim', columns.map((col) => cell(col.label, col.width)).join(' '))]
+  for (const holding of holdings.slice(0, MAX_TAB_ROWS)) {
+    const values: Record<string, string> = {
+      coin: holding.coin,
+      total: fmtSize(holding.total),
+      available: fmtSize(holding.available),
+      entry: holding.entryNotionalUsd !== null ? fmtUsd(holding.entryNotionalUsd) : '—'
+    }
+    lines.push(columns.map((col) => cell(values[col.key], col.width)).join(' '))
+  }
+  if (holdings.length > MAX_TAB_ROWS) {
+    lines.push(theme.fg('dim', `… +${holdings.length - MAX_TAB_ROWS} more`))
+  }
+  return lines.join('\n')
+}
+
+function tabCount(status: HyperliquidStatus, tab: HlTab): number {
+  // Coalesce every field: a snapshot cached by an older extension build (loaded
+  // from disk on startup, rendered before the first refresh) can lack the newer
+  // tab arrays, so reading `.length` directly would throw.
+  switch (tab) {
+    case 'positions':
+      return (status.positions ?? []).length
+    case 'transactions':
+      return (status.recentTrades ?? []).length
+    case 'orders':
+      return (status.openOrders ?? []).length
+    case 'deposits':
+      return (status.ledgerUpdates ?? []).length
+    case 'spot':
+      return (status.spotHoldings ?? []).length
+  }
+}
+
+function renderTabBar(
+  status: HyperliquidStatus,
+  activeTab: HlTab,
+  theme: Theme,
+  width: number
+): string {
+  const cells = TAB_SEQUENCE.map((tab) => {
+    const label = `${TAB_LABELS[tab]}(${tabCount(status, tab)})`
+    return tab === activeTab ? theme.fg('accent', theme.bold(label)) : theme.fg('dim', label)
+  })
+  return truncateToWidth(cells.join(theme.fg('dim', '  ·  ')), width, '…')
+}
+
+function renderTabBody(
+  status: HyperliquidStatus,
+  activeTab: HlTab,
+  contentWidth: number,
+  theme: Theme
+): string {
+  // `?? []` guards against a stale cached snapshot missing the newer arrays.
+  const recentTrades = status.recentTrades ?? []
+  switch (activeTab) {
+    case 'positions':
+      return renderPositionsTable(status.positions ?? [], contentWidth, theme)
+    case 'transactions':
+      return recentTrades.length > 0
+        ? renderRecentTrades(recentTrades.slice(0, MAX_TAB_ROWS), theme)
+        : theme.fg('muted', 'No transactions')
+    case 'orders':
+      return renderOpenOrders(status.openOrders ?? [], theme)
+    case 'deposits':
+      return renderLedgerUpdates(status.ledgerUpdates ?? [], theme)
+    case 'spot':
+      return renderSpotHoldings(status.spotHoldings ?? [], theme)
+  }
+}
+
 export function renderHyperliquidPositionsWidget(
   status: HyperliquidStatus,
   theme: Theme,
   width: number,
   refreshing = false,
-  showRecentTrades = false
+  activeTab: HlTab = 'positions'
 ): string[] {
   // Loading uses a calm dim border; a real failure (missing account / error) is
   // a warning; a healthy account is the accent.
@@ -421,8 +623,9 @@ export function renderHyperliquidPositionsWidget(
   ].join('  ·  ')
 
   container.addChild(new Text(theme.fg('dim', statusLine), 1, 0))
-  container.addChild(new Text(renderPositionsTable(status.positions, contentWidth, theme), 1, 0))
 
+  // Account overview (spot + per-dex equity/margin) forms the top section,
+  // mirroring the CoinGlass address header above its tabbed panel.
   const accountSections: string[] = []
   if (
     typeof status.spotBalanceUsd === 'number' &&
@@ -442,12 +645,11 @@ export function renderHyperliquidPositionsWidget(
     container.addChild(new Text(theme.fg('dim', accountLine), 1, 0))
   }
 
-  const recentTrades = status.recentTrades ?? []
-  if (showRecentTrades && recentTrades.length > 0) {
-    // Dotted rule sets the recent-trades section apart from the main widget.
-    container.addChild(new Text(theme.fg('dim', '┈'.repeat(contentWidth)), 1, 0))
-    container.addChild(new Text(renderRecentTrades(recentTrades, theme), 1, 0))
-  }
+  // Bottom section: tab bar + the active tab's table.
+  container.addChild(new Text(renderTabBar(status, activeTab, theme, contentWidth), 1, 0))
+  container.addChild(new Text(theme.fg('dim', 'ctrl+shift+← / → switch tab · /hl-tab'), 1, 0))
+  container.addChild(new Text(theme.fg('dim', '┈'.repeat(contentWidth)), 1, 0))
+  container.addChild(new Text(renderTabBody(status, activeTab, contentWidth, theme), 1, 0))
   container.addChild(new DynamicBorder(borderColor))
 
   return container.render(width)

@@ -12,10 +12,14 @@ import type {
   ClosedPnlSummary,
   ClosedTradeStats,
   CostSummary,
+  HlTab,
   HyperliquidStatus,
+  LedgerUpdate,
   MarketContext,
+  OpenOrder,
   PositionCostStats,
   RecentTrade,
+  SpotHolding,
   StatusPosition
 } from './StatusTypes.ts'
 
@@ -25,7 +29,10 @@ const CONFIG_FILE = 'config.json'
 const DEFAULT_DEXES = ['', 'xyz'] as const
 const COST_LOOKBACK_DAYS = 7
 const CLOSED_PNL_LOOKBACK_HOURS = 24
-const RECENT_TRADES_LIMIT = 2
+// Enough fills to fill the Transactions tab; the widget caps the visible rows.
+const RECENT_TRADES_LIMIT = 30
+const LEDGER_LOOKBACK_DAYS = 30
+const TAB_ORDER: readonly HlTab[] = ['positions', 'transactions', 'orders', 'deposits', 'spot']
 const HYPERLIQUID_INFO_URL = 'https://api.hyperliquid.xyz/info'
 
 // Types live in ./types.ts; renderer in ./Render.ts. CrossBucket +
@@ -143,10 +150,14 @@ function resolveConfigPath(cwd: string): string {
 
 type WidgetConfig = {
   showWidget: boolean
-  showRecentTrades: boolean
+  activeTab: HlTab
 }
 
-const DEFAULT_CONFIG: WidgetConfig = { showWidget: true, showRecentTrades: false }
+const DEFAULT_CONFIG: WidgetConfig = { showWidget: true, activeTab: 'positions' }
+
+function coerceTab(value: unknown): HlTab {
+  return TAB_ORDER.find((tab) => tab === value) ?? 'positions'
+}
 
 async function saveWidgetConfig(cwd: string, config: WidgetConfig): Promise<void> {
   await writeJson(resolveConfigPath(cwd), config)
@@ -352,23 +363,98 @@ async function readPortfolioPnl(
   }
 }
 
-async function readSpotBalanceUsd(user: string): Promise<number | null> {
+async function readSpotHoldings(user: string): Promise<readonly SpotHolding[]> {
   const data = await hyperliquidInfo<unknown>({ type: 'spotClearinghouseState', user })
-  if (!isRecord(data) || !Array.isArray(data.balances)) return null
+  if (!isRecord(data) || !Array.isArray(data.balances)) return []
 
-  let totalAvailable = 0
-  let foundSpotUsd = false
+  const holdings: SpotHolding[] = []
   for (const rawBalance of data.balances) {
     if (!isRecord(rawBalance)) continue
-    const coin = typeof rawBalance.coin === 'string' ? rawBalance.coin.toUpperCase() : ''
-    if (!coin.includes('USDC')) continue
+    const coin = typeof rawBalance.coin === 'string' ? rawBalance.coin : ''
+    if (coin.length === 0) continue
     const total = safeNumber(rawBalance.total, 0)
+    if (total === 0) continue
     const hold = safeNumber(rawBalance.hold, 0)
-    totalAvailable += Math.max(0, total - hold)
-    foundSpotUsd = true
+    holdings.push({
+      coin,
+      total,
+      available: Math.max(0, total - hold),
+      entryNotionalUsd: nullableNumber(rawBalance.entryNtl)
+    })
   }
+  // Largest entry value first so the biggest bags are visible without scrolling.
+  return holdings.sort((a, b) => (b.entryNotionalUsd ?? 0) - (a.entryNotionalUsd ?? 0))
+}
 
-  return foundSpotUsd ? totalAvailable : null
+function spotBalanceUsdFromHoldings(holdings: readonly SpotHolding[]): number | null {
+  const usdc = holdings.filter((holding) => holding.coin.toUpperCase().includes('USDC'))
+  return usdc.length > 0 ? usdc.reduce((sum, holding) => sum + holding.available, 0) : null
+}
+
+async function readOpenOrders(
+  user: string,
+  dexes: readonly string[]
+): Promise<readonly OpenOrder[]> {
+  const orders: OpenOrder[] = []
+  for (const dex of dexes) {
+    try {
+      const body: { type: 'frontendOpenOrders' } & Record<string, unknown> = {
+        type: 'frontendOpenOrders',
+        user
+      }
+      if (dex.length > 0) body.dex = dex
+      const raw = await hyperliquidInfo<unknown[]>(body)
+      if (!Array.isArray(raw)) continue
+      for (const rawOrder of raw) {
+        if (!isRecord(rawOrder)) continue
+        const coin = String(rawOrder.coin ?? '')
+        if (coin.length === 0) continue
+        const symbol = dex.length > 0 && !coin.startsWith(`${dex}:`) ? `${dex}:${coin}` : coin
+        orders.push({
+          coin,
+          symbol,
+          side: rawOrder.side === 'B' ? 'buy' : 'sell',
+          size: safeNumber(rawOrder.sz, 0),
+          origSize: safeNumber(rawOrder.origSz, 0),
+          limitPrice: nullableNumber(rawOrder.limitPx),
+          orderType: typeof rawOrder.orderType === 'string' ? rawOrder.orderType : '—',
+          reduceOnly: rawOrder.reduceOnly === true,
+          isTrigger: rawOrder.isTrigger === true,
+          triggerPrice: nullableNumber(rawOrder.triggerPx),
+          timestamp: safeNumber(rawOrder.timestamp, 0)
+        })
+      }
+    } catch {
+      // A single dex failing shouldn't blank the whole tab.
+    }
+  }
+  return orders.sort((a, b) => b.timestamp - a.timestamp)
+}
+
+async function readLedgerUpdates(
+  user: string,
+  lookbackDays = LEDGER_LOOKBACK_DAYS
+): Promise<readonly LedgerUpdate[]> {
+  const startTime = Date.now() - lookbackDays * 24 * 60 * 60 * 1000
+  const raw = await hyperliquidInfo<unknown[]>({
+    type: 'userNonFundingLedgerUpdates',
+    user,
+    startTime
+  })
+  if (!Array.isArray(raw)) return []
+  const updates: LedgerUpdate[] = []
+  for (const row of raw) {
+    if (!isRecord(row) || !isRecord(row.delta)) continue
+    const type = row.delta.type
+    if (type !== 'deposit' && type !== 'withdraw') continue
+    updates.push({
+      time: safeNumber(row.time, 0),
+      type,
+      amountUsd: Math.abs(safeNumber(row.delta.usdc, 0)),
+      hash: typeof row.hash === 'string' ? row.hash : null
+    })
+  }
+  return updates.sort((a, b) => b.time - a.time)
 }
 
 function positionCostKey(coin: string): string {
@@ -646,6 +732,9 @@ async function buildStatus(cwd: string): Promise<HyperliquidStatus> {
       topCandidates: [],
       totalTrades: 0,
       recentTrades: [],
+      openOrders: [],
+      ledgerUpdates: [],
+      spotHoldings: [],
       ...(initializing ? {} : { error: 'Missing account address' })
     }
     await writeJson(resolveStatusPath(cwd), status)
@@ -671,7 +760,10 @@ async function buildStatus(cwd: string): Promise<HyperliquidStatus> {
   )
   const costByCoin = new Map(Object.entries(costSummary.byCoin))
   const account = await readAccounts(user, dexes, costByCoin)
-  const spotBalanceUsd = await readSpotBalanceUsd(user).catch(() => null)
+  const spotHoldings = await readSpotHoldings(user).catch(() => [])
+  const spotBalanceUsd = spotBalanceUsdFromHoldings(spotHoldings)
+  const openOrders = await readOpenOrders(user, dexes).catch(() => [])
+  const ledgerUpdates = await readLedgerUpdates(user).catch(() => [])
   const equityUsd = account.accounts.reduce((sum, item) => sum + item.equityUsd, 0)
   const withdrawableUsd = account.accounts.reduce((sum, item) => sum + item.withdrawableUsd, 0)
   const grossExposureUsd = account.accounts.reduce((sum, item) => sum + item.grossExposureUsd, 0)
@@ -724,6 +816,9 @@ async function buildStatus(cwd: string): Promise<HyperliquidStatus> {
     topCandidates: [],
     totalTrades: 0,
     recentTrades,
+    openOrders,
+    ledgerUpdates,
+    spotHoldings,
     ...(account.accounts.length === 0
       ? { error: account.error ?? 'Hyperliquid account unavailable' }
       : {})
@@ -771,6 +866,9 @@ async function refreshStatusSnapshot(cwd: string): Promise<HyperliquidStatus> {
       topCandidates: [],
       totalTrades: 0,
       recentTrades: [],
+      openOrders: [],
+      ledgerUpdates: [],
+      spotHoldings: [],
       error: 'Refresh failed'
     }
     await writeJson(resolveStatusPath(cwd), status)
@@ -780,7 +878,7 @@ async function refreshStatusSnapshot(cwd: string): Promise<HyperliquidStatus> {
 
 export default function hyperliquidStatus(pi: ExtensionAPI): void {
   let showWidget = true
-  let showRecentTrades = false
+  let activeTab: HlTab = 'positions'
   let statusTimer: ReturnType<typeof setInterval> | undefined
   let refreshing = false
   let lastStatus: HyperliquidStatus | null = null
@@ -816,7 +914,7 @@ export default function hyperliquidStatus(pi: ExtensionAPI): void {
                   widgetTheme,
                   width,
                   refreshing,
-                  showRecentTrades
+                  activeTab
                 )
               : [widgetTheme.fg('dim', 'Hyperliquid Status (loading...)')],
           invalidate: (): void => {}
@@ -871,7 +969,7 @@ export default function hyperliquidStatus(pi: ExtensionAPI): void {
   pi.on('session_start', async (_event, ctx) => {
     const config = await readJson<WidgetConfig>(resolveConfigPath(ctx.cwd), DEFAULT_CONFIG)
     showWidget = config.showWidget
-    showRecentTrades = config.showRecentTrades
+    activeTab = coerceTab(config.activeTab)
     const cached = await readJson<HyperliquidStatus | null>(resolveStatusPath(ctx.cwd), null)
     if (cached) lastStatus = cached
     syncWidget(ctx)
@@ -893,11 +991,29 @@ export default function hyperliquidStatus(pi: ExtensionAPI): void {
     initPollTimer = undefined
   })
 
+  // Move the active tab by `delta` (wrapping), or jump straight to `target`.
+  // Persists the choice so the tab survives a restart, then re-renders.
+  async function switchTab(
+    ctx: ExtensionContext,
+    move: { readonly delta: number } | { readonly target: HlTab }
+  ): Promise<void> {
+    const current = TAB_ORDER.indexOf(activeTab)
+    activeTab =
+      'target' in move
+        ? move.target
+        : (TAB_ORDER[(current + move.delta + TAB_ORDER.length) % TAB_ORDER.length] ?? 'positions')
+    await saveWidgetConfig(ctx.cwd, { showWidget, activeTab })
+    if (showWidget) {
+      syncWidget(ctx)
+      requestWidgetRender()
+    }
+  }
+
   pi.registerCommand('hl-status', {
     description: 'Toggle Hyperliquid detailed status widget',
     handler: async (_args, ctx) => {
       showWidget = !showWidget
-      await saveWidgetConfig(ctx.cwd, { showWidget, showRecentTrades })
+      await saveWidgetConfig(ctx.cwd, { showWidget, activeTab })
       if (!lastStatus) lastStatus = await refreshStatusSnapshot(ctx.cwd)
       syncWidget(ctx)
       ctx.ui.notify(
@@ -907,14 +1023,30 @@ export default function hyperliquidStatus(pi: ExtensionAPI): void {
     }
   })
 
-  pi.registerCommand('hl-trades', {
-    description: 'Toggle the recent trades list in the Hyperliquid status widget',
-    handler: async (_args, ctx) => {
-      showRecentTrades = !showRecentTrades
-      await saveWidgetConfig(ctx.cwd, { showWidget, showRecentTrades })
-      requestWidgetRender()
-      ctx.ui.notify(showRecentTrades ? 'Recent trades shown' : 'Recent trades hidden', 'info')
+  pi.registerCommand('hl-tab', {
+    description: 'Switch the Hyperliquid widget tab (positions|transactions|orders|deposits|spot)',
+    getArgumentCompletions: (prefix) =>
+      TAB_ORDER.filter((tab) => tab.startsWith(prefix.toLowerCase())).map((tab) => ({
+        value: tab,
+        label: tab
+      })),
+    handler: async (args, ctx) => {
+      const requested = args.trim().toLowerCase()
+      const target = TAB_ORDER.find((tab) => tab === requested)
+      // No/unknown arg → advance to the next tab; a valid name → jump to it.
+      await switchTab(ctx, target ? { target } : { delta: 1 })
+      ctx.ui.notify(`Hyperliquid tab: ${activeTab}`, 'info')
     }
+  })
+
+  pi.registerShortcut('ctrl+shift+right', {
+    description: 'Hyperliquid widget: next tab',
+    handler: (ctx) => switchTab(ctx, { delta: 1 })
+  })
+
+  pi.registerShortcut('ctrl+shift+left', {
+    description: 'Hyperliquid widget: previous tab',
+    handler: (ctx) => switchTab(ctx, { delta: -1 })
   })
 
   pi.registerCommand('hl-refresh', {
