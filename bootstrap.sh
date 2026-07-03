@@ -52,17 +52,20 @@ else
 fi
 
 # Pre-install the Pi extensions this agent declares in .pi/agent/settings.json
-# (currently npm:pi-subagents) so the npm fetch is paid here at boot rather than
-# on the first `pi` session. `pi install` is idempotent against the committed
-# `packages` list and writes the package under .pi/agent/npm (gitignored). Keep
-# it non-fatal: a registry hiccup must not block the trading harness from
-# starting, and Pi will auto-install any still-missing declared package on launch.
-echo "[bootstrap] installing declared pi extensions (pi-subagents)…"
-if pi install npm:pi-subagents; then
-  echo "[bootstrap] installed pi-subagents"
-else
-  echo "[bootstrap] could not install pi-subagents now; pi will retry it on first launch"
-fi
+# (pi-subagents plus its companions pi-intercom + pi-prompt-template-model) so
+# the npm fetch is paid here at boot rather than on the first `pi` session.
+# `pi install` is idempotent against the committed `packages` list and writes
+# each package under .pi/agent/npm (gitignored). Keep it non-fatal: a registry
+# hiccup must not block the trading harness from starting, and Pi will
+# auto-install any still-missing declared package on launch.
+echo "[bootstrap] installing declared pi extensions (pi-subagents + companions)…"
+for ext in pi-subagents pi-intercom pi-prompt-template-model; do
+  if pi install "npm:$ext"; then
+    echo "[bootstrap] installed $ext"
+  else
+    echo "[bootstrap] could not install $ext now; pi will retry it on first launch"
+  fi
+done
 
 # NOTE: do NOT run `pi update` here. This repo PINS pi (@earendil-works/
 # pi-coding-agent + pi-tui at 0.79.8) and the .pi extensions are written against
