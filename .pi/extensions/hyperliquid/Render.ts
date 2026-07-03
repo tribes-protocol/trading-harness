@@ -454,6 +454,19 @@ function truncateHash(hash: string | null): string {
   return hash.length <= 12 ? hash : `${hash.slice(0, 6)}…${hash.slice(-4)}`
 }
 
+/** Open-orders table uses right-aligned trigger cells, so add extra gap before Flags. */
+function joinOpenOrderColumns(
+  columns: readonly { readonly key: string }[],
+  cells: readonly string[]
+): string {
+  let row = cells[0] ?? ''
+  for (let index = 1; index < cells.length; index++) {
+    const gap = columns[index - 1]?.key === 'trigger' ? '   ' : ' '
+    row += gap + (cells[index] ?? '')
+  }
+  return row
+}
+
 function renderOpenOrders(orders: readonly OpenOrder[], theme: Theme): string {
   if (orders.length === 0) return theme.fg('muted', 'No open orders')
   // Column set + ordering mirror the leo/open-orders branch:
@@ -468,7 +481,15 @@ function renderOpenOrders(orders: readonly OpenOrder[], theme: Theme): string {
     { key: 'flags', label: 'Flags', width: 8 },
     { key: 'type', label: 'Type', width: 12 }
   ]
-  const lines = [headerRow(columns, theme)]
+  const lines = [
+    theme.fg(
+      'dim',
+      joinOpenOrderColumns(
+        columns,
+        columns.map((col) => cell(col.label, col.width, undefined, alignFor(col.key)))
+      )
+    )
+  ]
   for (const order of orders.slice(0, MAX_TAB_ROWS)) {
     const flags = [
       order.reduceOnly ? 'RO' : null,
@@ -486,31 +507,28 @@ function renderOpenOrders(orders: readonly OpenOrder[], theme: Theme): string {
       flags: flags.length > 0 ? flags : '—',
       type: order.orderType
     }
-    lines.push(
-      columns
-        .map((col) => {
-          const align = alignFor(col.key)
-          if (col.key === 'symbol') {
-            return cell(values[col.key], col.width, (value) => perpLink(order.symbol, value), align)
-          }
-          if (col.key === 'side') {
-            return cell(
-              values[col.key],
-              col.width,
-              (value) => theme.fg(order.side === 'sell' ? 'error' : 'success', value),
-              align
-            )
-          }
-          if (col.key === 'time') {
-            return cell(values[col.key], col.width, (value) => theme.fg('dim', value), align)
-          }
-          if (col.key === 'trigger' && !order.isTrigger) {
-            return cell(values[col.key], col.width, (value) => theme.fg('muted', value), align)
-          }
-          return cell(values[col.key], col.width, undefined, align)
-        })
-        .join(' ')
-    )
+    const rowCells = columns.map((col) => {
+      const align = alignFor(col.key)
+      if (col.key === 'symbol') {
+        return cell(values[col.key], col.width, (value) => perpLink(order.symbol, value), align)
+      }
+      if (col.key === 'side') {
+        return cell(
+          values[col.key],
+          col.width,
+          (value) => theme.fg(order.side === 'sell' ? 'error' : 'success', value),
+          align
+        )
+      }
+      if (col.key === 'time') {
+        return cell(values[col.key], col.width, (value) => theme.fg('dim', value), align)
+      }
+      if (col.key === 'trigger' && !order.isTrigger) {
+        return cell(values[col.key], col.width, (value) => theme.fg('muted', value), align)
+      }
+      return cell(values[col.key], col.width, undefined, align)
+    })
+    lines.push(joinOpenOrderColumns(columns, rowCells))
   }
   if (orders.length > MAX_TAB_ROWS) {
     lines.push(theme.fg('dim', `… +${orders.length - MAX_TAB_ROWS} more`))
