@@ -52,14 +52,18 @@ else
 fi
 
 # Pre-install the Pi extensions this agent declares in .pi/agent/settings.json
-# (pi-subagents plus its companions pi-intercom + pi-prompt-template-model) so
-# the npm fetch is paid here at boot rather than on the first `pi` session.
-# `pi install` is idempotent against the committed `packages` list and writes
-# each package under .pi/agent/npm (gitignored). Keep it non-fatal: a registry
-# hiccup must not block the trading harness from starting, and Pi will
-# auto-install any still-missing declared package on launch.
+# (pi-subagents plus the pi-prompt-template-model companion) so the npm fetch is
+# paid here at boot rather than on the first `pi` session. `pi install` is
+# idempotent against the committed `packages` list and writes each package under
+# .pi/agent/npm (gitignored). Keep it non-fatal: a registry hiccup must not block
+# the trading harness from starting, and Pi will auto-install any still-missing
+# declared package on launch.
+#
+# NOTE: do NOT add pi-intercom here. The pinned pi-subagents already registers an
+# `intercom` tool internally, so installing the standalone pi-intercom companion
+# conflicts on that tool name and Pi refuses to load any extension at boot.
 echo "[bootstrap] installing declared pi extensions (pi-subagents + companions)…"
-for ext in pi-subagents pi-intercom pi-prompt-template-model; do
+for ext in pi-subagents pi-prompt-template-model; do
   if pi install "npm:$ext"; then
     echo "[bootstrap] installed $ext"
   else
