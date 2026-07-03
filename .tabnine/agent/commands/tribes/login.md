@@ -1,0 +1,1 @@
+../../../../.pi/commands/tribes/login.md

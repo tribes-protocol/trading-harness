@@ -75,6 +75,8 @@ bun run bootstrap.sh
 
 Auth is not pre-wired outside the Tribes sandbox, so after bootstrap establish a token with `tribes-cli login` (see Runtime Preconditions below).
 
+Preferred path in agent clients: use the Tribes login skill (`/tribes-login`, or `/tribes:login` where supported) and complete the guided sign-in flow. Use direct `tribes-cli login` only when a skill/command surface is unavailable.
+
 ### Installing the skills
 
 The skill docs are vendored per client, one directory of `<slug>/SKILL.md` files per supported agent — `.pi/skills/` for Pi, `.claude/skills/` for Claude Code, and the matching `.<client>/skills/` for each other client. They ship in this repo, so cloning installs them: a client auto-discovers the skills in its own directory with no extra step.

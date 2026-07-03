@@ -25,6 +25,7 @@
     ".continue": true,
     ".cortex": true,
     ".crush": true,
+    ".cursor": true,
     ".devin": true,
     ".factory": true,
     ".forge": true,
