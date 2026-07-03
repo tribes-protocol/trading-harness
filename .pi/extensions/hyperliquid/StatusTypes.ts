@@ -25,6 +25,8 @@ export interface OpenOrder {
   readonly reduceOnly: boolean
   readonly isTrigger: boolean
   readonly triggerPrice: number | null
+  /** Time-in-force (e.g. `Gtc`, `Alo`, `Ioc`); null when the order carries none. */
+  readonly tif: string | null
   /** Placement time in epoch milliseconds. */
   readonly timestamp: number
 }

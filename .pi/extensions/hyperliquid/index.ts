@@ -410,6 +410,14 @@ async function readOpenOrders(
         const coin = String(rawOrder.coin ?? '')
         if (coin.length === 0) continue
         const symbol = dex.length > 0 && !coin.startsWith(`${dex}:`) ? `${dex}:${coin}` : coin
+        // Hyperliquid sends triggerPx '0.0' for non-trigger orders; treat only a
+        // real trigger price as present so the Trigger column reads '—' otherwise.
+        const isTrigger = rawOrder.isTrigger === true
+        const rawTriggerPx = typeof rawOrder.triggerPx === 'string' ? rawOrder.triggerPx : null
+        const triggerPrice =
+          isTrigger && rawTriggerPx !== null && rawTriggerPx !== '0.0'
+            ? nullableNumber(rawTriggerPx)
+            : null
         orders.push({
           coin,
           symbol,
@@ -419,8 +427,9 @@ async function readOpenOrders(
           limitPrice: nullableNumber(rawOrder.limitPx),
           orderType: typeof rawOrder.orderType === 'string' ? rawOrder.orderType : '—',
           reduceOnly: rawOrder.reduceOnly === true,
-          isTrigger: rawOrder.isTrigger === true,
-          triggerPrice: nullableNumber(rawOrder.triggerPx),
+          isTrigger,
+          triggerPrice,
+          tif: typeof rawOrder.tif === 'string' ? rawOrder.tif : null,
           timestamp: safeNumber(rawOrder.timestamp, 0)
         })
       }

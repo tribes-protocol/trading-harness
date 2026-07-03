@@ -142,6 +142,7 @@ const RIGHT_ALIGNED_KEYS = new Set<string>([
   'pnl',
   'hold',
   'price',
+  'trigger',
   'amount',
   'total',
   'available'
@@ -455,28 +456,35 @@ function truncateHash(hash: string | null): string {
 
 function renderOpenOrders(orders: readonly OpenOrder[], theme: Theme): string {
   if (orders.length === 0) return theme.fg('muted', 'No open orders')
+  // Column set + ordering mirror the leo/open-orders branch:
+  // Time · Side · Symbol · Size · Price · Trigger · Flags · Type.
   const columns = [
-    { key: 'time', label: 'Placed', width: 13 },
-    { key: 'symbol', label: 'Symbol', width: 14 },
-    { key: 'side', label: 'Side', width: 5 },
-    { key: 'type', label: 'Type', width: 12 },
+    { key: 'time', label: 'Time', width: 13 },
+    { key: 'side', label: 'Side', width: 12 },
+    { key: 'symbol', label: 'Symbol', width: 10 },
     { key: 'size', label: 'Size', width: 10 },
-    { key: 'price', label: 'Price', width: 11 },
-    { key: 'flags', label: 'Flags', width: 8 }
+    { key: 'price', label: 'Price', width: 10 },
+    { key: 'trigger', label: 'Trigger', width: 10 },
+    { key: 'flags', label: 'Flags', width: 8 },
+    { key: 'type', label: 'Type', width: 12 }
   ]
   const lines = [headerRow(columns, theme)]
   for (const order of orders.slice(0, MAX_TAB_ROWS)) {
-    const isTrigger = order.isTrigger
-    const priceSource = isTrigger ? order.triggerPrice : order.limitPrice
-    const flags = [order.reduceOnly ? 'RO' : '', isTrigger ? 'TRG' : ''].filter(Boolean).join(' ')
+    const flags = [
+      order.reduceOnly ? 'RO' : null,
+      order.tif && order.tif.length > 0 ? order.tif : null
+    ]
+      .filter((value): value is string => value !== null)
+      .join(',')
     const values: Record<string, string> = {
       time: formatTradeTimestamp(new Date(order.timestamp).toISOString()),
-      symbol: order.symbol,
       side: order.side.toUpperCase(),
-      type: order.orderType,
+      symbol: order.symbol,
       size: fmtSize(order.size),
-      price: priceSource !== null ? fmtPrice(priceSource) : '—',
-      flags: flags.length > 0 ? flags : '—'
+      price: order.limitPrice !== null ? fmtPrice(order.limitPrice) : '—',
+      trigger: order.isTrigger && order.triggerPrice !== null ? fmtPrice(order.triggerPrice) : '—',
+      flags: flags.length > 0 ? flags : '—',
+      type: order.orderType
     }
     lines.push(
       columns
@@ -495,6 +503,9 @@ function renderOpenOrders(orders: readonly OpenOrder[], theme: Theme): string {
           }
           if (col.key === 'time') {
             return cell(values[col.key], col.width, (value) => theme.fg('dim', value), align)
+          }
+          if (col.key === 'trigger' && !order.isTrigger) {
+            return cell(values[col.key], col.width, (value) => theme.fg('muted', value), align)
           }
           return cell(values[col.key], col.width, undefined, align)
         })
