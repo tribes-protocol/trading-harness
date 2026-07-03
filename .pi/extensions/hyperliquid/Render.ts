@@ -117,11 +117,61 @@ function padRight(text: string, width: number): string {
   return currentWidth >= width ? text : text + ' '.repeat(width - currentWidth)
 }
 
-function cell(text: unknown, width: number, style?: (value: string) => string): string {
+function padLeft(text: string, width: number): string {
+  const currentWidth = visibleWidth(text)
+  return currentWidth >= width ? text : ' '.repeat(width - currentWidth) + text
+}
+
+type CellAlign = 'left' | 'right'
+
+// Numeric columns read as columns of magnitudes only when their decimals line
+// up, so every quantitative field is right-aligned; labels/identifiers stay left.
+const RIGHT_ALIGNED_KEYS = new Set<string>([
+  'size',
+  'notional',
+  'lev',
+  'entry',
+  'mark',
+  'liq',
+  'upnl',
+  'fundingDay',
+  'cost7d',
+  'margin',
+  'value',
+  'exit',
+  'pnl',
+  'hold',
+  'price',
+  'amount',
+  'total',
+  'available'
+])
+
+function alignFor(key: string): CellAlign {
+  return RIGHT_ALIGNED_KEYS.has(key) ? 'right' : 'left'
+}
+
+function cell(
+  text: unknown,
+  width: number,
+  style?: (value: string) => string,
+  align: CellAlign = 'left'
+): string {
   const raw = text === null || text === undefined ? '-' : String(text)
   const clipped = truncateToWidth(raw, width, '…')
-  const padded = padRight(clipped, width)
+  const padded = align === 'right' ? padLeft(clipped, width) : padRight(clipped, width)
   return style ? style(padded) : padded
+}
+
+/** Header row: label per column, aligned to match the data beneath it. */
+function headerRow(
+  columns: readonly { readonly key: string; readonly label: string; readonly width: number }[],
+  theme: Theme
+): string {
+  return theme.fg(
+    'dim',
+    columns.map((col) => cell(col.label, col.width, undefined, alignFor(col.key))).join(' ')
+  )
 }
 
 function formatLocalTimestamp(value: unknown): string {
@@ -197,7 +247,7 @@ function renderPositionsTable(
   const usedWithoutMargin = columns.reduce((sum, col) => sum + col.width, 0) + columns.length
   const marginColWidth = Math.max(minMarginWidth, contentWidth - usedWithoutMargin)
   const finalColumns = [...columns, { key: 'margin', label: 'Margin', width: marginColWidth }]
-  const lines = [theme.fg('dim', finalColumns.map((col) => cell(col.label, col.width)).join(' '))]
+  const lines = [headerRow(finalColumns, theme)]
 
   for (const position of positions) {
     const pnl = coerceNumber(position.unrealizedPnlUsd)
@@ -249,29 +299,47 @@ function renderPositionsTable(
     lines.push(
       finalColumns
         .map((col) => {
+          const align = alignFor(col.key)
           if (col.key === 'symbol') {
-            return cell(values[col.key], col.width, (value) => perpLink(position.symbol, value))
+            return cell(
+              values[col.key],
+              col.width,
+              (value) => perpLink(position.symbol, value),
+              align
+            )
           }
           if (col.key === 'side') {
-            return cell(values[col.key], col.width, (value) =>
-              theme.fg(side === 'SHORT' ? 'error' : 'success', value)
+            return cell(
+              values[col.key],
+              col.width,
+              (value) => theme.fg(side === 'SHORT' ? 'error' : 'success', value),
+              align
             )
           }
           if (col.key === 'upnl') {
-            return cell(values[col.key], col.width, (value) =>
-              pnl !== null && pnl < 0 ? theme.fg('error', value) : fgPositive(value)
+            return cell(
+              values[col.key],
+              col.width,
+              (value) => (pnl !== null && pnl < 0 ? theme.fg('error', value) : fgPositive(value)),
+              align
             )
           }
           if (col.key === 'fundingDay') {
             const cost = coerceNumber(position.fundingCostUsdPerDay)
-            return cell(values[col.key], col.width, (value) =>
-              cost !== null && cost > 0 ? theme.fg('error', value) : fgPositive(value)
+            return cell(
+              values[col.key],
+              col.width,
+              (value) => (cost !== null && cost > 0 ? theme.fg('error', value) : fgPositive(value)),
+              align
             )
           }
           if (col.key === 'cost7d') {
             const cost = coerceNumber(position.recentCostUsd)
-            return cell(values[col.key], col.width, (value) =>
-              cost !== null && cost > 0 ? theme.fg('error', value) : fgPositive(value)
+            return cell(
+              values[col.key],
+              col.width,
+              (value) => (cost !== null && cost > 0 ? theme.fg('error', value) : fgPositive(value)),
+              align
             )
           }
           if (col.key === 'liq') {
@@ -280,17 +348,17 @@ function renderPositionsTable(
             // numbers (which use the default cell color).
             const raw = values[col.key] ?? ''
             if (raw === 'safe') {
-              return cell(raw, col.width, (v) => theme.fg('success', v))
+              return cell(raw, col.width, (v) => theme.fg('success', v), align)
             }
             if (raw === '—') {
-              return cell(raw, col.width, (v) => theme.fg('muted', v))
+              return cell(raw, col.width, (v) => theme.fg('muted', v), align)
             }
             if (raw.startsWith('~')) {
-              return cell(raw, col.width, (v) => theme.fg('dim', v))
+              return cell(raw, col.width, (v) => theme.fg('dim', v), align)
             }
-            return cell(raw, col.width)
+            return cell(raw, col.width, undefined, align)
           }
-          return cell(values[col.key], col.width)
+          return cell(values[col.key], col.width, undefined, align)
         })
         .join(' ')
     )
@@ -324,10 +392,7 @@ function renderRecentTrades(trades: readonly RecentTrade[], theme: Theme): strin
     { key: 'hold', label: 'Hold', width: 8 }
   ]
 
-  const lines = [
-    theme.fg('dim', theme.bold(`Recent trades`)) + theme.fg('dim', ` (${trades.length})`),
-    theme.fg('dim', columns.map((col) => cell(col.label, col.width)).join(' '))
-  ]
+  const lines = [headerRow(columns, theme)]
 
   for (const trade of trades) {
     const isClose = /close/iu.test(trade.dir)
@@ -348,6 +413,7 @@ function renderRecentTrades(trades: readonly RecentTrade[], theme: Theme): strin
     lines.push(
       columns
         .map((col) => {
+          const align = alignFor(col.key)
           if (col.key === 'dir') {
             // Close trades: color by P&L outcome (did the trade make money?).
             // Open trades: color by side (short=red, long=green) to match the positions table.
@@ -357,20 +423,23 @@ function renderRecentTrades(trades: readonly RecentTrade[], theme: Theme): strin
             } else {
               dirTone = isShort ? 'error' : 'success'
             }
-            return cell(values[col.key], col.width, (value) => theme.fg(dirTone, value))
+            return cell(values[col.key], col.width, (value) => theme.fg(dirTone, value), align)
           }
           if (col.key === 'pnl') {
             if (Math.abs(pnl) < 0.005) {
-              return cell(values[col.key], col.width, (value) => theme.fg('muted', value))
+              return cell(values[col.key], col.width, (value) => theme.fg('muted', value), align)
             }
-            return cell(values[col.key], col.width, (value) =>
-              pnl < 0 ? theme.fg('error', value) : fgPositive(value)
+            return cell(
+              values[col.key],
+              col.width,
+              (value) => (pnl < 0 ? theme.fg('error', value) : fgPositive(value)),
+              align
             )
           }
           if (col.key === 'time') {
-            return cell(values[col.key], col.width, (value) => theme.fg('dim', value))
+            return cell(values[col.key], col.width, (value) => theme.fg('dim', value), align)
           }
-          return cell(values[col.key], col.width)
+          return cell(values[col.key], col.width, undefined, align)
         })
         .join(' ')
     )
@@ -395,7 +464,7 @@ function renderOpenOrders(orders: readonly OpenOrder[], theme: Theme): string {
     { key: 'price', label: 'Price', width: 11 },
     { key: 'flags', label: 'Flags', width: 8 }
   ]
-  const lines = [theme.fg('dim', columns.map((col) => cell(col.label, col.width)).join(' '))]
+  const lines = [headerRow(columns, theme)]
   for (const order of orders.slice(0, MAX_TAB_ROWS)) {
     const isTrigger = order.isTrigger
     const priceSource = isTrigger ? order.triggerPrice : order.limitPrice
@@ -412,18 +481,22 @@ function renderOpenOrders(orders: readonly OpenOrder[], theme: Theme): string {
     lines.push(
       columns
         .map((col) => {
+          const align = alignFor(col.key)
           if (col.key === 'symbol') {
-            return cell(values[col.key], col.width, (value) => perpLink(order.symbol, value))
+            return cell(values[col.key], col.width, (value) => perpLink(order.symbol, value), align)
           }
           if (col.key === 'side') {
-            return cell(values[col.key], col.width, (value) =>
-              theme.fg(order.side === 'sell' ? 'error' : 'success', value)
+            return cell(
+              values[col.key],
+              col.width,
+              (value) => theme.fg(order.side === 'sell' ? 'error' : 'success', value),
+              align
             )
           }
           if (col.key === 'time') {
-            return cell(values[col.key], col.width, (value) => theme.fg('dim', value))
+            return cell(values[col.key], col.width, (value) => theme.fg('dim', value), align)
           }
-          return cell(values[col.key], col.width)
+          return cell(values[col.key], col.width, undefined, align)
         })
         .join(' ')
     )
@@ -442,7 +515,7 @@ function renderLedgerUpdates(updates: readonly LedgerUpdate[], theme: Theme): st
     { key: 'amount', label: 'Amount', width: 12 },
     { key: 'hash', label: 'Tx', width: 14 }
   ]
-  const lines = [theme.fg('dim', columns.map((col) => cell(col.label, col.width)).join(' '))]
+  const lines = [headerRow(columns, theme)]
   for (const update of updates.slice(0, MAX_TAB_ROWS)) {
     const values: Record<string, string> = {
       time: formatTradeTimestamp(new Date(update.time).toISOString()),
@@ -453,15 +526,19 @@ function renderLedgerUpdates(updates: readonly LedgerUpdate[], theme: Theme): st
     lines.push(
       columns
         .map((col) => {
+          const align = alignFor(col.key)
           if (col.key === 'type') {
-            return cell(values[col.key], col.width, (value) =>
-              theme.fg(update.type === 'deposit' ? 'success' : 'error', value)
+            return cell(
+              values[col.key],
+              col.width,
+              (value) => theme.fg(update.type === 'deposit' ? 'success' : 'error', value),
+              align
             )
           }
           if (col.key === 'time' || col.key === 'hash') {
-            return cell(values[col.key], col.width, (value) => theme.fg('dim', value))
+            return cell(values[col.key], col.width, (value) => theme.fg('dim', value), align)
           }
-          return cell(values[col.key], col.width)
+          return cell(values[col.key], col.width, undefined, align)
         })
         .join(' ')
     )
@@ -480,7 +557,7 @@ function renderSpotHoldings(holdings: readonly SpotHolding[], theme: Theme): str
     { key: 'available', label: 'Available', width: 16 },
     { key: 'entry', label: 'Entry Value', width: 12 }
   ]
-  const lines = [theme.fg('dim', columns.map((col) => cell(col.label, col.width)).join(' '))]
+  const lines = [headerRow(columns, theme)]
   for (const holding of holdings.slice(0, MAX_TAB_ROWS)) {
     const values: Record<string, string> = {
       coin: holding.coin,
@@ -488,7 +565,9 @@ function renderSpotHoldings(holdings: readonly SpotHolding[], theme: Theme): str
       available: fmtSize(holding.available),
       entry: holding.entryNotionalUsd !== null ? fmtUsd(holding.entryNotionalUsd) : '—'
     }
-    lines.push(columns.map((col) => cell(values[col.key], col.width)).join(' '))
+    lines.push(
+      columns.map((col) => cell(values[col.key], col.width, undefined, alignFor(col.key))).join(' ')
+    )
   }
   if (holdings.length > MAX_TAB_ROWS) {
     lines.push(theme.fg('dim', `… +${holdings.length - MAX_TAB_ROWS} more`))
@@ -514,17 +593,13 @@ function tabCount(status: HyperliquidStatus, tab: HlTab): number {
   }
 }
 
-function renderTabBar(
-  status: HyperliquidStatus,
-  activeTab: HlTab,
-  theme: Theme,
-  width: number
-): string {
-  const cells = TAB_SEQUENCE.map((tab) => {
+function renderTabBar(status: HyperliquidStatus, activeTab: HlTab, theme: Theme): string {
+  // A leading ▎ marker (not just bold+color) gives the active tab an
+  // unmistakable "selected" cue that survives low-contrast terminals.
+  return TAB_SEQUENCE.map((tab) => {
     const label = `${TAB_LABELS[tab]}(${tabCount(status, tab)})`
-    return tab === activeTab ? theme.fg('accent', theme.bold(label)) : theme.fg('dim', label)
-  })
-  return truncateToWidth(cells.join(theme.fg('dim', '  ·  ')), width, '…')
+    return tab === activeTab ? theme.fg('accent', theme.bold(`▎${label}`)) : theme.fg('dim', label)
+  }).join(theme.fg('dim', '  ·  '))
 }
 
 function renderTabBody(
@@ -566,20 +641,16 @@ export function renderHyperliquidPositionsWidget(
   const contentWidth = Math.max(20, width - 2)
 
   container.addChild(new DynamicBorder(borderColor))
-  const openSuffix = ` (${status.openPositions} open)`
-  const refreshingSuffix = ' (refreshing...)'
-  const titleSuffix = refreshing
-    ? padRight(refreshingSuffix, Math.max(visibleWidth(openSuffix), visibleWidth(refreshingSuffix)))
-    : padRight(openSuffix, Math.max(visibleWidth(openSuffix), visibleWidth(refreshingSuffix)))
-  container.addChild(
-    new Text(
-      theme.fg('accent', theme.bold('Hyperliquid Status')) + theme.fg('dim', titleSuffix),
-      1,
-      0
-    )
-  )
 
   if (!status.ok) {
+    const brandState = status.initializing ? 'loading…' : 'unavailable'
+    container.addChild(
+      new Text(
+        theme.fg('accent', theme.bold('Hyperliquid')) + theme.fg('dim', `  ${brandState}`),
+        1,
+        0
+      )
+    )
     const notice = status.initializing
       ? theme.fg('dim', 'Loading account…')
       : theme.fg(
@@ -591,41 +662,51 @@ export function renderHyperliquidPositionsWidget(
     return container.render(width)
   }
 
-  const pnl =
-    status.dailyPnlUsd >= 0
-      ? fgPositive(`day +${fmtUsd(status.dailyPnlUsd)}`)
-      : theme.fg('error', `day ${fmtUsd(status.dailyPnlUsd)}`)
-  const _allTimePnlDisplay =
-    status.allTimePnlUsd >= 0
-      ? fgPositive(`PnL +${fmtUsd(status.allTimePnlUsd)}`)
-      : theme.fg('error', `PnL ${fmtUsd(status.allTimePnlUsd)}`)
+  // Hero line: equity is the anchor number, today's P&L the movement beside it —
+  // a trader's account tape. Direction is carried by a ▲/▼ glyph, not color alone.
+  const dayUp = status.dailyPnlUsd >= 0
+  const dayText = `${dayUp ? '▲' : '▼'} ${fmtUsd(Math.abs(status.dailyPnlUsd))}  ${dayUp ? '+' : '-'}${Math.abs(status.dailyPnlPct).toFixed(1)}% today`
+  const dayDisplay = dayUp ? fgPositive(dayText) : theme.fg('error', dayText)
+  const hero =
+    theme.fg('accent', '● Hyperliquid') +
+    '   ' +
+    theme.bold(theme.fg('text', fmtUsd(status.equityUsd))) +
+    '   ' +
+    dayDisplay +
+    (refreshing ? '   ' + theme.fg('dim', 'syncing…') : '')
+  container.addChild(new Text(hero, 1, 0))
+
+  // Context line (all secondary account state, dim): all-time P&L, funding/fee
+  // cost, and gross/net exposure — present but visually subordinate to the hero.
   const inferredDeposit = (status.equityUsd ?? 0) - status.allTimePnlUsd
   const allTimeReturnPct = inferredDeposit > 0 ? (status.allTimePnlUsd / inferredDeposit) * 100 : 0
-  const returnDisplay =
-    status.allTimePnlUsd >= 0
-      ? fgPositive(`uPnL +${fmtUsd(status.allTimePnlUsd)} (+${allTimeReturnPct.toFixed(1)}%)`)
-      : theme.fg('error', `uPnL ${fmtUsd(status.allTimePnlUsd)} (${allTimeReturnPct.toFixed(1)}%)`)
+  const allTimeUp = status.allTimePnlUsd >= 0
+  const allTime = allTimeUp
+    ? fgPositive(`all-time +${fmtUsd(status.allTimePnlUsd)} (+${allTimeReturnPct.toFixed(1)}%)`)
+    : theme.fg(
+        'error',
+        `all-time ${fmtUsd(status.allTimePnlUsd)} (${allTimeReturnPct.toFixed(1)}%)`
+      )
   const costSummary = status.costSummary
   const cost = costSummary
     ? theme.fg(
         costSummary.netCostUsd > 0 ? 'error' : 'success',
         `cost${costSummary.lookbackDays}d ${fmtCostUsd(costSummary.netCostUsd)}`
       )
-    : theme.fg('dim', 'cost -')
-  const statusLine = [
-    `Updated ${formatLocalTimestamp(status.updatedAt)}`,
-    `eq ${fmtUsd(status.equityUsd)}`,
-    pnl,
-    returnDisplay,
-    cost,
-    `gross ${fmtUsd(status.grossExposureUsd)}`,
-    `net ${fmtUsd(status.netExposureUsd)}`
-  ].join('  ·  ')
+    : theme.fg('dim', 'cost —')
+  const context = theme.fg(
+    'dim',
+    [
+      `updated ${formatLocalTimestamp(status.updatedAt)}`,
+      allTime,
+      cost,
+      `gross ${fmtUsd(status.grossExposureUsd)}`,
+      `net ${fmtUsd(status.netExposureUsd)}`
+    ].join('  ·  ')
+  )
+  container.addChild(new Text(context, 1, 0))
 
-  container.addChild(new Text(theme.fg('dim', statusLine), 1, 0))
-
-  // Account overview (spot + per-dex equity/margin) forms the top section,
-  // mirroring the CoinGlass address header above its tabbed panel.
+  // Sub-accounts line: spot + per-dex equity/margin.
   const accountSections: string[] = []
   if (
     typeof status.spotBalanceUsd === 'number' &&
@@ -634,10 +715,9 @@ export function renderHyperliquidPositionsWidget(
   ) {
     accountSections.push(`spot ${fmtUsd(status.spotBalanceUsd)}`)
   }
-
   const accounts = status.hyperliquidAccounts.map(
     (account) =>
-      `${account.dex || 'main'}: eq ${fmtUsd(account.equityUsd)}, margin ${fmtUsd(account.marginUsedUsd)}`
+      `${account.dex || 'main'} eq ${fmtUsd(account.equityUsd)}, margin ${fmtUsd(account.marginUsedUsd)}`
   )
   accountSections.push(...accounts)
   const accountLine = accountSections.join('  ·  ')
@@ -645,9 +725,16 @@ export function renderHyperliquidPositionsWidget(
     container.addChild(new Text(theme.fg('dim', accountLine), 1, 0))
   }
 
-  // Bottom section: tab bar + the active tab's table.
-  container.addChild(new Text(renderTabBar(status, activeTab, theme, contentWidth), 1, 0))
-  container.addChild(new Text(theme.fg('dim', 'ctrl+shift+← / → switch tab · /hl-tab'), 1, 0))
+  // Bottom section: tab bar (with the nav hint tucked right when it fits) + table.
+  const tabs = renderTabBar(status, activeTab, theme)
+  const hint = theme.fg('dim', 'ctrl+shift+←/→ · /hl-tab')
+  const tabsWidth = visibleWidth(tabs)
+  const hintWidth = visibleWidth(hint)
+  const tabLine =
+    tabsWidth + hintWidth + 2 <= contentWidth
+      ? tabs + ' '.repeat(contentWidth - tabsWidth - hintWidth) + hint
+      : truncateToWidth(tabs, contentWidth, '…')
+  container.addChild(new Text(tabLine, 1, 0))
   container.addChild(new Text(theme.fg('dim', '┈'.repeat(contentWidth)), 1, 0))
   container.addChild(new Text(renderTabBody(status, activeTab, contentWidth, theme), 1, 0))
   container.addChild(new DynamicBorder(borderColor))
