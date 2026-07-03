@@ -4,7 +4,7 @@
  *   - registers the `tribes-llm-proxy` model provider (./Provider.ts)
  *   - renders the welcome header on startup (./Welcome.ts)
  *   - warms the wallet snapshot on startup (./WalletSnapshot.ts)
- *   - exposes a `/login-tribes` command so a logged-out user can authenticate in-app
+ *   - exposes a `/tribes:login` command so a logged-out user can authenticate in-app
  *
  * Sibling modules are imported relatively: Pi loads extensions via jiti, which
  * resolves relative paths but not the harness's `@/` tsconfig alias.
@@ -37,7 +37,7 @@ export default async function tribes(pi: TribesApi): Promise<void> {
   installAgentKey(cwd)
 
   // Only register the LLM provider when logged in. Logged out, Pi boots with no
-  // Tribes models — the user can't switch to or message the LLM until /login-tribes.
+  // Tribes models — the user can't switch to or message the LLM until /tribes:login.
   // Genuine failures (corrupt key, network) surface as an error notice rather
   // than crashing extension load.
   let startupNotice: StartupNotice | null = null
@@ -52,7 +52,7 @@ export default async function tribes(pi: TribesApi): Promise<void> {
     }
   } else {
     startupNotice = {
-      message: 'Log in with /login-tribes to use agentic trading.',
+      message: 'Log in with /tribes:login to use agentic trading.',
       level: 'warning'
     }
   }
@@ -78,7 +78,7 @@ export default async function tribes(pi: TribesApi): Promise<void> {
       setTimeout(() => ctx.ui.notify(notice.message, notice.level), 0)
     }
 
-    // Logged out: nothing to materialize yet. /login-tribes wires everything up
+    // Logged out: nothing to materialize yet. /tribes:login wires everything up
     // once the user authenticates.
     if (!hasAgentKey(ctx.cwd)) return
 
@@ -104,7 +104,7 @@ export default async function tribes(pi: TribesApi): Promise<void> {
     authRefreshTimer = undefined
   })
 
-  pi.registerCommand('login-tribes', {
+  pi.registerCommand('tribes:login', {
     description: 'Log in to Tribes to enable the agent',
     handler: async (_args, ctx) => {
       if (hasAgentKey(ctx.cwd)) {
@@ -118,7 +118,7 @@ export default async function tribes(pi: TribesApi): Promise<void> {
     }
   })
 
-  pi.registerCommand('builtin-header', {
+  pi.registerCommand('tribes:builtin-header', {
     description: 'Restore built-in header with keybinding hints',
     handler: async (_args, ctx) => {
       ctx.ui.setHeader(undefined)

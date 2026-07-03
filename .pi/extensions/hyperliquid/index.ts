@@ -893,7 +893,7 @@ export default function hyperliquidStatus(pi: ExtensionAPI): void {
     initPollTimer = undefined
   })
 
-  pi.registerCommand('hl-status', {
+  pi.registerCommand('hyperliquid:status', {
     description: 'Toggle Hyperliquid detailed status widget',
     handler: async (_args, ctx) => {
       showWidget = !showWidget
@@ -907,7 +907,7 @@ export default function hyperliquidStatus(pi: ExtensionAPI): void {
     }
   })
 
-  pi.registerCommand('hl-trades', {
+  pi.registerCommand('hyperliquid:trades', {
     description: 'Toggle the recent trades list in the Hyperliquid status widget',
     handler: async (_args, ctx) => {
       showRecentTrades = !showRecentTrades
@@ -917,7 +917,7 @@ export default function hyperliquidStatus(pi: ExtensionAPI): void {
     }
   })
 
-  pi.registerCommand('hl-refresh', {
+  pi.registerCommand('hyperliquid:refresh', {
     description: 'Fetch fresh Hyperliquid account status and update widget',
     handler: async (_args, ctx) => {
       await refreshStatus(ctx)
