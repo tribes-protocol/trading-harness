@@ -6,7 +6,7 @@ import type { TUI } from '@earendil-works/pi-tui'
 
 import { ensureJsonTreeString } from './EnsureJson.ts'
 import { type CrossBucket, estimateCrossLiquidationPx } from './LiqEstimator.ts'
-import { renderHyperliquidPositionsWidget } from './Render.ts'
+import { MAX_TAB_ROWS, renderHyperliquidPositionsWidget } from './Render.ts'
 import type {
   AccountSummary,
   ClosedPnlSummary,
@@ -29,9 +29,8 @@ const CONFIG_FILE = 'config.json'
 const DEFAULT_DEXES = ['', 'xyz'] as const
 const COST_LOOKBACK_DAYS = 7
 const CLOSED_PNL_LOOKBACK_HOURS = 24
-// Enough fills to fill the Transactions tab; the widget caps the visible rows.
-const RECENT_TRADES_LIMIT = 30
-const LEDGER_LOOKBACK_DAYS = 30
+const RECENT_TRADES_LIMIT = 100
+const LEDGER_LOOKBACK_DAYS = 90
 const TAB_ORDER: readonly HlTab[] = ['positions', 'transactions', 'orders', 'deposits', 'spot']
 const HYPERLIQUID_INFO_URL = 'https://api.hyperliquid.xyz/info'
 
@@ -888,6 +887,8 @@ async function refreshStatusSnapshot(cwd: string): Promise<HyperliquidStatus> {
 export default function hyperliquidStatus(pi: ExtensionAPI): void {
   let showWidget = true
   let activeTab: HlTab = 'positions'
+  // Row offset into the active tab's list; paged by ctrl+shift+↑/↓, reset on tab switch.
+  let scrollOffset = 0
   let statusTimer: ReturnType<typeof setInterval> | undefined
   let refreshing = false
   let lastStatus: HyperliquidStatus | null = null
@@ -923,7 +924,8 @@ export default function hyperliquidStatus(pi: ExtensionAPI): void {
                   widgetTheme,
                   width,
                   refreshing,
-                  activeTab
+                  activeTab,
+                  scrollOffset
                 )
               : [widgetTheme.fg('dim', 'Hyperliquid Status (loading...)')],
           invalidate: (): void => {}
@@ -1011,11 +1013,42 @@ export default function hyperliquidStatus(pi: ExtensionAPI): void {
       'target' in move
         ? move.target
         : (TAB_ORDER[(current + move.delta + TAB_ORDER.length) % TAB_ORDER.length] ?? 'positions')
+    // A fresh tab starts at the top; its list length differs from the old one.
+    scrollOffset = 0
     await saveWidgetConfig(ctx.cwd, { showWidget, activeTab })
     if (showWidget) {
       syncWidget(ctx)
       requestWidgetRender()
     }
+  }
+
+  // Number of rows in the active tab's list (from the latest snapshot).
+  function currentTabCount(): number {
+    const status = lastStatus
+    if (!status) return 0
+    switch (activeTab) {
+      case 'positions':
+        return (status.positions ?? []).length
+      case 'transactions':
+        return (status.recentTrades ?? []).length
+      case 'orders':
+        return (status.openOrders ?? []).length
+      case 'deposits':
+        return (status.ledgerUpdates ?? []).length
+      case 'spot':
+        return (status.spotHoldings ?? []).length
+    }
+  }
+
+  // Page the active tab by one screenful; clamped so it never scrolls past the ends.
+  function scrollTab(direction: 1 | -1): void {
+    const total = currentTabCount()
+    if (total <= MAX_TAB_ROWS) return
+    const maxStart = Math.floor((total - 1) / MAX_TAB_ROWS) * MAX_TAB_ROWS
+    const next = Math.min(maxStart, Math.max(0, scrollOffset + direction * MAX_TAB_ROWS))
+    if (next === scrollOffset) return
+    scrollOffset = next
+    requestWidgetRender()
   }
 
   pi.registerCommand('hl-status', {
@@ -1056,6 +1089,16 @@ export default function hyperliquidStatus(pi: ExtensionAPI): void {
   pi.registerShortcut('ctrl+shift+left', {
     description: 'Hyperliquid widget: previous tab',
     handler: (ctx) => switchTab(ctx, { delta: -1 })
+  })
+
+  pi.registerShortcut('ctrl+shift+down', {
+    description: 'Hyperliquid widget: page down (show more items)',
+    handler: () => scrollTab(1)
+  })
+
+  pi.registerShortcut('ctrl+shift+up', {
+    description: 'Hyperliquid widget: page up (show previous items)',
+    handler: () => scrollTab(-1)
   })
 
   pi.registerCommand('hl-refresh', {

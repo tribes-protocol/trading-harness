@@ -29,8 +29,9 @@ const TAB_LABELS: Readonly<Record<HlTab, string>> = {
   deposits: 'Deposits',
   spot: 'Spot'
 }
-// Cap rows per tab so the below-editor widget never grows unbounded.
-const MAX_TAB_ROWS = 12
+// Rows shown per page so the below-editor widget never grows unbounded; extra
+// items are reachable by paging (ctrl+shift+↑/↓).
+export const MAX_TAB_ROWS = 12
 const TRIBES_PERP_URL = 'https://tribes.xyz/perps'
 
 /** Wrap a perp symbol in an OSC 8 hyperlink to its tribes.xyz page (clickable in supporting terminals). */
@@ -490,7 +491,7 @@ function renderOpenOrders(orders: readonly OpenOrder[], theme: Theme): string {
       )
     )
   ]
-  for (const order of orders.slice(0, MAX_TAB_ROWS)) {
+  for (const order of orders) {
     const flags = [
       order.reduceOnly ? 'RO' : null,
       order.tif && order.tif.length > 0 ? order.tif : null
@@ -530,9 +531,6 @@ function renderOpenOrders(orders: readonly OpenOrder[], theme: Theme): string {
     })
     lines.push(joinOpenOrderColumns(columns, rowCells))
   }
-  if (orders.length > MAX_TAB_ROWS) {
-    lines.push(theme.fg('dim', `… +${orders.length - MAX_TAB_ROWS} more`))
-  }
   return lines.join('\n')
 }
 
@@ -545,7 +543,7 @@ function renderLedgerUpdates(updates: readonly LedgerUpdate[], theme: Theme): st
     { key: 'hash', label: 'Tx', width: 14 }
   ]
   const lines = [headerRow(columns, theme)]
-  for (const update of updates.slice(0, MAX_TAB_ROWS)) {
+  for (const update of updates) {
     const values: Record<string, string> = {
       time: formatTradeTimestamp(new Date(update.time).toISOString()),
       type: update.type === 'deposit' ? 'Deposit' : 'Withdraw',
@@ -572,9 +570,6 @@ function renderLedgerUpdates(updates: readonly LedgerUpdate[], theme: Theme): st
         .join(' ')
     )
   }
-  if (updates.length > MAX_TAB_ROWS) {
-    lines.push(theme.fg('dim', `… +${updates.length - MAX_TAB_ROWS} more`))
-  }
   return lines.join('\n')
 }
 
@@ -587,7 +582,7 @@ function renderSpotHoldings(holdings: readonly SpotHolding[], theme: Theme): str
     { key: 'entry', label: 'Entry Value', width: 12 }
   ]
   const lines = [headerRow(columns, theme)]
-  for (const holding of holdings.slice(0, MAX_TAB_ROWS)) {
+  for (const holding of holdings) {
     const values: Record<string, string> = {
       coin: holding.coin,
       total: fmtSize(holding.total),
@@ -597,9 +592,6 @@ function renderSpotHoldings(holdings: readonly SpotHolding[], theme: Theme): str
     lines.push(
       columns.map((col) => cell(values[col.key], col.width, undefined, alignFor(col.key))).join(' ')
     )
-  }
-  if (holdings.length > MAX_TAB_ROWS) {
-    lines.push(theme.fg('dim', `… +${holdings.length - MAX_TAB_ROWS} more`))
   }
   return lines.join('\n')
 }
@@ -631,27 +623,68 @@ function renderTabBar(status: HyperliquidStatus, activeTab: HlTab, theme: Theme)
   }).join(theme.fg('dim', '  ·  '))
 }
 
+/** Clamp a scroll offset to a valid page start for `total` rows. */
+export function clampScrollStart(offset: number, total: number): number {
+  if (total <= MAX_TAB_ROWS) return 0
+  const maxStart = Math.floor((total - 1) / MAX_TAB_ROWS) * MAX_TAB_ROWS
+  return Math.min(Math.max(0, offset), maxStart)
+}
+
+// Footer shown only when a tab has more than one page, so the operator knows
+// where they are in the list and that ctrl+shift+↑/↓ pages through it.
+function scrollFooter(total: number, start: number, shown: number, theme: Theme): string | null {
+  if (total <= MAX_TAB_ROWS) return null
+  return theme.fg('dim', `↕ ${start + 1}–${start + shown} of ${total}  ·  ctrl+shift+↑/↓`)
+}
+
+function withFooter(body: string, footer: string | null): string {
+  return footer === null ? body : `${body}\n${footer}`
+}
+
+// Slice one page out of a tab's list and render it with a paging footer. Passing
+// the renderer keeps each table responsible only for the rows it's handed.
+function renderPage<T>(
+  items: readonly T[],
+  scrollOffset: number,
+  theme: Theme,
+  renderRows: (page: readonly T[]) => string
+): string {
+  const start = clampScrollStart(scrollOffset, items.length)
+  const page = items.slice(start, start + MAX_TAB_ROWS)
+  return withFooter(renderRows(page), scrollFooter(items.length, start, page.length, theme))
+}
+
 function renderTabBody(
   status: HyperliquidStatus,
   activeTab: HlTab,
   contentWidth: number,
-  theme: Theme
+  theme: Theme,
+  scrollOffset: number
 ): string {
   // `?? []` guards against a stale cached snapshot missing the newer arrays.
-  const recentTrades = status.recentTrades ?? []
   switch (activeTab) {
     case 'positions':
-      return renderPositionsTable(status.positions ?? [], contentWidth, theme)
+      return renderPage(status.positions ?? [], scrollOffset, theme, (page) =>
+        renderPositionsTable(page, contentWidth, theme)
+      )
     case 'transactions':
-      return recentTrades.length > 0
-        ? renderRecentTrades(recentTrades.slice(0, MAX_TAB_ROWS), theme)
+      return (status.recentTrades ?? []).length > 0
+        ? renderPage(status.recentTrades ?? [], scrollOffset, theme, (page) =>
+            renderRecentTrades(page, theme)
+          )
         : theme.fg('muted', 'No transactions')
     case 'orders':
-      return renderOpenOrders(status.openOrders ?? [], theme)
+      return renderPage(status.openOrders ?? [], scrollOffset, theme, (page) =>
+        renderOpenOrders(page, theme)
+      )
     case 'deposits':
-      return renderLedgerUpdates(status.ledgerUpdates ?? [], theme)
+      return renderPage(status.ledgerUpdates ?? [], scrollOffset, theme, (page) =>
+        renderLedgerUpdates(page, theme)
+      )
     case 'spot':
-      return renderSpotHoldings(status.spotHoldings ?? [], theme)
+      return renderPage(status.spotHoldings ?? [], scrollOffset, theme, (page) =>
+        renderSpotHoldings(page, theme)
+      )
   }
 }
 
@@ -660,7 +693,8 @@ export function renderHyperliquidPositionsWidget(
   theme: Theme,
   width: number,
   refreshing = false,
-  activeTab: HlTab = 'positions'
+  activeTab: HlTab = 'positions',
+  scrollOffset = 0
 ): string[] {
   // Loading uses a calm dim border; a real failure (missing account / error) is
   // a warning; a healthy account is the accent.
@@ -765,7 +799,9 @@ export function renderHyperliquidPositionsWidget(
       : truncateToWidth(tabs, contentWidth, '…')
   container.addChild(new Text(tabLine, 1, 0))
   container.addChild(new Text(theme.fg('dim', '┈'.repeat(contentWidth)), 1, 0))
-  container.addChild(new Text(renderTabBody(status, activeTab, contentWidth, theme), 1, 0))
+  container.addChild(
+    new Text(renderTabBody(status, activeTab, contentWidth, theme, scrollOffset), 1, 0)
+  )
   container.addChild(new DynamicBorder(borderColor))
 
   return container.render(width)
