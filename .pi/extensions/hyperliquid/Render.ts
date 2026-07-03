@@ -8,9 +8,37 @@
 
 import type { Theme } from '@earendil-works/pi-coding-agent'
 import { DynamicBorder } from '@earendil-works/pi-coding-agent'
-import { Container, Text, truncateToWidth, visibleWidth } from '@earendil-works/pi-tui'
+import { Container, hyperlink, Text, truncateToWidth, visibleWidth } from '@earendil-works/pi-tui'
 
-import type { HyperliquidStatus, RecentTrade, StatusPosition } from './StatusTypes.ts'
+import type {
+  HlTab,
+  HyperliquidStatus,
+  LedgerUpdate,
+  OpenOrder,
+  RecentTrade,
+  SpotHolding,
+  StatusPosition
+} from './StatusTypes.ts'
+
+// Bottom-section tabs, ordered to match the CoinGlass Hyperliquid address page.
+const TAB_SEQUENCE: readonly HlTab[] = ['positions', 'transactions', 'orders', 'deposits', 'spot']
+const TAB_LABELS: Readonly<Record<HlTab, string>> = {
+  positions: 'Positions',
+  transactions: 'Transactions',
+  orders: 'Open Orders',
+  deposits: 'Deposits',
+  spot: 'Spot'
+}
+// Rows shown per page so the below-editor widget never grows unbounded; extra
+// items are reachable by paging (ctrl+shift+↑/↓).
+export const MAX_TAB_ROWS = 12
+const TRIBES_PERP_URL = 'https://tribes.xyz/perps'
+
+/** Wrap a perp symbol in an OSC 8 hyperlink to its tribes.xyz page (clickable in supporting terminals). */
+function perpLink(symbol: string, text: string): string {
+  const bare = symbol.includes(':') ? symbol.slice(symbol.indexOf(':') + 1) : symbol
+  return hyperlink(text, `${TRIBES_PERP_URL}/${encodeURIComponent(bare)}`)
+}
 
 export function fmtUsd(n: number | null | undefined): string {
   if (typeof n !== 'number' || !Number.isFinite(n)) return '$0'
@@ -90,11 +118,62 @@ function padRight(text: string, width: number): string {
   return currentWidth >= width ? text : text + ' '.repeat(width - currentWidth)
 }
 
-function cell(text: unknown, width: number, style?: (value: string) => string): string {
+function padLeft(text: string, width: number): string {
+  const currentWidth = visibleWidth(text)
+  return currentWidth >= width ? text : ' '.repeat(width - currentWidth) + text
+}
+
+type CellAlign = 'left' | 'right'
+
+// Numeric columns read as columns of magnitudes only when their decimals line
+// up, so every quantitative field is right-aligned; labels/identifiers stay left.
+const RIGHT_ALIGNED_KEYS = new Set<string>([
+  'size',
+  'notional',
+  'lev',
+  'entry',
+  'mark',
+  'liq',
+  'upnl',
+  'fundingDay',
+  'cost7d',
+  'margin',
+  'value',
+  'exit',
+  'pnl',
+  'hold',
+  'price',
+  'trigger',
+  'amount',
+  'total',
+  'available'
+])
+
+function alignFor(key: string): CellAlign {
+  return RIGHT_ALIGNED_KEYS.has(key) ? 'right' : 'left'
+}
+
+function cell(
+  text: unknown,
+  width: number,
+  style?: (value: string) => string,
+  align: CellAlign = 'left'
+): string {
   const raw = text === null || text === undefined ? '-' : String(text)
   const clipped = truncateToWidth(raw, width, '…')
-  const padded = padRight(clipped, width)
+  const padded = align === 'right' ? padLeft(clipped, width) : padRight(clipped, width)
   return style ? style(padded) : padded
+}
+
+/** Header row: label per column, aligned to match the data beneath it. */
+function headerRow(
+  columns: readonly { readonly key: string; readonly label: string; readonly width: number }[],
+  theme: Theme
+): string {
+  return theme.fg(
+    'dim',
+    columns.map((col) => cell(col.label, col.width, undefined, alignFor(col.key))).join(' ')
+  )
 }
 
 function formatLocalTimestamp(value: unknown): string {
@@ -170,7 +249,7 @@ function renderPositionsTable(
   const usedWithoutMargin = columns.reduce((sum, col) => sum + col.width, 0) + columns.length
   const marginColWidth = Math.max(minMarginWidth, contentWidth - usedWithoutMargin)
   const finalColumns = [...columns, { key: 'margin', label: 'Margin', width: marginColWidth }]
-  const lines = [theme.fg('dim', finalColumns.map((col) => cell(col.label, col.width)).join(' '))]
+  const lines = [headerRow(finalColumns, theme)]
 
   for (const position of positions) {
     const pnl = coerceNumber(position.unrealizedPnlUsd)
@@ -222,26 +301,47 @@ function renderPositionsTable(
     lines.push(
       finalColumns
         .map((col) => {
+          const align = alignFor(col.key)
+          if (col.key === 'symbol') {
+            return cell(
+              values[col.key],
+              col.width,
+              (value) => perpLink(position.symbol, value),
+              align
+            )
+          }
           if (col.key === 'side') {
-            return cell(values[col.key], col.width, (value) =>
-              theme.fg(side === 'SHORT' ? 'error' : 'success', value)
+            return cell(
+              values[col.key],
+              col.width,
+              (value) => theme.fg(side === 'SHORT' ? 'error' : 'success', value),
+              align
             )
           }
           if (col.key === 'upnl') {
-            return cell(values[col.key], col.width, (value) =>
-              pnl !== null && pnl < 0 ? theme.fg('error', value) : fgPositive(value)
+            return cell(
+              values[col.key],
+              col.width,
+              (value) => (pnl !== null && pnl < 0 ? theme.fg('error', value) : fgPositive(value)),
+              align
             )
           }
           if (col.key === 'fundingDay') {
             const cost = coerceNumber(position.fundingCostUsdPerDay)
-            return cell(values[col.key], col.width, (value) =>
-              cost !== null && cost > 0 ? theme.fg('error', value) : fgPositive(value)
+            return cell(
+              values[col.key],
+              col.width,
+              (value) => (cost !== null && cost > 0 ? theme.fg('error', value) : fgPositive(value)),
+              align
             )
           }
           if (col.key === 'cost7d') {
             const cost = coerceNumber(position.recentCostUsd)
-            return cell(values[col.key], col.width, (value) =>
-              cost !== null && cost > 0 ? theme.fg('error', value) : fgPositive(value)
+            return cell(
+              values[col.key],
+              col.width,
+              (value) => (cost !== null && cost > 0 ? theme.fg('error', value) : fgPositive(value)),
+              align
             )
           }
           if (col.key === 'liq') {
@@ -250,17 +350,17 @@ function renderPositionsTable(
             // numbers (which use the default cell color).
             const raw = values[col.key] ?? ''
             if (raw === 'safe') {
-              return cell(raw, col.width, (v) => theme.fg('success', v))
+              return cell(raw, col.width, (v) => theme.fg('success', v), align)
             }
             if (raw === '—') {
-              return cell(raw, col.width, (v) => theme.fg('muted', v))
+              return cell(raw, col.width, (v) => theme.fg('muted', v), align)
             }
             if (raw.startsWith('~')) {
-              return cell(raw, col.width, (v) => theme.fg('dim', v))
+              return cell(raw, col.width, (v) => theme.fg('dim', v), align)
             }
-            return cell(raw, col.width)
+            return cell(raw, col.width, undefined, align)
           }
-          return cell(values[col.key], col.width)
+          return cell(values[col.key], col.width, undefined, align)
         })
         .join(' ')
     )
@@ -294,10 +394,7 @@ function renderRecentTrades(trades: readonly RecentTrade[], theme: Theme): strin
     { key: 'hold', label: 'Hold', width: 8 }
   ]
 
-  const lines = [
-    theme.fg('dim', theme.bold(`Recent trades`)) + theme.fg('dim', ` (${trades.length})`),
-    theme.fg('dim', columns.map((col) => cell(col.label, col.width)).join(' '))
-  ]
+  const lines = [headerRow(columns, theme)]
 
   for (const trade of trades) {
     const isClose = /close/iu.test(trade.dir)
@@ -318,6 +415,7 @@ function renderRecentTrades(trades: readonly RecentTrade[], theme: Theme): strin
     lines.push(
       columns
         .map((col) => {
+          const align = alignFor(col.key)
           if (col.key === 'dir') {
             // Close trades: color by P&L outcome (did the trade make money?).
             // Open trades: color by side (short=red, long=green) to match the positions table.
@@ -327,20 +425,23 @@ function renderRecentTrades(trades: readonly RecentTrade[], theme: Theme): strin
             } else {
               dirTone = isShort ? 'error' : 'success'
             }
-            return cell(values[col.key], col.width, (value) => theme.fg(dirTone, value))
+            return cell(values[col.key], col.width, (value) => theme.fg(dirTone, value), align)
           }
           if (col.key === 'pnl') {
             if (Math.abs(pnl) < 0.005) {
-              return cell(values[col.key], col.width, (value) => theme.fg('muted', value))
+              return cell(values[col.key], col.width, (value) => theme.fg('muted', value), align)
             }
-            return cell(values[col.key], col.width, (value) =>
-              pnl < 0 ? theme.fg('error', value) : fgPositive(value)
+            return cell(
+              values[col.key],
+              col.width,
+              (value) => (pnl < 0 ? theme.fg('error', value) : fgPositive(value)),
+              align
             )
           }
           if (col.key === 'time') {
-            return cell(values[col.key], col.width, (value) => theme.fg('dim', value))
+            return cell(values[col.key], col.width, (value) => theme.fg('dim', value), align)
           }
-          return cell(values[col.key], col.width)
+          return cell(values[col.key], col.width, undefined, align)
         })
         .join(' ')
     )
@@ -349,12 +450,251 @@ function renderRecentTrades(trades: readonly RecentTrade[], theme: Theme): strin
   return lines.join('\n')
 }
 
+function truncateHash(hash: string | null): string {
+  if (hash === null || hash.length === 0) return '—'
+  return hash.length <= 12 ? hash : `${hash.slice(0, 6)}…${hash.slice(-4)}`
+}
+
+/** Open-orders table uses right-aligned trigger cells, so add extra gap before Flags. */
+function joinOpenOrderColumns(
+  columns: readonly { readonly key: string }[],
+  cells: readonly string[]
+): string {
+  let row = cells[0] ?? ''
+  for (let index = 1; index < cells.length; index++) {
+    const gap = columns[index - 1]?.key === 'trigger' ? '   ' : ' '
+    row += gap + (cells[index] ?? '')
+  }
+  return row
+}
+
+function renderOpenOrders(orders: readonly OpenOrder[], theme: Theme): string {
+  if (orders.length === 0) return theme.fg('muted', 'No open orders')
+  // Column set + ordering mirror the leo/open-orders branch:
+  // Time · Side · Symbol · Size · Price · Trigger · Flags · Type.
+  const columns = [
+    { key: 'time', label: 'Time', width: 13 },
+    { key: 'side', label: 'Side', width: 12 },
+    { key: 'symbol', label: 'Symbol', width: 10 },
+    { key: 'size', label: 'Size', width: 10 },
+    { key: 'price', label: 'Price', width: 10 },
+    { key: 'trigger', label: 'Trigger', width: 10 },
+    { key: 'flags', label: 'Flags', width: 8 },
+    { key: 'type', label: 'Type', width: 12 }
+  ]
+  const lines = [
+    theme.fg(
+      'dim',
+      joinOpenOrderColumns(
+        columns,
+        columns.map((col) => cell(col.label, col.width, undefined, alignFor(col.key)))
+      )
+    )
+  ]
+  for (const order of orders) {
+    const flags = [
+      order.reduceOnly ? 'RO' : null,
+      order.tif && order.tif.length > 0 ? order.tif : null
+    ]
+      .filter((value): value is string => value !== null)
+      .join(',')
+    const values: Record<string, string> = {
+      time: formatTradeTimestamp(new Date(order.timestamp).toISOString()),
+      side: order.side.toUpperCase(),
+      symbol: order.symbol,
+      size: fmtSize(order.size),
+      price: order.limitPrice !== null ? fmtPrice(order.limitPrice) : '—',
+      trigger: order.isTrigger && order.triggerPrice !== null ? fmtPrice(order.triggerPrice) : '—',
+      flags: flags.length > 0 ? flags : '—',
+      type: order.orderType
+    }
+    const rowCells = columns.map((col) => {
+      const align = alignFor(col.key)
+      if (col.key === 'symbol') {
+        return cell(values[col.key], col.width, (value) => perpLink(order.symbol, value), align)
+      }
+      if (col.key === 'side') {
+        return cell(
+          values[col.key],
+          col.width,
+          (value) => theme.fg(order.side === 'sell' ? 'error' : 'success', value),
+          align
+        )
+      }
+      if (col.key === 'time') {
+        return cell(values[col.key], col.width, (value) => theme.fg('dim', value), align)
+      }
+      if (col.key === 'trigger' && !order.isTrigger) {
+        return cell(values[col.key], col.width, (value) => theme.fg('muted', value), align)
+      }
+      return cell(values[col.key], col.width, undefined, align)
+    })
+    lines.push(joinOpenOrderColumns(columns, rowCells))
+  }
+  return lines.join('\n')
+}
+
+function renderLedgerUpdates(updates: readonly LedgerUpdate[], theme: Theme): string {
+  if (updates.length === 0) return theme.fg('muted', 'No deposits or withdrawals')
+  const columns = [
+    { key: 'time', label: 'Time', width: 13 },
+    { key: 'type', label: 'Type', width: 10 },
+    { key: 'amount', label: 'Amount', width: 12 },
+    { key: 'hash', label: 'Tx', width: 14 }
+  ]
+  const lines = [headerRow(columns, theme)]
+  for (const update of updates) {
+    const values: Record<string, string> = {
+      time: formatTradeTimestamp(new Date(update.time).toISOString()),
+      type: update.type === 'deposit' ? 'Deposit' : 'Withdraw',
+      amount: fmtUsd(update.amountUsd),
+      hash: truncateHash(update.hash)
+    }
+    lines.push(
+      columns
+        .map((col) => {
+          const align = alignFor(col.key)
+          if (col.key === 'type') {
+            return cell(
+              values[col.key],
+              col.width,
+              (value) => theme.fg(update.type === 'deposit' ? 'success' : 'error', value),
+              align
+            )
+          }
+          if (col.key === 'time' || col.key === 'hash') {
+            return cell(values[col.key], col.width, (value) => theme.fg('dim', value), align)
+          }
+          return cell(values[col.key], col.width, undefined, align)
+        })
+        .join(' ')
+    )
+  }
+  return lines.join('\n')
+}
+
+function renderSpotHoldings(holdings: readonly SpotHolding[], theme: Theme): string {
+  if (holdings.length === 0) return theme.fg('muted', 'No spot holdings')
+  const columns = [
+    { key: 'coin', label: 'Coin', width: 14 },
+    { key: 'total', label: 'Total', width: 16 },
+    { key: 'available', label: 'Available', width: 16 },
+    { key: 'entry', label: 'Entry Value', width: 12 }
+  ]
+  const lines = [headerRow(columns, theme)]
+  for (const holding of holdings) {
+    const values: Record<string, string> = {
+      coin: holding.coin,
+      total: fmtSize(holding.total),
+      available: fmtSize(holding.available),
+      entry: holding.entryNotionalUsd !== null ? fmtUsd(holding.entryNotionalUsd) : '—'
+    }
+    lines.push(
+      columns.map((col) => cell(values[col.key], col.width, undefined, alignFor(col.key))).join(' ')
+    )
+  }
+  return lines.join('\n')
+}
+
+function tabCount(status: HyperliquidStatus, tab: HlTab): number {
+  // Coalesce every field: a snapshot cached by an older extension build (loaded
+  // from disk on startup, rendered before the first refresh) can lack the newer
+  // tab arrays, so reading `.length` directly would throw.
+  switch (tab) {
+    case 'positions':
+      return (status.positions ?? []).length
+    case 'transactions':
+      return (status.recentTrades ?? []).length
+    case 'orders':
+      return (status.openOrders ?? []).length
+    case 'deposits':
+      return (status.ledgerUpdates ?? []).length
+    case 'spot':
+      return (status.spotHoldings ?? []).length
+  }
+}
+
+function renderTabBar(status: HyperliquidStatus, activeTab: HlTab, theme: Theme): string {
+  // A leading ▎ marker (not just bold+color) gives the active tab an
+  // unmistakable "selected" cue that survives low-contrast terminals.
+  return TAB_SEQUENCE.map((tab) => {
+    const label = `${TAB_LABELS[tab]}(${tabCount(status, tab)})`
+    return tab === activeTab ? theme.fg('accent', theme.bold(`▎${label}`)) : theme.fg('dim', label)
+  }).join(theme.fg('dim', '  ·  '))
+}
+
+/** Clamp a scroll offset to a valid page start for `total` rows. */
+export function clampScrollStart(offset: number, total: number): number {
+  if (total <= MAX_TAB_ROWS) return 0
+  const maxStart = Math.floor((total - 1) / MAX_TAB_ROWS) * MAX_TAB_ROWS
+  return Math.min(Math.max(0, offset), maxStart)
+}
+
+// Footer shown only when a tab has more than one page, so the operator knows
+// where they are in the list and that ctrl+shift+↑/↓ pages through it.
+function scrollFooter(total: number, start: number, shown: number, theme: Theme): string | null {
+  if (total <= MAX_TAB_ROWS) return null
+  return theme.fg('dim', `↕ ${start + 1}–${start + shown} of ${total}  ·  ctrl+shift+↑/↓`)
+}
+
+function withFooter(body: string, footer: string | null): string {
+  return footer === null ? body : `${body}\n${footer}`
+}
+
+// Slice one page out of a tab's list and render it with a paging footer. Passing
+// the renderer keeps each table responsible only for the rows it's handed.
+function renderPage<T>(
+  items: readonly T[],
+  scrollOffset: number,
+  theme: Theme,
+  renderRows: (page: readonly T[]) => string
+): string {
+  const start = clampScrollStart(scrollOffset, items.length)
+  const page = items.slice(start, start + MAX_TAB_ROWS)
+  return withFooter(renderRows(page), scrollFooter(items.length, start, page.length, theme))
+}
+
+function renderTabBody(
+  status: HyperliquidStatus,
+  activeTab: HlTab,
+  contentWidth: number,
+  theme: Theme,
+  scrollOffset: number
+): string {
+  // `?? []` guards against a stale cached snapshot missing the newer arrays.
+  switch (activeTab) {
+    case 'positions':
+      return renderPage(status.positions ?? [], scrollOffset, theme, (page) =>
+        renderPositionsTable(page, contentWidth, theme)
+      )
+    case 'transactions':
+      return (status.recentTrades ?? []).length > 0
+        ? renderPage(status.recentTrades ?? [], scrollOffset, theme, (page) =>
+            renderRecentTrades(page, theme)
+          )
+        : theme.fg('muted', 'No transactions')
+    case 'orders':
+      return renderPage(status.openOrders ?? [], scrollOffset, theme, (page) =>
+        renderOpenOrders(page, theme)
+      )
+    case 'deposits':
+      return renderPage(status.ledgerUpdates ?? [], scrollOffset, theme, (page) =>
+        renderLedgerUpdates(page, theme)
+      )
+    case 'spot':
+      return renderPage(status.spotHoldings ?? [], scrollOffset, theme, (page) =>
+        renderSpotHoldings(page, theme)
+      )
+  }
+}
+
 export function renderHyperliquidPositionsWidget(
   status: HyperliquidStatus,
   theme: Theme,
   width: number,
   refreshing = false,
-  showRecentTrades = false
+  activeTab: HlTab = 'positions',
+  scrollOffset = 0
 ): string[] {
   // Loading uses a calm dim border; a real failure (missing account / error) is
   // a warning; a healthy account is the accent.
@@ -364,20 +704,16 @@ export function renderHyperliquidPositionsWidget(
   const contentWidth = Math.max(20, width - 2)
 
   container.addChild(new DynamicBorder(borderColor))
-  const openSuffix = ` (${status.openPositions} open)`
-  const refreshingSuffix = ' (refreshing...)'
-  const titleSuffix = refreshing
-    ? padRight(refreshingSuffix, Math.max(visibleWidth(openSuffix), visibleWidth(refreshingSuffix)))
-    : padRight(openSuffix, Math.max(visibleWidth(openSuffix), visibleWidth(refreshingSuffix)))
-  container.addChild(
-    new Text(
-      theme.fg('accent', theme.bold('Hyperliquid Status')) + theme.fg('dim', titleSuffix),
-      1,
-      0
-    )
-  )
 
   if (!status.ok) {
+    const brandState = status.initializing ? 'loading…' : 'unavailable'
+    container.addChild(
+      new Text(
+        theme.fg('accent', theme.bold('Hyperliquid')) + theme.fg('dim', `  ${brandState}`),
+        1,
+        0
+      )
+    )
     const notice = status.initializing
       ? theme.fg('dim', 'Loading account…')
       : theme.fg(
@@ -389,40 +725,51 @@ export function renderHyperliquidPositionsWidget(
     return container.render(width)
   }
 
-  const pnl =
-    status.dailyPnlUsd >= 0
-      ? fgPositive(`day +${fmtUsd(status.dailyPnlUsd)}`)
-      : theme.fg('error', `day ${fmtUsd(status.dailyPnlUsd)}`)
-  const _allTimePnlDisplay =
-    status.allTimePnlUsd >= 0
-      ? fgPositive(`PnL +${fmtUsd(status.allTimePnlUsd)}`)
-      : theme.fg('error', `PnL ${fmtUsd(status.allTimePnlUsd)}`)
+  // Hero line: equity is the anchor number, today's P&L the movement beside it —
+  // a trader's account tape. Direction is carried by a ▲/▼ glyph, not color alone.
+  const dayUp = status.dailyPnlUsd >= 0
+  const dayText = `${dayUp ? '▲' : '▼'} ${fmtUsd(Math.abs(status.dailyPnlUsd))}  ${dayUp ? '+' : '-'}${Math.abs(status.dailyPnlPct).toFixed(1)}% today`
+  const dayDisplay = dayUp ? fgPositive(dayText) : theme.fg('error', dayText)
+  const hero =
+    theme.fg('accent', '● Hyperliquid') +
+    '   ' +
+    theme.bold(theme.fg('text', fmtUsd(status.equityUsd))) +
+    '   ' +
+    dayDisplay +
+    (refreshing ? '   ' + theme.fg('dim', 'syncing…') : '')
+  container.addChild(new Text(hero, 1, 0))
+
+  // Context line (all secondary account state, dim): all-time P&L, funding/fee
+  // cost, and gross/net exposure — present but visually subordinate to the hero.
   const inferredDeposit = (status.equityUsd ?? 0) - status.allTimePnlUsd
   const allTimeReturnPct = inferredDeposit > 0 ? (status.allTimePnlUsd / inferredDeposit) * 100 : 0
-  const returnDisplay =
-    status.allTimePnlUsd >= 0
-      ? fgPositive(`uPnL +${fmtUsd(status.allTimePnlUsd)} (+${allTimeReturnPct.toFixed(1)}%)`)
-      : theme.fg('error', `uPnL ${fmtUsd(status.allTimePnlUsd)} (${allTimeReturnPct.toFixed(1)}%)`)
+  const allTimeUp = status.allTimePnlUsd >= 0
+  const allTime = allTimeUp
+    ? fgPositive(`all-time +${fmtUsd(status.allTimePnlUsd)} (+${allTimeReturnPct.toFixed(1)}%)`)
+    : theme.fg(
+        'error',
+        `all-time ${fmtUsd(status.allTimePnlUsd)} (${allTimeReturnPct.toFixed(1)}%)`
+      )
   const costSummary = status.costSummary
   const cost = costSummary
     ? theme.fg(
         costSummary.netCostUsd > 0 ? 'error' : 'success',
         `cost${costSummary.lookbackDays}d ${fmtCostUsd(costSummary.netCostUsd)}`
       )
-    : theme.fg('dim', 'cost -')
-  const statusLine = [
-    `Updated ${formatLocalTimestamp(status.updatedAt)}`,
-    `eq ${fmtUsd(status.equityUsd)}`,
-    pnl,
-    returnDisplay,
-    cost,
-    `gross ${fmtUsd(status.grossExposureUsd)}`,
-    `net ${fmtUsd(status.netExposureUsd)}`
-  ].join('  ·  ')
+    : theme.fg('dim', 'cost —')
+  const context = theme.fg(
+    'dim',
+    [
+      `updated ${formatLocalTimestamp(status.updatedAt)}`,
+      allTime,
+      cost,
+      `gross ${fmtUsd(status.grossExposureUsd)}`,
+      `net ${fmtUsd(status.netExposureUsd)}`
+    ].join('  ·  ')
+  )
+  container.addChild(new Text(context, 1, 0))
 
-  container.addChild(new Text(theme.fg('dim', statusLine), 1, 0))
-  container.addChild(new Text(renderPositionsTable(status.positions, contentWidth, theme), 1, 0))
-
+  // Sub-accounts line: spot + per-dex equity/margin.
   const accountSections: string[] = []
   if (
     typeof status.spotBalanceUsd === 'number' &&
@@ -431,10 +778,9 @@ export function renderHyperliquidPositionsWidget(
   ) {
     accountSections.push(`spot ${fmtUsd(status.spotBalanceUsd)}`)
   }
-
   const accounts = status.hyperliquidAccounts.map(
     (account) =>
-      `${account.dex || 'main'}: eq ${fmtUsd(account.equityUsd)}, margin ${fmtUsd(account.marginUsedUsd)}`
+      `${account.dex || 'main'} eq ${fmtUsd(account.equityUsd)}, margin ${fmtUsd(account.marginUsedUsd)}`
   )
   accountSections.push(...accounts)
   const accountLine = accountSections.join('  ·  ')
@@ -442,12 +788,20 @@ export function renderHyperliquidPositionsWidget(
     container.addChild(new Text(theme.fg('dim', accountLine), 1, 0))
   }
 
-  const recentTrades = status.recentTrades ?? []
-  if (showRecentTrades && recentTrades.length > 0) {
-    // Dotted rule sets the recent-trades section apart from the main widget.
-    container.addChild(new Text(theme.fg('dim', '┈'.repeat(contentWidth)), 1, 0))
-    container.addChild(new Text(renderRecentTrades(recentTrades, theme), 1, 0))
-  }
+  // Bottom section: tab bar (with the nav hint tucked right when it fits) + table.
+  const tabs = renderTabBar(status, activeTab, theme)
+  const hint = theme.fg('dim', 'ctrl+shift+←/→ · /hyperliquid:tab')
+  const tabsWidth = visibleWidth(tabs)
+  const hintWidth = visibleWidth(hint)
+  const tabLine =
+    tabsWidth + hintWidth + 2 <= contentWidth
+      ? tabs + ' '.repeat(contentWidth - tabsWidth - hintWidth) + hint
+      : truncateToWidth(tabs, contentWidth, '…')
+  container.addChild(new Text(tabLine, 1, 0))
+  container.addChild(new Text(theme.fg('dim', '┈'.repeat(contentWidth)), 1, 0))
+  container.addChild(
+    new Text(renderTabBody(status, activeTab, contentWidth, theme, scrollOffset), 1, 0)
+  )
   container.addChild(new DynamicBorder(borderColor))
 
   return container.render(width)

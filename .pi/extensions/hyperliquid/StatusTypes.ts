@@ -7,6 +7,45 @@
 
 export type Dex = string
 
+/**
+ * The bottom-section tabs, mirroring the CoinGlass Hyperliquid address page:
+ * Positions · Transactions · Open Orders · Deposits & Withdrawals · Spot.
+ */
+export type HlTab = 'positions' | 'transactions' | 'orders' | 'deposits' | 'spot'
+
+export interface OpenOrder {
+  readonly coin: string
+  /** dex-prefixed coin for HIP-3 markets, e.g. `xyz:AAPL`; bare coin otherwise. */
+  readonly symbol: string
+  readonly side: 'buy' | 'sell'
+  readonly size: number
+  readonly origSize: number
+  readonly limitPrice: number | null
+  readonly orderType: string
+  readonly reduceOnly: boolean
+  readonly isTrigger: boolean
+  readonly triggerPrice: number | null
+  /** Time-in-force (e.g. `Gtc`, `Alo`, `Ioc`); null when the order carries none. */
+  readonly tif: string | null
+  /** Placement time in epoch milliseconds. */
+  readonly timestamp: number
+}
+
+export interface LedgerUpdate {
+  /** Update time in epoch milliseconds. */
+  readonly time: number
+  readonly type: 'deposit' | 'withdraw'
+  readonly amountUsd: number
+  readonly hash: string | null
+}
+
+export interface SpotHolding {
+  readonly coin: string
+  readonly total: number
+  readonly available: number
+  readonly entryNotionalUsd: number | null
+}
+
 export interface MarketContext {
   readonly markPrice: number | null
   readonly fundingRateHourly: number | null
@@ -140,8 +179,14 @@ export interface HyperliquidStatus {
   readonly closedPnl24h: ClosedPnlSummary | null
   readonly topCandidates: readonly string[]
   readonly totalTrades: number
-  /** Most recent fills, newest first. The widget shows the last two under balances. */
+  /** Most recent fills, newest first. Shown in the Transactions tab. */
   readonly recentTrades: readonly RecentTrade[]
+  /** Resting open orders across all dexes, newest first. Shown in the Open Orders tab. */
+  readonly openOrders: readonly OpenOrder[]
+  /** Deposits and withdrawals, newest first. Shown in the Deposits tab. */
+  readonly ledgerUpdates: readonly LedgerUpdate[]
+  /** Non-zero spot token balances. Shown in the Spot tab. */
+  readonly spotHoldings: readonly SpotHolding[]
   readonly error?: string
   // True while the wallet snapshot (.tribes/privy-wallets.json) hasn't been written
   // yet — the account address is being resolved, not genuinely absent. Drives a
