@@ -1,4 +1,6 @@
 import { execFile } from 'node:child_process'
+import { readFileSync } from 'node:fs'
+import { resolve } from 'node:path'
 import { promisify } from 'node:util'
 
 import type { ExtensionAPI } from '@earendil-works/pi-coding-agent'
@@ -54,14 +56,41 @@ const execFileAsync = promisify(execFile)
 // /workspace sessions and local desktop paths.
 const TOKEN_COMMAND = '!bun .pi/extensions/tribes/AgentProxyToken.ts'
 
+// Production API base URL, matching @/common/Env.ts's production default.
+const PRODUCTION_API_BASE_URL = 'https://api.tribes.xyz'
+
 const ZERO_COST: ProviderModelCost = { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 }
 const MODEL_FETCH_TIMEOUT_MS = 30_000
 const MODEL_FETCH_MAX_BUFFER_BYTES = 1024 * 1024
 
+function readDotEnvValue(key: string): string | null {
+  try {
+    const text = readFileSync(resolve(process.cwd(), '.env'), 'utf8')
+    for (const line of text.split(/\r?\n/u)) {
+      const separator = line.indexOf('=')
+      const k = line.slice(0, separator).trim()
+      if (separator > 0 && k === key && !k.startsWith('#')) {
+        return line.slice(separator + 1)
+      }
+    }
+  } catch {
+    // No .env or unreadable.
+  }
+  return null
+}
+
+function resolveApiBaseUrl(): string {
+  // Check process.env first (set by the host via bridge runtime env or manual
+  // export), then .env (persisted by writeAuthEnv), then the production default.
+  return (
+    process.env.API_BASE_URL ??
+    readDotEnvValue('API_BASE_URL') ??
+    PRODUCTION_API_BASE_URL
+  )
+}
+
 function resolveProxyBaseUrl(): string {
-  return process.env.API_BASE_URL
-    ? `${process.env.API_BASE_URL}/llm/proxy`
-    : 'http://localhost:8787/llm/proxy'
+  return `${resolveApiBaseUrl().replace(/\/$/u, '')}/llm/proxy`
 }
 
 function resolveModelsUrl(): string {

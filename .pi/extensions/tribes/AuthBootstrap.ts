@@ -18,11 +18,14 @@ const HOST_KEY_PATH = '/var/lib/tribes/agent-authorization-key.json'
 const MINT_TIMEOUT_MS = 30_000
 const MINT_MAX_BUFFER_BYTES = 1024 * 1024
 
-// Vars the CLIs need (src/common/env.ts). API_BASE_URL + PRIVY_APP_ID arrive in
-// the process env (the host seeds them on the kernel cmdline as
-// tribes.agent_env; the in-VM bridge injects them into pi, so this extension
-// inherits them). API_BEARER_TOKEN is minted from the agent key below.
-const ENV_PASSTHROUGH = ['PRIVY_APP_ID'] as const
+// Vars the CLIs need (src/common/env.ts). API_BASE_URL + PRIVY_APP_ID should
+// arrive from the host in the process env (seeded on the kernel cmdline as
+// tribes.agent_env; the in-VM bridge injects them via applyRuntimeEnv into
+// pty-spawned processes). However, the extension module runs before the host's
+// /assign call sets runtimeOverride, so process.env may not have them yet.
+// This ENV_PASSTHROUGH persists them into .env so every subsequent process
+// (including provider fetches) can read them back.
+const ENV_PASSTHROUGH = ['API_BASE_URL', 'PRIVY_APP_ID'] as const
 
 // Re-mint + rewrite .env on this cadence so the bearer token never goes stale.
 export const AUTH_REFRESH_INTERVAL_MS = 24 * 60 * 60 * 1000

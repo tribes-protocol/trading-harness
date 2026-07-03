@@ -40,11 +40,18 @@ export default async function tribes(pi: TribesApi): Promise<void> {
   // Tribes models — the user can't switch to or message the LLM until /login-tribes.
   // Genuine failures (corrupt key, network) surface as an error notice rather
   // than crashing extension load.
+  //
+  // On failure, providerFailed is set so session_start can retry — by that point
+  // the host's /assign may have populated API_BASE_URL/PRIVY_APP_ID in the pty's
+  // environment, or the fallback to the production URL + .env (Provider.ts) may
+  // now resolve.
   let startupNotice: StartupNotice | null = null
+  let providerFailed = false
   if (hasAgentKey(cwd)) {
     try {
       await registerTribesProvider(pi)
     } catch (err) {
+      providerFailed = true
       startupNotice = {
         message: `Tribes provider failed to load: ${errorMessage(err)}`,
         level: 'error'
@@ -84,6 +91,19 @@ export default async function tribes(pi: TribesApi): Promise<void> {
 
     try {
       await writeAuthEnv(ctx.cwd)
+      // If initial provider registration failed (missing env vars at extension
+      // factory time), retry now — .env is written and process.env may be
+      // populated enough to resolve the model list.
+      if (providerFailed) {
+        try {
+          await registerTribesProvider(pi)
+          providerFailed = false
+          if (ctx.hasUI)
+            ctx.ui.notify('Tribes provider loaded successfully', 'info')
+        } catch {
+          // Still failing — the startup notice was already shown.
+        }
+      }
     } catch (err) {
       // Surface it — a swallowed failure here means no .env (no API_BEARER_TOKEN),
       // which silently breaks every proxy + wallet call (e.g. hyperliquid shows
