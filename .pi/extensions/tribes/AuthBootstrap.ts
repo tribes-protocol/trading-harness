@@ -6,6 +6,7 @@ import { promisify } from 'node:util'
 
 import { ExtensionCommandContext } from '@earendil-works/pi-coding-agent'
 
+import { readDotEnv } from './DotEnv'
 import { registerTribesProvider, TribesApi } from './Provider'
 import { warmWalletSnapshot } from './WalletSnapshot'
 
@@ -22,7 +23,7 @@ const MINT_MAX_BUFFER_BYTES = 1024 * 1024
 // the process env (the host seeds them on the kernel cmdline as
 // tribes.agent_env; the in-VM bridge injects them into pi, so this extension
 // inherits them). API_BEARER_TOKEN is minted from the agent key below.
-const ENV_PASSTHROUGH = ['PRIVY_APP_ID'] as const
+const ENV_PASSTHROUGH = ['API_BASE_URL', 'PRIVY_APP_ID'] as const
 
 // Re-mint + rewrite .env on this cadence so the bearer token never goes stale.
 export const AUTH_REFRESH_INTERVAL_MS = 24 * 60 * 60 * 1000
@@ -98,24 +99,6 @@ export function installAgentKey(cwd: string): void {
  */
 export function hasAgentKey(cwd: string): boolean {
   return existsSync(resolve(cwd, '.tribes/agent-authorization-key.json'))
-}
-
-/** Parse <root>/.env into an ordered key -> value map. Missing file = empty. */
-async function readDotEnv(cwd: string): Promise<Map<string, string>> {
-  const env = new Map<string, string>()
-  try {
-    const content = await readFile(resolve(cwd, '.env'), 'utf8')
-    for (const line of content.split(/\r?\n/u)) {
-      const separator = line.indexOf('=')
-      const key = line.slice(0, separator).trim()
-      if (separator > 0 && key.length > 0 && !key.startsWith('#')) {
-        env.set(key, line.slice(separator + 1))
-      }
-    }
-  } catch {
-    // No existing .env yet — start fresh.
-  }
-  return env
 }
 
 /**
