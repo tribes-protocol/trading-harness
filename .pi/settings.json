@@ -1,3 +1,4 @@
 {
-  "prompts": ["!prompts/tribes/login.md"]
+  "prompts": ["!prompts/tribes/login.md"],
+  "skills": ["!tribes-login"]
 }

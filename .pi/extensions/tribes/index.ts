@@ -36,19 +36,18 @@ export default async function tribes(pi: TribesApi): Promise<void> {
   // Put the agent key in place before the provider's token command can run.
   installAgentKey(cwd)
 
+  let providerFailed = false
+
   // Only register the LLM provider when logged in. Logged out, Pi boots with no
   // Tribes models — the user can't switch to or message the LLM until /tribes:login.
-  // Genuine failures (corrupt key, network) surface as an error notice rather
-  // than crashing extension load.
+  // Genuine failures (corrupt key, network) are retried on session_start after
+  // writeAuthEnv persists runtime env into .env.
   let startupNotice: StartupNotice | null = null
   if (hasAgentKey(cwd)) {
     try {
       await registerTribesProvider(pi)
-    } catch (err) {
-      startupNotice = {
-        message: `Tribes provider failed to load: ${errorMessage(err)}`,
-        level: 'error'
-      }
+    } catch {
+      providerFailed = true
     }
   } else {
     startupNotice = {
@@ -91,6 +90,17 @@ export default async function tribes(pi: TribesApi): Promise<void> {
       if (ctx.hasUI)
         ctx.ui.notify(`auth bootstrap failed — .env not written: ${errorMessage(err)}`, 'error')
     }
+
+    if (providerFailed) {
+      try {
+        await registerTribesProvider(pi)
+        providerFailed = false
+      } catch (err) {
+        if (ctx.hasUI)
+          ctx.ui.notify(`Tribes provider failed to load: ${errorMessage(err)}`, 'error')
+      }
+    }
+
     startAuthRefreshTimer(ctx.cwd)
     try {
       await warmWalletSnapshot(ctx.cwd)

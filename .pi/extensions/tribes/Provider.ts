@@ -3,6 +3,8 @@ import { promisify } from 'node:util'
 
 import type { ExtensionAPI } from '@earendil-works/pi-coding-agent'
 
+import { readDotEnvValue, readNonEmptyValue } from './DotEnv'
+
 /**
  * The `tribes-llm-proxy` model provider. Pi talks to it as an OpenAI-compatible
  * endpoint; requests are proxied by the Tribes API (/llm/proxy) to OpenRouter.
@@ -54,18 +56,21 @@ const execFileAsync = promisify(execFile)
 // /workspace sessions and local desktop paths.
 const TOKEN_COMMAND = '!bun .pi/extensions/tribes/AgentProxyToken.ts'
 
+const API_BASE_URL = 'https://api.tribes.xyz'
 const ZERO_COST: ProviderModelCost = { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 }
 const MODEL_FETCH_TIMEOUT_MS = 30_000
 const MODEL_FETCH_MAX_BUFFER_BYTES = 1024 * 1024
 
-function resolveProxyBaseUrl(): string {
-  return process.env.API_BASE_URL
-    ? `${process.env.API_BASE_URL}/llm/proxy`
-    : 'http://localhost:8787/llm/proxy'
+async function resolveApiBaseUrl(): Promise<string> {
+  const processApiBaseUrl = readNonEmptyValue(process.env.API_BASE_URL)
+  if (processApiBaseUrl) return processApiBaseUrl
+
+  const dotEnvApiBaseUrl = await readDotEnvValue(process.cwd(), 'API_BASE_URL')
+  return dotEnvApiBaseUrl ?? API_BASE_URL
 }
 
-function resolveModelsUrl(): string {
-  return `${resolveProxyBaseUrl().replace(/\/$/, '')}/models`
+async function resolveProxyBaseUrl(): Promise<string> {
+  return `${(await resolveApiBaseUrl()).replace(/\/$/, '')}/llm/proxy`
 }
 
 async function readBearerToken(): Promise<string> {
@@ -174,8 +179,8 @@ function readModelsPayload(payload: unknown): ProviderModel[] {
   return models
 }
 
-async function fetchProviderModels(): Promise<ProviderModel[]> {
-  const response = await fetch(resolveModelsUrl(), {
+async function fetchProviderModels(modelsUrl: string): Promise<ProviderModel[]> {
+  const response = await fetch(modelsUrl, {
     headers: {
       Authorization: `Bearer ${await readBearerToken()}`
     }
@@ -190,12 +195,15 @@ async function fetchProviderModels(): Promise<ProviderModel[]> {
 }
 
 export async function registerTribesProvider(pi: TribesApi): Promise<void> {
+  const proxyBaseUrl = await resolveProxyBaseUrl()
+  const models = await fetchProviderModels(`${proxyBaseUrl}/models`)
+
   pi.registerProvider('tribes-llm-proxy', {
     name: 'Tribes LLM Proxy',
-    baseUrl: resolveProxyBaseUrl(),
+    baseUrl: proxyBaseUrl,
     api: 'openai-completions',
     apiKey: TOKEN_COMMAND,
     authHeader: true,
-    models: await fetchProviderModels()
+    models
   })
 }
