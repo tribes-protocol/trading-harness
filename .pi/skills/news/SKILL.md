@@ -12,9 +12,17 @@ Use this skill whenever trading decisions need current news, catalysts, macro co
 
 Requires `API_BASE_URL` in the environment (or harness `.env` loaded in the shell before invoking the CLI).
 
-## Core rule
+## Hard rule: bash timeout (MUST follow)
 
-Use the local news CLI as the default path. It calls the API, retries while analysis is in-flight, and keeps polling until sentiment is no longer unknown (or retry budget is exhausted).
+Every `tribes-cli news fetch` call requires a **minimum 120-second bash timeout**. The CLI polls every 30s with up to 10 retries, so 60s is never enough.
+
+- Pi bash tool: pass `timeout: 120` (seconds).
+- Other harnesses: pass the equivalent of 120,000 ms.
+- Never use 60 seconds for any `tribes-cli news fetch` invocation.
+
+## How it works
+
+The news CLI calls the API, retries while analysis is in-flight, and keeps polling until sentiment is no longer unknown (or retry budget is exhausted).
 
 Resolve request inputs before calling `news fetch`:
 
@@ -79,6 +87,7 @@ tribes-cli news fetch \
 
 CLI behavior:
 
+- Use a bash timeout of **120 seconds minimum** (`timeout: 120` in Pi).
 - Polls every 30 seconds.
 - Uses up to 10 retries.
 - Retries while response state is `analyzing`.
