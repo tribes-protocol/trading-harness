@@ -38,6 +38,7 @@ describe('TransactionService', () => {
       publicKeyPem: 'public-key-pem',
       sandboxId: 'sandbox-id',
       userId: 'user-id',
+      keyQuorumId: 'quorum-id',
       createdAt: '2026-01-01T00:00:00.000Z'
     })
     const signatureSpy = vi
@@ -77,5 +78,32 @@ describe('TransactionService', () => {
         path: '/agent/transaction/sendEthTransaction'
       })
     )
+  })
+
+  it('refuses to sign when the authorization key has no keyQuorumId (not logged in)', async () => {
+    vi.spyOn(authKey, 'readAgentAuthorizationKey').mockResolvedValue({
+      schema: 'agent-authorization-key.v1',
+      curve: 'P-256',
+      privateKeyPem: PRIVATE_KEY_PEM,
+      publicKeyPem: 'public-key-pem',
+      sandboxId: 'sandbox-id',
+      userId: 'user-id',
+      createdAt: '2026-01-01T00:00:00.000Z'
+    })
+    const signatureSpy = vi.spyOn(privySignature, 'generateEthSendTransactionSignature')
+    const fetchSpy = vi.spyOn(terminalApiRequest, 'fetchTerminalApi')
+
+    const service = new TransactionService({
+      apiBaseUrl: API_BASE_URL,
+      apiBearerToken: API_BEARER_TOKEN,
+      privyAppId: 'privy-app-id'
+    })
+
+    await expect(
+      service.sendEthTransaction({ txData: ETH_REQUEST, walletId: WALLET_ID })
+    ).rejects.toThrow('Not logged in')
+    // Never signs and never hits the API — fails before any Privy round-trip.
+    expect(signatureSpy).not.toHaveBeenCalled()
+    expect(fetchSpy).not.toHaveBeenCalled()
   })
 })

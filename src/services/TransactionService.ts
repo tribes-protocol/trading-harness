@@ -197,6 +197,15 @@ export class TransactionService {
     if (isNullish(authorizationKey)) {
       throw new Error('Authorization key missing')
     }
+    // Signing requires a genuine login: the key quorum must be bound as a wallet
+    // signer or Privy rejects the signature. A host-minted key (a plain or cloned
+    // sandbox that never logged in) has no keyQuorumId — fail fast here with a
+    // clear instruction instead of surfacing a deep Privy authorization error.
+    if (isNullish(authorizationKey.keyQuorumId)) {
+      throw new Error(
+        'Not logged in. Run `tribes-cli login` to authorize this agent before signing.'
+      )
+    }
     return authorizationKey.privateKeyPem
   }
 }
