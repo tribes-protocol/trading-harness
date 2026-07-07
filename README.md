@@ -35,9 +35,9 @@ These two vars only matter for **local, non-production dev** (`NODE_ENV` set to 
 non-production value), where the endpoints point at localhost and the Privy app id must be
 supplied:
 
-| Variable       | When needed                        | Purpose                                    |
-| -------------- | ---------------------------------- | ------------------------------------------ |
-| `PRIVY_APP_ID` | non-production `NODE_ENV` only     | Privy app for the agent wallet             |
+| Variable       | When needed                        | Purpose                                     |
+| -------------- | ---------------------------------- | ------------------------------------------- |
+| `PRIVY_APP_ID` | non-production `NODE_ENV` only     | Privy app for the agent wallet              |
 | `API_BASE_URL` | never read — kept for sandbox seed | Tribes API base (hardcoded per environment) |
 
 Direct wallet CLI usage from the workspace root:
