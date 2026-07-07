@@ -10,6 +10,7 @@ import { readAgentAuthorizationKey, writeAgentAuthorizationKey } from '@/helpers
 import { writeCliLoginKey } from '@/helpers/CliLoginKey'
 import { getApiBearerToken } from '@/helpers/Jwt'
 import { openUrlInBrowser } from '@/helpers/OpenUrlInBrowser'
+import { clearWalletSnapshot } from '@/helpers/WalletSnapshot'
 import { type CliLoginPollResponse, CliLoginPollResponseSchema } from '@/types/CliLogin'
 import { isNullish } from '@/utils/Lang'
 
@@ -193,6 +194,11 @@ export class LoginService {
       keyQuorumId: pollResult.quorumId,
       createdAt: new Date().toISOString()
     })
+
+    // Drop the previous account's cached wallet snapshot so the next `wallet list`
+    // re-fetches for the account we just logged into (the snapshot is a
+    // read-through cache that never self-invalidates on account switch).
+    await clearWalletSnapshot(process.cwd())
 
     await this.writeAuthEnv()
   }
