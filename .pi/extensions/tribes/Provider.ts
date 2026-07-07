@@ -53,7 +53,7 @@ const execFileAsync = promisify(execFile)
 // `!command` apiKey: Pi runs this to read the bearer token. AgentProxyToken.ts
 // serves API_BEARER_TOKEN from .env (the single source the tribes extension
 // refreshes every 24h). Use a cwd-relative path so this works both in sandboxed
-// /workspace sessions and local desktop paths.
+// /root/workspace sessions and local desktop paths.
 const TOKEN_COMMAND = '!bun .pi/extensions/tribes/AgentProxyToken.ts'
 
 const API_BASE_URL = 'https://api.tribes.xyz'

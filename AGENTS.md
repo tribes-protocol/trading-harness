@@ -61,7 +61,7 @@ Only return one asset class when the user clearly scoped it (for example "crypto
 
 This repository is an autonomous Hyperliquid trading harness based on the [Pi harness](https://pi.dev). It runs inside the [Pi coding agent](https://github.com/earendil-works/pi-coding-agent).
 
-This repo is the agent's workspace: in a Tribes sandbox the control plane clones it into `/workspace`, runs `bootstrap.sh` once, injects auth/RPC env, and launches `pi`. `AGENTS.md` is the operating constitution Pi reads at startup; the human talks to Pi, and Pi drives the `tribes-cli` binary built from this repo.
+This repo is the agent's workspace: in a Tribes sandbox the control plane clones it into `/root/workspace`, runs `bootstrap.sh` once, injects auth/RPC env, and launches `pi`. `AGENTS.md` is the operating constitution Pi reads at startup; the human talks to Pi, and Pi drives the `tribes-cli` binary built from this repo.
 
 ## Installation (clients other than the Tribes web app)
 

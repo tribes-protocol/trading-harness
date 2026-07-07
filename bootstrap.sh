@@ -1,7 +1,7 @@
 #!/bin/sh
 # First-boot bootstrap for the trading-harness.
 #
-# The sandbox clones this repo into /workspace and runs this ONCE before launching
+# The sandbox clones this repo into /root/workspace and runs this ONCE before launching
 # the agent. It does two things:
 #   1. install deps (incl. the pinned pi CLI), and
 #   2. compile the whole project into ONE native binary, `tribes-cli`, installed
@@ -186,6 +186,6 @@ fi
 echo "[bootstrap] done — run the harness with: pi"
 
 # First-boot install is done. Remove this once-only installer so it does not
-# clutter the user's /workspace (the dispatcher gates re-runs on package.json,
+# clutter the user's /root/workspace (the dispatcher gates re-runs on package.json,
 # not on this script's presence).
 rm -f -- "$0"
