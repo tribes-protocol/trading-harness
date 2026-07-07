@@ -19,10 +19,14 @@ const HOST_KEY_PATH = '/var/lib/tribes/agent-authorization-key.json'
 const MINT_TIMEOUT_MS = 30_000
 const MINT_MAX_BUFFER_BYTES = 1024 * 1024
 
-// Vars the CLIs need (src/common/env.ts). API_BASE_URL + PRIVY_APP_ID arrive in
-// the process env (the host seeds them on the kernel cmdline as
-// tribes.agent_env; the in-VM bridge injects them into pi, so this extension
-// inherits them). API_BEARER_TOKEN is minted from the agent key below.
+// Non-production overrides only. In production (NODE_ENV unset/empty/"production")
+// src/common/Env.ts hardcodes both API_BASE_URL and PRIVY_APP_ID, so neither is
+// needed and API_BASE_URL is never read at all. They matter only when the host
+// seeds them on the kernel cmdline as tribes.agent_env (the in-VM bridge injects
+// them into pi, so this extension inherits them) to point a non-production build
+// at a different backend / Privy app. When present we pass them through to .env;
+// when absent the production defaults apply. API_BEARER_TOKEN is minted from the
+// agent key below.
 const ENV_PASSTHROUGH = ['API_BASE_URL', 'PRIVY_APP_ID'] as const
 
 // Re-mint + rewrite .env on this cadence so the bearer token never goes stale.
