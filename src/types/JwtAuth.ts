@@ -11,6 +11,10 @@ export const AgentAuthorizationKeySchema = z.object({
   app: SandboxAppSchema.nullish(),
   sandboxId: z.string().min(1),
   userId: z.string().min(1),
+  // The agent-wallet key quorum bound to this key. Present only after a genuine
+  // login (remote login, or a web-booted sandbox self-heal); a host-minted key
+  // that was never logged in has none, so its absence means "not logged in".
+  keyQuorumId: z.string().min(1).nullish(),
   createdAt: z.string().min(1)
 })
 export type AgentAuthorizationKey = z.infer<typeof AgentAuthorizationKeySchema>

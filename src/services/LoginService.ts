@@ -4,12 +4,14 @@ import { resolve } from 'node:path'
 import { promisify } from 'node:util'
 
 import { API_BASE_URL, WEB_BASE_URL } from '@/common/Env'
+import { fetchSandboxKeyQuorum } from '@/helpers/AgentQuorum'
 import { retry } from '@/helpers/AsyncControl'
-import { writeAgentAuthorizationKey } from '@/helpers/AuthKey'
+import { readAgentAuthorizationKey, writeAgentAuthorizationKey } from '@/helpers/AuthKey'
 import { writeCliLoginKey } from '@/helpers/CliLoginKey'
 import { getApiBearerToken } from '@/helpers/Jwt'
 import { openUrlInBrowser } from '@/helpers/OpenUrlInBrowser'
 import { type CliLoginPollResponse, CliLoginPollResponseSchema } from '@/types/CliLogin'
+import { isNullish } from '@/utils/Lang'
 
 const LOGIN_POLL_INTERVAL_MS = 2_000
 const LOGIN_POLL_TIMEOUT_MS = 3 * 60_000
@@ -188,9 +190,29 @@ export class LoginService {
       app: 'external',
       sandboxId: pollResult.sandboxId,
       userId: pollResult.userId,
+      keyQuorumId: pollResult.quorumId,
       createdAt: new Date().toISOString()
     })
 
     await this.writeAuthEnv()
+  }
+
+  // Backfill keyQuorumId onto an existing authorization key that lacks it. A
+  // web-booted sandbox is minted with an agent key but no keyQuorumId (the
+  // browser boot binds the quorum as a wallet signer out-of-band), so without
+  // this it would read as logged-out. The control plane only returns a quorum id
+  // for such web-booted sandboxes; any other origin returns null and is left
+  // untouched (correctly still logged-out). Idempotent: a no-op once the key
+  // already has a keyQuorumId, and when there is no key at all.
+  async syncKeyQuorum(): Promise<void> {
+    const key = await readAgentAuthorizationKey()
+    if (isNullish(key) || !isNullish(key.keyQuorumId)) {
+      return
+    }
+    const quorumId = await fetchSandboxKeyQuorum()
+    if (isNullish(quorumId)) {
+      return
+    }
+    await writeAgentAuthorizationKey({ ...key, keyQuorumId: quorumId })
   }
 }

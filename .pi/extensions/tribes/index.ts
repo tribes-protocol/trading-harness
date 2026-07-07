@@ -10,21 +10,20 @@
  * resolves relative paths but not the harness's `@/` tsconfig alias.
  */
 
+import type { ExtensionContext } from '@earendil-works/pi-coding-agent'
+
 import {
   AUTH_REFRESH_INTERVAL_MS,
   hasAgentKey,
+  hasAgentKeyFile,
   installAgentKey,
   runLogin,
+  syncKeyQuorum,
   writeAuthEnv
 } from './AuthBootstrap.ts'
 import { registerTribesProvider, type TribesApi } from './Provider.ts'
 import { warmWalletSnapshot } from './WalletSnapshot.ts'
 import { showWelcome } from './Welcome.ts'
-
-interface StartupNotice {
-  readonly message: string
-  readonly level: 'info' | 'warning' | 'error'
-}
 
 function errorMessage(err: unknown): string {
   return err instanceof Error ? err.message : String(err)
@@ -36,23 +35,22 @@ export default async function tribes(pi: TribesApi): Promise<void> {
   // Put the agent key in place before the provider's token command can run.
   installAgentKey(cwd)
 
-  let providerFailed = false
+  // Track whether the LLM provider is live so session_start can register it once
+  // the login state resolves (a web-booted sandbox only becomes logged in after
+  // the quorum self-heal below).
+  let providerRegistered = false
 
   // Only register the LLM provider when logged in. Logged out, Pi boots with no
-  // Tribes models — the user can't switch to or message the LLM until /tribes:login.
-  // Genuine failures (corrupt key, network) are retried on session_start after
-  // writeAuthEnv persists runtime env into .env.
-  let startupNotice: StartupNotice | null = null
+  // Tribes models — the user can't switch to or message the LLM until it logs in
+  // (via /tribes:login, or the web-boot quorum self-heal on session_start).
+  // Genuine failures (network) are retried on session_start after writeAuthEnv
+  // persists runtime env into .env.
   if (hasAgentKey(cwd)) {
     try {
       await registerTribesProvider(pi)
+      providerRegistered = true
     } catch {
-      providerFailed = true
-    }
-  } else {
-    startupNotice = {
-      message: 'Log in with /tribes:login to use agentic trading.',
-      level: 'warning'
+      // Retried on session_start.
     }
   }
 
@@ -66,35 +64,58 @@ export default async function tribes(pi: TribesApi): Promise<void> {
     }, AUTH_REFRESH_INTERVAL_MS)
   }
 
+  // Pi prints its built-in "No models available" warning immediately AFTER
+  // session_start returns (in interactive run()). Defer ours by a macrotask so it
+  // lands just below that default warning rather than above it.
+  function notifyLoginRequired(ctx: ExtensionContext): void {
+    if (!ctx.hasUI) return
+    setTimeout(
+      () => ctx.ui.notify('Log in with /tribes:login to use agentic trading.', 'warning'),
+      0
+    )
+  }
+
   pi.on('session_start', async (event, ctx) => {
     if (event.reason !== 'startup') return
     if (ctx.hasUI) showWelcome(ctx)
-    if (ctx.hasUI && startupNotice) {
-      const notice = startupNotice
-      // Pi prints its built-in "No models available" warning immediately AFTER
-      // session_start returns (in interactive run()). Defer ours by a macrotask
-      // so it lands just below that default warning rather than above it.
-      setTimeout(() => ctx.ui.notify(notice.message, notice.level), 0)
+
+    // Nothing provisioned yet: /tribes:login wires everything up on demand.
+    if (!hasAgentKeyFile(ctx.cwd)) {
+      notifyLoginRequired(ctx)
+      return
     }
 
-    // Logged out: nothing to materialize yet. /tribes:login wires everything up
-    // once the user authenticates.
-    if (!hasAgentKey(ctx.cwd)) return
-
+    // Materialize .env (mint the bearer token) so every CLI — including the
+    // quorum self-heal — can authenticate. A swallowed failure here means no
+    // API_BEARER_TOKEN, which silently breaks every proxy + wallet call (e.g.
+    // hyperliquid shows "Missing account address"), so surface it without
+    // failing startup.
     try {
       await writeAuthEnv(ctx.cwd)
     } catch (err) {
-      // Surface it — a swallowed failure here means no .env (no API_BEARER_TOKEN),
-      // which silently breaks every proxy + wallet call (e.g. hyperliquid shows
-      // "Missing account address"). Don't fail startup, but make it visible.
       if (ctx.hasUI)
         ctx.ui.notify(`auth bootstrap failed — .env not written: ${errorMessage(err)}`, 'error')
     }
 
-    if (providerFailed) {
+    // Backfill keyQuorumId for a web-booted sandbox so it reads as logged in. A
+    // no-op that leaves the sandbox logged-out for any other origin.
+    try {
+      await syncKeyQuorum(ctx.cwd)
+    } catch {
+      // Self-heal is best-effort.
+    }
+
+    // Host-minted key with no bound quorum (e.g. a plain sandbox the user cloned
+    // the harness into): prompt login and stop — no provider, no polling.
+    if (!hasAgentKey(ctx.cwd)) {
+      notifyLoginRequired(ctx)
+      return
+    }
+
+    if (!providerRegistered) {
       try {
         await registerTribesProvider(pi)
-        providerFailed = false
+        providerRegistered = true
       } catch (err) {
         if (ctx.hasUI)
           ctx.ui.notify(`Tribes provider failed to load: ${errorMessage(err)}`, 'error')

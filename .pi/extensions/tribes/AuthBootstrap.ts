@@ -1,5 +1,5 @@
 import { execFile, spawn } from 'node:child_process'
-import { copyFileSync, existsSync, mkdirSync } from 'node:fs'
+import { copyFileSync, existsSync, mkdirSync, readFileSync } from 'node:fs'
 import { readFile, writeFile } from 'node:fs/promises'
 import { dirname, resolve } from 'node:path'
 import { promisify } from 'node:util'
@@ -92,13 +92,49 @@ export function installAgentKey(cwd: string): void {
 }
 
 /**
- * Whether an agent authorization key is present (i.e. the user is logged in).
- * Extensions load via jiti and cannot use the `@/` alias, so this checks the
- * canonical key path directly, mirroring installAgentKey. A present-but-corrupt
- * key returns true and fails loudly later via the provider/token path.
+ * Whether the user is logged in — i.e. the authorization key carries a
+ * `keyQuorumId` (the agent-wallet quorum bound as a signer). Mere file existence
+ * is NOT login: a host/zipbox-minted key exists with no bound quorum, and must
+ * read as logged-out so `/tribes:login` proceeds. Extensions load via jiti and
+ * cannot use the `@/` alias or zod, so this reads + parses the canonical key path
+ * directly. A missing/corrupt/unparsable key reads as not-logged-in.
  */
 export function hasAgentKey(cwd: string): boolean {
+  const keyPath = resolve(cwd, '.tribes/agent-authorization-key.json')
+  try {
+    const parsed: unknown = JSON.parse(readFileSync(keyPath, 'utf8'))
+    if (typeof parsed !== 'object' || parsed === null || !('keyQuorumId' in parsed)) {
+      return false
+    }
+    const keyQuorumId: unknown = parsed.keyQuorumId
+    return typeof keyQuorumId === 'string' && keyQuorumId.length > 0
+  } catch {
+    return false
+  }
+}
+
+/**
+ * Whether an authorization key file exists at all — logged in or not. Gates the
+ * token mint + quorum self-heal, which need a key present but not necessarily a
+ * completed login.
+ */
+export function hasAgentKeyFile(cwd: string): boolean {
   return existsSync(resolve(cwd, '.tribes/agent-authorization-key.json'))
+}
+
+/**
+ * Backfill `keyQuorumId` for a web-booted sandbox so `hasAgentKey` recognizes it
+ * as logged in. Delegates to `tribes-cli login sync-quorum`, which asks the
+ * control plane for this sandbox's quorum id and patches the key file — a no-op
+ * for any other origin or an already-synced key. Best-effort; run after
+ * `writeAuthEnv` has materialized .env so the CLI can authenticate.
+ */
+export async function syncKeyQuorum(cwd: string): Promise<void> {
+  await execFileAsync('bash', ['-lc', 'tribes-cli login sync-quorum'], {
+    cwd,
+    timeout: MINT_TIMEOUT_MS,
+    maxBuffer: MINT_MAX_BUFFER_BYTES
+  })
 }
 
 /**

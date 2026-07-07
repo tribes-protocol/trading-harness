@@ -11,6 +11,10 @@ export type CliLoginKey = z.infer<typeof CliLoginKeySchema>
 
 export const CliLoginPollResponseSchema = z.object({
   sandboxId: z.string().min(1),
-  userId: z.string().min(1)
+  userId: z.string().min(1),
+  // Key quorum bound as an additional signer on the agent wallet during the
+  // browser approval — its presence in the authorization key is what marks the
+  // agent as genuinely logged in.
+  quorumId: z.string().min(1)
 })
 export type CliLoginPollResponse = z.infer<typeof CliLoginPollResponseSchema>
