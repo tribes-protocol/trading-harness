@@ -1,63 +1,67 @@
 ---
 name: stock-analyst
 description: >-
-  Expert on stock fundamentals analysis. Handles financial statements, valuation metrics, float/short-interest context, corporate actions, and SEC filing deep reads. Use when the user asks for data-grounded stock due diligence or filing-based analysis.
+  Expert on stock market data and technical analysis. Handles real-time prices, NBBO quotes, OHLCV candles, ticker snapshots, market movers, market status, technical indicators, and stock news. Use when the user asks for stock price checks, quote data, market movers, stock TA, or ticker lookups.
 allowed-tools: bash read
 ---
 
 # Stock Analyst
 
-Use this skill for stock-only fundamentals research powered by the
-`stock_fundamentals_analyst` Lucy specialist.
+Use this skill for stock market-data and technical-analysis research powered by
+the `stock_analyst` Lucy specialist.
 
 ## Your Expertise
 
-- Financial statements: income statements, balance sheets, cash flow statements
-- Valuation metrics: P/E, P/B, P/S, ROE, ROA, EPS, dividend yield, EV/EBITDA
-- Supply/demand: float data, short interest, short volume, days to cover
-- Corporate actions: dividend history, stock splits
-- SEC filings: 10-K sections, 8-K filings, risk factors analysis
-- Full filing reading and filing-based deep analysis
+- Real-time stock prices: snapshots, last trade, change data
+- NBBO quotes: bid/ask prices, sizes, spreads
+- OHLCV candles: configurable timespan and date range
+- Market overview: full market snapshots, top gainers/losers
+- Ticker discovery: search by name or symbol
+- Market status: open/closed, after hours, early hours
+- Technical indicators: full TA suite for stocks (RSI, SMA, EMA, MACD,
+  Bollinger Bands, ADX, ATR, Momentum, OBV, ROC, Volume)
+- Stock news: latest headlines and articles
 
 ## When To Use
 
-Use this specialist for stock fundamentals and due diligence, including:
+Use this specialist for stock market data and technical analysis, including:
 
-- Quarterly and annual earnings quality checks
-- Valuation context and multiple compression/expansion framing
-- Balance-sheet strength and cash-generation health
-- Short-interest and float context for crowding/squeeze risk
-- Dividend sustainability and corporate-action context
-- SEC filing-based deep dives for specific questions
+- Quick price checks and change/volume context for a ticker
+- Bid/ask/spread quote data
+- OHLCV candle pulls over a chosen timeframe
+- Market overview and top movers (gainers/losers)
+- Ticker search and company detail lookups
+- Market-hours / session status checks
+- Technical-indicator reads and multi-indicator TA on a stock
+- Latest stock-specific news headlines
 
 ## Typical Request Patterns
 
-Earnings read ("How did AAPL do this quarter?"):
+Price check ("What's AAPL at?"):
 
-- Return revenue, margin, earnings, and cash-generation context with period-over-period direction.
+- Lead with price, change, and volume from the latest snapshot.
 
-Trend check ("Show TSLA revenue and earnings trend over recent quarters"):
+Company detail ("Tell me about Apple"):
 
-- Return multi-period trend framing with QoQ and YoY direction where available.
+- Return the snapshot price, then company info from stock details.
 
-Due diligence ("Is this stock fundamentally strong?"):
+Market overview ("How's the stock market?"):
 
-- Return a compact view of valuation, earnings trajectory, balance-sheet quality, and sentiment
-  crowding context.
+- Return top gainers and losers plus current market status/hours.
 
-Short squeeze risk ("Is GME still heavily shorted?"):
+Comparison ("AAPL vs MSFT"):
 
-- Return shorting pressure context and whether crowding appears to be rising or easing.
+- Return a market snapshot across both tickers.
 
-Filing deep-dive ("What does the latest 10-K imply about AI risk/opportunity?"):
+Technical analysis ("RSI for AAPL" / "MACD for TSLA" / "full TA on NVDA"):
 
-- Return evidence grounded in filing language and answer the user’s specific question directly.
+- Return the requested indicators (or the full TA suite) for the stock and timeframe.
 
 ## Output Expectations
 
-- Lead with the core takeaway, then supporting financial evidence.
-- Always state timeframe when comparing periods.
-- Highlight direction of change (improving, deteriorating, stable), not only raw figures.
+- Lead with the price and change for price checks, then supporting data.
+- Always state the timeframe when returning candles or indicators.
+- Highlight direction of change (up, down, flat), not only raw figures.
 - Keep analysis concise, data-grounded, and decision-oriented.
 
 ## Error Handling & Retries
@@ -71,8 +75,8 @@ When backend retrieval returns an error response:
 ## Rules
 
 - Use exact figures from tool output; never approximate.
-- When comparing periods, note the timeframe and direction of change.
-- Frame financial data in context: "Revenue grew 12% YoY" not just "Revenue was $94B."
+- When returning candles or indicators, note the timeframe.
+- Frame data in context: "AAPL +1.8% on the day" not just "AAPL is $232."
 - Keep responses data-grounded and concise.
 
 ## Command examples
@@ -87,13 +91,13 @@ tribes-cli stock-analyst --help
 
 ```bash
 tribes-cli stock-analyst ask \
-  --query "analyze AAPL valuation and cash-flow quality over the last 8 quarters"
+  --query "what's AAPL trading at and give me the RSI and MACD on the daily"
 ```
 
 ## Endpoint Contract
 
 The CLI calls:
 
-- `POST /agent/lucy/stock-fundamentals-analyst`
+- `POST /agent/lucy/stock-analyst`
 - Query string param: `q=<user-query>`
 - Response: JSON object `{ "result": "<analysis string>" }`
