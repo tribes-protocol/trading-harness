@@ -19,17 +19,26 @@ Pi reads `.pi/agent/settings.json` and `AGENTS.md`, then starts the trading harn
 
 ## Environment
 
-Set these in the sandbox/runtime env (never commit secrets):
+By default (`NODE_ENV` unset, empty, or `production`) the Tribes API base and Privy app id
+are **baked into the binary** — there is nothing to configure to run against production.
+The only thing a run needs is auth (a bearer token), and that is handled for you:
 
-| Variable       | Purpose                                      |
-| -------------- | -------------------------------------------- |
-| `API_BASE_URL` | Tribes API base (LLM proxy + wallet backend) |
-| `PRIVY_APP_ID` | Privy app for the agent wallet               |
+- In a Tribes sandbox the control plane injects the token (`TRIBES_API_KEY`); no login step.
+- Anywhere else (Claude Code, a local shell), run `tribes-cli login` — or the `/tribes-login`
+  skill — once to mint and persist an `API_BEARER_TOKEN`.
 
-On startup the `tribes` extension writes `API_BASE_URL`, `PRIVY_APP_ID`, and a freshly
-minted `API_BEARER_TOKEN` into `.env` (refreshed every 24h). The `tribes-cli` binary
-auto-loads `.env` from the workspace, so every command reads its config straight from it —
-no token prefix on any command.
+On startup the `tribes` extension mints a fresh `API_BEARER_TOKEN` into `.env` (refreshed
+every 24h). The `tribes-cli` binary auto-loads `.env` from the workspace, so every command
+reads its config straight from it — no token prefix on any command.
+
+These two vars only matter for **local, non-production dev** (`NODE_ENV` set to a
+non-production value), where the endpoints point at localhost and the Privy app id must be
+supplied:
+
+| Variable       | When needed                        | Purpose                                     |
+| -------------- | ---------------------------------- | ------------------------------------------- |
+| `PRIVY_APP_ID` | non-production `NODE_ENV` only     | Privy app for the agent wallet              |
+| `API_BASE_URL` | never read — kept for sandbox seed | Tribes API base (hardcoded per environment) |
 
 Direct wallet CLI usage from the workspace root:
 

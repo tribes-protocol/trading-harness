@@ -174,7 +174,7 @@ Prettier: no semicolons, single quotes, no trailing commas, width 100. TypeScrip
 
 ## Environment
 
-Required env, validated by `@/common/Env`: `API_BEARER_TOKEN`, `PRIVY_APP_ID`. `API_BEARER_TOKEN` is typically auto-minted by the Tribes extension; if it is missing, run `tribes-cli login` first so a fresh token is fetched and persisted before other `tribes-cli` actions. Wallet private keys live in Privy, never locally. `.env*` and `.tribes/*.json` snapshots are gitignored.
+Config is resolved in `@/common/Env`. When `NODE_ENV` is unset, empty, or `production` (the default), `API_BASE_URL` and `PRIVY_APP_ID` are hardcoded to their production values — neither needs to be set. `PRIVY_APP_ID` is only read from (and required in) the env under a non-production `NODE_ENV`; `API_BASE_URL` is never read from the env. The one thing a run needs is a bearer token: `API_BEARER_TOKEN` (or the sandbox-injected `TRIBES_API_KEY`). It is typically auto-minted by the Tribes extension; if it is missing, run `tribes-cli login` first so a fresh token is fetched and persisted before other `tribes-cli` actions. Wallet private keys live in Privy, never locally. `.env*` and `.tribes/*.json` snapshots are gitignored.
 
 ## Gotchas
 
