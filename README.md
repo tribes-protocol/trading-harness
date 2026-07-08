@@ -6,7 +6,7 @@ Autonomous Hyperliquid trading harness for the [Pi coding agent](https://github.
 
 ## How it runs
 
-This repo **is** the agent's workspace. In a Tribes sandbox the control plane clones it into `/workspace`, runs `bootstrap.sh` once to install deps **and compile the whole project into a single `tribes-cli` binary installed on PATH**, injects the agent's authorization key + RPC/provider env, and launches `pi`. Auth is already wired at provisioning — **there is no manual login step**.
+This repo **is** the agent's workspace. In a Tribes sandbox the control plane clones it into `/root/workspace`, runs `bootstrap.sh` once to install deps **and compile the whole project into a single `tribes-cli` binary installed on PATH**, injects the agent's authorization key + RPC/provider env, and launches `pi`. Auth is already wired at provisioning — **there is no manual login step**.
 
 To run it locally instead:
 
