@@ -117,8 +117,17 @@ how much; it handles the route.
 > one direct step: no swap, no bridge, no waiting. The deposit minimum is **5
 > USDC**.
 
-Anything else works too — the agent just has an extra step or two. It checks
-your balances, figures out which case you're in, and does the right thing:
+### No crypto yet? Buy with a card
+
+You don't need to already own crypto. In the Tribes app, tap the **Fund** button
+in the footer to buy crypto with a debit or credit card — choose **USDC on
+Arbitrum** so it lands ready to trade. It arrives in your wallet; then just say
+_"Fund my Hyperliquid account"_ and the agent takes it from there.
+
+### Already hold crypto?
+
+Anything works — the agent just has an extra step or two. It checks your
+balances, figures out which case you're in, and does the right thing:
 
 | Where your funds are                               | What the agent does                                         |
 | -------------------------------------------------- | ----------------------------------------------------------- |
@@ -126,7 +135,9 @@ your balances, figures out which case you're in, and does the right thing:
 | A different token on Arbitrum (say, ETH)           | Swaps it to USDC first, then deposits                       |
 | Another chain entirely (Ethereum, Base, Solana, …) | Bridges to the right place, converts to USDC, then deposits |
 
-**Just say what you want:**
+### Just ask — either way
+
+Whichever path you're on, tell the agent what you want:
 
 > 💬 "Fund my Hyperliquid account with $100."
 
