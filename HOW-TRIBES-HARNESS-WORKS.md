@@ -17,6 +17,28 @@ again in the [glossary](#speaking-the-language-a-glossary).
 > from a small price move. The harness always tells you exactly what's about to
 > happen before it puts money at risk — read those confirmations.
 
+## Contents
+
+**Start here**
+
+- [What it can do](#what-it-can-do)
+- [Getting started](#getting-started)
+- [The mental model](#the-mental-model)
+
+**Your money's journey**
+
+- [Part 1 — Putting money in](#part-1--putting-money-in)
+- [Part 2 — Trading](#part-2--trading)
+- [Part 3 — Managing positions](#part-3--managing-positions)
+- [Part 4 — Research](#part-4--research-before-during-or-instead-of-trading)
+- [Part 5 — Taking money out](#part-5--taking-money-out)
+
+**Reference**
+
+- [Safety & guardrails](#safety--guardrails)
+- [Glossary](#speaking-the-language-a-glossary)
+- [FAQ / troubleshooting](#faq--troubleshooting)
+
 ## What it can do
 
 - **Trade crypto** — long or short, spot or leverage.
