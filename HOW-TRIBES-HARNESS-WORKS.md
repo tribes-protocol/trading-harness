@@ -119,10 +119,15 @@ how much; it handles the route.
 
 ### No crypto yet? Buy with a card
 
-You don't need to already own crypto. In the Tribes app, tap the **Fund** button
-in the footer to buy crypto with a debit or credit card — choose **USDC on
-Arbitrum** so it lands ready to trade. It arrives in your wallet; then just say
-_"Fund my Hyperliquid account"_ and the agent takes it from there.
+You don't need to already own crypto. Once you're signed in to the Tribes app,
+tap the **Fund** button in the footer to buy crypto with a debit or credit card
+— choose **USDC on Arbitrum** so it lands ready to trade. It arrives in your
+wallet; then just say _"Fund my Hyperliquid account"_ and the agent takes it
+from there.
+
+> [!NOTE]
+> The **Fund** button lives in the Tribes app. On other clients you won't see
+> it — fund by moving crypto into your wallet instead (see below).
 
 ### Already hold crypto?
 
