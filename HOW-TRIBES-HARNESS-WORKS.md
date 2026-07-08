@@ -363,41 +363,49 @@ how they apply _here_. The crypto plumbing, though, may be genuinely new.
 ## FAQ / troubleshooting
 
 **Do I need to hold ETH (or any coin) for gas?**
-No. Network fees are sponsored by the harness. You never fund gas — ignore it
-entirely.
+
+> No. Network fees are sponsored by the harness. You never fund gas — ignore it
+> entirely.
 
 **A trade failed saying "insufficient balance" — what happened?**
-That's about your _trading balance_, not gas. Your Hyperliquid account needs
-enough USDC margin to support the position. Fund a bit more (see
-[Putting money in](#part-1--putting-money-in)) and try again — the agent will
-usually offer to do exactly that and name funds it found in your wallet.
+
+> That's about your _trading balance_, not gas. Your Hyperliquid account needs
+> enough USDC margin to support the position. Fund a bit more (see
+> [Putting money in](#part-1--putting-money-in)) and try again — the agent will
+> usually offer to do exactly that and name funds it found in your wallet.
 
 **Why am I asked to open a link and approve something?**
-That's the one-time login. Approving the link authorizes the agent to trade on
-your behalf. It completes automatically once you approve — there's nothing
-else to click afterward.
+
+> That's the one-time login. Approving the link authorizes the agent to trade
+> on your behalf. It completes automatically once you approve — there's nothing
+> else to click afterward.
 
 **The login link stopped working.**
-Each link is live for a few minutes. If it expired, just ask to log in again —
-the agent issues a fresh link, and the old one is dead.
+
+> Each link is live for a few minutes. If it expired, just ask to log in again
+> — the agent issues a fresh link, and the old one is dead.
 
 **Are my private keys safe?**
-Yes. Keys are held in a secure vault (Privy) and are never shown, exported, or
-pasted anywhere. The agent signs trades through the vault without ever
-exposing the key.
+
+> Yes. Keys are held in a secure vault (Privy) and are never shown, exported,
+> or pasted anywhere. The agent signs trades through the vault without ever
+> exposing the key.
 
 **Can it really trade stocks?**
-Yes — as Hyperliquid perps. You say _"go long Microsoft"_; it routes the order
-to the venue that lists MSFT. It feels like a stock trade; underneath it's a
-perp.
+
+> Yes — as Hyperliquid perps. You say _"go long Microsoft"_; it routes the
+> order to the venue that lists MSFT. It feels like a stock trade; underneath
+> it's a perp.
 
 **What's the minimum to get started?**
-The deposit minimum for funding Hyperliquid is **5 USDC**. Realistically, give
-yourself more headroom than that so orders have room to fill.
+
+> The deposit minimum for funding Hyperliquid is **5 USDC**. Realistically,
+> give yourself more headroom than that so orders have room to fill.
 
 **How current is the price it uses?**
-For sizing and orders, the agent reads Hyperliquid's live mark price at the
-moment you trade, so _"$500 of BTC"_ is converted using the price right then.
+
+> For sizing and orders, the agent reads Hyperliquid's live mark price at the
+> moment you trade, so _"$500 of BTC"_ is converted using the price right then.
 
 ---
 
