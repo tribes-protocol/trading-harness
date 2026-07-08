@@ -108,18 +108,21 @@ Four facts complete the picture:
 
 ## Part 1 — Putting money in
 
-Funding means getting **USDC into your Hyperliquid account**. You tell the
-agent how much; it handles the route.
+Funding means getting **USDC into your Hyperliquid account**. You tell the agent
+how much; it handles the route.
 
-> [!NOTE]
-> The deposit minimum is **5 USDC**.
+> [!TIP]
+> Deposit **USDC on Arbitrum** — it's the fastest and recommended way to start.
+> Hyperliquid settles on the Arbitrum network, so USDC already there deposits in
+> one direct step: no swap, no bridge, no waiting. The deposit minimum is **5
+> USDC**.
 
-Your existing funds can be in any of three states. The agent checks your
-balances, figures out which case you're in, and does the right thing:
+Anything else works too — the agent just has an extra step or two. It checks
+your balances, figures out which case you're in, and does the right thing:
 
 | Where your funds are                               | What the agent does                                         |
 | -------------------------------------------------- | ----------------------------------------------------------- |
-| USDC on Arbitrum already                           | Deposits directly — the fastest path                        |
+| **USDC on Arbitrum** _(recommended)_               | Deposits directly — fastest, no conversion                  |
 | A different token on Arbitrum (say, ETH)           | Swaps it to USDC first, then deposits                       |
 | Another chain entirely (Ethereum, Base, Solana, …) | Bridges to the right place, converts to USDC, then deposits |
 
