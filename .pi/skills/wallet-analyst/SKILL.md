@@ -1,79 +1,90 @@
 ---
 name: wallet-analyst
 description: >-
-  Expert on wallet and portfolio analysis. Handles: token balances across all chains, portfolio net worth and trends over time, realized and unrealized PnL (overall and per-token), transfer tracking, transaction history, and balance changes. Call when the user asks about their wallet, holdings, portfolio performance, or transaction activity.
+  Portfolio analytics for any wallet address. Handles: net worth and its trend over time,
+  realized and unrealized PnL (overall and per-token), balance changes, transfer tracking, and
+  transaction history. Call when the question is how a wallet performed or what happened in it —
+  the agent's own or any third-party address. NOT for: wallet addresses/IDs or raw pre-trade
+  balances (use wallet); live Hyperliquid positions, orders, or perp/spot balances (use
+  hyperliquid).
 allowed-tools: bash read
 ---
 
 # Wallet Analyst
 
-Use this skill for wallet and portfolio analysis powered by the `wallet_analyst` Lucy specialist.
-It focuses on balances, net worth, PnL, transfer activity, and transaction-level wallet behavior.
+Backing command group: `tribes-cli wallet-analyst`. One subcommand, `ask`, sends a
+natural-language query to the specialist; output is one free-text analysis string, not JSON.
+Requires: an auth token (run `tribes-cli login` once if commands fail with auth errors).
 
-## When To Use
+## When to use
 
-Use this skill for:
+- Net worth now or its trend over time (24h/7d/30d).
+- Realized and unrealized PnL, overall or per-token.
+- Transfer activity, transaction history, balance changes.
+- Attribution: why a wallet's value changed over a period.
+- NOT for the agent's addresses, wallet IDs, or a raw balance snapshot before a trade — use
+  `wallet`.
+- NOT for Hyperliquid positions, open orders, or perp/spot balances — use `hyperliquid`.
 
-- Current wallet holdings and token balances across chains
-- Portfolio net worth snapshots and trend analysis over time
-- Realized and unrealized PnL breakdowns, including token-level performance
-- Transfer activity and wallet transaction history
-- Net worth change attribution and wallet behavior diagnostics
+## Hard rules
 
-## Core Capabilities
+1. MUST set a bash timeout of at least 120 seconds (prefer 300) — `ask` polls a backend agent.
+2. The ONLY flag is `--query`. There is no `--out`, no `--address`, no timeframe flag — write
+   the wallet address, timeframe, and focus into the query text itself.
+3. MUST run `tribes-cli wallet list` first and embed the returned address in the query. NEVER
+   assume a default wallet.
+   Wrong: `--query "my PnL last 30d"` (no address — may analyze the wrong or no wallet).
+   Right: `--query "realized and unrealized PnL for <evm-address> over the last 30d"`.
+4. The CLI calls the API itself — NEVER call the endpoint or curl directly.
+5. Treat the specialist's trailing "want me to…" suggestions as your own TODO: run at most 1–2
+   refinement asks, then present the sharpened answer (see AGENTS.md).
 
-- Cross-chain wallet balance analysis with token and USD context
-- Net worth analytics: current value, composition, and historical trend
-- Performance analytics: realized vs unrealized PnL and per-token outcomes
-- Activity intelligence: transfers, transaction timelines, and balance shifts
+## Command reference
 
-## Recommended Workflows
+| Subcommand | Purpose                                    | Required flags | Read-only or signed |
+| ---------- | ------------------------------------------ | -------------- | ------------------- |
+| `ask`      | Natural-language portfolio analytics query | `--query`      | read-only           |
 
-Portfolio overview ("What is in my wallet?"):
+## Examples
 
-- Ask for wallet assets and net worth first, then drill into breakdown details.
-
-Performance review ("How is my wallet doing?"):
-
-- Ask for overall PnL, then per-token PnL, and finally net worth chart trend.
-
-Activity and flows:
-
-- Ask for recent transfers first, then transfer totals and full transaction history.
-
-Net worth change investigation:
-
-- Ask for the net worth trend, then balance changes and PnL context for explanation.
-
-## Input Guidance
-
-Best results come from queries that include:
-
-- Wallet address (if not using default context wallet)
-- Explicit timeframe (for example 24h / 7d / 30d)
-- Desired focus: balances, net worth, PnL, or transfer activity
-
-If your query is broad, start with a portfolio snapshot and then ask follow-up questions.
-
-## Command examples
-
-### Show CLI help
-
-```bash
-tribes-cli wallet-analyst --help
-```
-
-### Ask the specialist
+### Portfolio snapshot (holdings and net worth)
 
 ```bash
 tribes-cli wallet-analyst ask \
-  --query "portfolio PnL and net worth trend over the last 30d"
+  --query "current holdings and total USD net worth for <evm-address> across all chains, with composition breakdown"
 ```
 
-## Endpoint Contract
+### Performance review (PnL)
 
-The CLI calls:
+```bash
+tribes-cli wallet-analyst ask \
+  --query "realized and unrealized PnL for <evm-address> over the last 30d, overall and per-token"
+```
 
-- `POST /agent/lucy/wallet-analyst`
-- Query string param: `q=<user-query>`
-- Response: JSON object `{ "result": "<analysis string>" }`
+### Activity and flows
+
+```bash
+tribes-cli wallet-analyst ask \
+  --query "all transfers in and out of <evm-address> in the last 7d, with totals per token"
+```
+
+### Net worth change attribution
+
+```bash
+tribes-cli wallet-analyst ask \
+  --query "why did the net worth of <evm-address> change over the last 7d — balance changes and PnL context"
+```
+
+## Error recovery
+
+| Symptom                                              | Action                                                                                       |
+| ---------------------------------------------------- | -------------------------------------------------------------------------------------------- |
+| Auth error (unauthorized/expired token)              | Run `tribes-cli login`, retry the original command once, then stop and report.               |
+| `Wallet analyst request failed: <status>` (non-auth) | Retry the same command once; if it fails again, stop and report the error.                   |
+| Answer covers the wrong or no wallet                 | You omitted the address — rerun with the address from `tribes-cli wallet list` in the query. |
+
+## Related skills
+
+- `wallet` — addresses, wallet IDs, and raw balance JSON needed before execution.
+- `hyperliquid` — live Hyperliquid balances, positions, and open orders.
+- `transaction` — broadcast prepared transactions and check a transaction's status.

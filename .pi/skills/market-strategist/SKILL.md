@@ -1,84 +1,89 @@
 ---
 name: market-strategist
 description: >-
-  Expert on the big-picture crypto market. Handles: global market cap and BTC dominance, DeFi TVL, market cap trends over time, coin rankings and market data tables, daily top gainers and losers, category performance, recently added coins, quick price lookups, and market-wide search. Call for "how's the market?", ranking questions, top movers, category analysis, or broad trend questions.
+  Expert on market-WIDE crypto aggregates, never single-token deep dives. Handles: global market
+  cap and BTC dominance, DeFi TVL, market-cap trends over time, coin ranking tables, daily top
+  gainers and losers, category performance, recently added coins, quick multi-coin price lookups,
+  and market-wide search. Call for "how's the market?", crypto rankings, crypto top movers,
+  category rotation, or broad trend questions. NOT for: one token's price, chart, or safety (use
+  token-analyst); deep single-coin research (use fundamentals-analyst); pool or DEX-level TVL
+  (use defi-analyst); stock movers (use stock-analyst); numeric macro indicators (use macros).
 allowed-tools: bash read
 ---
 
 # Market Strategist
 
-Use this skill for big-picture crypto market analysis powered by the `market_strategist` Lucy
-specialist. It focuses on market-wide metrics, rankings, movers, categories, and broad trends.
+Backing command group: `tribes-cli market-strategist`. Sends one natural-language question to the
+market_strategist specialist and prints its market-wide crypto analysis.
+Requires: an auth token (run `tribes-cli login` once if commands fail with auth errors).
 
-## When To Use
+## When to use
 
-Use this skill for:
+- "How is the crypto market?" — global market cap, BTC dominance, DeFi TVL.
+- Crypto ranking tables, daily top gainers/losers, market-cap trends over time.
+- Category rotation, recently added coins, quick multi-coin price checks, market-wide search.
+- NOT for a single token or coin — use `token-analyst` (on-chain) or `fundamentals-analyst` (profile).
+- NOT for trending-token discovery (`alpha-scout`), pools/DEXes (`defi-analyst`), CEX/derivatives (`exchange-analyst`).
+- NOT for stock movers (`stock-analyst`) or numeric macro indicators like CPI/VIX/DXY (`macros`).
 
-- Macro market checks ("how is crypto doing overall?")
-- Global context (total market cap, BTC dominance, DeFi TVL)
-- Top movers and ranking-based analysis
-- Category and sector performance comparisons
-- Broad market discovery and trending asset lookup
+## Hard rules
 
-## Core Capabilities
+1. `ask` is the ONLY subcommand and `--query` is its ONLY flag — no `--out`, no filter flags.
+   NEVER invent subcommands such as `gainers` or `chart`.
+2. Encode time window, scope, and metric focus inside the query text.
+   Wrong: `--query "gainers"`. Right: `--query "top 10 gainers over the last 24h with market caps"`.
+3. MUST set a bash timeout of at least 120 seconds for this command — it polls a backend agent.
+4. Output is one free-text analysis string on stdout, not JSON — NEVER JSON-parse it. The CLI
+   calls the API itself — NEVER call the endpoint or curl directly.
+5. Before presenting movers or rankings as actionable trade ideas, verify Hyperliquid
+   tradability via `hyperliquid` discovery and split tradable vs not (see AGENTS.md).
+6. For unscoped "top movers" or opportunity requests, also run the stock side via
+   `stock-analyst` (cross-asset guardrail, see AGENTS.md).
+7. Treat the specialist's trailing "want me to…" suggestions as your own refinement TODOs, max
+   1–2 passes (see AGENTS.md).
 
-- Global metrics and trend context: market cap, dominance, DeFi health, market-cap charts
-- Rankings and leaders: top coins by market cap/volume and performance
-- Movers intelligence: daily gainers/losers and broad risk-on/risk-off signals
-- Category analytics: sector-level performance and rotation analysis
-- Discovery and lookup: trending search, new coins, and quick price checks
+## Command reference
 
-## Recommended Workflows
+| Subcommand | Purpose                                          | Required flags | Read-only or signed |
+| ---------- | ------------------------------------------------ | -------------- | ------------------- |
+| `ask`      | Free-text market-wide question to the specialist | `--query`      | read-only           |
 
-Market overview ("How is the market today?"):
+## Examples
 
-- Ask for global crypto metrics first, then DeFi metrics, then top gainers/losers.
-
-Coin ranking analysis:
-
-- Ask for ranked markets, then compare top names with category-level performance.
-
-Category rotation checks:
-
-- Ask for category performance first, then drill into specific sectors.
-
-Trend confirmation:
-
-- Ask for market-cap chart context and combine it with current movers.
-
-Quick directional checks:
-
-- Ask for simple price lookups after setting market context.
-
-## Input Guidance
-
-Best results come from queries that include:
-
-- Time window (for example 24h / 7d / 30d)
-- Scope (global market, category, or ranked coin list)
-- Explicit metric focus (market cap, dominance, volume, gainers/losers)
-
-For token-specific on-chain depth (holders/traders/security), switch to `token-analyst`.
-
-## Command examples
-
-### Show CLI help
-
-```bash
-tribes-cli market-strategist --help
-```
-
-### Ask the specialist
+### Market overview ("how's the market?")
 
 ```bash
 tribes-cli market-strategist ask \
-  --query "global crypto market overview for the last 24h"
+  --query "global crypto market overview for the last 24h: total market cap, BTC dominance, DeFi TVL, top gainers and losers"
 ```
 
-## Endpoint Contract
+### Top movers with rankings context
 
-The CLI calls:
+```bash
+tribes-cli market-strategist ask \
+  --query "top 10 crypto gainers and losers over the last 24h with market caps, plus top 20 coins by market cap with 7d performance"
+```
 
-- `POST /agent/lucy/market-strategist`
-- Query string param: `q=<user-query>`
-- Response: JSON object `{ "result": "<analysis string>" }`
+### Category rotation, trend, and new listings
+
+```bash
+tribes-cli market-strategist ask \
+  --query "category performance for AI, DeFi, and meme sectors over 7d, total market cap trend over 30 days, and notable coins added this week"
+```
+
+## Error recovery
+
+| Symptom                                  | Action                                                                         |
+| ---------------------------------------- | ------------------------------------------------------------------------------ |
+| Auth error (unauthorized, expired token) | Run `tribes-cli login`, retry the original command once, then stop and report. |
+| Command killed before output             | You set too short a bash timeout — rerun with a 300-second timeout.            |
+| Unknown option error                     | Drop the extra flag — `--query` is the only flag.                              |
+| Any other API failure                    | Retry the same command once; if it fails again, stop and report the error.     |
+
+## Related skills
+
+- `token-analyst` — deep dive on one identified token; `fundamentals-analyst` — one coin's profile.
+- `alpha-scout` — trending/new-token and smart-money discovery before a token is chosen.
+- `stock-analyst` — the stock-side pass for unscoped movers/opportunity questions.
+- `hyperliquid` — tradability check (`list-exchanges`, then `list-assets`) before trade ideas.
+- `strategize` — full market briefing combining macro, news, odds, and ideas.

@@ -1,140 +1,150 @@
 ---
 name: transaction
-description: Execute blockchain transactions and check status through the local transaction CLI.
-compatibility: Designed for the autonomous-trading-agent harness; requires wallet skill (`.pi/skills/wallet`) to resolve wallet IDs before transaction commands.
+description: >-
+  Low-level transaction plumbing. Handles: broadcasting Privy-signed single EVM transactions
+  (sendEthTransaction), atomic EVM batches (sendCalls, EIP-5792), Solana transactions
+  (sendSolTransaction), and cross-chain status checks (getTransactionStatus). Call it only AFTER
+  wallet ethTransfer/solTransfer or a spot-trading quote has produced the payload — NEVER as the
+  first choice for trade intent. NOT for: DEX swaps or bridges (use spot-trading); Hyperliquid
+  orders, deposits, or withdrawals (use hyperliquid); building transfer payloads (use wallet).
 allowed-tools: bash read
 ---
 
 # Transaction
 
-Use this skill when the agent must send a transaction or check transaction status.
+Backing command group: `tribes-cli transaction`. Broadcasts already-prepared transactions via
+Privy signing and checks confirmation status. It never builds payloads itself.
+Requires: an auth token (run `tribes-cli login` once if commands fail with auth errors) and a
+wallet ID from `tribes-cli wallet list` (`wallet` skill) for every send command.
 
-## Compatibility
+## When to use
 
-- Depends on the `wallet` skill for wallet discovery.
-- Use wallet CLI output as the source of `walletId` / `walletAddress` context.
-- Do not read `.tribes/privy-wallets.json` directly in the workflow.
+- Broadcast one EVM payload (from `wallet ethTransfer` or a quote) — `sendEthTransaction`.
+- Broadcast 2+ EVM calls atomically on one chain — `sendCalls`.
+- Broadcast a Solana transaction (from `wallet solTransfer` or a quote) — `sendSolTransaction`.
+- Check whether a broadcast confirmed — `getTransactionStatus`.
+- NOT for trade intent ("buy X", "swap Y") — use `spot-trading` (DEX swaps/bridges) or
+  `hyperliquid` (perps, HL spot, all stock trades).
+- NOT for building transfer payloads or finding wallet IDs — use `wallet`.
 
-## Requirements
+## Hard rules
 
-- Caller provides `walletId` for signed send endpoints.
+1. NEVER hand-craft calldata or Solana instructions. Payload sources: plain transfer →
+   `wallet ethTransfer` / `wallet solTransfer`; swap or bridge → `spot-trading quote`.
+2. Copy `--chain-id`, `--to`, `--value`, `--data` verbatim from the builder output. The chain id
+   is set by the payload, never picked from balances.
+3. Gas is sponsored — NEVER preflight gas, swap for gas, or ask the user to fund gas
+   (see AGENTS.md).
+4. NEVER mix wallet IDs across chains: `<evmWalletId>` signs EVM, `<solWalletId>` signs Solana.
+5. Values are BASE UNITS. Wrong: `--value 0.01` (rejected). Right: `--value 10000000000000000`
+   (0.01 ETH, 18 decimals). USDC has 6 decimals: 25 USDC → `25000000`. SOL has 9: 0.5 SOL →
+   `500000000` lamports.
+6. Confirm the outcome with the user in plain English (asset, amount, destination) before a
+   signed send. NEVER show the user chain ids, calldata, hashes, or commands.
+7. `sendCalls` returns a Privy `transaction_id`, NOT an on-chain hash. Report the batch result
+   from that output; NEVER pass a `transaction_id` to `getTransactionStatus --hash`.
 
-## Required EVM tx data
+## Command reference
 
-For `sendEthTransaction`, gather the full tx payload:
+| Subcommand             | Purpose                                   | Required flags                                                                                | Read-only or signed |
+| ---------------------- | ----------------------------------------- | --------------------------------------------------------------------------------------------- | ------------------- |
+| `sendEthTransaction`   | Broadcast one EVM transaction             | `--chain-id`, `--to`, `--value`, `--wallet-id` (`--data` defaults to `0x`; `--from` optional) | signed              |
+| `sendCalls`            | Broadcast an atomic EVM batch (EIP-5792)  | `--chain-id`, `--calls`, `--wallet-id`                                                        | signed              |
+| `sendSolTransaction`   | Broadcast a serialized Solana transaction | `--transaction`, `--wallet-id`                                                                | signed              |
+| `getTransactionStatus` | Cross-chain status by hash/signature      | `--chain-id`, `--hash` (`--timestamp`, `--check-safe-confirmations` optional)                 | read-only           |
 
-- `chainId`
-- `to`
-- `data`
-- `value`
+All subcommands accept `--out <file>` to write the JSON output to a file instead of stdout.
 
-Use `0x` for empty calldata. `value` must be raw wei.
+## Batching algorithm (canonical statement — contiguous same-chain runs)
 
-## Batch calls (atomic)
+When broadcasting multiple EVM transactions, keep the given order and:
 
-Use `sendCalls` to execute several EVM calls in one atomic transaction (Privy
-`wallet_sendCalls`, EIP-5792) — e.g. an ERC-20 `approve` plus a swap. Either all
-calls land or the whole batch reverts.
+1. Walk the transactions left to right.
+2. Extend the current run while the next transaction shares the run's `chainId`.
+3. When the `chainId` changes, close the run and start a new one.
+4. Send each run of 2+ calls with one `sendCalls`; send each run of exactly 1 with
+   `sendEthTransaction`.
+5. NEVER reorder across chain boundaries to build bigger batches.
 
-- All calls share one `chainId`.
-- Pass `--calls` as a JSON array of `{ to, value, data }`; `value` is raw wei as
-  a string, `data` defaults to `0x`.
-- Returns a Privy `transaction_id` (track it with `getTransactionStatus` once the
-  on-chain hash is known).
-- For multi-transaction requests, batch by contiguous same-chain runs (preserve
-  full user order):
-  - Walk transactions from left to right.
-  - Build a run while consecutive transactions share the same `chainId`.
-  - If a run has 2 or more calls, send that run via one `sendCalls`.
-  - If a run has exactly 1 call, send it via `sendEthTransaction`.
-  - When `chainId` changes, close the current run and start a new run.
-- Never reorder across chain boundaries to create bigger batches.
+Worked example — order Base, Base, Arbitrum: one `sendCalls --chain-id 8453` with both Base
+calls, then one `sendEthTransaction --chain-id 42161`. Solana never batches — send each alone.
 
-## Gas is sponsored
+## Examples
 
-Gas for every transaction is sponsored by the harness, so the signer never needs
-to hold native gas (ETH on EVM, SOL on Solana) to send. This applies to single
-sends (`sendEthTransaction`), atomic batches (`sendCalls`), and Solana sends
-(`sendSolTransaction`).
-
-- Do not check native balances for gas before sending.
-- Do not bridge or swap to acquire native gas.
-- Do not ask the user to deposit native gas.
-
-Proceed directly with the send.
-
-## Workflow
-
-1. Gas is sponsored; do no gas preflight and proceed directly to the send.
-2. Resolve wallet context through the wallet CLI:
-   - Run `wallet list` to get `evmWalletId` and `evmWalletAddress`.
-   - If `chainId` is unknown, run `wallet assets` for the EVM address and select an EVM `chainId` from returned ERC-20 balances.
-3. Confirm tx intent and payload with the user (`chainId`, `to`, `data`, `value`).
-4. If handling multiple EVM txs, split them into contiguous same-`chainId` runs:
-   - Run length >= 2 -> `sendCalls`.
-   - Run length = 1 -> `sendEthTransaction`.
-5. Run the transaction command with explicit tx data fields and `--wallet-id`.
-6. Return the tx hash/signature to the user.
-7. Optionally run `getTransactionStatus` to verify confirmation.
-
-## CLI
-
-```bash
-tribes-cli transaction --help
-```
-
-## Common commands
-
-### Send ETH transaction (EVM)
-
-```bash
-tribes-cli transaction sendEthTransaction \
-  --chain-id 42161 \
-  --to 0x1111111111111111111111111111111111111111 \
-  --value 1000000 \
-  --wallet-id "<evmWalletId>"
-```
-
-### Send a batch of EVM calls (atomic)
-
-```bash
-tribes-cli transaction sendCalls \
-  --chain-id 8453 \
-  --calls '[{"to":"0xTokenAddress","value":"0","data":"0xApproveCalldata"},{"to":"0xRouterAddress","value":"0","data":"0xSwapCalldata"}]' \
-  --wallet-id "<evmWalletId>"
-```
-
-### Send Solana transaction
-
-```bash
-tribes-cli transaction sendSolTransaction \
-  --transaction "<serializedSolanaInstruction>" \
-  --wallet-id "<solWalletId>"
-```
-
-### Check transaction status
-
-```bash
-tribes-cli transaction getTransactionStatus \
-  --chain-id 42161 \
-  --hash 0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
-```
-
-### Example (sendEthTransaction)
+### Broadcast one EVM transaction (payload from `wallet ethTransfer` or a spot-trading quote)
 
 ```bash
 tribes-cli transaction sendEthTransaction \
   --chain-id 8453 \
   --to 0xe784B1FB160249E36c514Dc7f21cADDf025aE69f \
-  --value 21200000000 \
-  --data 0x \
-  --wallet-id "<evmWalletId from wallet list>"
+  --value 0 \
+  --data 0xa9059cbb000000000000000000000000222222222222222222222222222222222222222200000000000000000000000000000000000000000000000000000000004c4b40 \
+  --wallet-id <evmWalletId>
 ```
 
-## Guardrails
+Output JSON contains the transaction hash — save it for `getTransactionStatus`.
 
-- Never guess decimal conversions; explicitly convert to wei/lamports first.
-- Never swap wallet ids across chains (`evmWalletId` vs `solWalletId`).
-- Do not proceed if required inputs are missing; ask for confirmation
-  instead.
-- Gas is sponsored; never acquire native gas or ask the user to deposit it.
+### Broadcast an atomic EVM batch (2+ calls, one chain — e.g. approve + swap)
+
+```bash
+tribes-cli transaction sendCalls \
+  --chain-id 8453 \
+  --calls '[{"to":"0x3333333333333333333333333333333333333333","value":"0","data":"0x095ea7b3..."},{"to":"0x4444444444444444444444444444444444444444","value":"0","data":"0x38ed1739..."}]' \
+  --wallet-id <evmWalletId>
+```
+
+Each call is `{"to","value","data"}`; `value` is a wei string, `data` defaults to `0x`. All
+calls land or the whole batch reverts. Output contains a Privy `transaction_id` (hard rule 7).
+
+### Broadcast a Solana transaction (string from `wallet solTransfer` or a spot-trading quote)
+
+```bash
+tribes-cli transaction sendSolTransaction \
+  --transaction <base64-transaction-from-solTransfer> \
+  --wallet-id <solWalletId>
+```
+
+Output contains the transaction signature — use it as `--hash` for a Solana status check.
+
+### Check an EVM transaction (`--check-safe-confirmations` asks if it is confirmed)
+
+```bash
+tribes-cli transaction getTransactionStatus \
+  --chain-id 8453 \
+  --hash 0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa \
+  --check-safe-confirmations
+```
+
+### Check a Solana transaction (`--timestamp` = original broadcast time in ms)
+
+```bash
+tribes-cli transaction getTransactionStatus \
+  --chain-id solana \
+  --hash 4h1qgVFwzt9EEfXVLBLPfjEmZBS7Ld6ryzYcSaBAvQ8mCoJKA3q6bYzQ2rSgWnqp3V6dcJgcQ5xW9mM1UbT7hK2e \
+  --timestamp 1752048000000
+```
+
+## Error recovery
+
+| Symptom                                  | Action                                                                           |
+| ---------------------------------------- | -------------------------------------------------------------------------------- |
+| Auth error (unauthorized, expired token) | Run `tribes-cli login`, retry the original command once, then stop and report.   |
+| Any other API failure                    | Retry the same command once; if it fails again, stop and report the error.       |
+| Value or amount rejected                 | You passed decimals — convert to base units (wei/raw/lamports) and retry.        |
+| Missing payload field or wallet ID       | Rebuild via `wallet` / `spot-trading quote`; ask the user only in plain English. |
+
+## Related skills
+
+- `wallet` — wallet IDs and the unsigned transfer payloads broadcast here.
+- `spot-trading` — quotes DEX swaps/bridges; this skill broadcasts the quoted payloads.
+- `hyperliquid` — all Hyperliquid orders, deposits, withdrawals (never broadcast here).
+- `trade-execution` — end-to-end trade playbook that calls into this skill.
+
+## Before you finish
+
+- [ ] Payload came from `wallet` or `spot-trading quote` — never hand-crafted.
+- [ ] Values in base units; `--wallet-id` matches the payload's chain.
+- [ ] Multiple EVM txs split into contiguous same-chain runs (2+ → `sendCalls`, 1 →
+      `sendEthTransaction`), order preserved.
+- [ ] No gas preflight ran and none was suggested to the user.
+- [ ] User got the plain-English outcome — no hashes, calldata, or commands shown.
