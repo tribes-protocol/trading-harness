@@ -1,56 +1,90 @@
 ---
 name: tribes-login
-description: Log in to Tribes to enable agentic trading. Use when the user asks to log in or run /tribes-login.
+description: >-
+  Guided Tribes sign-in. Runs `tribes-cli login` in the background, surfaces the browser-approval
+  URL to the user immediately, and watches until the token is minted and persisted to `.env` as
+  API_BEARER_TOKEN. Use when the user asks to log in or runs /tribes-login. NOT for: mid-session
+  auth errors on another command — run `tribes-cli login` directly and retry that command once
+  (see AGENTS.md Error Recovery).
 allowed-tools: bash read
 disable-model-invocation: true
 ---
 
-# Tribes login
+# Tribes Login
 
-Run the Tribes CLI login flow so this workspace can call Tribes APIs and execute trades.
+Backing command: `tribes-cli login`. It prints a browser login URL, tries to auto-open it, blocks
+polling for approval (3-minute timeout), and exits on its own once approved. Success persists
+`API_BEARER_TOKEN` into `.env`.
+Requires: `tribes-cli` on PATH — if missing, run `bun run bootstrap.sh` (AGENTS.md Installation).
 
-## Before you start
+## When to use
 
-1. Ensure `tribes-cli` is on PATH. If it is missing, run `bun run bootstrap.sh` once from the repo root and retry.
-2. Check whether `.tribes/agent-authorization-key.json` already exists.
-   - If it exists, ask the user whether they want to log in again with a different account. Stop if they decline.
+- The user asked to log in (or ran `/tribes-login`), or a fresh environment has no token yet.
+- NOT for a single failed command mid-session — run `tribes-cli login` directly, retry once.
 
-## Run login
+## Hard rules
 
-Start the login flow in the **background** so its output streams while it waits. Do not run it in the foreground: it blocks for up to about 3 minutes while polling, which hides the login URL and leaves the user watching a stuck command.
+1. MUST run login in the background — foreground blocks up to 3 minutes and hides the URL.
+2. MUST surface the login URL to the user the moment the `URL:` line appears, even when the
+   browser auto-opened — in sandboxed or headless sessions auto-open fails silently.
+3. MUST watch the running command until it exits: NEVER end your turn after surfacing the URL,
+   NEVER ask the user to report approval — one run detects the approval itself and completes it.
+4. NEVER show commands, flags, file paths, or raw CLI output to the user — plain language only
+   (AGENTS.md).
+5. Retry the whole flow AT MOST once on failure, then stop and tell the user login failed.
+6. NEVER run other `tribes-cli` commands until login succeeds.
 
-```bash
-tribes-cli login
-```
+## Command reference
 
-The command prints a login URL, tries to open it in a browser automatically, then **blocks and polls until the user approves or it times out** (up to about 3 minutes). A single successful run finishes the whole flow on its own — approval completes it automatically. There is no second command to run to "complete" the login.
+| Subcommand | Purpose                                                             | Required flags | Read-only or signed |
+| ---------- | ------------------------------------------------------------------- | -------------- | ------------------- |
+| `login`    | Print browser login URL, poll for approval, persist token to `.env` | none           | local writes only   |
 
-**Surface the URL as soon as it appears.** Watch the background output and, the moment the `URL:` line is printed, show that URL to the user as a link they can click to approve the agent — for example:
+## Procedure
 
-> To finish logging in, open this link and approve the agent: <url>
+1. IF `.env` already has `API_BEARER_TOKEN` (check below prints 1), confirm the user wants to
+   re-authenticate (same or different account); stop if they decline.
 
-Do this even when the browser looks like it opened on its own. In a sandbox, remote, or headless session the auto-open silently fails, and without the visible link the user has no way to complete login and just waits for the command to time out.
+   ```bash
+   grep -c '^API_BEARER_TOKEN=' .env 2>/dev/null
+   ```
 
-**Then keep watching that same command until it exits — do not stop, and do not hand control back to the user.** Specifically:
+2. Start login in the background:
 
-- Do NOT end your turn after surfacing the URL.
-- Do NOT ask the user to "tell you when they've approved" or say you'll "re-run to complete" — the running command detects the approval itself and exits.
+   ```bash
+   nohup tribes-cli login > /tmp/tribes-login.log 2>&1 &
+   echo $! > /tmp/tribes-login.pid
+   ```
 
-A clean exit means success; a non-zero exit or timeout means failure.
+3. Poll every few seconds until the URL appears (log format:
+   `URL: https://tribes.xyz/agents/login?id=<uuid>&pubKey=<key>`, color codes wrap the link),
+   then send the user: "To finish logging in, open this link and approve: <url>".
 
-## On success
+   ```bash
+   grep -ao 'https://[^[:space:]]*' /tmp/tribes-login.log | sed 's/\x1b.*$//'
+   ```
 
-1. Confirm `.env` now contains `API_BEARER_TOKEN`.
-2. Warm the wallet snapshot (best-effort):
+4. Keep polling until the process exits. Success = `EXITED` plus `Logged in.` in the log;
+   `EXITED` without it = failure (see Error recovery).
 
-```bash
-tribes-cli wallet list
-```
+   ```bash
+   kill -0 "$(cat /tmp/tribes-login.pid)" 2>/dev/null && echo RUNNING || echo EXITED
+   grep -c 'Logged in.' /tmp/tribes-login.log
+   ```
 
-3. Tell the user they are logged in and can use other harness skills and tribes-cli commands.
+5. On success, verify the token landed (`grep -c '^API_BEARER_TOKEN=' .env` must print 1 —
+   treat 0 as failure), warm the wallet snapshot best-effort with `tribes-cli wallet list`,
+   then tell the user: "You're logged in — I can now trade and check balances for you."
 
-## On failure
+## Error recovery
 
-Report the CLI error output plainly. A timeout means the user did not approve within the ~3 minute window — the only remedy is to start login again, which mints a **fresh** link (the old one is dead). Surface that new link and, again, keep watching the new command until it exits rather than handing control back.
+| Symptom                                             | Action                                                                                          |
+| --------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
+| Log shows `Timed out waiting for login result`      | The old link is dead. Rerun the procedure once — it mints a fresh URL. If that fails too, stop. |
+| Log shows `Could not auto-open browser`             | Normal in sandboxes. The surfaced URL is the path — keep waiting for the exit.                  |
+| Exit looked clean but `.env` has no token           | Treat as failure: rerun the procedure once, then stop and report.                               |
+| Auth error on OTHER commands (unauthorized/expired) | Run `tribes-cli login`, retry the original command once, then stop and report (AGENTS.md).      |
 
-Do not proceed with trading or other tribes-cli commands until login succeeds.
+## Related skills
+
+- `wallet` — run `tribes-cli wallet list` right after login to warm the wallet snapshot.

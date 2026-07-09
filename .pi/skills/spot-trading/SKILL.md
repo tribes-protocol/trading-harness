@@ -1,205 +1,200 @@
 ---
 name: spot-trading
-description: Execute swaps and bridges by quoting with spot-trading and broadcasting with transaction-cli. Use when the user asks to swap, bridge, or trade between supported chains/tokens.
+description: >-
+  On-chain DEX swaps and cross-chain bridges on EVM chains and Solana. Handles: quoting with
+  `tribes-cli spot-trading quote`, symbol-to-address resolution with `tribes-cli token search`,
+  and broadcasting the quoted transactions through the transaction skill. Call when the user
+  wants to swap or bridge tokens on-chain. NOT for: Hyperliquid perp or HL-spot orders (use
+  hyperliquid); stock trades (use hyperliquid — stocks are Hyperliquid perps); plain transfers
+  of a token the user already holds (use wallet + transaction).
 allowed-tools: bash read
 ---
 
-# Spot Trading - Quote and Execute
+# Spot Trading
 
-Use this skill for swap/bridge execution flow. Wallet auth/session and balance discovery still come from the wallet skill.
+Backing command group: `tribes-cli spot-trading`. Quotes on-chain swaps and bridges; the
+`transaction` skill broadcasts the result. Canonical home of `tribes-cli token search`.
+Requires: wallet addresses and Privy wallet IDs from `tribes-cli wallet list` (`wallet` skill).
+
+## When to use
+
+- Swap one token for another on the same chain (EVM or Solana).
+- Bridge a token between supported chains (EVM ↔ EVM, EVM ↔ Solana).
+- Resolve a token symbol or name to a contract address or mint — `tribes-cli token search`.
+- NOT for any Hyperliquid order or stock trade — use `hyperliquid` (stocks are Hyperliquid perps).
+- NOT for sending a token the user already holds — use `wallet` + `transaction`.
+
+## Hard rules
+
+1. NEVER infer token identity from a symbol — resolve the address/mint (balances → search → ask).
+2. NEVER run `quote` until every required field is explicit: from-chain, to-chain, from-token,
+   to-token, amount, from-address.
+3. NEVER broadcast until the user confirms a plain-language trade summary (format below).
+4. NEVER reorder, skip, or drop `transactionRequests[]` entries — quote order, stop on failure.
+5. `--from-amount` is BASE UNITS. Wrong: `--from-amount 0.12`. Right: `--from-amount 120000`
+   (0.12 USDC, 6 decimals).
+6. Gas is sponsored — NEVER preflight gas or ask the user to fund gas (see AGENTS.md).
+
+## Command reference
+
+| Subcommand           | Purpose                                            | Required flags                                                                                                | Read-only or signed |
+| -------------------- | -------------------------------------------------- | ------------------------------------------------------------------------------------------------------------- | ------------------- |
+| `spot-trading quote` | Quote a swap/bridge; returns `transactionRequests` | `--from-chain`, `--to-chain`, `--from-token`, `--to-token`, `--from-amount`, `--from-address`, `--to-address` | read-only (quotes)  |
+| `token search`       | Resolve symbol/name to token addresses per chain   | `--query`                                                                                                     | read-only           |
+
+Both accept `--out <file>` to write JSON to a file. `quote` also accepts `--slippage <value>`:
+omit it for the default; set it only when the user asks for a specific slippage or a quote fails.
 
 ## Required flow
 
-1. Resolve wallet addresses (usually from `tribes-cli wallet list` or `.tribes/privy-wallets.json`).
-2. Fetch balances with `tribes-cli wallet assets`.
-3. If chain/token intent is ambiguous, ask clarifying questions before any quote.
-4. Resolve source and destination token metadata (`address`, `decimals`) from balance rows.
-5. If destination token is missing from balances, search with `token-cli search` using the provided name/symbol and resolve `to-token` from search results.
-6. Convert user amount from decimal units to base units.
-7. Request quote with `spot-trading quote`.
-8. Read `transactionRequests[]` from quote response.
-9. Split `transactionRequests[]` into contiguous same-`chainId` runs (left to right, no reordering).
-10. For each run:
-    - run length `>= 2`: broadcast via `transaction-cli sendCalls`
-    - run length `= 1`: broadcast via `transaction-cli sendEthTransaction`
-11. After each broadcast, poll `getTransactionStatus` until `status: "success"`.
-12. Do not send the next run unless the current run succeeds.
+1. `tribes-cli wallet list` — source address plus `evmWalletId` / `solWalletId` for broadcast.
+2. `tribes-cli wallet assets` — the source token row gives `--from-token` and its `decimals`.
+3. Resolve any token address not found in balances with token search (section below).
+4. Convert the decimal amount to base units (section below).
+5. Request the quote (section below).
+6. Confirm with the user (format below).
+7. Broadcast `transactionRequests[]` in order and poll status after each send (section below).
 
-If any transaction/run returns `failed`, stop execution and report the failed hash/index.
+## Resolve inputs
 
-## Input disambiguation (mandatory)
+- Native asset (ETH, BNB, POL, SOL) → pass the literal string `network` as the token flag.
+- `--from-address` is always the user's own wallet address on the source chain.
+- `--to-address` defaults to the user's own wallet address. Change it only if the user
+  explicitly names a different recipient — NEVER ask about it otherwise.
+- IF chain or token intent is ambiguous → ask in plain language (no addresses):
+  1. Which network is the token you're selling on (for example Base or Arbitrum)?
+  2. Which network do you want to receive on?
+  3. Which token exactly? Offer named candidates; the user picks by name, you keep the address.
 
-Never infer token identity from symbol alone.
+Chain values for `--from-chain` / `--to-chain`: `1` Ethereum, `8453` Base, `42161` Arbitrum,
+`56` BSC/BNB, `137` Polygon, `10` Optimism, `solana` Solana (map aliases like eth, arb, op).
 
-If the user says something like `swap USDC to USDT` without chain/address details, stop and ask clarifying questions before quoting or broadcasting.
-
-Required fields before execution:
-
-- source chain (`from-chain`)
-- destination chain (`to-chain`)
-- source token exact address/mint (`from-token`)
-- destination token exact address/mint (`to-token`)
-- amount
-- source wallet address (`from-address`)
-
-## Address defaults (mandatory)
-
-- Always set `from-address` to the user's wallet address.
-- By default, set `to-address` to the same user wallet address.
-- Only change `to-address` if the user explicitly provides a different destination address.
-- If destination address is not explicitly provided, do not ask a follow-up question for it; use user address.
-
-Ask these questions when ambiguous:
-
-1. Which chain is the source token on (for example Base or Arbitrum)?
-2. Which chain is the destination token on?
-3. Which exact source token contract/mint should be used?
-4. Which exact destination token contract/mint should be used?
-
-If the user does not provide token addresses, run `tribes-cli wallet assets`, propose matching candidates from the balance rows, and ask the user to pick one exact token per side.
-
-If `to-token` is not present in balance rows on the destination chain, run token search and use the results to resolve the destination token address/mint.
-
-Do not run `spot-trading quote` until all required fields are explicit.
-
-Do not broadcast until the final summary is confirmed in this format:
-`swap <amount> <from-token-symbol> (<from-token-address>) on <from-chain> -> <to-token-symbol> (<to-token-address>) on <to-chain>`.
-
-## Chain ID mapping for `--from-chain` / `--to-chain`
-
-Use only these chain aliases/ids when building quote requests:
-
-- `eth`, `mainnet` -> `1`
-- `base` -> `8453`
-- `arb`, `arbitrum` -> `42161`
-- `bsc` -> `56`
-- `pol`, `polygon` -> `137`
-- `op`, `optimism` -> `10`
-- `solana` -> `solana`
-
-## 1) Fetch balances first
+## Token search (symbol → address)
 
 ```bash
-tribes-cli wallet assets \
-  --wallet-addresses <evm-address> <solana-pubkey>
+tribes-cli token search --query PEPE
 ```
 
-To narrow EVM lookups to the source or destination chain, pass `--chain-ids` with the numeric chain ID from the mapping below (for example `--chain-ids 8453` for Base). Omit `--chain-ids` to fetch all supported EVM chains.
+Resolve the address/mint from the results in this order:
 
-Pass addresses as separate arguments after `--wallet-addresses`.
+1. Filter to the destination `chainId`.
+2. Take the exact symbol match (case-insensitive).
+3. Else take the exact name match (case-insensitive).
+4. Else (multiple candidates remain) ask the user to pick one by name before quoting.
 
-Find the source token by chain + symbol (or exact address). Use that row's:
+## Convert amounts
 
-- `address` as `--from-token`
-- `decimals` to convert the user amount to base units
-
-For destination token, use exact token address (or mint for Solana).
-
-If destination token is not present in balances, search it by user-provided name/symbol:
+Decimal-string arithmetic only — NEVER floating-point math for on-chain quantities.
 
 ```bash
-tribes-cli token search \
-  --query <to-token-name-or-symbol>
+# decimal → base units: 0.12 with 6 decimals → 120000
+node -e "const amount='0.12'; const decimals=6; const [i,f='']=amount.split('.'); if (f.length>decimals) throw new Error('Too many decimals'); console.log(BigInt(i+(f+'0'.repeat(decimals)).slice(0,decimals)).toString())"
+# base units → decimal (for user-facing summaries): 119280 with 6 decimals → 0.11928
+node -e "const raw='119280'; const d=6; const s=raw.padStart(d+1,'0'); console.log((s.slice(0,-d)+'.'+s.slice(-d)).replace(/\.?0+$/,''))"
 ```
 
-Then resolve `--to-token` from search results with this order:
+## Quote
 
-1. Filter to destination `chainId`.
-2. Prefer exact symbol match (case-insensitive) to the user input.
-3. If no exact symbol match, use exact name match (case-insensitive).
-4. If still ambiguous (multiple candidates), ask the user to pick one exact token address/mint before quoting.
-
-## 2) Convert decimal amount to base units
-
-Use decimal-string arithmetic, never floating-point math for onchain quantities.
-
-Example:
-
-- `0.12` USDC with `6` decimals -> `120000`
-
-Node example:
-
-```bash
-node -e "const amount='0.12'; const decimals=6; const [i,f='']=amount.split('.'); const frac=(f+'0'.repeat(decimals)).slice(0,decimals); if (f.length>decimals) throw new Error('Too many decimals'); console.log(BigInt(i+frac).toString())"
-```
-
-## 3) Quote with spot-trading
+0.12 USDC on Base → USDT on Arbitrum:
 
 ```bash
 tribes-cli spot-trading quote \
-  --from-chain <from-chain-id-or-solana> \
-  --to-chain <to-chain-id-or-solana> \
-  --from-token <from-token-address-or-network> \
-  --to-token <to-token-address-or-network> \
-  --from-amount <base-unit-amount> \
-  --from-address <user-wallet-address> \
-  --to-address <user-wallet-address-or-explicit-destination>
+  --from-chain 8453 \
+  --to-chain 42161 \
+  --from-token 0x833589fcd6edb6e08f4c7c32d4f71b54bda02913 \
+  --to-token 0xfd086bc7cd5c481dcc9c85ebe478a1c0b69fcbb9 \
+  --from-amount 120000 \
+  --from-address <evm-address> \
+  --to-address <evm-address>
 ```
 
-The quote output shape is defined by `QuoteResponseSchema` and includes:
+Output fields you must use (sample shape):
 
-- `kind`
-- `fromAmount`
-- `toAmountMin`
-- `transactionRequests[]`
+```
+{ "kind": "bridge", "fromAmount": "120000", "toAmountMin": "119280",
+  "transactionRequests": [
+    { "chainId": 8453, "to": "0x1231deb6...", "value": "0", "data": "0x095ea7b3..." },
+    { "chainId": 8453, "to": "0x1231deb6...", "value": "0", "data": "0xae328590..." } ] }
+```
 
-## Gas is sponsored
+## Confirm with the user
 
-Gas is sponsored by the harness, so there is no native-gas top-up flow. Never
-bridge or swap to fund native gas before a trade, and never ask the user to
-deposit native gas. (Swapping into a native token because the user actually
-wants to hold ETH/SOL is a normal trade and still uses the flow above.)
+Summarize in plain language: decimal amounts, token names as tribes.xyz links, chain names, and
+the minimum received (`toAmountMin` as decimal). NEVER show raw addresses, calldata, or JSON.
 
-## 4) Broadcast transactions with contiguous chain batching
+> Swap 0.12 [USDC](https://tribes.xyz/8453/token/0x833589fcd6edb6e08f4c7c32d4f71b54bda02913) on
+> Base for [USDT](https://tribes.xyz/42161/token/0xfd086bc7cd5c481dcc9c85ebe478a1c0b69fcbb9) on
+> Arbitrum — you'll receive at least 0.11928 USDT. Go ahead?
 
-Apply this pattern to EVM `transactionRequests[]` in quote order:
+## Broadcast
 
-1. Walk the array from left to right.
-2. Build a run while consecutive requests share the same `chainId`.
-3. Run length `>= 2` -> one `sendCalls` for that run.
-4. Run length `= 1` -> one `sendEthTransaction`.
-5. On chain change, close the current run and start a new run.
-6. Do not reorder requests across chain boundaries to create larger batches.
+Split EVM `transactionRequests[]` into contiguous same-`chainId` runs: a run of 2+ goes through
+one `sendCalls`, a run of 1 through `sendEthTransaction`; the full batching algorithm lives in
+the `transaction` skill. `--wallet-id` is the `evmWalletId` / `solWalletId` from step 1.
 
-### Single request in a run (`sendEthTransaction`)
+Single EVM request (`--value` is a decimal wei string like `1000000000000000000`, never hex):
 
 ```bash
 tribes-cli transaction sendEthTransaction \
-  --chain-id <evm-chain-id> \
+  --chain-id 8453 \
   --to <tx.to> \
+  --value <tx.value> \
   --data <tx.data> \
-  --value <hex-value>
+  --from <evm-address> \
+  --wallet-id <evmWalletId>
 ```
 
-### Multi-request run (`sendCalls`)
+Run of 2+ EVM requests on one chain:
 
 ```bash
 tribes-cli transaction sendCalls \
-  --chain-id <evm-chain-id> \
-  --calls '[{"to":"<tx0.to>","value":"<tx0.value>","data":"<tx0.data>"},{"to":"<tx1.to>","value":"<tx1.value>","data":"<tx1.data>"}]'
+  --chain-id 8453 \
+  --calls '[{"to":"<tx0.to>","value":"<tx0.value>","data":"<tx0.data>"},{"to":"<tx1.to>","value":"<tx1.value>","data":"<tx1.data>"}]' \
+  --wallet-id <evmWalletId>
 ```
 
-Then poll status after each send:
+Solana leg (a request on chain `solana` carries a serialized transaction string, not to/data):
+
+```bash
+tribes-cli transaction sendSolTransaction \
+  --transaction <serialized-transaction> \
+  --wallet-id <solWalletId>
+```
+
+Poll after every send — `--chain-id` accepts numeric EVM ids or `solana`:
 
 ```bash
 tribes-cli transaction getTransactionStatus \
-  --chain-id <evm-chain-id> \
+  --chain-id 8453 \
   --hash <tx-hash> \
+  --timestamp <send-time-ms> \
   --check-safe-confirmations
 ```
 
-Repeat status polling until:
+- `status: "success"` → send the next run.
+- `status: "pending"` → sleep 5 seconds, poll again; after 24 attempts stop, report still pending.
+- `status: "failed"` → stop immediately; report which step failed in plain language.
 
-- `status: "success"` -> proceed to next transaction
-- `status: "failed"` -> stop immediately
-- `status: "pending"` -> keep polling
+## Error recovery
 
-Run this loop for each run in order.
+| Symptom                                  | Action                                                                                                                      |
+| ---------------------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
+| Auth error (unauthorized, expired token) | Run `tribes-cli login`, retry the original command once, then stop and report.                                              |
+| Quote returns an error or no route       | Retry once (adjust `--slippage` if the error mentions slippage); if it fails again, tell the user the route is unsupported. |
+| Amount rejected                          | You passed decimals — convert to base units and retry.                                                                      |
+| A run failed mid-sequence                | Stop; report what completed and what did not. NEVER re-send earlier runs.                                                   |
 
-## Execution guardrails
+## Related skills
 
-- Never reorder transactions from quote output.
-- Never skip approval/setup transactions in the array.
-- Never continue after a failed transaction.
-- Always default `to-address` to the user wallet unless user explicitly overrides it.
-- Always show exact transaction payload details before broadcast.
+- `wallet` — run first: addresses, wallet IDs, and pre-trade balances.
+- `transaction` — broadcasts the quoted transactions; owns the full batching algorithm.
+- `hyperliquid` — Hyperliquid perp/spot orders and all stock trades.
+- `trade-execution` — end-to-end trade playbook with pre/post checks.
+
+## Before you finish
+
+- [ ] Every required field was explicit before quoting; no token identity was guessed from a symbol.
+- [ ] The user confirmed a plain-language summary (no raw addresses or calldata) before any broadcast.
+- [ ] `transactionRequests[]` went out in quote order with `--wallet-id` on every send.
+- [ ] Amounts were base units on-chain and decimals in everything shown to the user.
+- [ ] Gas was never preflighted or requested from the user.
