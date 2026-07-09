@@ -42,10 +42,28 @@ Requires: the pi-subagents extension for parallel desk agents (fallback below) a
    record CLOSED (closed externally) and do not touch any other same-coin position.
 5. One active thesis at a time in `current.md`. IF it is still active, write new proposals to
    `.tribes/thesis/proposed-<UTC-timestamp>.md` instead of overwriting it.
+6. IF the `subagent` tool is available, desk stages MUST run as the parallel `subagent` calls
+   shown below — sequential role-play is only the fallback for when the tool is missing.
 
 ## The desk
 
-Spawn these pi-subagents (definitions in `.agents/`). Research pack first, in parallel:
+The desk runs on the `subagent` tool (pi-subagents extension; agent definitions in `.agents/`).
+IF the `subagent` tool is in your tool list, you MUST use it and MUST batch each stage into ONE
+parallel call as shown below — NEVER run desk roles one at a time when the tool exists.
+Wrong: eight separate role passes in sequence. Right: one `tasks:[…]` call per stage.
+
+Stage 1 — research pack, ONE parallel call (swap in `desk-stock-research` for stocks):
+
+```js
+subagent({
+  tasks: [
+    { agent: 'desk-macro', task: 'ASSET=HYPE SIDE=long HORIZON=12h' },
+    { agent: 'desk-news', task: 'ASSET=HYPE SIDE=long HORIZON=12h' },
+    { agent: 'desk-technicals', task: 'ASSET=HYPE SIDE=long HORIZON=12h MARK=65.08' },
+    { agent: 'desk-crypto-research', task: 'ASSET=HYPE SIDE=long HORIZON=12h' }
+  ]
+})
+```
 
 | Agent                                           | Produces                                                     |
 | ----------------------------------------------- | ------------------------------------------------------------ |
@@ -54,17 +72,36 @@ Spawn these pi-subagents (definitions in `.agents/`). Research pack first, in pa
 | `desk-technicals`                               | multi-timeframe read, levels, ATR feasibility of the bracket |
 | `desk-crypto-research` OR `desk-stock-research` | fundamentals + flows (pick by asset class)                   |
 
-Then the debate, all given the SAME pack plus ASSET, SIDE, HORIZON, and bracket:
+Stage 2 — debate, ONE parallel call. Every debater gets the SAME framing + full pack, plus a
+distinct FOCUS so the copies do not repeat each other (scale to 1v1 for a quick check; never
+more than 3v3):
 
-- 3 × `desk-bull` and 3 × `desk-bear` in parallel — assign each copy a distinct focus so they
-  do not repeat each other: flow/positioning, catalyst/news, structure/levels. (Scale to 1v1
-  for a quick check; never more than 3v3.)
-- 1 × `desk-judge` with the pack and all six cases → WINNER, CONFIDENCE 0.00–1.00,
-  RECOMMEND TRADE yes/no/conditional.
-- 1 × `desk-risk` with the verdict → live re-check, exact sizing, bracket math, gate pass/fail.
+```js
+subagent({
+  tasks: [
+    { agent: 'desk-bull', task: '<framing + full pack> FOCUS: flow/positioning' },
+    { agent: 'desk-bull', task: '<framing + full pack> FOCUS: catalyst/news' },
+    { agent: 'desk-bull', task: '<framing + full pack> FOCUS: structure/levels' },
+    { agent: 'desk-bear', task: '<framing + full pack> FOCUS: flow/positioning' },
+    { agent: 'desk-bear', task: '<framing + full pack> FOCUS: catalyst/news' },
+    { agent: 'desk-bear', task: '<framing + full pack> FOCUS: structure/levels' }
+  ]
+})
+```
 
-Fallback IF pi-subagents is unavailable: run the same roles yourself, sequentially, one role at
-a time, using each agent file's instructions verbatim — never blend roles in one pass.
+Stage 3 — verdict, two single calls in sequence:
+
+```js
+subagent({ agent: 'desk-judge', task: '<framing + pack + all six cases>' })
+// → WINNER, CONFIDENCE 0.00–1.00, RECOMMEND TRADE yes/no/conditional
+subagent({ agent: 'desk-risk', task: '<framing + judge verdict + confidence>' })
+// → live re-check, exact sizing, bracket math, gate pass/fail
+```
+
+Fallback IF the `subagent` tool is missing: run the same roles yourself, sequentially, one role
+per pass, following each `.agents/desk-*.md` file verbatim — never blend roles in one pass —
+and tell the user (in plain language) that the desk debate runs faster, with truly independent
+debaters, when the pi-subagents extension is installed.
 
 ## Procedure
 
@@ -129,7 +166,7 @@ decision. Also append the verdict one-liner to the `strategize` journal for the 
 | ---------------------------------------- | -------------------------------------------------------------------------------------- |
 | Auth error (unauthorized, expired token) | Run `tribes-cli login`, retry the original command once, then stop and report.         |
 | A desk agent fails or returns empty      | Retry it once; if it fails again, continue the debate and state the gap in the record. |
-| Subagent spawning unavailable            | Use the sequential fallback above — one role per pass, never blended.                  |
+| No `subagent` tool in the tool list      | Use the sequential fallback and recommend installing the pi-subagents extension.       |
 | Ownership check ambiguous                | Stop and ask the user which position the thesis owns.                                  |
 
 ## Related skills
