@@ -16,7 +16,7 @@ import { ensureJsonTreeString } from '@/utils/Lang'
 const VERSION = '1.0.0'
 
 const DEFAULT_SOUND = 'Ping'
-const DEFAULT_TITLE = 'tribes-cli'
+const DEFAULT_TITLE = 'Tribes Agent'
 
 const EXIT_USAGE = 1
 const EXIT_NO_BACKEND = 2
@@ -62,9 +62,11 @@ function normalizeMessage(raw: string): string {
   return raw.replace(/\s+/gu, ' ').trim()
 }
 
-function resolveBackend(service: NotifyService, requested: string | undefined): NotifyBackend {
+const notifyService = new NotifyService()
+
+function resolveBackend(requested: string | undefined): NotifyBackend {
   if (requested === undefined || requested === 'auto') {
-    const detected = service.autodetect()
+    const detected = notifyService.autodetect()
     if (!detected) {
       writeCliError('notify: no usable notification backend found (try --doctor)')
       exit(EXIT_NO_BACKEND)
@@ -81,13 +83,9 @@ function resolveBackend(service: NotifyService, requested: string | undefined): 
   return parsed.data
 }
 
-async function send(
-  service: NotifyService,
-  request: NotifyRequest,
-  backend: NotifyBackend
-): Promise<void> {
+async function send(request: NotifyRequest, backend: NotifyBackend): Promise<void> {
   try {
-    await service.send(request, backend)
+    await notifyService.send(request, backend)
   } catch (error) {
     if (error instanceof NotifyBackendUnavailableError) {
       writeCliError(`notify: ${error.message}`)
@@ -101,8 +99,8 @@ async function send(
   }
 }
 
-async function runDoctor(service: NotifyService): Promise<void> {
-  const diagnostics = service.diagnose()
+async function runDoctor(): Promise<void> {
+  const diagnostics = notifyService.diagnose()
   stdout.write(`${ensureJsonTreeString(diagnostics)}\n`)
 
   if (!diagnostics.selected) {
@@ -111,7 +109,6 @@ async function runDoctor(service: NotifyService): Promise<void> {
   }
 
   await send(
-    service,
     {
       message: 'If you can see this, delivery works.',
       title: 'notify doctor',
@@ -133,8 +130,6 @@ async function runDoctor(service: NotifyService): Promise<void> {
 }
 
 export function buildNotifyCommand(): Command {
-  const notifyService = new NotifyService()
-
   const program = new Command('notify')
   program
     .description('Send a desktop notification from any terminal')
@@ -165,7 +160,7 @@ export function buildNotifyCommand(): Command {
       }
 
       if (options.doctor) {
-        await runDoctor(notifyService)
+        await runDoctor()
         return
       }
 
@@ -176,7 +171,7 @@ export function buildNotifyCommand(): Command {
         exit(EXIT_USAGE)
       }
 
-      const backend = resolveBackend(notifyService, options.backend)
+      const backend = resolveBackend(options.backend)
       const sound = options.soundName ?? (options.sound ? DEFAULT_SOUND : undefined)
       const request: NotifyRequest = {
         message,
@@ -185,7 +180,7 @@ export function buildNotifyCommand(): Command {
         sound
       }
 
-      await send(notifyService, request, backend)
+      await send(request, backend)
     })
 
   return program

@@ -24,7 +24,7 @@ long-running-job | tail -1 | tribes-cli notify -t "job done"
 
 | Flag                  | Meaning                                             |
 | --------------------- | --------------------------------------------------- |
-| `-t`, `--title`       | Title line (default: `tribes-cli`)                  |
+| `-t`, `--title`       | Title line (default: `Tribes Agent`)                |
 | `-s`, `--subtitle`    | Subtitle; macOS only, ignored elsewhere             |
 | `--sound`             | Play the default sound (`Ping`)                     |
 | `--sound-name <name>` | Play a named sound (macOS: `Glass`, `Hero`, ...)    |
