@@ -18,3 +18,4 @@ dist/
 code/typescript/dist/
 .playwright-cli/
 todos/
+.pi-subagents/
