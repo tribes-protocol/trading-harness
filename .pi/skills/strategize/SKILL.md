@@ -46,24 +46,13 @@ Requires: an auth token (run `tribes-cli login` once if commands fail with auth 
 
 ## Briefing procedure
 
-Legs 1–5 are independent of each other. IF the `subagent` tool (pi-subagents extension) is in
-your tool list, you MUST run them as ONE parallel call — one `delegate` agent per leg, each task
-being exactly that leg's command with its output returned verbatim — instead of running them
-one at a time:
-
-```js
-subagent({
-  tasks: [
-    { agent: 'delegate', task: 'Run `tribes-cli macros market` and return the raw JSON output.' },
-    { agent: 'delegate', task: 'Run the news leg command below and return its full output.' }
-    // ...one task per remaining leg
-  ]
-})
-```
-
-Without the `subagent` tool, run the legs sequentially in this order. Either way: if a leg
-fails, follow Error recovery — never abort the cycle. Step 6 (tradability filter) runs after
-the legs return, since it needs the candidate list.
+Legs 1–5 are independent of each other. IF your harness can spawn subagents (in Pi: the
+pi-subagents extension), you MUST run all five legs as ONE parallel batch — one lightweight
+subagent per leg, each tasked with running exactly that leg's command and returning its output
+verbatim — instead of running them one at a time. Without subagent support, run the legs
+sequentially in this order. Either way: if a leg fails, follow Error recovery — never abort the
+cycle. Step 6 (tradability filter) runs after the legs return, since it needs the candidate
+list.
 
 1. Macro numbers (`macros` skill):
 
