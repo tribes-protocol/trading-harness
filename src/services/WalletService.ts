@@ -10,6 +10,7 @@ import { Connection, PublicKey, SystemProgram, Transaction } from '@solana/web3.
 import { encodeFunctionData, erc20Abi } from 'viem'
 
 import { API_BASE_URL, API_BEARER_TOKEN } from '@/common/Env'
+import { WALLET_SNAPSHOT_PATH } from '@/helpers/WalletSnapshot'
 import type { AgentWalletSnapshot } from '@/types/Privy'
 import { AgentWalletSnapshotSchema } from '@/types/Privy'
 import { NATIVE_MINT, type SolInstruction, SolInstructionSchema } from '@/types/Solana'
@@ -22,8 +23,6 @@ import type {
 } from '@/types/WalletCli'
 import { ensureJsonTreeString, isNullish } from '@/utils/Lang'
 import { isSolanaWalletAddress } from '@/utils/Solana'
-
-const WALLET_SNAPSHOT_PATH = '.tribes/privy-wallets.json'
 
 interface WalletServiceParams {
   readonly cwd: string

@@ -9,6 +9,7 @@ import { writeAgentAuthorizationKey } from '@/helpers/AuthKey'
 import { writeCliLoginKey } from '@/helpers/CliLoginKey'
 import { getApiBearerToken } from '@/helpers/Jwt'
 import { openUrlInBrowser } from '@/helpers/OpenUrlInBrowser'
+import { clearWalletSnapshot } from '@/helpers/WalletSnapshot'
 import { type CliLoginPollResponse, CliLoginPollResponseSchema } from '@/types/CliLogin'
 
 const LOGIN_POLL_INTERVAL_MS = 2_000
@@ -190,6 +191,11 @@ export class LoginService {
       userId: pollResult.userId,
       createdAt: new Date().toISOString()
     })
+
+    // A fresh login may be a DIFFERENT account: drop the cached wallet snapshot so
+    // the next `wallet list` re-fetches instead of serving the prior account's
+    // wallets (WalletService reads privy-wallets.json as a read-through cache).
+    await clearWalletSnapshot(process.cwd())
 
     await this.writeAuthEnv()
   }
