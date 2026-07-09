@@ -1,0 +1,322 @@
+#!/usr/bin/env bash
+#
+# notify - send a desktop notification from any terminal.
+#
+# Standalone: depends only on the OS notifier it dispatches to. Safe to symlink
+# onto PATH from anywhere.
+
+set -euo pipefail
+
+VERSION="1.0.0"
+PROG="${0##*/}"
+
+# Exit codes
+E_USAGE=1
+E_NO_BACKEND=2
+E_SEND_FAILED=3
+
+have() { command -v "$1" >/dev/null 2>&1; }
+die() {
+	printf '%s: %s\n' "$PROG" "$1" >&2
+	exit "${2:-$E_USAGE}"
+}
+
+usage() {
+	cat <<EOF
+$PROG $VERSION - send a desktop notification from any terminal.
+
+Usage:
+  $PROG [options] <message>
+  <command> | $PROG [options]        read message from stdin
+  $PROG --doctor                     report what this machine can deliver
+
+Options:
+  -t, --title <text>       Notification title (default: "$PROG")
+  -s, --subtitle <text>    Subtitle (macOS only; ignored elsewhere)
+      --sound             Play the default sound ("Ping")
+      --sound=<name>      Play a named sound (macOS: Glass, Hero, Submarine, ...)
+  -b, --backend <name>     Force a backend instead of auto-detecting.
+                           One of: terminal-notifier, osascript, notify-send, osc777, bell
+
+Long options also accept --opt=value. A bare --sound never consumes the next
+argument, so "$PROG --sound 'all done'" notifies with the message "all done".
+      --list-backends      Print each backend and whether it is available here
+      --doctor             Diagnose delivery on this machine, then send a test
+  -h, --help               Show this help
+  -V, --version            Show version
+
+Environment:
+  NOTIFY_BACKEND   Same as --backend. An explicit --backend flag wins.
+  NOTIFY_TITLE     Default title when --title is not given.
+
+Exit codes:
+  0 sent   $E_USAGE usage error   $E_NO_BACKEND no usable backend   $E_SEND_FAILED backend failed
+
+Examples:
+  $PROG "build finished"
+  $PROG -t Deploy -s staging --sound "rollout complete"
+  make test && $PROG "tests passed" || $PROG -t FAIL --sound "tests broke"
+  long-running-thing | tail -1 | $PROG -t "job done"
+EOF
+}
+
+# --- backends --------------------------------------------------------------
+#
+# Each send_* returns nonzero on failure. Availability is decided by have_*.
+
+have_terminal_notifier() { have terminal-notifier; }
+have_osascript() { [ "$(uname -s)" = "Darwin" ] && have osascript; }
+have_notify_send() { have notify-send; }
+have_osc777() { [ -e /dev/tty ] && { : >/dev/tty; } 2>/dev/null; }
+have_bell() { true; }
+
+send_terminal_notifier() {
+	local args=(-message "$message" -title "$title")
+	[ -n "$subtitle" ] && args+=(-subtitle "$subtitle")
+	[ -n "$sound" ] && args+=(-sound "$sound")
+	terminal-notifier "${args[@]}" >/dev/null
+}
+
+# Strings are passed as argv, never interpolated into the script source, so a
+# message containing quotes or backslashes cannot alter the AppleScript.
+send_osascript() {
+	local clause='display notification _msg with title _title'
+	[ -n "$subtitle" ] && clause="$clause subtitle _sub"
+	[ -n "$sound" ] && clause="$clause sound name _snd"
+
+	# `--` stops osascript from parsing a leading-dash message as its own option.
+	osascript \
+		-e 'on run argv' \
+		-e 'set _msg to item 1 of argv' \
+		-e 'set _title to item 2 of argv' \
+		-e 'set _sub to item 3 of argv' \
+		-e 'set _snd to item 4 of argv' \
+		-e "$clause" \
+		-e 'end run' \
+		-- "$message" "$title" "$subtitle" "$sound" >/dev/null
+}
+
+send_notify_send() {
+	local body="$message"
+	[ -n "$subtitle" ] && body="$subtitle"$'\n'"$body"
+	notify-send -- "$title" "$body"
+}
+
+# OSC 777 asks the *terminal emulator* to raise the notification, so it only
+# lands if that emulator supports the sequence and holds notification
+# permission. Semicolons would end the field early, so they are stripped.
+send_osc777() {
+	local t="${title//;/,}" m="${message//;/,}"
+	[ -n "$subtitle" ] && m="$subtitle - $m"
+	printf '\033]777;notify;%s;%s\a' "$t" "$m" >/dev/tty
+}
+
+send_bell() { { printf '\a' >/dev/tty; } 2>/dev/null || printf '\a'; }
+
+BACKENDS=(terminal-notifier osascript notify-send osc777 bell)
+
+# Name -> function suffix (hyphens are not valid in shell function names).
+fn_suffix() { printf '%s' "${1//-/_}"; }
+
+backend_available() { "have_$(fn_suffix "$1")"; }
+
+# Preference order. Anything above `bell` actually draws a notification; `bell`
+# is a last resort that only makes noise, so it is never auto-selected.
+autodetect() {
+	local b
+	for b in "${BACKENDS[@]}"; do
+		[ "$b" = "bell" ] && continue
+		[ "$b" = "osc777" ] && continue
+		if backend_available "$b"; then
+			printf '%s' "$b"
+			return 0
+		fi
+	done
+	return 1
+}
+
+list_backends() {
+	local b status
+	printf '%-20s %-11s %s\n' BACKEND AVAILABLE NOTES
+	for b in "${BACKENDS[@]}"; do
+		if backend_available "$b"; then status=yes; else status=no; fi
+		printf '%-20s %-11s %s\n' "$b" "$status" "$(backend_note "$b")"
+	done
+}
+
+backend_note() {
+	case "$1" in
+	terminal-notifier) echo "preferred on macOS; own bundle id, so permission is grantable" ;;
+	osascript) echo "macOS built-in; delivered under a system script host" ;;
+	notify-send) echo "Linux/freedesktop" ;;
+	osc777) echo "asks the terminal emulator to notify; opt-in via --backend" ;;
+	bell) echo "audible bell only, no banner; opt-in via --backend" ;;
+	esac
+}
+
+# --- doctor ----------------------------------------------------------------
+
+doctor() {
+	local os chosen
+	os="$(uname -s)"
+	echo "platform:  $os $(uname -r)"
+	echo "terminal:  ${TERM_PROGRAM:-unknown} (TERM=${TERM:-unset})"
+	echo
+	list_backends
+	echo
+
+	if chosen="$(autodetect)"; then
+		echo "auto-detect would use: $chosen"
+	else
+		echo "auto-detect would use: (none available)"
+	fi
+
+	if [ "$os" = "Darwin" ]; then
+		echo
+		echo "macOS notes:"
+		echo "  A notification can be delivered and still not appear on screen: if the"
+		echo "  delivering app's alert style is 'None', it lands silently in Notification"
+		echo "  Center. Check System Settings > Notifications, set the delivering app to"
+		echo "  'Banners' or 'Alerts'."
+		if ! have terminal-notifier; then
+			echo
+			echo "  terminal-notifier is not installed. It is the most reliable path here,"
+			echo "  because it registers its own bundle id that macOS can hold a permission"
+			echo "  for. Install: brew install terminal-notifier"
+		fi
+	fi
+
+	echo
+	echo "sending a test notification via ${chosen:-none}..."
+	if [ -z "${chosen:-}" ]; then
+		die "no usable backend" $E_NO_BACKEND
+	fi
+	title="notify doctor" subtitle="" sound="Ping" message="If you can see this, delivery works."
+	if "send_$(fn_suffix "$chosen")"; then
+		echo "backend reported success."
+		echo
+		echo "If no notification appeared, the backend handed it off but something"
+		echo "downstream dropped it -- almost always the alert-style setting above."
+	else
+		die "backend '$chosen' failed" $E_SEND_FAILED
+	fi
+}
+
+# --- args ------------------------------------------------------------------
+
+title="${NOTIFY_TITLE:-}"
+subtitle=""
+sound=""
+backend="${NOTIFY_BACKEND:-auto}"
+message=""
+run_doctor=0
+args=()
+
+while [ $# -gt 0 ]; do
+	# Accept --opt=value for every long option, so a bare --sound never has to
+	# guess whether the next argument is a sound name or the message.
+	opt="$1"
+	val=""
+	has_val=0
+	case "$opt" in
+	--*=*)
+		val="${opt#*=}"
+		opt="${opt%%=*}"
+		has_val=1
+		;;
+	esac
+
+	case "$opt" in
+	-t | --title)
+		if [ "$has_val" -eq 1 ]; then
+			title="$val"
+			shift
+		else
+			[ $# -ge 2 ] || die "$opt requires a value"
+			title="$2"
+			shift 2
+		fi
+		;;
+	-s | --subtitle)
+		if [ "$has_val" -eq 1 ]; then
+			subtitle="$val"
+			shift
+		else
+			[ $# -ge 2 ] || die "$opt requires a value"
+			subtitle="$2"
+			shift 2
+		fi
+		;;
+	-b | --backend)
+		if [ "$has_val" -eq 1 ]; then
+			backend="$val"
+			shift
+		else
+			[ $# -ge 2 ] || die "$opt requires a value"
+			backend="$2"
+			shift 2
+		fi
+		;;
+	--sound)
+		# Bare --sound uses the default; --sound=NAME picks one.
+		sound="Ping"
+		[ "$has_val" -eq 1 ] && [ -n "$val" ] && sound="$val"
+		shift
+		;;
+	--list-backends)
+		list_backends
+		exit 0
+		;;
+	--doctor)
+		run_doctor=1
+		shift
+		;;
+	-h | --help)
+		usage
+		exit 0
+		;;
+	-V | --version)
+		printf '%s %s\n' "$PROG" "$VERSION"
+		exit 0
+		;;
+	--)
+		shift
+		args+=("$@")
+		break
+		;;
+	-?*) die "unknown option: $opt" ;;
+	*)
+		args+=("$1")
+		shift
+		;;
+	esac
+done
+
+[ "$run_doctor" -eq 1 ] && {
+	doctor
+	exit 0
+}
+
+# Message: positional args joined by spaces, else stdin when piped.
+if [ ${#args[@]} -gt 0 ]; then
+	message="${args[*]}"
+elif [ ! -t 0 ]; then
+	message="$(cat)"
+fi
+
+# Collapse to a single line and trim; multi-line bodies render inconsistently
+# across backends.
+message="$(printf '%s' "$message" | tr '\n' ' ' | sed 's/  */ /g; s/^ //; s/ $//')"
+
+[ -n "$message" ] || die "no message (pass one as an argument or on stdin)"
+[ -n "$title" ] || title="$PROG"
+
+if [ "$backend" = "auto" ]; then
+	backend="$(autodetect)" || die "no usable notification backend found (try --doctor)" $E_NO_BACKEND
+else
+	printf '%s\n' "${BACKENDS[@]}" | grep -qx -- "$backend" ||
+		die "unknown backend: $backend (see --list-backends)"
+	backend_available "$backend" || die "backend '$backend' is not available here" $E_NO_BACKEND
+fi
+
+"send_$(fn_suffix "$backend")" || die "backend '$backend' failed to send" $E_SEND_FAILED
