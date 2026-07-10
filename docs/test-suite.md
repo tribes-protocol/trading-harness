@@ -6,6 +6,7 @@ Each suite exercises one transaction path end-to-end through `tribes-cli` — **
 
 **Rules of engagement**
 
+- **Suites run inside a Phase 0 sandbox.** Phase 0 boots a trading-agent sandbox that is already authenticated. Neither suite has a login step, and neither should ever run `tribes-cli login` — if a suite item fails on missing auth, Phase 0 is what regressed.
 - **Mainnet only.** There is no testnet path in this harness. Every send item broadcasts a real transaction from the live agent wallet onto Base or Solana mainnet. Do not run send items casually.
 - **Zero value, sponsored gas.** Every item transfers `0` to the wallet's own address, and gas is sponsored by the harness (`skills/transaction/SKILL.md`), so the signer never needs a native balance. A send item that fails on "insufficient funds" is a red — it means gas sponsorship broke, not that you need to top up.
 - **Self-transfer.** `to` and `from` are both the agent's own address, so a successful item moves no value and needs no cleanup. Never point these at a third-party address to "make it more realistic".
@@ -20,6 +21,98 @@ Each suite exercises one transaction path end-to-end through `tribes-cli` — **
 
 1. **All output is JSON, so bare strings arrive quoted.** Every command writes `JSON.stringify(result, null, 2)` (`ensureJsonTreeString`, `src/utils/Lang.ts`). A command whose result is a plain string — a tx hash, a Solana signature, a base64 payload — prints it **wrapped in double quotes**. Piping that stdout straight into the next command's flag, or regex-matching it as `^0x…`, fails on the quote characters. Strip them (`jq -r .`) before reuse.
 2. **`So11111111111111111111111111111111111111111` is a native-SOL sentinel, not the wrapped-SOL mint.** It ends in `…111`, one character short of the canonical wrapped-SOL mint `…112`. `src/types/Solana.ts` defines it as `NATIVE_MINT`, and `WalletService.buildSolTransfer` switches on it to emit a bare `SystemProgram.transfer`. Passing the real wrapped-SOL mint instead silently routes you down the SPL-token branch and builds a completely different transaction.
+
+---
+
+## Phase 0 — QA self-provisions a logged-in agent (P0-x)
+
+Setup, not a regression contract. Phase 0 produces the thing Suites 1–2 assume: a running trading-agent sandbox that is **already authenticated**, with no human in the loop. Its items are ordered and each gates the next — a red here means the pass never starts, not that the harness regressed.
+
+The harness has two credential paths, and this phase covers only the second:
+
+- **`app: 'external'`** — `tribes-cli login` prints a browser-approval URL and polls for ~3 minutes. This is what Claude Code and a local shell use. **Out of scope here.**
+- **`app: 'web'`** — a sandbox booted from the terminal web app comes up pre-authenticated. As the harness README puts it: "Auth is already wired at provisioning — there is no manual login step." That is the path below.
+
+Two separate credentials land in a web-booted box, and P0-5 checks both:
+
+1. `TRIBES_API_KEY` — an opaque per-sandbox proxy key the control plane generates and injects into the boot env at create (and again on a warm-pool claim). Only its keccak256 hash is persisted. `src/common/Env.ts` reads it **ahead of** `API_BEARER_TOKEN`.
+2. A **P-256 agent authorization key**, minted _inside_ the VM by `tribes-agent-key <sandboxId> <userId>` and written to `/var/lib/tribes/agent-authorization-key.json`. The `tribes` extension's `AuthBootstrap.installAgentKey()` copies it into `.tribes/agent-authorization-key.json`, and `hasAgentKey()` then reports logged-in.
+
+A **key quorum** binds that in-VM public key as an authorized signer on the user's Privy-custodied wallets. That is how the sandbox signs trades for a wallet whose private key never touches the box.
+
+### Environment
+
+Phase 0 targets a **local web/api stack plus a remote Linux KVM host**. Read this section before touching anything — two of these bite hard.
+
+- **Mac:** `bun dev` in the terminal monorepo (turbo: `web`, `api`, `backend`, …) plus Postgres from `dockers/docker-compose.dev.yml`. `apps/api` is a Cloudflare Worker under `wrangler dev` on `127.0.0.1:8787`; `apps/web` serves `:3000` and defaults to that endpoint.
+- **A remote Linux box with `/dev/kvm`.** Sandboxes are Firecracker microVMs. There is **no non-KVM fallback, no mock backend, and no darwin path** — `bun dev` never starts `sandboxd`, so a Mac alone cannot boot an agent. Provision the box once:
+
+  ```
+  bun run sandboxd:provision --target-host <ip> --api <control-plane-url> \
+    --capacity 30 --domain <wildcard-domain>
+  ```
+
+  (needs `ADMIN_ACCESS_KEY` to mint the provision token, or pass `--token`).
+
+- **Reachability — the step that bites.** `wrangler dev --ip 127.0.0.1` binds loopback only, but the host registers **outbound** to the control plane. So `--api` must be a URL the remote box can actually reach: tunnel `:8787` (cloudflared/ngrok) or rebind wrangler. Get this wrong and there is no error — the box just sits in `provisioning` forever (see P0-4).
+- **Bring your own Privy app.** No dev or staging Privy app id is committed anywhere (`apps/web/.env.example` ships `NEXT_PUBLIC_PRIVY_APP_ID=` empty, and both apps hard-fail at boot without it). Stand up your own Privy app with **email login enabled**, then set `NEXT_PUBLIC_PRIVY_APP_ID`, `PRIVY_APP_ID`, `PRIVY_APP_SECRET`, `PRIVY_VERIFICATION_KEY` — plus `PRIVY_APP_ID` and `NODE_ENV=development` for the harness itself.
+- **Why dev and never production.** `requireModOrWhitelistedInProduction` is `if (!getIsProduction(env)) return null` — a no-op outside production, a hard `403` inside it. That gate guards `POST /sandbox`, not just `/agents/login`. A freshly self-provisioned QA account is neither a mod nor whitelisted, so **in production it cannot boot anything** without a human whitelisting it first. Dev is the only environment where this phase is self-service.
+
+### Before every pass: re-bake, or you are testing stale code
+
+A booted sandbox runs the **baked** `ata` harness, not your working tree. The rootfs bake fingerprints its inputs — including the baked monorepo payload (foundation, skills, **the ata harness**, lockfile) — and re-bakes only when they change. To QA a harness change:
+
+```
+bun run sandboxd:upgrade --target-host <ip>          # re-bakes when inputs changed
+bun run sandboxd:upgrade --target-host <ip> --force-bake   # override the stamp
+```
+
+Skip this and Phase 0 will happily boot the previous release. Running microVMs are never touched by an upgrade, so test only boxes created **after** the re-bake.
+
+### Items
+
+- [ ] **P0-1 — The stack is up and a host is registered**
+
+  - Do: start `bun dev` + Postgres on the Mac; confirm the tunnel resolves; on the KVM box run `sandboxd health`.
+  - Expect: `sandboxd health` reports registration, capacity, and uptime. The api sees the host online. A host that is not registered means every later boot hangs — fix it here, not at P0-4.
+
+- [ ] **P0-2 — An AgentMail inbox exists for this pass**
+
+  - Do: create or reuse an inbox via the AgentMail API (`https://api.agentmail.to/v0/`, API-key auth). Pass a stable `client_id` so re-running returns the existing inbox instead of minting a duplicate. Derive a per-account alias `<inbox>+<tag>@agentmail.to`.
+  - Expect: the alias delivers to the base inbox. `+` aliasing is confirmed working (kobe, 2026-07-03). Privy normally treats each alias as a **distinct account** — verify that for your Privy app, and if it collapses them, fall back to two separate inboxes.
+
+- [ ] **P0-3 — Log into the web app with a Privy email OTP**
+
+  - Do: drive `http://localhost:3000` with the `browser` skill (Playwright; the CLI is not preinstalled — run the skill's one-time setup, and pass `PLAYWRIGHT_MCP_USER_AGENT`). Enter the P0-2 alias in the Privy modal. Then poll `inboxes.messages.list()` for the inbox — **AgentMail has no wait-for-message primitive**, so poll it yourself: every 2s, up to 60s. Read the message with `messages.get()` and extract the code from `extracted_text` with an explicit regex (`/\b(\d{6})\b/`).
+  - Expect: the OTP arrives within the window and the browser reaches an authenticated session. Red: no message after 60s ⇒ email login is not enabled on your Privy app.
+
+- [ ] **P0-4 — Boot the trading agent**
+
+  - Do: navigate to `http://localhost:3000/sandbox?start=1` and accept the TOS gate. (`?start=1` is the documented boot trigger — it logs the visitor in and boots the agent. In production the same funnel target is `https://tribes.xyz/sandbox?start=1`.)
+  - Expect: a sandbox is created on the **`ata`** harness — that is the trading agent, and it is the default (`DEFAULT_SANDBOX_HARNESS === 'ata'`). Do not confuse it with `pi` (the underlying coding agent) or `tribes` (the extension). The box transitions `provisioning → running`.
+  - Red: stuck in `provisioning` indefinitely with no error. That is almost always the reachability mistake from the Environment section — no host ever picked up the start command. Check `sandboxd health` on the box, not the browser.
+
+- [ ] **P0-5 — The sandbox came up already authenticated**
+
+  - Do: in the booted sandbox, inspect the environment and the `.tribes/` directory, then run `tribes-cli wallet list`.
+  - Expect, all three:
+    - `TRIBES_API_KEY` is present in the sandbox env.
+    - `.tribes/agent-authorization-key.json` exists, with `app: "web"` and a non-null `userId` and `sandboxId`.
+    - `tribes-cli wallet list` returns a wallet array — **with `tribes-cli login` never having been run**. This is the whole point of the phase.
+  - Red: a prompt to log in, or a missing authorization key. Either means credential injection regressed — that is a release blocker, and it is the one thing in Phase 0 that is a genuine regression signal rather than a setup mistake.
+
+- [ ] **P0-6 — A logged-out sandbox fails loudly (negative check)**
+  - Do: on a box where Phase 0 has **not** run, run `tribes-cli wallet list`.
+  - Expect: it fails with a missing-auth error. It must **not** silently serve a stale `.tribes/privy-wallets.json` from a previous account — `WalletService.listWallets` treats that file as a read-through cache. `LoginService.finalizeLogin` calls `clearWalletSnapshot` for exactly this reason, and commit `a3d6568` ("clear the cached wallet snapshot on a fresh login") fixed a bug where it did not.
+
+### Then run the suites
+
+Suites 1 and 2 run **inside** the P0-4 sandbox, unchanged. They have no login step.
+
+Two caveats specific to this environment, both of which change what a red means:
+
+- The suites broadcast **real Base and Solana mainnet transactions**, but against a local api those calls are proxied with **your dev Privy app's** credentials. The wallets are that app's wallets, not the production agent wallets. Do not expect production balances or history.
+- Gas sponsorship (`sponsor: true`) must be configured on your dev Privy app. Until it is, the Rules-of-engagement claim that "an insufficient-funds error is a red" does **not** hold locally — an unsponsored dev app fails that way by construction, and that is a setup gap, not a regression.
 
 ---
 
