@@ -9,6 +9,8 @@ $@
 
 If an asset/side was given, run evaluate mode on that framing. Otherwise: if a thesis position
 exists in `.tribes/thesis/current.md`, run re-evaluate mode first, then scout mode for a new
-candidate. Research-only unless I have explicitly authorized high-conviction auto-entry.
-Do not wait for perfect certainty: when the desk finds a coherent edge that is not strong enough
-for auto-entry, propose a smaller or conditional trade with the exact trigger, size, and invalidation.
+candidate. Research-only unless I have explicitly authorized judge-approved auto-entry.
+Do not wait for perfect certainty: the judge makes a categorical recommendation from the evidence.
+When the desk finds a coherent edge, use the
+technical target and invalidation plus the live safety review to present a clear or conditional
+proposal. Only an explicitly authorized, judge-approved, safety-cleared trade may auto-enter.

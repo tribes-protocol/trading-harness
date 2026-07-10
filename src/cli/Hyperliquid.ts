@@ -158,13 +158,16 @@ export function buildHyperliquidCommand(): Command {
     .description('List tradable assets, optionally scoped to a perp dex or the spot market')
     .option('--dex <dex>', 'Perp dex name (main by default); ignored when --market spot')
     .option('--market <market>', 'Market type: perp | spot', 'perp')
+    .option('--all-dexes', 'Sweep main and every perp dex; ignored when --market spot')
     .option('--out <file>', 'Write output JSON to file')
     .action(async (options: unknown): Promise<void> => {
       const request = HyperliquidListAssetsCommandOptionsSchema.parse(options)
       const response =
         request.market === 'spot'
           ? await hyperliquidService.listSpotAssets()
-          : await hyperliquidService.listPerpAssets(request.dex)
+          : request.allDexes
+            ? await hyperliquidService.listAllPerpAssets()
+            : await hyperliquidService.listPerpAssets(request.dex)
       const output = ensureJsonTreeString(response)
       await writeOutput({
         output,

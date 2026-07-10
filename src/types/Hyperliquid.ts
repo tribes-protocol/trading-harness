@@ -1,3 +1,4 @@
+import type { InfoClient } from '@nktkas/hyperliquid'
 import BigNumber from 'bignumber.js'
 import { z } from 'zod'
 
@@ -90,6 +91,7 @@ export type HyperliquidMarketKind = z.infer<typeof HyperliquidMarketKindSchema>
 export const HyperliquidListAssetsCommandOptionsSchema = z.object({
   dex: z.string().trim().min(1).nullish(),
   market: HyperliquidMarketKindSchema.default('perp'),
+  allDexes: z.boolean().default(false),
   out: z.string().nullish()
 })
 export type HyperliquidListAssetsCommandOptions = z.infer<
@@ -148,7 +150,21 @@ export const HyperliquidPerpAssetSchema = z.object({
   name: z.string(),
   szDecimals: z.number().int(),
   maxLeverage: z.number().int(),
-  markPx: z.string().nullish()
+  isDelisted: z.boolean(),
+  onlyIsolated: z.boolean(),
+  marginMode: z.enum(['strictIsolated', 'noCross']).nullish(),
+  requiresIsolatedMargin: z.boolean(),
+  markPx: z.string().nullish(),
+  referencePx: z.string().nullish(),
+  midPx: z.string().nullish(),
+  oraclePx: z.string().nullish(),
+  prevDayPx: z.string().nullish(),
+  dayNtlVlm: z.string().nullish(),
+  dayBaseVlm: z.string().nullish(),
+  funding: z.string().nullish(),
+  openInterest: z.string().nullish(),
+  premium: z.string().nullish(),
+  impactPxs: z.array(z.string()).nullish()
 })
 export type HyperliquidPerpAsset = z.infer<typeof HyperliquidPerpAssetSchema>
 
@@ -159,10 +175,21 @@ export const HyperliquidPerpAssetsResultSchema = z.object({
 })
 export type HyperliquidPerpAssetsResult = z.infer<typeof HyperliquidPerpAssetsResultSchema>
 
+export const HyperliquidAllPerpAssetsResultSchema = z.object({
+  market: z.literal('perp'),
+  dexes: z.array(HyperliquidPerpAssetsResultSchema)
+})
+export type HyperliquidAllPerpAssetsResult = z.infer<typeof HyperliquidAllPerpAssetsResultSchema>
+
 export const HyperliquidSpotAssetSchema = z.object({
   pair: z.string(),
   szDecimals: z.number().int(),
-  markPx: z.string().nullish()
+  markPx: z.string().nullish(),
+  referencePx: z.string().nullish(),
+  midPx: z.string().nullish(),
+  prevDayPx: z.string().nullish(),
+  dayNtlVlm: z.string().nullish(),
+  dayBaseVlm: z.string().nullish()
 })
 export type HyperliquidSpotAsset = z.infer<typeof HyperliquidSpotAssetSchema>
 
@@ -808,7 +835,9 @@ export type ResolvePerpAssetParams = z.infer<typeof ResolvePerpAssetParamsSchema
 export const ResolvedPerpAssetSchema = z.object({
   wireAsset: z.number().int().nonnegative(),
   referencePrice: BigNumberSchema,
-  szDecimals: z.number().int().nonnegative()
+  szDecimals: z.number().int().nonnegative(),
+  isDelisted: z.boolean(),
+  requiresIsolatedMargin: z.boolean()
 })
 export type ResolvedPerpAsset = z.infer<typeof ResolvedPerpAssetSchema>
 
@@ -860,6 +889,7 @@ export type HyperliquidCoin = z.infer<typeof HyperliquidCoinSchema>
 
 export interface HyperliquidServiceParams {
   readonly transaction: TransactionService
+  readonly infoClient?: InfoClient
 }
 
 export interface HyperliquidDepositParams {

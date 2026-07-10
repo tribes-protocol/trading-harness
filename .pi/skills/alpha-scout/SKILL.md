@@ -72,7 +72,8 @@ timeout 300 tribes-cli alpha-scout ask \
 ## Post-discovery checklist
 
 1. Verify Hyperliquid tradability before presenting ideas as executable (AGENTS.md guardrail).
-2. IF the request was unscoped, THEN add a stock-side pass (`stock-analyst`; see AGENTS.md).
+2. IF the request was unscoped, THEN add securities (`stock-analyst`) and commodities
+   (`commodity-analyst`) passes; see AGENTS.md.
 3. Hand off a chosen token: on-chain deep-dive → `token-analyst`; profile → `fundamentals-analyst`.
 
 ## Error recovery

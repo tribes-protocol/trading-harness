@@ -23,4 +23,3 @@ BULL CASE:
 3. third argument
 
 BEST CONTRARIAN BULL POINT: one non-obvious reason the market is underpricing this move.
-CONVICTION: 0-10 that TP hits before SL within {HORIZON}.

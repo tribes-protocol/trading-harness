@@ -190,7 +190,7 @@ It changes the leverage or margin on the existing position without opening or cl
 >
 > 💬 "Should I short Tesla this week?"
 
-For "is this trade worth it?" questions, the agent doesn't just answer — it convenes a desk. It gathers the research (macro, news, technicals, fundamentals), then has one side argue the trade wins, the other argue it loses, and a judge weigh the arguments and score the conviction. A risk manager sizes the trade and checks every limit. You get the verdict, the strongest argument on each side, and the one thing that would flip the call — then it's your decision. Nothing is placed unless you say go, or you've given it standing permission _and_ every check passes.
+For "is this trade worth it?" questions, the agent doesn't just answer — it convenes a desk. It gathers the research (macro, news, technicals, fundamentals), then has one side argue the trade wins, the other argue it loses, and a judge make a categorical call. A risk manager checks live market quality and execution safety. You get the verdict, the strongest argument on each side, and the one thing that would flip the call — then it's your decision. Nothing is placed unless you say go, or you've given it standing permission and every safety check passes.
 
 ---
 
@@ -235,8 +235,8 @@ The harness has a bench of specialist analysts it consults before you trade — 
 Three things the agent does for you automatically:
 
 - **It synthesizes.** For an open-ended question like _"find me a good setup,"_ it pulls several specialists together and gives you a decision-grade answer, not a raw data dump.
-- **It looks at both markets.** Ask for opportunities without naming an asset class and it scans crypto _and_ stocks, presenting both — unless you scope it yourself ("crypto only").
-- **It can brief you like a morning desk note.** Say _"give me a market briefing"_ and you get the macro numbers, the headlines, prediction-market odds, and ideas across crypto and stocks — split into what's tradable right now versus watchlist-only.
+- **It looks across markets.** Ask for opportunities without naming an asset class and it scans crypto, securities, _and_ commodities, presenting all three — unless you scope it yourself ("crypto only").
+- **It can brief you like a morning desk note.** Say _"give me a market briefing"_ and you get the macro numbers, the headlines, prediction-market odds, and ideas across crypto, securities, and commodities — split into what's tradable now versus watchlist-only.
 
 ---
 
@@ -264,7 +264,7 @@ The harness is built to protect you from expensive mistakes:
 - **It only pitches things you can actually trade.** Before suggesting an asset, it verifies the asset is really listed and tradable on Hyperliquid. Anything that isn't is clearly labeled as watchlist-only.
 - **Protective exits are reduce-only.** Stop-losses and take-profits can only close a position, never accidentally open a new one.
 - **New leveraged trades come with a stop-loss by default.** The agent attaches one unless you explicitly wave it off, and it warns you when a position drifts too close to liquidation.
-- **Autopilot has gates.** The agent never opens a trade on its own conviction unless you've explicitly authorized that — and even then, only when the desk debate's judge, the risk checks, and the sizing limits all pass.
+- **Autopilot has gates.** The agent never opens a trade on its own unless you've explicitly authorized that — and even then, only when the desk judge and live safety checks agree it is executable.
 - **It won't trade when you're not logged in.** If your session isn't authorized, it refuses to sign anything and asks you to log in first.
 - **Your keys never leave the vault.** Private keys live in Privy and are never displayed, logged, or pasted — not in chat, not in confirmations, nowhere.
 

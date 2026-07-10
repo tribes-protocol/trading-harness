@@ -50,11 +50,11 @@ These are DEFAULTS: the user MAY override any of them explicitly; record overrid
 
 - Every new perp entry carries a stop-loss (bracket `--sl-px` on `trade-perp`) unless the user
   explicitly waives it.
-- Liquidation distance: IF `|markPx - liquidationPx| / markPx < 10%`, THEN warn and propose
-  `adjust-margin --direction add` or reducing size with a reduce-only order.
-- Leverage: ≤ 5x on majors (BTC, ETH, SOL); ≤ 3x on alts and HIP-3 equity dexes; higher only on
-  explicit user request, never above the asset's `maxLeverage` (from `list-assets`).
-- Single-position size: warn when one position's margin exceeds ~25% of `accountValue`.
+- Liquidation distance: when the buffer is too thin for the asset's normal volatility, warn and
+  propose `adjust-margin --direction add` or reducing size with a reduce-only order.
+- Leverage and exposure: there is no desk percentage or leverage ceiling. Select them case by
+  case from market quality, expected impact, free margin, liquidation exposure, and correlated
+  positions; never exceed the asset's exchange-enforced `maxLeverage` from `list-assets`.
 - Margin mode: isolated for high-leverage or illiquid perps, cross for hedged books.
 
 ## Procedures
@@ -67,14 +67,14 @@ These are DEFAULTS: the user MAY override any of them explicitly; record overrid
    `withdrawable`.
 4. PnL context (timeout ≥ 120s): `tribes-cli wallet-analyst ask --query "Realized and
 unrealized PnL for wallet <evm-address> over the last 30 days, by token"`.
-5. Fill this template per position and flag every risk-policy breach:
+5. Fill this template per position and flag every safety concern:
 
 ```markdown
 | Coin (dex) | Side | Size | Entry | Mark | uPnL | Liq px | Margin | Flags |
 | ---------- | ---- | ---- | ----- | ---- | ---- | ------ | ------ | ----- |
 ```
 
-Flags: `NO-STOP`, `LIQ<10%`, `LEV>POLICY`, `SIZE>25%`.
+Flags: `NO-STOP`, `THIN-LIQ-BUFFER`, `LEV/EXPOSURE-CONCERN`, `MARKET-QUALITY-CONCERN`.
 
 ### 2. Move or add a stop-loss on an existing position
 
@@ -131,7 +131,7 @@ across `--start-px` / `--end-px` / `--orders` (same `--from`/`--wallet-id` patte
    `requiredMargin = positionValue / targetLeverage`; IF `requiredMargin > marginUsed`, the
    difference must fit in perp `withdrawable`. Read the `hyperliquid` skill's
    `references/margin.md` before running either command — it has the full steps and examples.
-2. Thin liquidation buffer (< 10%) → add isolated margin:
+2. Thin liquidation buffer relative to normal volatility → add isolated margin:
 
 ```bash
 tribes-cli hyperliquid adjust-margin \
@@ -196,5 +196,5 @@ tribes-cli hyperliquid trade-perp \
 - [ ] Every closing/exit order carried `--reduce-only` with side OPPOSITE the position.
 - [ ] Old stops/TPs were cancelled before replacements — no double-booked exits.
 - [ ] Re-ran `list-positions` / `list-open-orders` and confirmed the intended end state.
-- [ ] Risk-policy breaches (no stop, liq < 10%, leverage or size over policy) flagged or fixed.
+- [ ] Safety concerns (no stop, thin liquidation buffer, unsuitable leverage/exposure, or poor market quality) were flagged or fixed.
 - [ ] User got a plain-language report — no commands, flags, or file paths (AGENTS.md).

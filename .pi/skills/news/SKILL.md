@@ -49,7 +49,7 @@ page further), `--out <file>` (write the JSON to a file, then Read it — use fo
 - IF kind is token → you need the exact `chainId` + `tokenId` (address/mint). Resolve a bare
   symbol with `tribes-cli token search --query PEPE` (documented in `spot-trading`) and take
   `chainId` and the token address from the top match.
-- IF kind is perp → use the exact coin symbol; keep any dex prefix (e.g. `xyz:MSFT`). Confirm it
+- IF kind is perp → use the exact coin symbol; keep any dex prefix (e.g. `<dex>:MSFT`). Confirm it
   with `tribes-cli hyperliquid list-assets --dex <name>` (`hyperliquid` skill) when unsure.
 - IF kind is stock → uppercase the ticker and trim whitespace (Nvidia → `NVDA`).
 - IF several assets plausibly match → ask one short, non-technical question, e.g. "There are a
