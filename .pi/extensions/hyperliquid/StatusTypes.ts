@@ -192,4 +192,7 @@ export interface HyperliquidStatus {
   // yet — the account address is being resolved, not genuinely absent. Drives a
   // "loading" widget state instead of "Missing account address".
   readonly initializing?: boolean
+  // True when no agent authorization key is present — the user hasn't logged in.
+  // Drives a login-prompt widget state.
+  readonly unauthenticated?: boolean
 }
