@@ -109,6 +109,7 @@ Pick the skill with these tie-breaker rules, in order:
 | Broadcast a prepared transaction, check tx status                    | `transaction`          |
 | General web lookup or read one URL                                   | `web-search`           |
 | JS-gated or fetch-blocked pages, UI automation                       | `browser`              |
+| Alert the human: long job finished, needs attention                  | `notify`               |
 
 ## Harness-wide execution invariants
 

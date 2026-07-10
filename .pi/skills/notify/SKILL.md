@@ -4,7 +4,7 @@ description: >-
   Send a desktop notification from any terminal. Use to alert the human when a
   long-running command finishes, a background job fails, or the agent needs
   attention while the terminal is unattended.
-allowed-tools: bash
+allowed-tools: bash read
 ---
 
 # Notify (desktop notifications from the terminal)
