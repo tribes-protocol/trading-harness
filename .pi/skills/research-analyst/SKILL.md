@@ -3,7 +3,7 @@ name: research-analyst
 description: >-
   Finance research specialist driven by one natural-language query. Handles: ENS name/address
   resolution (forward and reverse) and cited multi-source web research on protocols, companies,
-  filings, and concepts across crypto and stocks. Call when structured analyst skills and news
+  filings, and supply/demand concepts across crypto, securities, and commodities. Call when structured analyst skills and news
   cannot fully answer and the question needs source-backed evidence or ENS identity. NOT for:
   headlines, catalysts, or sentiment (use news); non-finance topics, one quick search, or reading
   one known URL (use web-search); price, chart, or market data (route to the matching analyst skill).

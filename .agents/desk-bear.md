@@ -23,4 +23,3 @@ BEAR CASE:
 3. third argument
 
 BEST CONTRARIAN BEAR POINT: one non-obvious risk the market is ignoring.
-CONVICTION: 0-10 that SL hits before TP (or that this should be no-trade) within {HORIZON}.

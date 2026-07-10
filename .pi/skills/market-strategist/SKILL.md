@@ -36,9 +36,11 @@ Requires: an auth token (run `tribes-cli login` once if commands fail with auth 
 4. Output is one free-text analysis string on stdout, not JSON — NEVER JSON-parse it. The CLI
    calls the API itself — NEVER call the endpoint or curl directly.
 5. Before presenting movers or rankings as actionable trade ideas, verify Hyperliquid
-   tradability via `hyperliquid` discovery and split tradable vs not (see AGENTS.md).
-6. For unscoped "top movers" or opportunity requests, also run the stock side via
-   `stock-analyst` (cross-asset guardrail, see AGENTS.md).
+   tradability with `hyperliquid list-assets --all-dexes` and split actionable, watchlist-only,
+   and not-tradable markets (see AGENTS.md).
+6. For unscoped "top movers" or opportunity requests, also run the securities side via
+   `stock-analyst` and the commodities side via `commodity-analyst` (cross-asset guardrail, see
+   AGENTS.md).
 7. Treat the specialist's trailing "want me to…" suggestions as your own refinement TODOs, max
    1–2 passes (see AGENTS.md).
 
@@ -84,6 +86,7 @@ tribes-cli market-strategist ask \
 
 - `token-analyst` — deep dive on one identified token; `fundamentals-analyst` — one coin's profile.
 - `alpha-scout` — trending/new-token and smart-money discovery before a token is chosen.
-- `stock-analyst` — the stock-side pass for unscoped movers/opportunity questions.
-- `hyperliquid` — tradability check (`list-exchanges`, then `list-assets`) before trade ideas.
+- `stock-analyst` — the securities pass for unscoped movers/opportunity questions.
+- `commodity-analyst` — the commodities pass for unscoped movers/opportunity questions.
+- `hyperliquid` — all-dex tradability and venue-quality check before trade ideas.
 - `strategize` — full market briefing combining macro, news, odds, and ideas.

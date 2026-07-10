@@ -5,7 +5,7 @@ description: >-
   from intent to verified fill — tradability check, wallet lookup, funding check, USD-to-base-unit
   sizing, risk defaults, one atomic order, mandatory post-trade verification, and the user report.
   Call it whenever the user wants to open a trade (long, short, buy, sell) on crypto perps,
-  Hyperliquid spot, or stocks. NOT for: single Hyperliquid commands or fund moves outside a trade
+  Hyperliquid spot, securities, or commodities. NOT for: single Hyperliquid commands or fund moves outside a trade
   (use hyperliquid); stops, leverage, or closing an existing position (use position-management);
   on-chain DEX swaps or bridges (use spot-trading).
 allowed-tools: bash read
@@ -20,7 +20,7 @@ Requires: the `wallet` and `hyperliquid` skills (full flag lists and sizing rule
 ## When to use
 
 - The user wants to open a NEW trade — long/short a perp, buy/sell Hyperliquid spot, or trade a
-  stock (stocks trade as Hyperliquid perps, see AGENTS.md).
+  security or commodity (both trade as Hyperliquid perps, see AGENTS.md).
 - The user says "just buy X" — still run every step below; the checks are the product.
 - NOT for one-off Hyperliquid lookups, cancels, deposits, or withdrawals — use `hyperliquid`.
 - NOT for stops, leverage, margin, or closing on an EXISTING position — use `position-management`.
@@ -43,17 +43,20 @@ Requires: the `wallet` and `hyperliquid` skills (full flag lists and sizing rule
 ### 1. Tradability
 
 ```bash
-tribes-cli hyperliquid list-exchanges
-tribes-cli hyperliquid list-assets --dex xyz
+tribes-cli hyperliquid list-assets --all-dexes
 tribes-cli hyperliquid list-assets --market spot
 ```
 
 - Resolve the EXACT `coin` (perp) or `pair` (spot), the hosting `dex`, and the asset's
-  `szDecimals`, `markPx`, and `maxLeverage` — steps 4–6 need all of them.
-- Stocks are Hyperliquid perps on named dexes (AGENTS.md): find the dex hosting the ticker via
-  `list-exchanges` + `list-assets --dex <name>`.
-- IF the asset is not listed on any dex or the spot market → STOP. Tell the user it is not
-  tradable on Hyperliquid and offer watchlist context only.
+  `szDecimals`, `referencePx`, and `maxLeverage` — steps 4–6 need all of them. Use
+  `list-exchanges` only if the all-dex result needs a venue label resolved.
+- Before execution, require live market quality: coherent `referencePx`, `midPx`, and `oraclePx`
+  when available; current nonzero `dayNtlVlm`, `dayBaseVlm`, and `openInterest`; plus `impactPxs`
+  that make sense for the intended size. This is mandatory for every HIP-3 security or commodity.
+- Reject an `isDelisted` market. Honor `requiresIsolatedMargin`, `onlyIsolated`, and `marginMode`
+  from the venue when selecting the order's margin mode.
+- IF the asset is not listed, or its quality data is missing, zero, stale, or inconsistent → STOP.
+  Tell the user it is not currently actionable on Hyperliquid and offer watchlist context only.
 
 ### 2. Wallet
 
@@ -77,8 +80,8 @@ tribes-cli hyperliquid list-balances --address <evm-address>
 
 ### 4. Sizing
 
-- Convert USD intent to base units: `amount = round(usd / markPx, szDecimals)`.
-  Example: $500 of MSFT at markPx 382.605, szDecimals 3 → `--amount 1.307`.
+- Convert USD intent to base units: `amount = round(usd / referencePx, szDecimals)`.
+  Example: $500 of a resolved market at referencePx 382.605, szDecimals 3 → `--amount 1.307`.
 - Every order, ladder leg, and TWAP sub-order MUST be ≥ $10 notional — pre-check before placing.
 
 ### 5. Risk
@@ -97,17 +100,17 @@ tribes-cli hyperliquid list-balances --address <evm-address>
 | Time-sliced execution               | `twap-perp`                                        |
 | Hyperliquid spot                    | `trade-spot` (ladder: `scale-spot`; `twap-spot`)   |
 
-Example — long ~$500 of MSFT on the `xyz` dex, TP +6%, SL −3%:
+Example — long a resolved perp with a technical target and invalidation:
 
 ```bash
 tribes-cli hyperliquid trade-perp \
-  --dex xyz \
-  --coin MSFT \
+  --dex <resolved-dex> \
+  --coin <resolved-coin> \
   --side long \
   --type market \
-  --amount 1.307 \
-  --tp-px 405.56 \
-  --sl-px 371.13 \
+  --amount <base-units> \
+  --tp-px <technical-target-px> \
+  --sl-px <technical-invalidation-px> \
   --from <evm-address> \
   --wallet-id <evmWalletId>
 ```
@@ -117,8 +120,8 @@ Flag details and order types live in the `hyperliquid` skill (`references/order-
 ### 7. VERIFY (MANDATORY, immediately after placing)
 
 ```bash
-tribes-cli hyperliquid list-positions --address <evm-address> --dex xyz
-tribes-cli hyperliquid list-open-orders --address <evm-address> --dex xyz
+tribes-cli hyperliquid list-positions --address <evm-address> --dex <resolved-dex>
+tribes-cli hyperliquid list-open-orders --address <evm-address> --dex <resolved-dex>
 tribes-cli hyperliquid list-fills --address <evm-address>
 ```
 
@@ -163,7 +166,7 @@ TP/SL line only if the user explicitly waived exits.
 - `position-management` — stop-loss/leverage defaults (step 5) and everything after the entry.
 - `spot-trading` — the user wants an on-chain DEX swap or bridge instead of a Hyperliquid order.
 - `strategize` — market briefing and trade ideas before there is a trade to execute.
-- `thesis` — the bull-vs-bear conviction debate that hands approved trades to this playbook.
+- `thesis` — the bull-vs-bear judge-led debate that hands approved trades to this playbook.
 
 ## Before you finish
 

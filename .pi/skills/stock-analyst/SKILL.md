@@ -33,7 +33,8 @@ Requires: an auth token (run `tribes-cli login` once if commands fail with auth 
 4. The CLI calls the API itself — NEVER call the endpoint or curl directly.
 5. Run at most 1–2 refinement `ask` calls when a follow-up serves the original ask (see AGENTS.md).
 6. Relay exact figures with the timeframe and direction of change, never approximations.
-7. For unscoped movers/discovery, also run the crypto side via `market-strategist` (AGENTS.md).
+7. For unscoped movers/discovery, also run crypto via `market-strategist` and commodities via
+   `commodity-analyst` (AGENTS.md).
 8. Apply the Hyperliquid tradability guardrail before pitching trade ideas (see AGENTS.md).
 
 ## Command reference

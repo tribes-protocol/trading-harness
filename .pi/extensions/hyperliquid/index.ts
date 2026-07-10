@@ -5,6 +5,7 @@ import { dirname, resolve } from 'node:path'
 import type { ExtensionAPI, ExtensionContext, Theme } from '@earendil-works/pi-coding-agent'
 import type { TUI } from '@earendil-works/pi-tui'
 
+import { FALLBACK_PERP_DEXES, resolvePerpDexes } from './DexDiscovery.ts'
 import { ensureJsonTreeString } from './EnsureJson.ts'
 import { type CrossBucket, estimateCrossLiquidationPx } from './LiqEstimator.ts'
 import { MAX_TAB_ROWS, renderHyperliquidPositionsWidget } from './Render.ts'
@@ -27,7 +28,6 @@ import type {
 const RUNTIME_STATUS_DIR = 'runtime/hyperliquid'
 const STATUS_FILE = 'live-status.json'
 const CONFIG_FILE = 'config.json'
-const DEFAULT_DEXES = ['', 'xyz'] as const
 const COST_LOOKBACK_DAYS = 7
 const CLOSED_PNL_LOOKBACK_HOURS = 24
 const RECENT_TRADES_LIMIT = 100
@@ -140,6 +140,15 @@ async function infoRequest<T>(
   }
   const normalized: T = JSON.parse(ensureJsonTreeString(parsed))
   return normalized
+}
+
+async function discoverPerpDexes(): Promise<readonly string[]> {
+  try {
+    const response = await hyperliquidInfo<unknown>({ type: 'perpDexs' })
+    return resolvePerpDexes(response)
+  } catch {
+    return FALLBACK_PERP_DEXES
+  }
 }
 
 function resolveStatusDir(cwd: string): string {
@@ -714,7 +723,7 @@ async function readRecentTrades(
 
 async function buildStatus(cwd: string): Promise<HyperliquidStatus> {
   const accountState = await resolveAccountState(cwd)
-  const dexes = DEFAULT_DEXES
+  const dexes = accountState.kind === 'ready' ? await discoverPerpDexes() : FALLBACK_PERP_DEXES
 
   if (accountState.kind !== 'ready') {
     // 'pending' renders as a loading state (no error, no scary border);
@@ -869,7 +878,7 @@ async function refreshStatusSnapshot(cwd: string): Promise<HyperliquidStatus> {
       updatedAt: new Date().toISOString(),
       mode: 'live',
       user: null,
-      dexes: DEFAULT_DEXES,
+      dexes: FALLBACK_PERP_DEXES,
       accountSource: 'unavailable',
       accountError: error instanceof Error ? error.message : String(error),
       hyperliquidAccounts: [],
