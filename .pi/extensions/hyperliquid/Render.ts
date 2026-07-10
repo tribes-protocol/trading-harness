@@ -234,21 +234,19 @@ function renderPositionsTable(
     { key: 'liq', label: 'Liq', width: 12 },
     { key: 'upnl', label: 'uPnL', width: 10 },
     { key: 'fundingDay', label: 'Fund/day', width: 10 },
-    { key: 'cost7d', label: 'Cost7d', width: 9 }
+    { key: 'cost7d', label: 'Cost7d', width: 9 },
+    { key: 'margin', label: 'Margin', width: 16 }
   ]
 
-  const minMarginWidth = 16
   let columns = [...baseColumns]
-  const totalWidth = (cols: typeof columns, marginWidth: number): number =>
-    cols.reduce((sum, col) => sum + col.width, 0) + marginWidth + cols.length
+  const totalWidth = (cols: typeof columns): number =>
+    cols.reduce((sum, col) => sum + col.width, 0) + cols.length
 
-  while (columns.length > 5 && totalWidth(columns, minMarginWidth) > contentWidth) {
+  while (columns.length > 5 && totalWidth(columns) > contentWidth) {
     columns = columns.slice(0, -1)
   }
 
-  const usedWithoutMargin = columns.reduce((sum, col) => sum + col.width, 0) + columns.length
-  const marginColWidth = Math.max(minMarginWidth, contentWidth - usedWithoutMargin)
-  const finalColumns = [...columns, { key: 'margin', label: 'Margin', width: marginColWidth }]
+  const finalColumns = columns
   const lines = [headerRow(finalColumns, theme)]
 
   for (const position of positions) {
