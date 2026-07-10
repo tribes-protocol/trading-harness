@@ -57,6 +57,74 @@ Execution requirements before answering:
 Only return one asset class when the user clearly scoped it (for example "crypto only",
 "stocks only", or a single named ticker/coin with no cross-asset intent).
 
+## Skill routing map
+
+Pick the skill with these tie-breaker rules, in order:
+
+- **R0 — The trading spine.** For deciding and doing (not just answering), the layers chain:
+  `strategize` (market state, candidates) → `thesis` (bull-vs-bear debate, conviction, gates) →
+  `trade-execution` (place one verified trade) → `position-management` (protect, resize, exit).
+  Enter the spine at the layer the request names and hand off downward, never skipping the
+  thesis gates for autonomous entries.
+- **R1 — Execution vs information.** Moving funds or placing orders routes ONLY to
+  `hyperliquid` (Hyperliquid perps/spot, deposits, withdrawals, transfers, all stock trades),
+  `spot-trading` (on-chain DEX swaps and bridges), the `trade-execution` playbook, or
+  `position-management` (reduce-only exits, stop/TP changes, margin). Run `wallet` first when a
+  wallet ID or address is needed. NEVER route trade intent to `transaction` — it is the
+  low-level broadcaster used inside those flows.
+- **R2 — Asset class.** Stock data → `stock-analyst`; stock trading → `hyperliquid` (stocks are
+  Hyperliquid perps). Crypto → the table below. Unscoped discovery → both sides (cross-asset
+  guardrail above).
+- **R3 — One asset vs market-wide.** One identified token → `token-analyst` (on-chain) or
+  `fundamentals-analyst` (research profile). Market-wide aggregates/rankings →
+  `market-strategist`. No specific asset chosen yet → `alpha-scout`.
+- **R4 — Data vs computation.** Indicator values, signals, setups, or backtests → `technical-analyst`
+  regardless of asset class. Raw prices/candles only → the asset's data skill.
+- **External info precedence:** `news` first for market/asset news and sentiment →
+  `research-analyst` for source-backed finance research and ENS → `web-search` as last resort or
+  to read a specific URL → `browser` only for JS-gated or fetch-blocked pages.
+
+| Intent                                                               | Skill                  |
+| -------------------------------------------------------------------- | ---------------------- |
+| One crypto token: price, chart, safety, trades, holders              | `token-analyst`        |
+| One coin: profile, links, supply, historical charts, where listed    | `fundamentals-analyst` |
+| Trending tokens, new listings, smart-money flows                     | `alpha-scout`          |
+| Global caps, dominance, rankings, crypto top movers                  | `market-strategist`    |
+| Stock prices, quotes, candles, movers, market status                 | `stock-analyst`        |
+| Indicators, signals, backtests (any asset)                           | `technical-analyst`    |
+| Liquidity pools, DEX pairs, TVL                                      | `defi-analyst`         |
+| CEX rankings, derivatives open interest, public treasuries           | `exchange-analyst`     |
+| Numeric macro indicators (CPI, yields, VIX, DXY)                     | `macros`               |
+| Market news, catalysts, sentiment (crypto and stocks)                | `news`                 |
+| Event odds and prediction markets                                    | `prediction`           |
+| Deep finance research, ENS resolution                                | `research-analyst`     |
+| Full market briefing (macro + news + odds + ideas)                   | `strategize`           |
+| What to trade / is this trade worth taking (bull-bear debate)        | `thesis`               |
+| Wallet addresses, wallet IDs, raw balances (pre-trade)               | `wallet`               |
+| Net worth over time, PnL, transfer/transaction history               | `wallet-analyst`       |
+| Hyperliquid markets, perp/HL-spot orders, deposits, all stock trades | `hyperliquid`          |
+| End-to-end trade with pre/post checks                                | `trade-execution`      |
+| Stops, leverage, liquidation distance, closing positions             | `position-management`  |
+| On-chain DEX swap or cross-chain bridge                              | `spot-trading`         |
+| Broadcast a prepared transaction, check tx status                    | `transaction`          |
+| General web lookup or read one URL                                   | `web-search`           |
+| JS-gated or fetch-blocked pages, UI automation                       | `browser`              |
+
+## Harness-wide execution invariants
+
+These are canonical here; skills restate them in at most one line.
+
+- **Gas is sponsored.** No transaction ever needs native gas (ETH, SOL). NEVER run a gas
+  preflight, never bridge or swap to fund gas, never ask the user to deposit gas.
+- **Contiguous same-chain batching.** Never reorder multi-transaction broadcasts across chain
+  boundaries; batch contiguous same-chain runs. The canonical algorithm lives in the
+  `transaction` skill.
+- **Slow calls need generous timeouts.** Analyst `ask` commands and `news fetch` poll a backend
+  agent and can run for minutes. MUST set a bash timeout of at least 120 seconds (prefer 300)
+  when running them.
+- **Non-auth API failures.** Retry the failed command once; if it fails again, stop and report
+  the error plainly. (Auth failures follow Error Recovery below: `tribes-cli login`, retry once.)
+
 ## What this is
 
 This repository is an autonomous Hyperliquid trading harness based on the [Pi harness](https://pi.dev). It runs inside the [Pi coding agent](https://github.com/earendil-works/pi-coding-agent).

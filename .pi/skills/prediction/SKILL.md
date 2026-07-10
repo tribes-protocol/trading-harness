@@ -1,177 +1,120 @@
 ---
 name: prediction
-description: Polymarket prediction market research for event odds, binary catalysts, macro/regulatory probabilities, and market-implied expectations. Use to search prediction events, list current events or markets, and fetch specific event or market details by id or slug when trading theses need market-implied probabilities.
-allowed-tools: bash read write
+description: >-
+  Polymarket prediction market research. Handles: searching active prediction events, listing
+  events or markets with filters, and fetching one event or market by id or slug for
+  market-implied odds on elections, crypto regulation, ETF decisions, rate cuts, and other
+  binary catalysts. Call when a trading thesis needs market-implied probabilities. Read-only
+  research — it CANNOT place Polymarket bets or execute anything. NOT for: headlines, catalysts,
+  or sentiment (use news); numeric macro indicators (use macros); general web lookups (use
+  web-search).
+allowed-tools: bash read
 ---
 
-# prediction
+# Prediction
 
-Use this skill when a trading decision needs market-implied probabilities from Polymarket: elections, crypto regulation, ETF decisions, macro events, earnings-adjacent catalysts, geopolitical events, sports/entertainment only if it affects a tradable thesis, or any question where prediction odds can validate or challenge a view.
+Backing command group: `tribes-cli prediction`. Fetches Polymarket event odds and market detail
+as pretty-printed JSON, no API key needed. The CLI calls the API itself — NEVER curl it directly.
 
-The bundled CLI mirrors the Lucy prediction tool actions (implemented in `src/cli/Prediction.ts` and `src/services/PredictionService.ts`):
+## When to use
 
-- `prediction_search` -> `search`
-- `prediction_list_events` -> `list-events`
-- `prediction_get_event` -> `get-event`
-- `prediction_list_markets` -> `list-markets`
-- `prediction_get_market` -> `get-market`
+- A trade thesis needs market-implied odds: elections, crypto regulation, ETF approvals, Fed
+  rate cuts, geopolitical events, or other binary catalysts.
+- Stocks traded as Hyperliquid perps (e.g. CRCL, COIN) need regulatory-odds context (SEC, bills).
+- NOT for headlines, catalysts, or sentiment narrative — use `news`.
+- NOT for numeric macro indicators (CPI, yields, VIX) — use `macros`.
+- NOT for general facts or reading a specific URL — use `web-search`.
+- NOT for placing bets or trades — nothing in this group executes anything.
 
-Data source: Polymarket Gamma API at `https://gamma-api.polymarket.com`. No API key is required.
+## Hard rules
 
-## Core rules
+1. `search` returns ACTIVE events only. For closed or resolved markets run
+   `list-events --closed true` or `list-markets --closed true`.
+2. There is NO `--out` flag in this group — capture stdout instead.
+   Wrong: `--out events.json` (unknown option). Right: `> events.json`.
+3. Treat odds as one research input, NEVER a trade signal by itself — persistence and evidence
+   gates are defined in the `strategize` skill.
+4. Prefer active, liquid, recent markets; treat thin or stale odds as weak evidence.
+5. Verify odds with `get-market` before citing them in a thesis or report.
+6. MUST set a bash timeout of at least 120 seconds for these commands.
 
-1. Treat Polymarket odds as one research input, not a trade signal by itself.
-2. Prefer active, liquid, recent markets. Thin or stale odds are weak evidence.
-3. Compare prediction odds against news, official sources, X/social signal, macro data, technicals, funding, liquidity, and position sizing before trading.
-4. For multi-market events, inspect `leadingMarket` on each event (and use `get-event` / `get-market` for full sub-market detail) instead of relying only on the top event summary.
-5. Persist relevant findings in the journal or the calling workflow artifact. Include event/market id, slug, odds, end date, volume/liquidity, and why it matters to the asset.
+## Command reference
 
-## Quick start
+| Subcommand     | Purpose                         | Required flags                   | Read-only or signed |
+| -------------- | ------------------------------- | -------------------------------- | ------------------- |
+| `search`       | Search active prediction events | `--query`                        | read-only           |
+| `list-events`  | List prediction events          | none                             | read-only           |
+| `get-event`    | Get one event by id or slug     | `--event-id` or `--event-slug`   | read-only           |
+| `list-markets` | List prediction markets         | none                             | read-only           |
+| `get-market`   | Get one market by id or slug    | `--market-id` or `--market-slug` | read-only           |
+
+Optional flags per subcommand (do not invent others):
+
+- `search`: `--limit-per-type <1..25>` (omit for the server default), `--events-tag <tag>`
+  (repeatable).
+- `list-events`: `--id` (repeatable), `--slug`, `--tag-id`, `--tag-slug`, `--active`
+  (default `true`), `--archived`, `--closed`, `--limit`, `--offset`, `--order` (`volume` or
+  `liquidity`), `--ascending`.
+- `list-markets`: `--id` (repeatable), `--slug`, `--tag-id`, `--closed`, `--limit`, `--offset`,
+  `--order` (`volume` or `liquidity`), `--ascending`.
+
+## Examples
+
+### Search active events for a thesis
 
 ```bash
-tribes-cli prediction <action> [options]
+tribes-cli prediction search \
+  --query "Fed rate cut" \
+  --limit-per-type 10
 ```
 
-Output is always pretty-printed JSON. Event commands attach a `leadingMarket` field (overview semantics - one best market per event).
+Each returned event carries `leadingMarket` with `leadingOutcome` and `leadingProbability`
+(a 0–1 string) — the event favorite.
 
-```bash
-tribes-cli prediction search --query "crypto regulation stablecoin bill" --limit-per-type 10
-tribes-cli prediction list-events --active true --closed false --limit 10 --order volume --ascending false
-tribes-cli prediction list-markets --closed false --limit 20 --order volume --ascending false
-```
-
-## Search prediction events
-
-Use search first for a natural-language thesis or catalyst.
-
-```bash
-tribes-cli prediction search --query "Fed rate cut June" --limit-per-type 10
-tribes-cli prediction search --query "CLARITY Act crypto" --limit-per-type 10
-```
-
-Options:
-
-```text
---query <q>                   Required search query
---limit-per-type <1..25>      Default: API default when omitted
---events-tag <tag>            Optional repeatable event tag filter
-```
-
-## List events
-
-List current events with optional filters and pagination:
+### List the biggest open events, then page forward
 
 ```bash
 tribes-cli prediction list-events \
-  --active true \
-  --closed false \
-  --limit 25 \
-  --order volume \
-  --ascending false
+  --active true --closed false \
+  --order volume --ascending false \
+  --limit 25 --offset 0
 ```
 
-Useful filters:
+Next page: rerun the same command with `--offset 25`.
 
-```text
---id <id>                     Repeatable event id
---slug <slug>                 Event slug
---tag-id <id>                 Tag id
---tag-slug <slug>             Tag slug
---active true|false           Default: true
---archived true|false
---closed true|false
---limit <n>
---offset <n>
---order <field>               Example: volume, liquidity, endDate
---ascending true|false
-```
-
-## Get one event
-
-Fetch a specific event after search/listing exposes its id or slug:
+### Get one event's full sub-market detail
 
 ```bash
-tribes-cli prediction get-event --event-id 12345
-tribes-cli prediction get-event --event-slug some-polymarket-event-slug
+tribes-cli prediction get-event --event-id 903193
 ```
 
-One of `--event-id` or `--event-slug` is required.
-
-## List markets
-
-List individual markets directly:
+### Batch-fetch several known markets in one call
 
 ```bash
-tribes-cli prediction list-markets \
-  --closed false \
-  --limit 20 \
-  --order volume \
-  --ascending false
+tribes-cli prediction list-markets --id 903193 --id 903194
 ```
 
-Useful filters:
-
-```text
---id <id>                     Repeatable market id
---slug <slug>                 Market slug
---tag-id <id>                 Tag id
---closed true|false
---limit <n>
---offset <n>
---order <field>               Example: volume, liquidity, endDate
---ascending true|false
-```
-
-## Get one market
-
-Fetch a specific market after search/listing exposes its id or slug:
+### Get one market's exact odds before citing them
 
 ```bash
-tribes-cli prediction get-market --market-id 12345
-tribes-cli prediction get-market --market-slug some-polymarket-market-slug
+tribes-cli prediction get-market --market-id 903193
 ```
 
-One of `--market-id` or `--market-slug` is required.
+Extract these JSON keys: `question`, `outcomes`, `outcomePrices`, `volume`, `liquidity`,
+`endDate`, `closed`.
 
-## Output interpretation
+## Error recovery
 
-Enriched event output selects one leading market per event using the same behavior as the Lucy tool:
+| Symptom                                   | Action                                                                                                                                                                                          |
+| ----------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Auth error (unauthorized, expired token)  | Run `tribes-cli login`, retry the original command once, then stop and report.                                                                                                                  |
+| `search` returns `[]` or nothing relevant | Retry once with fewer, broader keywords (drop dates and adjectives); if still empty, run `list-events --tag-slug <topic>`; if still nothing, report that no market exists — do NOT invent odds. |
+| `error: unknown option`                   | You used a flag that does not exist (often `--out`) — recheck the command reference and redirect stdout for files.                                                                              |
+| Any other API failure                     | Retry the same command once; if it fails again, stop and report the error.                                                                                                                      |
 
-- If the event has one market, show that market.
-- If the event has multiple open markets, rank by the first outcome price (`outcomes[0]` / `outcomePrices[0]`), then liquidity, then market id.
-- If the event is closed, choose the highest-priced outcome.
+## Related skills
 
-This avoids incorrectly selecting `No` on long-shot binary sub-markets as the event favorite.
-
-Each enriched event looks like:
-
-```json
-{
-  "event": { "...": "..." },
-  "leadingMarket": {
-    "market": { "...": "..." },
-    "leadingOutcome": "Yes",
-    "leadingProbability": "0.42"
-  }
-}
-```
-
-Use `get-event` or `get-market` when sub-market detail beyond `leadingMarket` is needed.
-
-## Trading workflow
-
-1. Translate the asset thesis into prediction queries:
-   - `xyz:CRCL` / `xyz:COIN`: `stablecoin bill`, `CLARITY Act`, `crypto market structure`, `SEC Coinbase`.
-   - BTC/ETH/SOL: `Bitcoin ETF`, `Ethereum ETF`, `Fed rate cut`, `crypto regulation`, `Solana outage`.
-   - Macro-sensitive trades: `Fed rate cut`, `CPI`, `recession`, `oil`, `election`.
-2. Run `search` for each thesis.
-3. For any relevant result, run `get-event` or `get-market` to capture exact odds, liquidity, volume, and dates.
-4. Record whether odds confirm, weaken, or contradict the thesis.
-5. Do not open or increase a position from prediction odds alone. Require the strategy workflow evidence threshold and gates.
-
-## Implementation
-
-- Command: `tribes-cli prediction` (source: `src/cli/Prediction.ts`)
-- Service: `src/services/PredictionService.ts` (inline HTTP)
-- Types: `src/types/Prediction.ts` (Zod schemas + option types)
-- Enrichment: `src/utils/Prediction.ts` (`leadingMarket` via `selectLeadingMarket`)
+- `strategize` — persistence and evidence gates; consumes these odds when forming trade theses.
+- `news` — headlines, catalysts, and sentiment narrative around the same events.
+- `macros` — numeric macro indicators (the actual number vs the market-implied odds).
+- `web-search` — general facts prediction markets do not cover.

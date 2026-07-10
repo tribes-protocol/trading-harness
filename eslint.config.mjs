@@ -132,6 +132,7 @@ export default [
       '**/coverage/**',
       'runtime/**',
       'eslint-rules/**',
+      '.github/scripts/**',
       '**/*.d.ts',
       '**/test/**',
       'tests/**',
