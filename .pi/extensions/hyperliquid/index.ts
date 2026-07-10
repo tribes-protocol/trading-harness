@@ -1,3 +1,4 @@
+import { existsSync } from 'node:fs'
 import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import { dirname, resolve } from 'node:path'
 
@@ -72,23 +73,29 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
 }
 
-// 'pending'  — the wallet snapshot file isn't on disk yet (warmed async at
-//              startup); the address is loading, not absent.
-// 'missing'  — the snapshot exists but holds no usable EVM address.
-// 'ready'    — resolved address.
+// 'pending'          — the wallet snapshot file isn't on disk yet (warmed async at
+//                      startup); the address is loading, not absent.
+// 'unauthenticated'  — no agent key file exists; user hasn't logged in.
+// 'missing'          — the snapshot exists but holds no usable EVM address.
+// 'ready'            — resolved address.
 type AccountState =
   | { readonly kind: 'ready'; readonly address: string }
   | { readonly kind: 'pending' }
+  | { readonly kind: 'unauthenticated' }
   | { readonly kind: 'missing' }
 
 async function resolveAccountState(cwd: string): Promise<AccountState> {
   // .tribes/privy-wallets.json is written by the tribes wallet-snapshot warmup
   // (`tribes-cli wallet list`), which runs a beat AFTER session start — so an
   // absent/unreadable file means "still loading", not "no account".
+  // But if the agent key itself is absent, the user hasn't logged in at all.
   let raw: string
   try {
     raw = await readFile(resolve(cwd, '.tribes/privy-wallets.json'), 'utf8')
   } catch {
+    if (!existsSync(resolve(cwd, '.tribes/agent-authorization-key.json'))) {
+      return { kind: 'unauthenticated' }
+    }
     return { kind: 'pending' }
   }
   let wallets: unknown
@@ -710,9 +717,11 @@ async function buildStatus(cwd: string): Promise<HyperliquidStatus> {
   const dexes = DEFAULT_DEXES
 
   if (accountState.kind !== 'ready') {
-    // 'pending' renders as a loading state (no error, no scary border); only a
-    // confirmed-'missing' snapshot says "Missing account address".
+    // 'pending' renders as a loading state (no error, no scary border);
+    // 'unauthenticated' shows a login prompt;
+    // 'missing' says "Missing account address".
     const initializing = accountState.kind === 'pending'
+    const notLoggedIn = accountState.kind === 'unauthenticated'
     const status: HyperliquidStatus = {
       ok: false,
       schema: 'hyperliquid-status.v1',
@@ -721,7 +730,11 @@ async function buildStatus(cwd: string): Promise<HyperliquidStatus> {
       user: null,
       dexes,
       accountSource: 'unavailable',
-      accountError: initializing ? null : 'Missing account address',
+      accountError: initializing
+        ? null
+        : notLoggedIn
+          ? 'Log in with /tribes:login to use Hyperliquid trading'
+          : 'Missing account address',
       initializing,
       hyperliquidAccounts: [],
       equityUsd: null,
@@ -800,6 +813,7 @@ async function buildStatus(cwd: string): Promise<HyperliquidStatus> {
   const status: HyperliquidStatus = {
     ok: account.accounts.length > 0,
     initializing: false,
+    unauthenticated: undefined,
     schema: 'hyperliquid-status.v1',
     updatedAt: new Date().toISOString(),
     mode: 'live',
@@ -845,6 +859,7 @@ async function refreshStatusSnapshot(cwd: string): Promise<HyperliquidStatus> {
         ...cached,
         ok: false,
         initializing: false,
+        unauthenticated: undefined,
         accountError: error instanceof Error ? error.message : String(error),
         error: 'Using cached status after refresh failure'
       }
@@ -965,6 +980,7 @@ export default function hyperliquidStatus(pi: ExtensionAPI): void {
           lastStatus = {
             ...lastStatus,
             initializing: false,
+            unauthenticated: undefined,
             accountSource: 'unavailable',
             accountError: 'Missing account address',
             error: 'Missing account address'

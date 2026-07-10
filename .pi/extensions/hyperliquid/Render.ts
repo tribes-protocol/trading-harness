@@ -698,7 +698,15 @@ export function renderHyperliquidPositionsWidget(
 ): string[] {
   // Loading uses a calm dim border; a real failure (missing account / error) is
   // a warning; a healthy account is the accent.
-  const borderTone = status.ok ? 'accent' : status.initializing ? 'dim' : 'warning'
+  // Unauthenticated (not logged in) shows a muted accent to draw attention
+  // without alarming.
+  const borderTone = status.ok
+    ? 'accent'
+    : status.initializing
+      ? 'dim'
+      : status.unauthenticated
+        ? 'accent'
+        : 'warning'
   const borderColor = (value: string): string => theme.fg(borderTone, value)
   const container = new Container()
   const contentWidth = Math.max(20, width - 2)
@@ -706,7 +714,11 @@ export function renderHyperliquidPositionsWidget(
   container.addChild(new DynamicBorder(borderColor))
 
   if (!status.ok) {
-    const brandState = status.initializing ? 'loading…' : 'unavailable'
+    const brandState = status.initializing
+      ? 'loading…'
+      : status.unauthenticated
+        ? 'login'
+        : 'unavailable'
     container.addChild(
       new Text(
         theme.fg('accent', theme.bold('Hyperliquid')) + theme.fg('dim', `  ${brandState}`),
@@ -716,10 +728,15 @@ export function renderHyperliquidPositionsWidget(
     )
     const notice = status.initializing
       ? theme.fg('dim', 'Loading account…')
-      : theme.fg(
-          'warning',
-          status.accountError ?? status.error ?? 'Unable to load Hyperliquid status'
-        )
+      : status.unauthenticated
+        ? theme.fg(
+            'accent',
+            'Log in with  ' + theme.bold('/tribes:login') + '  to enable Hyperliquid trading'
+          )
+        : theme.fg(
+            'warning',
+            status.accountError ?? status.error ?? 'Unable to load Hyperliquid status'
+          )
     container.addChild(new Text(notice, 1, 0))
     container.addChild(new DynamicBorder(borderColor))
     return container.render(width)
