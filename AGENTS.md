@@ -130,6 +130,13 @@ Pick the skill with these tie-breaker rules, in order:
 | General web lookup or read one URL                                                | `web-search`           |
 | JS-gated or fetch-blocked pages, UI automation                                    | `browser`              |
 
+<!-- BEGIN synced skill routes (managed by .github/workflows/sync-harness-skills.yml) -->
+
+- `zipbox-caddy` — Safely add or remove HTTPS reverse-proxy sites in this sandbox's in-VM Caddy with the baked tribes-caddy CLI — never hand-edit the Caddyfile, because a bad config kills all browser access to the machine.
+- `zipbox-dns` — Manage DNS records under this sandbox's own public hostname with the baked tribes-dns CLI — expose subdomains and set, list, or delete server-pinned A/AAAA records below the apex.
+
+<!-- END synced skill routes -->
+
 ## Harness-wide execution invariants
 
 These are canonical here; skills restate them in at most one line.
