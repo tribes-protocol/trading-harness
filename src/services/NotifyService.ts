@@ -11,6 +11,7 @@ import type {
   NotifyDiagnostics,
   NotifyRequest
 } from '@/types/Notify'
+import { buildOscNotification } from '@/utils/Osc'
 
 const execFileAsync = promisify(execFile)
 
@@ -19,24 +20,31 @@ const BACKEND_NOTES: Record<NotifyBackend, string> = {
     'preferred on macOS; registers its own bundle id, so macOS can hold a permission for it',
   osascript: 'macOS built-in; delivered under a system script host',
   'notify-send': 'Linux/freedesktop',
-  bell: 'audible bell only, no banner; never auto-selected'
+  bell: 'audible bell only, no banner; never auto-selected',
+  osc: 'terminal escape (OSC 777); the only backend that reaches a browser-hosted terminal'
 }
 
 /**
  * Order matters: the first available backend wins during auto-detection.
- * `bell` is deliberately absent — it draws nothing, so it is opt-in only.
+ *
+ * `bell` is deliberately absent — it draws nothing, so it is opt-in only. `osc`
+ * is last: on a desktop the OS notifiers give a real banner, but inside a cloud
+ * microVM none of them are installed and the escape is the only thing that can
+ * reach the user's browser.
  */
 const AUTO_DETECT_ORDER: readonly NotifyBackend[] = [
   'terminal-notifier',
   'osascript',
-  'notify-send'
+  'notify-send',
+  'osc'
 ]
 
 const ALL_BACKENDS: readonly NotifyBackend[] = [
   'terminal-notifier',
   'osascript',
   'notify-send',
-  'bell'
+  'bell',
+  'osc'
 ]
 
 export class NotifyBackendUnavailableError extends Error {}
@@ -61,7 +69,9 @@ export class NotifyService {
   }
 
   isAvailable(backend: NotifyBackend): boolean {
-    if (backend === 'bell') return true
+    // An escape sequence always "sends"; whether anything renders it is the
+    // terminal's business, not ours.
+    if (backend === 'bell' || backend === 'osc') return true
     if (backend === 'osascript') return platform === 'darwin' && this.resolveExecutable('osascript')
     return this.resolveExecutable(backend)
   }
@@ -108,6 +118,8 @@ export class NotifyService {
         return this.sendNotifySend(request)
       case 'bell':
         return this.sendBell()
+      case 'osc':
+        return this.sendOsc(request)
     }
   }
 
@@ -158,11 +170,24 @@ export class NotifyService {
   }
 
   private async sendBell(): Promise<void> {
+    this.writeToTerminal('\x07')
+  }
+
+  /**
+   * `sound` has no analogue in the escape and is ignored. A subtitle prefixes
+   * the body, matching how notify-send flattens the two.
+   */
+  private async sendOsc(request: NotifyRequest): Promise<void> {
+    const body = request.subtitle ? `${request.subtitle} — ${request.message}` : request.message
+    this.writeToTerminal(buildOscNotification({ title: request.title, body }))
+  }
+
+  private writeToTerminal(payload: string): void {
     try {
-      writeFileSync('/dev/tty', '\x07')
+      writeFileSync('/dev/tty', payload)
     } catch {
       // No controlling terminal (piped, or a sandboxed shell): fall back to stdout.
-      stdout.write('\x07')
+      stdout.write(payload)
     }
   }
 }
