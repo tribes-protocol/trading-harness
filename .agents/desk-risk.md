@@ -23,10 +23,14 @@ Sizing rules:
 
 - Isolated margin.
 - Max 5% of that dex's account equity per trade; max 15% total across desk-owned positions.
+- Size by confidence and setup quality: 5% only for clean yes/high-confidence setups; reduce to
+  2.5% or 1% for moderate conviction, conditional entries, noisy brackets, or thinner liquidity.
 - Check minimum notional and free margin on that dex.
 - TP/SL are on committed equity, not raw price:
   - Long TP: entry _ (1 + 0.10 / lev) Long SL: entry _ (1 - 0.05 / lev)
   - Short TP: entry _ (1 - 0.10 / lev) Short SL: entry _ (1 + 0.05 / lev)
+- If the default bracket is unrealistic versus ATR/structure, propose an adjusted bracket; block
+  only when no bracket gives a coherent invalidation and reward/risk inside the horizon.
 
 Return only:
 
@@ -35,10 +39,11 @@ PROPOSED SIZE: size, leverage, committed margin ($ and % of dex equity)
 BRACKET: entry, TP px, SL px (show the math)
 GATE CHECK (pass/fail each):
 
-- confidence >= 0.65 and judge = yes
+- confidence >= 0.65 and judge = yes for auto-entry; confidence >= 0.60 or explicit conditional
+  trigger can be CLEAR TO PROPOSE at reduced size
 - feasible within horizon
 - usable technical data (not a broken feed)
-- stop not inside normal ATR/noise
+- stop not unrealistically inside normal ATR/noise after any bracket adjustment
 - dex free-margin + min-notional OK
 - no accidental duplicate/netting vs existing position or open entry order
-  VERDICT: CLEAR TO PROPOSE | BLOCKED (list the failing gate[s])
+  VERDICT: CLEAR TO PROPOSE | CONDITIONAL TO PROPOSE | BLOCKED (list the hard failing gate[s])

@@ -38,8 +38,9 @@ Requires: an auth token (run `tribes-cli login` once if commands fail with auth 
    and filters inside the query text. Output is one free-text analysis string on stdout.
 4. Evidence gate: NEVER open or increase a position from a single signal — odds alone, one
    indicator, or one headline is never enough. Require at least two independent supporting
-   signals AND the user's explicit go-ahead. This skill produces briefings; `trade-execution`
-   places trades.
+   signals AND the user's explicit go-ahead. Moderate ideas should still be shown as smaller or
+   conditional proposals when the edge is coherent; reserve "not actionable" for missing edge or
+   hard safety failures. This skill produces briefings; `trade-execution` places trades.
 5. MUST run the tradability filter (step 6) on every candidate before presenting it as
    actionable — the Hyperliquid tradability guardrail in AGENTS.md.
 6. MUST append every briefing to the journal (convention below).

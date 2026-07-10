@@ -42,7 +42,9 @@ can spawn subagents in parallel (in Pi: the pi-subagents extension) — sequenti
    record CLOSED (closed externally) and do not touch any other same-coin position.
 5. One active thesis at a time in `current.md`. IF it is still active, write new proposals to
    `.tribes/thesis/proposed-<UTC-timestamp>.md` instead of overwriting it.
-6. IF your harness supports spawning subagents, desk stages MUST run as parallel subagent
+6. Do not turn every imperfection into a no-trade. Hard safety failures block; softer concerns
+   should become smaller size, wider/tighter brackets, or explicit entry conditions.
+7. IF your harness supports spawning subagents, desk stages MUST run as parallel subagent
    batches as shown below — sequential role-play is ONLY the fallback for harnesses without
    subagent support.
 
@@ -98,8 +100,8 @@ independent debaters, when subagent support is enabled (in Pi: the pi-subagents 
 3. Assemble the research pack (parallel desk agents above).
 4. Run the debate and judge.
 5. Run `desk-risk` for sizing and gates.
-6. Record the outcome (templates below): approved → thesis entry; rejected/conditional →
-   proposal file with the judge's key uncertainty.
+6. Record the outcome (templates below): auto-entry approved → thesis entry; proposed /
+   conditional / rejected → proposal file with the judge's key uncertainty.
 7. IF approved AND the user authorized execution → hand exact parameters (dex, coin, side,
    size, leverage, entry type, TP/SL prices) to `trade-execution`. Otherwise present the
    verdict and ask.
@@ -108,19 +110,30 @@ independent debaters, when subagent support is enabled (in Pi: the pi-subagents 
    EXIT. EXIT/ADD execute only with prior explicit authorization for this thesis — otherwise
    present and ask; closes route through `position-management`.
 
-## Auto-entry gates (ALL must pass)
+## Proposal and auto-entry gates
+
+Hard safety gates block both proposal and auto-entry:
 
 - Asset verified tradable on Hyperliquid now.
-- Judge CONFIDENCE ≥ 0.65 AND RECOMMEND TRADE = yes (conditional is not yes).
-- Fresh mark, balances, positions, and open orders checked by `desk-risk` immediately before
-  sizing.
-- Technical feed usable — no auto-entry on broken candles/indicators.
-- Bracket math is on committed equity, not raw price: long TP = entry × (1 + 0.10/leverage),
-  long SL = entry × (1 − 0.05/leverage); shorts inverted.
-- Stop sits outside normal ATR noise for the horizon (desk-technicals feasibility = yes).
-- Dex free margin and $10 minimum notional pass; ≤ 5% of that dex's equity per trade, ≤ 15%
-  across desk-owned positions; isolated margin.
+- Fresh mark, balances, positions, and open orders checked by `desk-risk` before sizing.
+- Technical feed usable; broken candles/indicators block.
+- Dex free margin and $10 minimum notional pass.
 - No existing position or order is modified, duplicated, or netted by the entry.
+
+Sizing gates shape the proposal instead of blocking:
+
+- Judge CONFIDENCE ≥ 0.60 can be proposed; use smaller size for 0.55–0.60 only when the mechanism
+  is clear and the invalidation is tight.
+- Judge CONFIDENCE ≥ 0.65 AND RECOMMEND TRADE = yes is required for auto-entry.
+- `conditional` is actionable when the condition is explicit and checkable (breakout, pullback,
+  spread/liquidity, news confirmation); otherwise reject it as vague.
+- Bracket math is on committed equity, not raw price: long TP = entry × (1 + target/leverage),
+  long SL = entry × (1 − stop/leverage); shorts inverted. Start from +10%/−5%, but let technicals
+  adjust target/stop to ATR and structure.
+- If the stop sits inside normal ATR/noise, first reduce size or adjust the bracket; block only
+  when the resulting stop remains unrealistic for the horizon.
+- Default proposal cap: ≤ 5% of that dex's equity per trade, ≤ 15% across desk-owned positions,
+  isolated margin. Use smaller size when conviction, liquidity, or bracket quality is weaker.
 
 ## Thesis record
 
