@@ -36,6 +36,10 @@ The message comes from the positional arguments, or from stdin when piped
 (`cmd | tribes-cli notify`) or redirected (`tribes-cli notify < file`). Stdin is
 otherwise ignored, so the command never blocks waiting on an inherited stream.
 
+The message is optional as long as `--title` or `--subtitle` carries the content,
+so `tribes-cli notify -t Deploy -s staging` sends a banner with no body. A bare
+`tribes-cli notify` with nothing to say is a usage error.
+
 `--sound` is a boolean and never consumes the next argument, so
 `notify --sound "all done"` notifies with the message `all done`. Use
 `--sound-name Glass` to pick a specific sound.

@@ -153,35 +153,39 @@ export function buildNotifyCommand(): Command {
         'Exit codes: 0 sent, 1 usage error, 2 no usable backend, 3 backend failed.'
       ].join('\n')
     )
-    .action(async (messageParts: string[], options: NotifyOptions): Promise<void> => {
-      if (options.listBackends) {
-        stdout.write(`${ensureJsonTreeString(notifyService.diagnose().backends)}\n`)
-        return
-      }
+    .action(
+      async (messageParts: string[], options: NotifyOptions, command: Command): Promise<void> => {
+        if (options.listBackends) {
+          stdout.write(`${ensureJsonTreeString(notifyService.diagnose().backends)}\n`)
+          return
+        }
 
-      if (options.doctor) {
-        await runDoctor()
-        return
-      }
+        if (options.doctor) {
+          await runDoctor()
+          return
+        }
 
-      const raw = messageParts.length > 0 ? messageParts.join(' ') : readStdin()
-      const message = normalizeMessage(raw)
-      if (!message) {
-        writeCliError('notify: no message (pass one as an argument or on stdin)')
-        exit(EXIT_USAGE)
-      }
+        const raw = messageParts.length > 0 ? messageParts.join(' ') : readStdin()
+        const message = normalizeMessage(raw)
 
-      const backend = resolveBackend(options.backend)
-      const sound = options.soundName ?? (options.sound ? DEFAULT_SOUND : undefined)
-      const request: NotifyRequest = {
-        message,
-        title: options.title,
-        subtitle: options.subtitle,
-        sound
-      }
+        const titleIsExplicit = command.getOptionValueSource('title') === 'cli'
+        if (!message && !titleIsExplicit && !options.subtitle) {
+          writeCliError('notify: nothing to show (pass a message, or set --title/--subtitle)')
+          exit(EXIT_USAGE)
+        }
 
-      await send(request, backend)
-    })
+        const backend = resolveBackend(options.backend)
+        const sound = options.soundName ?? (options.sound ? DEFAULT_SOUND : undefined)
+        const request: NotifyRequest = {
+          message,
+          title: options.title,
+          subtitle: options.subtitle,
+          sound
+        }
+
+        await send(request, backend)
+      }
+    )
 
   return program
 }

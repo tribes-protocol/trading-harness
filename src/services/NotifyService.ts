@@ -47,6 +47,10 @@ const ALL_BACKENDS: readonly NotifyBackend[] = [
   'osc'
 ]
 
+function joinBody(parts: readonly (string | undefined)[], separator: string): string {
+  return parts.filter((part): part is string => Boolean(part)).join(separator)
+}
+
 export class NotifyBackendUnavailableError extends Error {}
 
 export class NotifySendFailedError extends Error {}
@@ -165,7 +169,7 @@ export class NotifyService {
   }
 
   private async sendNotifySend(request: NotifyRequest): Promise<void> {
-    const body = request.subtitle ? `${request.subtitle}\n${request.message}` : request.message
+    const body = joinBody([request.subtitle, request.message], '\n')
     await execFileAsync('notify-send', ['--', request.title, body])
   }
 
@@ -178,7 +182,7 @@ export class NotifyService {
    * the body, matching how notify-send flattens the two.
    */
   private async sendOsc(request: NotifyRequest): Promise<void> {
-    const body = request.subtitle ? `${request.subtitle} — ${request.message}` : request.message
+    const body = joinBody([request.subtitle, request.message], ' — ')
     this.writeToTerminal(buildOscNotification({ title: request.title, body }))
   }
 
