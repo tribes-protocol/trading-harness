@@ -1,8 +1,8 @@
 import { execFile } from 'node:child_process'
-import { accessSync, constants, writeFileSync } from 'node:fs'
+import { accessSync, constants } from 'node:fs'
 import { release } from 'node:os'
 import { delimiter, join } from 'node:path'
-import { env, platform, stdout } from 'node:process'
+import { env, pid, platform, stdout } from 'node:process'
 import { promisify } from 'node:util'
 
 import type {
@@ -11,7 +11,8 @@ import type {
   NotifyDiagnostics,
   NotifyRequest
 } from '@/types/Notify'
-import { buildOscNotification, terminalWriteTargets } from '@/utils/Osc'
+import { buildOscNotification } from '@/utils/Osc'
+import { terminalWriteTargets, writeToTerminalDevice } from '@/utils/Tty'
 
 const execFileAsync = promisify(execFile)
 
@@ -193,13 +194,8 @@ export class NotifyService {
    * a plain interactive pipeline, and `bell` has nowhere better to go.
    */
   private writeToTerminal(payload: string): void {
-    for (const target of terminalWriteTargets(env)) {
-      try {
-        writeFileSync(target, payload)
-        return
-      } catch {
-        // Not openable (no controlling terminal, or a stale path): try the next.
-      }
+    for (const target of terminalWriteTargets({ env, platform, pid })) {
+      if (writeToTerminalDevice(target, payload)) return
     }
     stdout.write(payload)
   }
