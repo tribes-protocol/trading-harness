@@ -11,7 +11,7 @@ import type {
   NotifyDiagnostics,
   NotifyRequest
 } from '@/types/Notify'
-import { buildOscNotification } from '@/utils/Osc'
+import { buildOscNotification, terminalWriteTargets } from '@/utils/Osc'
 
 const execFileAsync = promisify(execFile)
 
@@ -186,12 +186,21 @@ export class NotifyService {
     this.writeToTerminal(buildOscNotification({ title: request.title, body }))
   }
 
+  /**
+   * Write to the first terminal we can open (see `terminalWriteTargets`), else
+   * stdout. Stdout is a poor last resort for `osc`: when an agent spawned us it
+   * owns our stdout, so the escape is swallowed there — but it is still right for
+   * a plain interactive pipeline, and `bell` has nowhere better to go.
+   */
   private writeToTerminal(payload: string): void {
-    try {
-      writeFileSync('/dev/tty', payload)
-    } catch {
-      // No controlling terminal (piped, or a sandboxed shell): fall back to stdout.
-      stdout.write(payload)
+    for (const target of terminalWriteTargets(env)) {
+      try {
+        writeFileSync(target, payload)
+        return
+      } catch {
+        // Not openable (no controlling terminal, or a stale path): try the next.
+      }
     }
+    stdout.write(payload)
   }
 }
