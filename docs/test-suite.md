@@ -56,7 +56,9 @@ Phase 0 targets a **local web/api stack plus a remote Linux KVM host**. Read thi
 
 - **Reachability — the step that bites.** `wrangler dev --ip 127.0.0.1` binds loopback only, but the host registers **outbound** to the control plane. So `--api` must be a URL the remote box can actually reach: tunnel `:8787` (cloudflared/ngrok) or rebind wrangler. Get this wrong and there is no error — the box just sits in `provisioning` forever (see P0-4).
 - **Bring your own Privy app.** No dev or staging Privy app id is committed anywhere (`apps/web/.env.example` ships `NEXT_PUBLIC_PRIVY_APP_ID=` empty, and both apps hard-fail at boot without it). Stand up your own Privy app with **email login enabled**, then set `NEXT_PUBLIC_PRIVY_APP_ID`, `PRIVY_APP_ID`, `PRIVY_APP_SECRET`, `PRIVY_VERIFICATION_KEY` — plus `PRIVY_APP_ID` and `NODE_ENV=development` for the harness itself.
-- **Why dev and never production.** `requireModOrWhitelistedInProduction` is `if (!getIsProduction(env)) return null` — a no-op outside production, a hard `403` inside it. That gate guards `POST /sandbox`, not just `/agents/login`. A freshly self-provisioned QA account is neither a mod nor whitelisted, so **in production it cannot boot anything** without a human whitelisting it first. Dev is the only environment where this phase is self-service.
+- **The beta gate fires locally too — the QA account must be whitelisted.** `requireModOrWhitelistedInProduction` is `if (!getIsProduction(env)) return null`, which reads like a dev no-op. It is not, because `apps/api/wrangler.jsonc` sets `"NODE_ENV": "production"` in its one and only `vars` block, with no dev override — so `wrangler dev` on `:8787` **is production** to `getIsProduction()`. The gate guards `POST /sandbox`, not just `/agents/login`, and an unwhitelisted account gets "The sandbox is currently limited to beta users."
+
+  Phase 0 is therefore **not** self-service out of the box. Before the first pass, whitelist `tribes-leo+ata-qa@agentmail.to` once — mint and redeem an access code (`POST /mod/whitelist/codes` then `POST /whitelist/redeem`; `access_codes` is empty on a fresh DB), or add its Privy smart-wallet address to `MODS`. This is a one-time setup cost for the standing account; it is precisely why the alias is fixed rather than random.
 
 ### Before every pass: re-bake, or you are testing stale code
 
@@ -78,19 +80,29 @@ Skip this and Phase 0 will happily boot the previous release. Running microVMs a
 
 - [ ] **P0-2 — An AgentMail inbox exists for this pass**
 
-  - Do: create or reuse an inbox via the AgentMail API (`https://api.agentmail.to/v0/`, API-key auth). Pass a stable `client_id` so re-running returns the existing inbox instead of minting a duplicate. Derive a per-account alias `<inbox>+<tag>@agentmail.to`.
-  - Expect: the alias delivers to the base inbox. `+` aliasing is confirmed working (kobe, 2026-07-03). Privy normally treats each alias as a **distinct account** — verify that for your Privy app, and if it collapses them, fall back to two separate inboxes.
+  - Do: reuse the standing inbox `tribes-leo@agentmail.to` (create it via the AgentMail API — `https://api.agentmail.to/v0/`, API-key auth — passing a stable `client_id` so re-running returns the existing inbox instead of minting a duplicate). The API key is **not** stored in either repo: supply `AGENTMAIL_API_KEY` from your password manager at run time, and never write it to a file under version control.
+  - Expect: `GET /v0/inboxes` lists the inbox. `+` aliasing is confirmed working (kobe, 2026-07-03), so the fixed aliases below all land in this one inbox while Privy treats each as a **distinct account**. If Privy ever collapses them, fall back to separate inboxes (`…-ata-qa@`, `…-ata-fresh@`).
+
+  **Use these exact addresses every pass — never a random or timestamped alias.** A stable address means the same Privy account, the same wallets, and the same agent across runs, so a red is a real regression rather than a brand-new account behaving differently.
+
+  | Alias                               | Role                                                                          |
+  | ----------------------------------- | ----------------------------------------------------------------------------- |
+  | `tribes-leo+ata-qa@agentmail.to`    | The standing QA account. Boots the agent; Suites 1–2 run against its wallets. |
+  | `tribes-leo+ata-fresh@agentmail.to` | A never-booted account, reserved for the P0-6 logged-out negative check.      |
+
+  Reusing `+ata-qa` also means its wallets accumulate a transaction history across passes — that is intended, and it is what makes the wallet auditable on a block explorer.
 
 - [ ] **P0-3 — Log into the web app with a Privy email OTP**
 
-  - Do: drive `http://localhost:3000` with the `browser` skill (Playwright; the CLI is not preinstalled — run the skill's one-time setup, and pass `PLAYWRIGHT_MCP_USER_AGENT`). Enter the P0-2 alias in the Privy modal. Then poll `inboxes.messages.list()` for the inbox — **AgentMail has no wait-for-message primitive**, so poll it yourself: every 2s, up to 60s. Read the message with `messages.get()` and extract the code from `extracted_text` with an explicit regex (`/\b(\d{6})\b/`).
-  - Expect: the OTP arrives within the window and the browser reaches an authenticated session. Red: no message after 60s ⇒ email login is not enabled on your Privy app.
+  - Do: drive `http://localhost:3000/sandbox?start=1` with the `browser` skill (Playwright; the CLI is not preinstalled, and a global `npm install -g` needs root — run it through `npx -y @playwright/cli@latest` instead, and pass `PLAYWRIGHT_MCP_USER_AGENT`). The Privy modal is **already open** on load — do not click "Sign in to boot trading agent" first; that button sits _behind_ the modal and the click will be intercepted. Fill `input[type=email]:visible` with `tribes-leo+ata-qa@agentmail.to` and click the modal's `Submit`. Snapshot the inbox first (`messages.list()`) so you can tell the OTP apart from prior mail, then poll — **AgentMail has no wait-for-message primitive**, so poll it yourself: every 2s, up to 60s. Read the message with `messages.get()` and extract the code from `extracted_text` with an explicit regex (`/\b(\d{6})\b/`). Six blank text inputs appear for the code; the search box is also `input[type=text]`, so target the **trailing six**.
+  - Expect: the mail arrives from `no-reply@mail.privy.io` (subject `Your login code for …`), typically in under 2s. After entry the modal closes, a `privy-token` cookie (~400 chars) is set, and `LOGOUT` is visible. Red: no message after 60s ⇒ email login is not enabled on your Privy app.
 
 - [ ] **P0-4 — Boot the trading agent**
 
-  - Do: navigate to `http://localhost:3000/sandbox?start=1` and accept the TOS gate. (`?start=1` is the documented boot trigger — it logs the visitor in and boots the agent. In production the same funnel target is `https://tribes.xyz/sandbox?start=1`.)
+  - Do: on `http://localhost:3000/sandbox?start=1`, accept the TOS gate. **`ACCEPT` starts `disabled`** — tick the consent checkbox (`input[type=checkbox]`) first, then click it. (`?start=1` is the documented boot trigger; in production the same funnel target is `https://tribes.xyz/sandbox?start=1`.)
   - Expect: a sandbox is created on the **`ata`** harness — that is the trading agent, and it is the default (`DEFAULT_SANDBOX_HARNESS === 'ata'`). Do not confuse it with `pi` (the underlying coding agent) or `tribes` (the extension). The box transitions `provisioning → running`.
-  - Red: stuck in `provisioning` indefinitely with no error. That is almost always the reachability mistake from the Environment section — no host ever picked up the start command. Check `sandboxd health` on the box, not the browser.
+  - Red — **"Not available. The sandbox is currently limited to beta users."** The account is not whitelisted. This fires on a _local_ stack too: `apps/api/wrangler.jsonc` has a single top-level `vars` block with `"NODE_ENV": "production"` and no dev override, so `wrangler dev` is production as far as `getIsProduction()` is concerned, and `requireModOrWhitelistedInProduction` enforces. See the Environment section — the account must be whitelisted before this item can pass.
+  - Red — stuck in `provisioning` indefinitely with **no** error message. Different failure: no host picked up the start command (the reachability mistake). Distinguish the two by the copy on screen. Check `sandboxd health` on the box, not the browser.
 
 - [ ] **P0-5 — The sandbox came up already authenticated**
 
