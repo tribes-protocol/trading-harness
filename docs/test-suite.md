@@ -44,7 +44,7 @@ A **key quorum** binds that in-VM public key as an authorized signer on the user
 
 Phase 0 targets a **local web/api stack plus a remote Linux KVM host**. Read this section before touching anything — two of these bite hard.
 
-- **Mac:** `bun dev` in the terminal monorepo (turbo: `web`, `api`, `backend`, …) plus Postgres from `dockers/docker-compose.dev.yml`. `apps/api` is a Cloudflare Worker under `wrangler dev` on `127.0.0.1:8787`; `apps/web` serves `:3000` and defaults to that endpoint.
+- **Mac:** `bun dev` in the terminal monorepo, plus its local Postgres. The web app serves `:3000` and the control plane `:8787`; the web app defaults to that endpoint.
 - **A remote Linux box with `/dev/kvm`.** Sandboxes are Firecracker microVMs. There is **no non-KVM fallback, no mock backend, and no darwin path** — `bun dev` never starts `sandboxd`, so a Mac alone cannot boot an agent. Provision the box once:
 
   ```
@@ -54,11 +54,8 @@ Phase 0 targets a **local web/api stack plus a remote Linux KVM host**. Read thi
 
   (needs `ADMIN_ACCESS_KEY` to mint the provision token, or pass `--token`).
 
-- **Reachability — the step that bites.** `wrangler dev --ip 127.0.0.1` binds loopback only, but the host registers **outbound** to the control plane. So `--api` must be a URL the remote box can actually reach: tunnel `:8787` (cloudflared/ngrok) or rebind wrangler. Get this wrong and there is no error — the box just sits in `provisioning` forever (see P0-4).
-- **Bring your own Privy app.** No dev or staging Privy app id is committed anywhere (`apps/web/.env.example` ships `NEXT_PUBLIC_PRIVY_APP_ID=` empty, and both apps hard-fail at boot without it). Stand up your own Privy app with **email login enabled**, then set `NEXT_PUBLIC_PRIVY_APP_ID`, `PRIVY_APP_ID`, `PRIVY_APP_SECRET`, `PRIVY_VERIFICATION_KEY` — plus `PRIVY_APP_ID` and `NODE_ENV=development` for the harness itself.
-- **The beta gate fires locally too — the QA account must be whitelisted.** `requireModOrWhitelistedInProduction` is `if (!getIsProduction(env)) return null`, which reads like a dev no-op. It is not, because `apps/api/wrangler.jsonc` sets `"NODE_ENV": "production"` in its one and only `vars` block, with no dev override — so `wrangler dev` on `:8787` **is production** to `getIsProduction()`. The gate guards `POST /sandbox`, not just `/agents/login`, and an unwhitelisted account gets "The sandbox is currently limited to beta users."
-
-  Phase 0 is therefore **not** self-service out of the box. Before the first pass, whitelist `tribes-leo+ata-qa@agentmail.to` once — mint and redeem an access code (`POST /mod/whitelist/codes` then `POST /whitelist/redeem`; `access_codes` is empty on a fresh DB), or add its Privy smart-wallet address to `MODS`. This is a one-time setup cost for the standing account; it is precisely why the alias is fixed rather than random.
+- **Reachability — the step that bites.** The local control plane listens on loopback only, but the sandbox host registers **outbound** to it. So `--api` must be a URL the remote box can actually reach: tunnel `:8787` (cloudflared/ngrok), or bind the control plane to a routable address. Get this wrong and there is no error — the box just sits in `provisioning` forever (see P0-4).
+- **Bring your own Privy app.** No dev or staging Privy app id is committed anywhere, and the web app hard-fails at boot without one. Stand up your own Privy app with **email login enabled** (and wallet login, for Suite 3), supply its id and secrets to the web app and control plane, and set `PRIVY_APP_ID` plus `NODE_ENV=development` for the harness itself.
 
 ### Before every pass: re-bake, or you are testing stale code
 
@@ -100,9 +97,9 @@ Skip this and Phase 0 will happily boot the previous release. Running microVMs a
 - [ ] **P0-4 — Boot the trading agent**
 
   - Do: on `http://localhost:3000/sandbox?start=1`, accept the TOS gate. **`ACCEPT` starts `disabled`** — tick the consent checkbox (`input[type=checkbox]`) first, then click it. (`?start=1` is the documented boot trigger; in production the same funnel target is `https://tribes.xyz/sandbox?start=1`.)
-  - Expect: a sandbox is created on the **`ata`** harness — that is the trading agent, and it is the default (`DEFAULT_SANDBOX_HARNESS === 'ata'`). Do not confuse it with `pi` (the underlying coding agent) or `tribes` (the extension). The box transitions `provisioning → running`.
-  - Red — **"Not available. The sandbox is currently limited to beta users."** The account is not whitelisted. This fires on a _local_ stack too: `apps/api/wrangler.jsonc` has a single top-level `vars` block with `"NODE_ENV": "production"` and no dev override, so `wrangler dev` is production as far as `getIsProduction()` is concerned, and `requireModOrWhitelistedInProduction` enforces. See the Environment section — the account must be whitelisted before this item can pass.
-  - Red — stuck in `provisioning` indefinitely with **no** error message. Different failure: no host picked up the start command (the reachability mistake). Distinguish the two by the copy on screen. Check `sandboxd health` on the box, not the browser.
+  - Expect: a sandbox is created on the **`ata`** harness — that is the trading agent, and it is what boots by default. Do not confuse it with `pi` (the underlying coding agent) or `tribes` (the extension). The box transitions `provisioning → running`.
+  - Red — stuck in `provisioning` indefinitely with no error message. No host picked up the start command; this is the reachability mistake from the Environment section. Diagnose with `sandboxd health` on the box, not in the browser.
+  - Red — the page refuses the boot outright with an availability or access message. That is the environment rejecting the account, not the harness failing. Resolve it against the environment before re-running; nothing in this suite can work around it.
 
 - [ ] **P0-5 — The sandbox came up already authenticated**
 
