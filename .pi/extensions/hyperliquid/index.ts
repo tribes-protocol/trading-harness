@@ -32,7 +32,14 @@ const COST_LOOKBACK_DAYS = 7
 const CLOSED_PNL_LOOKBACK_HOURS = 24
 const RECENT_TRADES_LIMIT = 100
 const LEDGER_LOOKBACK_DAYS = 90
-const TAB_ORDER: readonly HlTab[] = ['positions', 'transactions', 'orders', 'deposits', 'spot']
+const TAB_ORDER: readonly HlTab[] = [
+  'positions',
+  'balances',
+  'transactions',
+  'orders',
+  'deposits',
+  'spot'
+]
 const HYPERLIQUID_INFO_URL = 'https://api.hyperliquid.xyz/info'
 
 // Types live in ./types.ts; renderer in ./Render.ts. CrossBucket +
@@ -1054,6 +1061,8 @@ export default function hyperliquidStatus(pi: ExtensionAPI): void {
     switch (activeTab) {
       case 'positions':
         return (status.positions ?? []).length
+      case 'balances':
+        return (status.hyperliquidAccounts ?? []).length
       case 'transactions':
         return (status.recentTrades ?? []).length
       case 'orders':
@@ -1091,7 +1100,8 @@ export default function hyperliquidStatus(pi: ExtensionAPI): void {
   })
 
   pi.registerCommand('hyperliquid:tab', {
-    description: 'Switch the Hyperliquid widget tab (positions|transactions|orders|deposits|spot)',
+    description:
+      'Switch the Hyperliquid widget tab (positions|balances|transactions|orders|deposits|spot)',
     getArgumentCompletions: (prefix) =>
       TAB_ORDER.filter((tab) => tab.startsWith(prefix.toLowerCase())).map((tab) => ({
         value: tab,

@@ -11,6 +11,7 @@ import { DynamicBorder } from '@earendil-works/pi-coding-agent'
 import { Container, hyperlink, Text, truncateToWidth, visibleWidth } from '@earendil-works/pi-tui'
 
 import type {
+  AccountSummary,
   HlTab,
   HyperliquidStatus,
   LedgerUpdate,
@@ -20,10 +21,18 @@ import type {
   StatusPosition
 } from './StatusTypes.ts'
 
-// Bottom-section tabs, ordered to match the CoinGlass Hyperliquid address page.
-const TAB_SEQUENCE: readonly HlTab[] = ['positions', 'transactions', 'orders', 'deposits', 'spot']
+// Bottom-section tabs, ordered to put account balances beside open positions.
+const TAB_SEQUENCE: readonly HlTab[] = [
+  'positions',
+  'balances',
+  'transactions',
+  'orders',
+  'deposits',
+  'spot'
+]
 const TAB_LABELS: Readonly<Record<HlTab, string>> = {
   positions: 'Positions',
+  balances: 'Balances',
   transactions: 'Transactions',
   orders: 'Open Orders',
   deposits: 'Deposits',
@@ -138,6 +147,8 @@ const RIGHT_ALIGNED_KEYS = new Set<string>([
   'fundingDay',
   'cost7d',
   'margin',
+  'equity',
+  'gross',
   'value',
   'exit',
   'pnl',
@@ -594,6 +605,31 @@ function renderSpotHoldings(holdings: readonly SpotHolding[], theme: Theme): str
   return lines.join('\n')
 }
 
+function renderBalances(accounts: readonly AccountSummary[], theme: Theme): string {
+  if (accounts.length === 0) return theme.fg('muted', 'No perp balances')
+  const columns = [
+    { key: 'account', label: 'Account', width: 14 },
+    { key: 'equity', label: 'Equity', width: 12 },
+    { key: 'available', label: 'Available', width: 12 },
+    { key: 'margin', label: 'Margin', width: 12 },
+    { key: 'gross', label: 'Gross', width: 12 }
+  ]
+  const lines = [headerRow(columns, theme)]
+  for (const account of accounts) {
+    const values: Record<string, string> = {
+      account: account.dex || 'main',
+      equity: fmtUsd(account.equityUsd),
+      available: fmtUsd(account.withdrawableUsd),
+      margin: fmtUsd(account.marginUsedUsd),
+      gross: fmtUsd(account.grossExposureUsd)
+    }
+    lines.push(
+      columns.map((col) => cell(values[col.key], col.width, undefined, alignFor(col.key))).join(' ')
+    )
+  }
+  return lines.join('\n')
+}
+
 function tabCount(status: HyperliquidStatus, tab: HlTab): number {
   // Coalesce every field: a snapshot cached by an older extension build (loaded
   // from disk on startup, rendered before the first refresh) can lack the newer
@@ -601,6 +637,8 @@ function tabCount(status: HyperliquidStatus, tab: HlTab): number {
   switch (tab) {
     case 'positions':
       return (status.positions ?? []).length
+    case 'balances':
+      return (status.hyperliquidAccounts ?? []).length
     case 'transactions':
       return (status.recentTrades ?? []).length
     case 'orders':
@@ -664,6 +702,10 @@ function renderTabBody(
     case 'positions':
       return renderPage(status.positions ?? [], scrollOffset, theme, (page) =>
         renderPositionsTable(page, contentWidth, theme)
+      )
+    case 'balances':
+      return renderPage(status.hyperliquidAccounts ?? [], scrollOffset, theme, (page) =>
+        renderBalances(page, theme)
       )
     case 'transactions':
       return (status.recentTrades ?? []).length > 0
@@ -748,7 +790,7 @@ export function renderHyperliquidPositionsWidget(
   const hero =
     theme.fg('accent', '● Hyperliquid') +
     '   ' +
-    theme.bold(theme.fg('text', fmtUsd(status.equityUsd))) +
+    theme.bold(theme.fg('text', `total ${fmtUsd(status.equityUsd)}`)) +
     '   ' +
     dayDisplay +
     (refreshing ? '   ' + theme.fg('dim', 'syncing…') : '')
@@ -783,25 +825,6 @@ export function renderHyperliquidPositionsWidget(
     ].join('  ·  ')
   )
   container.addChild(new Text(context, 1, 0))
-
-  // Sub-accounts line: spot + per-dex equity/margin.
-  const accountSections: string[] = []
-  if (
-    typeof status.spotBalanceUsd === 'number' &&
-    Number.isFinite(status.spotBalanceUsd) &&
-    status.spotBalanceUsd > 0
-  ) {
-    accountSections.push(`spot ${fmtUsd(status.spotBalanceUsd)}`)
-  }
-  const accounts = status.hyperliquidAccounts.map(
-    (account) =>
-      `${account.dex || 'main'} eq ${fmtUsd(account.equityUsd)}, margin ${fmtUsd(account.marginUsedUsd)}`
-  )
-  accountSections.push(...accounts)
-  const accountLine = accountSections.join('  ·  ')
-  if (accountLine.length > 0) {
-    container.addChild(new Text(theme.fg('dim', accountLine), 1, 0))
-  }
 
   // Bottom section: tab bar (with the nav hint tucked right when it fits) + table.
   const tabs = renderTabBar(status, activeTab, theme)

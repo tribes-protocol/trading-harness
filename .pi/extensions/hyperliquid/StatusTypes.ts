@@ -9,9 +9,9 @@ export type Dex = string
 
 /**
  * The bottom-section tabs, mirroring the CoinGlass Hyperliquid address page:
- * Positions · Transactions · Open Orders · Deposits & Withdrawals · Spot.
+ * Positions · Balances · Transactions · Open Orders · Deposits & Withdrawals · Spot.
  */
-export type HlTab = 'positions' | 'transactions' | 'orders' | 'deposits' | 'spot'
+export type HlTab = 'positions' | 'balances' | 'transactions' | 'orders' | 'deposits' | 'spot'
 
 export interface OpenOrder {
   readonly coin: string
