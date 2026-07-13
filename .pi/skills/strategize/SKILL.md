@@ -108,12 +108,15 @@ the legs return because it needs the complete candidate list.
    steps 4–6:
 
    ```bash
-   tribes-cli hyperliquid list-assets --all-dexes
+   tribes-cli hyperliquid list-assets --all-dexes --out /tmp/all-dexes.json
    tribes-cli hyperliquid list-assets --market spot
    ```
 
-   Use `list-exchanges` only when the all-dex output needs a venue label resolved; never inspect
-   only one named dex. Record the hosting dex and exact coin/pair. For every HIP-3 candidate, inspect the
+   Write the all-dex sweep to a file (`--out`) and read every dex section in full — it spans
+   thousands of lines and truncates when read inline. Read the `xyz` dex FIRST (it hosts most
+   stock and commodity perps), and never call a candidate not-tradable from a section you did not
+   finish reading. Use `list-exchanges` only when the all-dex output needs a venue label resolved;
+   never inspect only one named dex. Record the hosting dex and exact coin/pair. For every HIP-3 candidate, inspect the
    live quality data before calling it tradable: `referencePx`; coherent `midPx`/`oraclePx` when
    exposed; current `dayNtlVlm`, `dayBaseVlm`, and `openInterest`; and acceptable `impactPxs` for
    the intended size. Treat `isDelisted` as watchlist-only and preserve any isolated-margin
