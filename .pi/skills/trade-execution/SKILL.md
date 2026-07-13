@@ -43,10 +43,14 @@ Requires: the `wallet` and `hyperliquid` skills (full flag lists and sizing rule
 ### 1. Tradability
 
 ```bash
-tribes-cli hyperliquid list-assets --all-dexes
+tribes-cli hyperliquid list-assets --all-dexes --out /tmp/all-dexes.json
 tribes-cli hyperliquid list-assets --market spot
 ```
 
+- Write the all-dex sweep to a file (`--out`) and read every dex section in full — it is thousands
+  of lines and truncates when read inline. Read the `xyz` dex FIRST (it hosts most stock and
+  commodity perps). NEVER conclude the asset is "delisted" / "not tradable" from a section you did
+  not fully read; a not-tradable verdict requires having actually inspected that asset's entry.
 - Resolve the EXACT `coin` (perp) or `pair` (spot), the hosting `dex`, and the asset's
   `szDecimals`, `referencePx`, and `maxLeverage` — steps 4–6 need all of them. Use
   `list-exchanges` only if the all-dex result needs a venue label resolved.

@@ -116,9 +116,20 @@ Map intent to the fewest atomic CLI calls. One command per mechanism, never one 
 Before presenting a perp as tradable or preparing an order, run:
 
 ```bash
-tribes-cli hyperliquid list-assets --all-dexes
+tribes-cli hyperliquid list-assets --all-dexes --out /tmp/all-dexes.json
 tribes-cli hyperliquid list-assets --market spot
 ```
+
+The `--all-dexes` sweep spans many dexes and thousands of lines, so always write it to a file
+with `--out` and read every dex section in full — reading it inline risks truncation, and a
+section you never reach is NOT evidence of anything. Read the `xyz` dex FIRST: it lists most
+stock/equity tickers and commodity perps (metals, energy, ag), so any stock or commodity lookup
+confirms `xyz` before the others.
+
+NEVER conclude an asset, an asset class, or the whole venue is "delisted" / "not tradable" from a
+partial, truncated, or unread section. A not-tradable verdict requires having actually inspected
+that asset's section in the output — not having failed to process it. If any dex section was not
+read to completion, finish it before answering.
 
 Use `list-exchanges` only to resolve a venue label. Find the exact `dex` and `coin`/`pair`; never
 assume a dex. A HIP-3 market needs usable `referencePx`, coherent `midPx`/`oraclePx`, current

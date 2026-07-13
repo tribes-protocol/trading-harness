@@ -23,6 +23,15 @@ Hyperliquid first.
 - Start with `list-assets --all-dexes`, use `list-exchanges` only when a venue label needs
   resolving, and inspect the spot market separately. Never use a default-dex lookup or a single
   HIP-3 dex as a proxy for venue coverage.
+- Read the `xyz` dex FIRST. It hosts most stock/equity and commodity perps (individual tickers
+  plus metals, energy, and ag), so any stock or commodity question must confirm the `xyz` section
+  before looking elsewhere.
+- Process the ENTIRE all-dex sweep before concluding. The output spans many dexes and thousands
+  of lines and is easily truncated when read inline — write it to a file (`--out`) and read every
+  dex section in full, `xyz` included. NEVER declare an asset, class, or the whole venue
+  "delisted" / "not tradable" from a partial, truncated, or unread section: a not-tradable verdict
+  requires having actually inspected that asset's section, not having failed to reach it. If any
+  dex section was not read to completion, finish reading it before answering.
 - A candidate is actionable only when it is listed on its hosting market **and** its live market
   data supports the proposed order. For HIP-3 markets, require a live `referencePx`, coherent
   `midPx`/`oraclePx` data when available, meaningful `dayNtlVlm`/`dayBaseVlm` and
