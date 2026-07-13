@@ -1,5 +1,5 @@
 import { execFile } from 'node:child_process'
-import { accessSync, constants } from 'node:fs'
+import { accessSync, constants, statSync } from 'node:fs'
 import { release } from 'node:os'
 import { delimiter, join } from 'node:path'
 import { env, pid, platform, stdout } from 'node:process'
@@ -20,18 +20,20 @@ const BACKEND_NOTES: Record<NotifyBackend, string> = {
   'terminal-notifier':
     'preferred on macOS; registers its own bundle id, so macOS can hold a permission for it',
   osascript: 'macOS built-in; delivered under a system script host',
-  'notify-send': 'Linux/freedesktop',
+  'notify-send': 'Linux/freedesktop; needs a D-Bus session bus, not just the binary',
   bell: 'audible bell only, no banner; never auto-selected',
   osc: 'terminal escape (OSC 777); the only backend that reaches a browser-hosted terminal'
 }
 
 /**
- * Order matters: the first available backend wins during auto-detection.
+ * First available backend wins. `bell` is absent because it draws nothing, so it
+ * is opt-in only. `osc` is last: the OS notifiers give a real banner on a
+ * desktop, but in a microVM none of them can deliver and the escape is all that
+ * reaches the user's browser.
  *
- * `bell` is deliberately absent — it draws nothing, so it is opt-in only. `osc`
- * is last: on a desktop the OS notifiers give a real banner, but inside a cloud
- * microVM none of them are installed and the escape is the only thing that can
- * reach the user's browser.
+ * Availability means "can deliver", not "is on PATH" — auto-detect commits to
+ * the backend it picks, so a present-but-broken one fails the send outright
+ * instead of falling through.
  */
 const AUTO_DETECT_ORDER: readonly NotifyBackend[] = [
   'terminal-notifier',
@@ -73,11 +75,34 @@ export class NotifyService {
     return false
   }
 
+  /**
+   * `notify-send` delivers over the D-Bus session bus, so a microVM shipping
+   * `libnotify-bin` with no desktop session has the binary but cannot send.
+   *
+   * The socket probe is not redundant: a real desktop often leaves
+   * `DBUS_SESSION_BUS_ADDRESS` unset and lets libdbus find `$XDG_RUNTIME_DIR/bus`
+   * itself, and checking only the variable would demote a working `notify-send`.
+   */
+  private hasDbusSession(): boolean {
+    if (env.DBUS_SESSION_BUS_ADDRESS) return true
+
+    const runtimeDir = env.XDG_RUNTIME_DIR
+    if (!runtimeDir) return false
+    try {
+      return statSync(join(runtimeDir, 'bus')).isSocket()
+    } catch {
+      return false
+    }
+  }
+
   isAvailable(backend: NotifyBackend): boolean {
     // An escape sequence always "sends"; whether anything renders it is the
     // terminal's business, not ours.
     if (backend === 'bell' || backend === 'osc') return true
     if (backend === 'osascript') return platform === 'darwin' && this.resolveExecutable('osascript')
+    if (backend === 'notify-send') {
+      return this.resolveExecutable('notify-send') && this.hasDbusSession()
+    }
     return this.resolveExecutable(backend)
   }
 

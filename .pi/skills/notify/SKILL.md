@@ -49,13 +49,19 @@ Exit codes: `0` sent, `1` usage error, `2` no usable backend, `3` backend failed
 ## Backends
 
 Auto-detection picks the first available of `terminal-notifier`, then
-`osascript` (macOS), then `notify-send` (Linux). `bell` is never auto-selected.
+`osascript` (macOS), then `notify-send` (Linux), then `osc`. `bell` is never
+auto-selected.
+
+"Available" means _can actually deliver_, not merely "is installed" — a backend
+that is present but cannot deliver would be auto-selected, fail, and exit 3
+without falling through to one that works.
 
 | Backend             | Notes                                                                                                                                      |
 | ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
 | `terminal-notifier` | Most reliable on macOS: registers its own bundle id, so macOS can hold a notification permission for it. `brew install terminal-notifier`. |
 | `osascript`         | macOS built-in. Delivered under a system script host, not under your terminal, so its alert style is configured under that host's entry.   |
-| `notify-send`       | Linux / freedesktop.                                                                                                                       |
+| `notify-send`       | Linux / freedesktop. Counts as available only with a D-Bus session bus, since it delivers over one — the binary alone is not enough.       |
+| `osc`               | Terminal escape (OSC 777). Reaches a browser-hosted terminal, so it is the backend that fires inside a cloud microVM.                      |
 | `bell`              | Audible bell only. No banner. Opt-in, last resort.                                                                                         |
 
 ## Delivery vs. visibility
