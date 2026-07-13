@@ -64,6 +64,30 @@ Before ending your turn, run the refinements that would make the answer better s
 
 The goal: the user receives a refined, actionable answer to what they actually asked, instead of a first-pass result that quietly stops at the specialist's "if you want, I can go deeper" line.
 
+## Multi-candidate comparison guardrail (hard rule)
+
+When the user asks "what to trade" or "tell me what to buy/short" — any open-ended trade-idea
+request without a named ticker — never jump to debating just one candidate. Show the full field
+first.
+
+Execution requirements before narrowing to a single thesis:
+
+- After the all-dex sweep and quality review, compile every tradable candidate into a ranked
+  comparison table. Include at minimum: ticker, current price, day change %, daily notional
+  volume, open interest, max leverage, margin mode (cross vs isolated), impact spread, and a
+  one-line setup note explaining why it matters.
+- Sort the table by trade setup quality — not raw liquidity. Heavier weight goes to candidates
+  with a meaningful price dislocation (large day move, near support/resistance, oversold bounce
+  zone) plus adequate liquidity. A high-volume flat stock ranks below a decent-volume stock
+  showing a genuine entry signal.
+- Present the full table to the user. Then pick the top 1-3 candidates, run a technical deep-dive
+  on each, and give a clear ranked recommendation with reasoning.
+- Only after the user confirms direction (or a single candidate is so dominant it's obvious) do
+  you enter the full thesis desk (research pack → debate → judge → risk). Do not skip the
+  comparison table and jump straight to debating one ticker.
+- If the user names a specific ticker, skip the comparison and go straight to the thesis desk
+  on that ticker.
+
 ## Cross-asset routing guardrail (hard rule)
 
 For unscoped discovery/opportunity requests, cover crypto, securities, and commodities. Do not
