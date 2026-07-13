@@ -1,274 +1,247 @@
 ---
 name: browser
 description: >-
-  Provides browser automation via Microsoft's @playwright/cli for inspection, screenshots, PDF capture,
-  console/network debugging, storage/session handling, and UI testing. Use when opening pages, clicking,
-  typing, snapshots, or debugging web behavior. Use as the preferred fallback when curl, wget, fetch, or
-  other HTTP clients get 401, 403, 406, or 429 responses, bot or CDN challenge pages, HTML that is empty or
-  unusable without JavaScript, or when cookies, redirects, or CSRF flows block programmatic fetch.
+  Headless browser automation via Microsoft's @playwright/cli. Handles: rendering JS-heavy pages,
+  clicking, typing, page snapshots, screenshots, PDF capture, console/network debugging, and
+  session/storage handling. Call it ONLY when a page needs JavaScript or UI interaction, or when
+  curl/wget/fetch or web-search extract is blocked (401/403/406/429, bot/CDN challenge, empty
+  skeleton HTML). NOT a search tool — run web-search first for lookups and plain page text. NOT
+  for: web search or readable pages (use web-search); market/asset news (use news); market,
+  token, or stock data (route to the matching analyst skill).
 allowed-tools: bash read
 ---
 
 # Browser
 
-Use Microsoft's `@playwright/cli` for token-efficient browser automation from the shell.
+Backing tool: Microsoft's `@playwright/cli` (`playwright-cli`) — the one skill that is not a
+`tribes-cli` group. It drives a headless Chromium from the shell for pages that plain HTTP fetch
+cannot handle, and for UI automation. Upstream docs: https://github.com/microsoft/playwright-cli
+Requires: Node.js 18+ with npm (present in the Tribes sandbox). The CLI and browser install on
+demand — a missing binary is a setup step, not a reason to skip the browser path (see Error
+recovery).
 
-`playwright-cli` is NOT preinstalled. Sandbox images ship without Playwright or
-Chromium to keep the rootfs small, so installing the CLI and browser is part of
-using this skill. Do not skip browser automation only because the CLI is missing:
-run the Setup steps once, then continue with the task. Future browser work in
-the same environment reuses that install.
+## When to use
 
-Every `playwright-cli` command that opens, navigates, snapshots, evaluates, or
-otherwise uses a browser session must pass a valid desktop `USER_AGENT` through
-`PLAYWRIGHT_MCP_USER_AGENT`. Use the wrapper below instead of calling
-`playwright-cli` directly:
+- IF you need ranked search results or plain readable page text → NOT this skill: run
+  `tribes-cli web-search search` / `extract` first (`web-search` skill).
+- IF curl/wget/fetch or `web-search extract` returns 401/403/406/429, a bot/CDN challenge or
+  interstitial page, or empty/skeleton HTML that only renders with JavaScript → use this skill
+  (see the fetch-fallback example).
+- IF the task needs UI interaction — click, type, form submit, sign-in flow — or a screenshot or
+  PDF of a rendered page → use this skill.
+- IF you need a live page's console messages or network requests → use this skill.
+- NOT for market/asset news or sentiment — use `news`.
+- NOT for market, token, or stock data — use the matching analyst skill (see the AGENTS.md
+  routing map).
 
-```bash
-USER_AGENT="${USER_AGENT:-Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36}"
-pwcli() {
-  PLAYWRIGHT_MCP_USER_AGENT="$USER_AGENT" \
-  PLAYWRIGHT_MCP_VIEWPORT_SIZE="${PLAYWRIGHT_MCP_VIEWPORT_SIZE:-1365x768}" \
-  playwright-cli "$@"
-}
-```
+## Hard rules
 
-## Use as fetcher fallback
-
-When `curl`, `wget`, language `fetch`, or other non-browser HTTP tooling is blocked, incomplete, or wrong, switch to this skill. Typical signals: `401`, `403`, `406`, `429`, HTML that is a challenge or interstitial, a skeleton page with no real content until JS runs, or responses that clearly need an existing session cookie or full browser navigation.
-
-Treat Playwright as your web browser for that task: use a dedicated named session (`-s=<session>`), keep the same session across navigations so cookies apply, and configure context so the site sees a normal desktop client rather than a bare script.
-
-Before relying on the page, verify the live context (user agent, viewport) matches intent:
-
-```bash
-pwcli -s=<session> run-code "async page => {
-  return await page.evaluate(() => ({
-    userAgent: navigator.userAgent,
-    language: navigator.language,
-    viewport: { w: window.innerWidth, h: window.innerHeight }
-  }));
-}"
-```
-
-Set a realistic user agent and viewport for the session. One-shot env vars for
-`open` are acceptable when not using the wrapper, but the user agent is still
-required (see `@playwright/cli` README for `PLAYWRIGHT_MCP_*`):
-
-```bash
-PLAYWRIGHT_MCP_USER_AGENT='Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36' \
-PLAYWRIGHT_MCP_VIEWPORT_SIZE=1365x768 \
-playwright-cli -s=fetch-fallback open https://example.com
-```
-
-For repeatable tasks, use `--config path/to/config.json` or the default `.playwright/cli.config.json`. Put desktop-like `userAgent`, `viewport`, `locale`, and `timezoneId` under `browser.contextOptions` (see Playwright `BrowserContextOptions` and the configuration schema in the `@playwright/cli` README). Use `open --browser chrome` (or another channel) if the target behaves differently in real Chrome vs bundled Chromium.
-
-Do not use this fallback to solve CAPTCHAs, bypass paywalls or access controls you are not entitled to, or impersonate another user without explicit user instruction.
-
-Primary command:
-
-```bash
-pwcli <command>
-pwcli -s=<session> <command>
-```
-
-Verify the global CLI before use:
-
-```bash
-command -v playwright-cli
-playwright-cli --help
-```
-
-## Setup
-
-The CLI is installed on demand. Before using it, check whether it already exists
-and only install if it is missing. Treat this as normal setup work for the skill,
-not as a reason to avoid the browser path. In a Tribes sandbox you are root on a
-Debian (glibc) system with node/npm available, so the steps below work as-is; use
-`--with-deps` for the browser install since the image carries no GUI libraries.
-
-1. Check for the CLI:
+1. Shell state resets between bash calls — paste this wrapper at the top of EVERY bash
+   invocation before any browser command, then call `pwcli`, NEVER bare `playwright-cli`, for
+   session commands. (Meta commands MAY run bare: `install-browser`, `list`, `close-all`,
+   `kill-all`.)
 
    ```bash
-   command -v playwright-cli && playwright-cli --help
+   pwcli() {
+     PLAYWRIGHT_MCP_USER_AGENT='Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36' \
+     PLAYWRIGHT_MCP_VIEWPORT_SIZE='1365x768' \
+     playwright-cli "$@"
+   }
    ```
 
-2. If `playwright-cli` is not found, install it globally (requires Node.js 18 or
-   newer):
+2. The sandbox is headless with no GUI libraries: NEVER use `--headed` or `show`, and NEVER
+   rely on a real Chrome channel — only the bundled chromium is installed.
+3. Use one named session per task (`-s=<name>`) and keep it across navigations so cookies
+   persist; run `close` on the session when done.
+4. Element refs (`e15`) come from the latest `snapshot` output and go stale after every
+   navigation — re-run `snapshot` before reusing a ref.
+5. JS-heavy pages render after load: run the wait step from the fetch-fallback example before
+   any snapshot or text extraction.
+6. NEVER solve CAPTCHAs, bypass paywalls or access controls you are not entitled to, evade rate
+   limits, or sign in or act as another user without explicit user instruction.
+7. NEVER enter passwords, private keys, seed phrases, or payment details, and NEVER perform
+   purchases or irreversible account actions, without explicit user confirmation immediately
+   before the action.
+8. NEVER print cookies, tokens, localStorage values, or saved state files unless the task
+   explicitly requires it.
+9. Save screenshots, PDFs, and state files under `.playwright-cli/` in the working directory.
 
-   ```bash
-   npm install -g @playwright/cli@latest
-   ```
+## Command reference
 
-   Then re-verify with `playwright-cli --help`.
+Targeting: `<ref>` is a ref from `snapshot` (`e15`); CSS selectors (`"#main > button.submit"`)
+and Playwright locators (`"getByRole('button', { name: 'Submit' })"`) also work anywhere a
+`<ref>` is accepted.
 
-3. Install the browser binary if it is missing (a missing browser surfaces as a
-   "browser not found" / executable-path error on `open`). Chromium is the
-   default; pass `firefox` or `webkit` for others:
-
-   ```bash
-   playwright-cli install-browser chromium
-   ```
-
-   On Linux/CI where system libraries may be absent, also pull OS dependencies:
-
-   ```bash
-   playwright-cli install-browser chromium --with-deps
-   ```
-
-   Useful flags: `--list` (show installed browsers), `--force` (reinstall),
-   `--dry-run` (print actions without installing).
-
-See the upstream README for the full installation reference:
-https://github.com/microsoft/playwright-cli
-
-## Safety and privacy
-
-- Do not enter passwords, private keys, seed phrases, API keys, or payment details unless the user explicitly instructs you and the site/action is trusted.
-- Do not perform purchases, irreversible account actions, wallet transactions, or destructive admin actions without explicit user confirmation immediately before the action.
-- Do not use browser fallback to solve CAPTCHAs, evade rate limits or access controls, or perform sign-in or account actions unless the user explicitly instructs you and the action is appropriate.
-- Use isolated sessions for unrelated tasks. Close sessions when done if persistence is not needed.
-- Prefer snapshots and targeted screenshots over dumping large pages into chat.
-- Never print cookies, tokens, localStorage secrets, or session state unless explicitly needed and approved.
-
-## Standard workflow
-
-1. Start/open a page in a named session.
-2. Capture a snapshot to get stable element refs.
-3. Interact with refs, CSS selectors, or Playwright locators.
-4. Inspect console/network when debugging.
-5. Save screenshots/artifacts into `.playwright-cli/`, `.pi/skills/browser/.playwright/`, or a user-requested path.
-6. Close the session if no longer needed.
-
-Example:
+`run-code` callbacks take a bare page argument.
+Wrong: `run-code "async ({ page }) => await page.title()"` (runtime error).
+Right: `run-code "async page => await page.title()"`.
 
 ```bash
-USER_AGENT="${USER_AGENT:-Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36}"
-pwcli() {
-  PLAYWRIGHT_MCP_USER_AGENT="$USER_AGENT" \
-  PLAYWRIGHT_MCP_VIEWPORT_SIZE="${PLAYWRIGHT_MCP_VIEWPORT_SIZE:-1365x768}" \
-  playwright-cli "$@"
-}
+# Open / navigate
+pwcli -s=<session> open <url>
+pwcli -s=<session> goto <url>
+pwcli -s=<session> reload
+pwcli -s=<session> go-back
+pwcli -s=<session> go-forward
 
-pwcli -s=browser-task open https://example.com
-pwcli -s=browser-task snapshot --depth=4
-pwcli -s=browser-task click e15
-pwcli -s=browser-task screenshot --filename=.pi/skills/browser/.playwright/example.png
-pwcli -s=browser-task close
-```
-
-Use `--headed` with `open` only when the user wants to watch or manually intervene:
-
-```bash
-pwcli -s=manual open https://example.com --headed
-```
-
-## Common commands
-
-```bash
-# Open/navigate
-playwright-cli -s=<session> open [url]
-playwright-cli -s=<session> open [url] --headed
-playwright-cli -s=<session> goto <url>
-playwright-cli -s=<session> reload
-playwright-cli -s=<session> go-back
-playwright-cli -s=<session> go-forward
-
-# Discover page structure and target elements
-playwright-cli -s=<session> snapshot
-playwright-cli -s=<session> snapshot --depth=4
-playwright-cli -s=<session> snapshot <ref-or-selector>
-playwright-cli -s=<session> snapshot --boxes
-playwright-cli -s=<session> generate-locator <ref>
-playwright-cli -s=<session> highlight <ref>
-playwright-cli -s=<session> highlight --hide
+# Discover page structure (get refs)
+pwcli -s=<session> snapshot
+pwcli -s=<session> snapshot --depth=4
+pwcli -s=<session> snapshot <ref>
 
 # Interact
-playwright-cli -s=<session> click <ref-or-selector> [button]
-playwright-cli -s=<session> dblclick <ref-or-selector> [button]
-playwright-cli -s=<session> fill <ref-or-selector> "text"
-playwright-cli -s=<session> fill <ref-or-selector> "text" --submit
-playwright-cli -s=<session> type "text"
-playwright-cli -s=<session> press Enter
-playwright-cli -s=<session> hover <ref-or-selector>
-playwright-cli -s=<session> select <ref-or-selector> <value>
-playwright-cli -s=<session> check <ref-or-selector>
-playwright-cli -s=<session> uncheck <ref-or-selector>
-playwright-cli -s=<session> drop <ref-or-selector> --path=<file>
+pwcli -s=<session> click <ref>
+pwcli -s=<session> dblclick <ref>
+pwcli -s=<session> fill <ref> "text"
+pwcli -s=<session> fill <ref> "text" --submit
+pwcli -s=<session> type "text"
+pwcli -s=<session> press Enter
+pwcli -s=<session> hover <ref>
+pwcli -s=<session> select <ref> <value>
+pwcli -s=<session> check <ref>
+pwcli -s=<session> uncheck <ref>
+pwcli -s=<session> upload <file>
+pwcli -s=<session> drop <ref> --path=<file>
+pwcli -s=<session> dialog-accept
+pwcli -s=<session> dialog-dismiss
+pwcli -s=<session> resize 390 844
 
 # Artifacts
-playwright-cli -s=<session> screenshot --filename=<path.png>
-playwright-cli -s=<session> screenshot <ref-or-selector> --filename=<path.png>
-playwright-cli -s=<session> pdf --filename=<path.pdf>
+pwcli -s=<session> screenshot --filename=.playwright-cli/page.png
+pwcli -s=<session> screenshot <ref> --filename=.playwright-cli/element.png
+pwcli -s=<session> pdf --filename=.playwright-cli/page.pdf
 
 # Debugging
-playwright-cli -s=<session> console warning
-playwright-cli -s=<session> requests
-playwright-cli -s=<session> request <index>
-playwright-cli -s=<session> response-body <index>
-playwright-cli -s=<session> eval "() => document.title"
-playwright-cli -s=<session> run-code "async ({ page }) => await page.title()"
+pwcli -s=<session> console warning
+pwcli -s=<session> requests
+pwcli -s=<session> request <index>
+pwcli -s=<session> response-body <index>
+pwcli -s=<session> eval "() => document.title"
+pwcli -s=<session> run-code "async page => await page.title()"
+
+# Network mocking
+pwcli -s=<session> route "**/api/items" --status=200 --body='[]'
+pwcli -s=<session> route-list
+pwcli -s=<session> unroute "**/api/items"
+pwcli -s=<session> network-state-set offline
+
+# Storage and auth state
+pwcli -s=<session> state-save .playwright-cli/state.json
+pwcli -s=<session> state-load .playwright-cli/state.json
+pwcli -s=<session> cookie-list
+pwcli -s=<session> localstorage-list
+pwcli -s=<session> sessionstorage-list
 
 # Tabs and sessions
-playwright-cli -s=<session> tab-list
-playwright-cli -s=<session> tab-new [url]
-playwright-cli -s=<session> tab-select <index>
-playwright-cli -s=<session> tab-close [index]
+pwcli -s=<session> tab-list
+pwcli -s=<session> tab-new <url>
+pwcli -s=<session> tab-select <index>
+pwcli -s=<session> tab-close <index>
+pwcli -s=<session> close
 playwright-cli list
-playwright-cli -s=<session> close
 playwright-cli close-all
 playwright-cli kill-all
 ```
 
-## Targeting elements
+Use plain commands first; use `run-code` only for what they cannot do — waiting for app state,
+reading computed values, or extracting text/structured data. Keep snippets short.
 
-Prefer refs from `snapshot`:
+## Examples
 
-```bash
-playwright-cli -s=task snapshot
-playwright-cli -s=task click e15
-```
-
-CSS selectors and Playwright locators also work:
+### Read a page that blocked curl (fetch fallback, end to end)
 
 ```bash
-playwright-cli -s=task click "#main > button.submit"
-playwright-cli -s=task click "getByRole('button', { name: 'Submit' })"
-playwright-cli -s=task fill "getByLabel('Email')" "user@example.com"
+command -v playwright-cli || npm install -g @playwright/cli@latest
+
+pwcli() {
+  PLAYWRIGHT_MCP_USER_AGENT='Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36' \
+  PLAYWRIGHT_MCP_VIEWPORT_SIZE='1365x768' \
+  playwright-cli "$@"
+}
+
+pwcli -s=fetch open https://etherscan.io/token/0xaf88d065e77c8cc2239327c5edb3a432268e5831
+pwcli -s=fetch run-code "async page => { await page.waitForLoadState('networkidle'); }"
+pwcli -s=fetch run-code "async page => await page.evaluate(() => document.body.innerText)"
+pwcli -s=fetch close
 ```
 
-## Storage and auth state
+The last `run-code` prints the full readable page text — that is the fetch-fallback deliverable.
+If `networkidle` times out on a chatty page, wait for a specific element instead:
+`run-code "async page => { await page.waitForSelector('h1'); }"`.
+To confirm the site sees a desktop browser, check
+`run-code "async page => await page.evaluate(() => navigator.userAgent)"`.
 
-Use only with care; auth files and storage can contain secrets.
+### Interact with a page (snapshot → click → re-snapshot)
 
 ```bash
-playwright-cli -s=<session> state-save /safe/path/state.json
-playwright-cli -s=<session> state-load /safe/path/state.json
-playwright-cli -s=<session> cookie-list
-playwright-cli -s=<session> localstorage-list
-playwright-cli -s=<session> sessionstorage-list
+# pwcli wrapper from Hard rules 1 pasted here
+
+pwcli -s=task open https://www.coingecko.com/en/coins/hyperliquid
+pwcli -s=task snapshot --depth=4
+pwcli -s=task click e15
+pwcli -s=task snapshot
+pwcli -s=task screenshot --filename=.playwright-cli/hyperliquid.png
+pwcli -s=task close
 ```
 
-## Network mocking
+Refs like `e15` come from the preceding `snapshot`; after the click navigates, snapshot again
+before touching more refs.
+
+### Dismiss a blocking overlay or native dialog
 
 ```bash
-playwright-cli -s=<session> route "**/api/items" --status=200 --body='[]'
-playwright-cli -s=<session> route-list
-playwright-cli -s=<session> unroute "**/api/items"
-playwright-cli -s=<session> network-state-set offline
-playwright-cli -s=<session> network-state-set online
+# pwcli wrapper from Hard rules 1 pasted here
+
+# Cookie-consent banners are DOM elements: snapshot, then click the accept/close ref
+pwcli -s=fetch snapshot --depth=4
+pwcli -s=fetch click e7
+
+# Native JS alert/confirm dialogs use the dialog commands
+pwcli -s=fetch dialog-accept
 ```
 
-## When to use `run-code`
-
-Use normal CLI commands first. Use `run-code` only for checks or interactions that are awkward via refs/selectors, such as reading computed styles, multiple assertions, waiting for app state, or extracting small structured data.
-
-Keep snippets short and do not exfiltrate secrets:
+### Debug console and network activity
 
 ```bash
-playwright-cli -s=task run-code "async ({ page }) => ({ title: await page.title(), url: page.url() })"
+# pwcli wrapper from Hard rules 1 pasted here
+
+pwcli -s=debug open https://app.hyperliquid.xyz
+pwcli -s=debug console warning
+pwcli -s=debug requests
+pwcli -s=debug response-body 3
+pwcli -s=debug close
 ```
 
-## References
+`requests` lists indexed network requests; pass an index to `request` / `response-body` for
+details.
 
-- Upstream project and configuration schema: https://github.com/microsoft/playwright-cli (see README for `.playwright/cli.config.json` and `PLAYWRIGHT_MCP_*` variables)
+### Save and reuse a session's login state
+
+```bash
+# pwcli wrapper from Hard rules 1 pasted here
+
+pwcli -s=task state-save .playwright-cli/state.json
+pwcli -s=task2 state-load .playwright-cli/state.json
+```
+
+State files contain cookies and tokens — never print their contents.
+
+## Error recovery
+
+| Symptom                                               | Action                                                                                        |
+| ----------------------------------------------------- | --------------------------------------------------------------------------------------------- |
+| `playwright-cli: command not found`                   | Run `npm install -g @playwright/cli@latest`, then retry the original command once.            |
+| `pwcli: command not found`                            | The wrapper is missing from this bash call — paste it (Hard rules 1) and retry.               |
+| "browser not found" / executable-path error on `open` | Run `playwright-cli install-browser chromium --with-deps`, then retry once.                   |
+| Session not found / no open page                      | Re-run `open <url>` in that session, then retry.                                              |
+| Snapshot shows a skeleton or empty page               | Run the wait step (`waitForLoadState` / `waitForSelector`), then re-snapshot.                 |
+| Ref error (`e15` not found) after navigation          | Refs are stale — re-run `snapshot` and use fresh refs.                                        |
+| Page is still a challenge/CAPTCHA after the fallback  | Stop and report the page is bot-protected. NEVER attempt to solve the CAPTCHA and NEVER loop. |
+| Auth error from a `tribes-cli` command (unauthorized) | Run `tribes-cli login`, retry the original command once, then stop and report.                |
+
+## Related skills
+
+- `web-search` — try `tribes-cli web-search extract --url <url>` BEFORE this skill for any plain
+  page read; come back here only when it fails or the page needs JS/interaction.
+- `news` — market/asset news and sentiment; never scrape news sites here first.
+- `research-analyst` — source-backed finance research when no specific blocked URL is involved.

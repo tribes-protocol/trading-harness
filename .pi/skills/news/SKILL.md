@@ -1,66 +1,63 @@
 ---
 name: news
-description: API-backed market news and sentiment retrieval for trading research. Use whenever evaluating catalysts, macro context, or event-driven sentiment for token, perp, and stock assets.
+description: >-
+  Asset-scoped market news and sentiment. Handles: fetching analyzed news items with
+  bullish/bearish sentiment for a specific token, perp coin, or stock ticker, plus a web fallback
+  chain for macro or uncovered topics. Call it FIRST for any market/asset news, catalyst, or
+  sentiment question. NOT for: numeric macro indicators like CPI, yields, VIX (use macros); event
+  odds and market-implied probabilities (use prediction); general web lookups or topics this news
+  API does not cover (use web-search).
 allowed-tools: bash read
 ---
 
 # News
 
-Use this skill whenever trading decisions need current news, catalysts, macro context, sentiment, or event-driven analysis.
+Backing command group: `tribes-cli news`. Fetches analyzed news items with sentiment for one
+token, perp, or stock, polling the backend until analysis completes.
+Requires: an auth token (run `tribes-cli login` once if commands fail with auth errors).
 
-## Setup
+## When to use
 
-Requires `API_BASE_URL` in the environment (or harness `.env` loaded in the shell before invoking the CLI).
+- Need headlines, catalysts, or sentiment for a specific token, perp coin, or stock — run `fetch`.
+- Need macro or commodity news narrative — no CLI kind exists; use the web fallback chain below.
+- NOT for numeric macro indicators (CPI, yields, VIX, DXY) — use `macros`.
+- NOT for event odds or market-implied probabilities — use `prediction`.
+- NOT for general non-asset web questions or reading one known URL — use `web-search`.
+- NOT for source-backed deep research on protocols or companies — use `research-analyst`.
 
-## Hard rule: bash timeout (MUST follow)
+## Hard rules
 
-Every `tribes-cli news fetch` call requires a **minimum 120-second bash timeout**. The CLI polls every 30s with up to 10 retries, so 60s is never enough.
+1. MUST set a bash timeout of at least 120 seconds for every `tribes-cli news fetch` call
+   (prefer 300 — the CLI polls every 30s with up to 10 retries, so worst case is ~300s).
+2. The CLI calls the API itself — NEVER call the endpoint or curl directly.
+3. Sentiment values in CLI output are `bullish | bearish | neutral | unknown` — use this
+   vocabulary in your own notes. Wrong: `"sentiment": "positive"`. Right: `"sentiment": "bullish"`.
+4. Raw JSON is internal working material — the user-facing answer MUST be a plain-language
+   summary (headline themes, net sentiment, trading implication), never dumped JSON.
 
-- Pi bash tool: pass `timeout: 120` (seconds).
-- Other harnesses: pass the equivalent of 120,000 ms.
-- Never use 60 seconds for any `tribes-cli news fetch` invocation.
+## Command reference
 
-## How it works
+| Subcommand | Purpose                                      | Required flags                                                                                    | Read-only or signed |
+| ---------- | -------------------------------------------- | ------------------------------------------------------------------------------------------------- | ------------------- |
+| `fetch`    | Fetch asset news, poll while still analyzing | `--kind token\|perp\|stock`; token: `--chain-id`, `--token-id`; perp: `--coin`; stock: `--ticker` | read-only           |
 
-The news CLI calls the API, retries while analysis is in-flight, and keeps polling until sentiment is no longer unknown (or retry budget is exhausted).
+Optional flags: `--cursor <cursor>` (pagination — pass the cursor from the previous response to
+page further), `--out <file>` (write the JSON to a file, then Read it — use for long payloads).
 
-Resolve request inputs before calling `news fetch`:
+## Resolve the asset before calling fetch
 
-- **`kind: token`**
-  - Require exact `chainId` and `tokenId` (address/mint).
-  - If the request starts from symbol/name only, resolve to the exact token on an
-    exact chain first; if multiple matches exist, ask a short clarification.
-  - Call with `--kind token --chain-id <CHAIN_ID> --token-id <TOKEN_ID>`.
-- **`kind: perp`**
-  - Require exact perp coin symbol.
-  - Normalize coin casing and preserve dex prefix when provided (for example
-    `xyz:MSFT`).
-  - If multiple plausible perps exist, ask a short clarification.
-  - Call with `--kind perp --coin <COIN>`.
-- **`kind: stock`**
-  - Resolve exact tradable ticker from company name/alias/fuzzy text first.
-  - Normalize ticker to uppercase and trim whitespace.
-  - If multiple valid tickers are possible, ask a short clarification.
-  - Call with `--kind stock --ticker <TICKER>`.
-- Use only the fields supported by `news fetch` for the selected kind; do not
-  pass free-form search/query fields to this command.
+- IF kind is token → you need the exact `chainId` + `tokenId` (address/mint). Resolve a bare
+  symbol with `tribes-cli token search --query PEPE` (documented in `spot-trading`) and take
+  `chainId` and the token address from the top match.
+- IF kind is perp → use the exact coin symbol; keep any dex prefix (e.g. `<dex>:MSFT`). Confirm it
+  with `tribes-cli hyperliquid list-assets --dex <name>` (`hyperliquid` skill) when unsure.
+- IF kind is stock → uppercase the ticker and trim whitespace (Nvidia → `NVDA`).
+- IF several assets plausibly match → ask one short, non-technical question, e.g. "There are a
+  few tokens called PEPE — do you mean the big one on Ethereum?"
 
-If the CLI/API path is unavailable, switch to fallback web collection from public pages and feeds.
+## Examples
 
-For fallback mode:
-
-1. Build targeted queries:
-   - Company/perp: ticker + company name + catalysts (`earnings`, `guidance`, `AI`, `antitrust`, `regulation`, `analyst`, `downgrade`, `supply`, `demand`).
-   - Crypto: asset name + ticker + (`ETF`, `flows`, `regulation`, `hack`, `staking`, `ecosystem`, `funding`, `liquidations`).
-   - Macro/commodities: asset + (`Fed`, `dollar`, `rates`, `inflation`, `geopolitical`, `inventory`, `OPEC`, `EIA`, `central bank`).
-2. Turn that targeted query into one reusable encoded search string, then use the same string across all fallback sources.
-3. Use free/open sources as fallback and cross-check: Google News RSS, Yahoo Finance RSS, Nasdaq/SEC/issuer feeds when relevant, CoinDesk/Cointelegraph/Decrypt RSS for crypto, Federal Reserve/market calendar feeds for macro.
-4. Use browser fallback when the CLI path fails and normal HTTP is blocked, empty, JS-rendered, or returns 401/403/406/429/challenge pages.
-5. Keep only headlines, URLs, snippets, source names, timestamps, sentiment, and query metadata.
-
-## Quick command
-
-From the harness root:
+### Perp news
 
 ```bash
 tribes-cli news fetch \
@@ -68,7 +65,9 @@ tribes-cli news fetch \
   --coin BTC
 ```
 
-Token example:
+Output is JSON on stdout: items (title, url, source, publishedAt, sentiment) plus a cursor.
+
+### Token news (exact chain + address required)
 
 ```bash
 tribes-cli news fetch \
@@ -77,68 +76,45 @@ tribes-cli news fetch \
   --token-id 0xA0b86991c6218b36c1d19d4a2e9eb0ce3606eb48
 ```
 
-Stock example:
+### Stock news, next page, written to a file
 
 ```bash
 tribes-cli news fetch \
   --kind stock \
-  --ticker NVDA
+  --ticker NVDA \
+  --cursor eyJwYWdlIjoyfQ \
+  --out /tmp/nvda-news.json
 ```
 
-CLI behavior:
+## Web fallback chain
 
-- Use a bash timeout of **120 seconds minimum** (`timeout: 120` in Pi).
-- Polls every 30 seconds.
-- Uses up to 10 retries.
-- Retries while response state is `analyzing`.
-- Retries while any returned item has `sentiment: "unknown"`.
-- Prints JSON output to stdout.
+Use only when the CLI path is exhausted (see Error recovery) or the topic has no CLI kind
+(macro, commodities, sector-wide themes).
 
-## Browser fallback
+1. Build one targeted query and reuse it across sources:
+   - Stock/perp: ticker + company name + catalysts (`earnings`, `guidance`, `analyst`, `demand`).
+   - Crypto: asset name + ticker + (`ETF`, `flows`, `regulation`, `hack`, `liquidations`).
+   - Macro/commodities: asset + (`Fed`, `rates`, `inflation`, `OPEC`, `EIA`, `central bank`).
+2. Run it through `web-search` first; cross-check with free feeds (Google News RSS, Yahoo
+   Finance RSS, SEC/issuer feeds, CoinDesk/Cointelegraph RSS for crypto).
+3. IF HTTP fetch is blocked (401/403/406/429, challenge page, empty JS-rendered HTML) → use the
+   `browser` skill; it owns the playwright setup. NEVER bypass paywalls or CAPTCHAs.
+4. Keep only headlines, URLs, source names, timestamps, snippets, and your sentiment read.
 
-Use the `browser` skill only when the CLI path fails and normal HTTP cannot retrieve usable content. Verify a realistic user agent first. Example extraction:
+## Error recovery
 
-```bash
-QUERY='AMD earnings guidance AI chip demand'
-ENCODED_QUERY="$(printf %s "$QUERY" | bun -e 'process.stdout.write(encodeURIComponent(await Bun.stdin.text()))')"
+| Symptom                                                                 | Action                                                                         |
+| ----------------------------------------------------------------------- | ------------------------------------------------------------------------------ |
+| Auth error (unauthorized, expired token)                                | Run `tribes-cli login`, retry the original command once, then stop and report. |
+| Non-auth API failure (5xx, network error)                               | Retry the same command once; if it fails again, switch to the web fallback.    |
+| Bash timeout, or empty/`unknown`-only items after the CLI's own retries | Switch to the web fallback chain.                                              |
+| `command not found: tribes-cli`                                         | Run `sh bootstrap.sh` from the harness root, then retry.                       |
 
-PLAYWRIGHT_MCP_USER_AGENT='Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36' \
-PLAYWRIGHT_MCP_VIEWPORT_SIZE=1365x768 \
-playwright-cli -s=news-open open "https://news.google.com/search?q=${ENCODED_QUERY}%20when%3A2d&hl=en-US&gl=US&ceid=US%3Aen"
+## Related skills
 
-playwright-cli -s=news-open run-code "async ({ page }) => ({ ua: await page.evaluate(() => navigator.userAgent), title: await page.title(), headlines: await page.locator('article').evaluateAll(els => els.slice(0,10).map(e => e.innerText)) })"
-```
-
-Do not use browser fallback to bypass paywalls, CAPTCHAs, or access controls.
-
-## Output format
-
-Structure collected analysis as JSON in this shape:
-
-```json
-{
-  "generatedAt": "ISO-8601",
-  "queries": ["AMD AI chips"],
-  "sourcesUsed": ["news_cli", "browser_fallback"],
-  "items": [
-    {
-      "title": "...",
-      "url": "...",
-      "source": "...",
-      "publishedAt": "...",
-      "snippet": "...",
-      "sentiment": "positive",
-      "symbols": ["xyz:AMD"]
-    }
-  ],
-  "summary": [
-    {
-      "topic": "xyz:AMD",
-      "sentiment": "positive",
-      "confidence": 0.7,
-      "rationale": ["..."],
-      "tradingImplication": "..."
-    }
-  ]
-}
-```
+- `macros` — numeric macro indicators; this skill covers the macro narrative side only.
+- `prediction` — event odds and market-implied probabilities.
+- `web-search` — general web search and the first hop of the fallback chain.
+- `browser` — JS-gated or fetch-blocked pages during fallback.
+- `spot-trading` — documents `tribes-cli token search` (symbol → chainId + address).
+- `strategize` — consumes this skill's output for full market briefings.

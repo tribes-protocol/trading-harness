@@ -27,6 +27,8 @@ import {
   type BuildTwapWireParams,
   type CreateExchangeClientParams,
   type HyperliquidAdjustMarginCommandOptions,
+  type HyperliquidAllPerpAssetsResult,
+  HyperliquidAllPerpAssetsResultSchema,
   type HyperliquidBalancesResult,
   HyperliquidBalancesResultSchema,
   type HyperliquidCancelOrderCommandOptions,
@@ -116,7 +118,7 @@ export class HyperliquidService {
   private readonly infoClient: InfoClient
 
   constructor(params: HyperliquidServiceParams) {
-    this.infoClient = new InfoClient({ transport: new HttpTransport() })
+    this.infoClient = params.infoClient ?? new InfoClient({ transport: new HttpTransport() })
     this.transaction = params.transaction
   }
 
@@ -281,9 +283,13 @@ export class HyperliquidService {
       coin: params.request.coin,
       dex
     })
+    const marginMode = this.resolveMarginMode({
+      perpAsset,
+      requestedMarginMode: params.request.marginMode
+    })
     return await exchange.updateLeverage({
       asset: perpAsset.wireAsset,
-      isCross: params.request.marginMode === 'cross',
+      isCross: marginMode === 'cross',
       leverage: params.request.leverage
     })
   }
@@ -332,12 +338,20 @@ export class HyperliquidService {
       coin: params.request.coin,
       dex
     })
+    this.assertPerpEntryAllowed({
+      perpAsset,
+      reduceOnly: params.request.reduceOnly
+    })
+    const marginMode = this.resolveMarginMode({
+      perpAsset,
+      requestedMarginMode: params.request.marginMode
+    })
 
     if (!isNullish(params.request.leverage)) {
       await exchange
         .updateLeverage({
           asset: perpAsset.wireAsset,
-          isCross: params.request.marginMode === 'cross',
+          isCross: marginMode === 'cross',
           leverage: params.request.leverage
         })
         .catch((error: unknown) => {
@@ -566,6 +580,22 @@ export class HyperliquidService {
       })
   }
 
+  private assertPerpEntryAllowed(params: {
+    perpAsset: ResolvedPerpAsset
+    reduceOnly: boolean
+  }): void {
+    if (params.perpAsset.isDelisted && !params.reduceOnly) {
+      throw new Error('cannot open or increase a delisted perpetual market')
+    }
+  }
+
+  private resolveMarginMode(params: {
+    perpAsset: ResolvedPerpAsset
+    requestedMarginMode: 'cross' | 'isolated'
+  }): 'cross' | 'isolated' {
+    return params.perpAsset.requiresIsolatedMargin ? 'isolated' : params.requestedMarginMode
+  }
+
   async twapPerp(
     params: HyperliquidWithSignerParams<HyperliquidTwapOrderCommandOptions>
   ): Promise<TwapOrderSuccessResponse> {
@@ -582,6 +612,10 @@ export class HyperliquidService {
       coin: params.request.coin,
       dex
     })
+    this.assertPerpEntryAllowed({
+      perpAsset,
+      reduceOnly: params.request.reduceOnly
+    })
     const asset = this.toOrderAssetFromPerp(perpAsset)
 
     this.validateTwapNotional({
@@ -593,7 +627,10 @@ export class HyperliquidService {
     await this.maybeUpdateLeverage({
       exchange,
       wireAsset: perpAsset.wireAsset,
-      marginMode: params.request.marginMode,
+      marginMode: this.resolveMarginMode({
+        perpAsset,
+        requestedMarginMode: params.request.marginMode
+      }),
       leverage: params.request.leverage
     })
 
@@ -723,11 +760,18 @@ export class HyperliquidService {
       coin: params.request.coin,
       dex
     })
+    this.assertPerpEntryAllowed({
+      perpAsset,
+      reduceOnly: params.request.reduceOnly
+    })
 
     await this.maybeUpdateLeverage({
       exchange,
       wireAsset: perpAsset.wireAsset,
-      marginMode: params.request.marginMode,
+      marginMode: this.resolveMarginMode({
+        perpAsset,
+        requestedMarginMode: params.request.marginMode
+      }),
       leverage: params.request.leverage
     })
 
@@ -1023,15 +1067,26 @@ export class HyperliquidService {
 
     const assets = meta.universe.map((asset, index) => {
       const assetContext = assetContexts[index]
-      let markPx: string | null = null
-      if (!isNullish(assetContext)) {
-        markPx = assetContext.midPx ?? assetContext.markPx
-      }
+      const requiresIsolatedMargin = this.requiresIsolatedMargin(asset)
       return HyperliquidPerpAssetSchema.parse({
         name: asset.name,
         szDecimals: asset.szDecimals,
         maxLeverage: asset.maxLeverage,
-        markPx
+        isDelisted: asset.isDelisted === true,
+        onlyIsolated: asset.onlyIsolated === true,
+        marginMode: asset.marginMode ?? null,
+        requiresIsolatedMargin,
+        markPx: assetContext?.markPx ?? null,
+        referencePx: assetContext?.midPx ?? assetContext?.markPx ?? null,
+        midPx: assetContext?.midPx ?? null,
+        oraclePx: assetContext?.oraclePx ?? null,
+        prevDayPx: assetContext?.prevDayPx ?? null,
+        dayNtlVlm: assetContext?.dayNtlVlm ?? null,
+        dayBaseVlm: assetContext?.dayBaseVlm ?? null,
+        funding: assetContext?.funding ?? null,
+        openInterest: assetContext?.openInterest ?? null,
+        premium: assetContext?.premium ?? null,
+        impactPxs: assetContext?.impactPxs ?? null
       })
     })
 
@@ -1039,6 +1094,15 @@ export class HyperliquidService {
       market: 'perp',
       dex: normalizedDex.length > 0 ? normalizedDex : 'main',
       assets
+    })
+  }
+
+  async listAllPerpAssets(): Promise<HyperliquidAllPerpAssetsResult> {
+    const dexNames = await this.resolveAllDexNames()
+    const dexes = await Promise.all(dexNames.map((dexName) => this.listPerpAssets(dexName)))
+    return HyperliquidAllPerpAssetsResultSchema.parse({
+      market: 'perp',
+      dexes
     })
   }
 
@@ -1064,15 +1128,16 @@ export class HyperliquidService {
         continue
       }
       const spotAssetContext = spotAssetContexts[spotMarket.index]
-      let markPx: string | null = null
-      if (!isNullish(spotAssetContext)) {
-        markPx = spotAssetContext.midPx ?? spotAssetContext.markPx
-      }
       assets.push(
         HyperliquidSpotAssetSchema.parse({
           pair: `${baseTokenName}/${quoteTokenName}`,
           szDecimals: baseSzDecimals,
-          markPx
+          markPx: spotAssetContext?.markPx ?? null,
+          referencePx: spotAssetContext?.midPx ?? spotAssetContext?.markPx ?? null,
+          midPx: spotAssetContext?.midPx ?? null,
+          prevDayPx: spotAssetContext?.prevDayPx ?? null,
+          dayNtlVlm: spotAssetContext?.dayNtlVlm ?? null,
+          dayBaseVlm: spotAssetContext?.dayBaseVlm ?? null
         })
       )
     }
@@ -1265,8 +1330,17 @@ export class HyperliquidService {
     return {
       wireAsset,
       referencePrice,
-      szDecimals: metaAsset.szDecimals
+      szDecimals: metaAsset.szDecimals,
+      isDelisted: metaAsset.isDelisted === true,
+      requiresIsolatedMargin: this.requiresIsolatedMargin(metaAsset)
     }
+  }
+
+  private requiresIsolatedMargin(asset: {
+    onlyIsolated?: true
+    marginMode?: 'strictIsolated' | 'noCross'
+  }): boolean {
+    return asset.onlyIsolated === true || !isNullish(asset.marginMode)
   }
 
   private async resolveSpotAsset(pair: string): Promise<ResolvedSpotAsset> {

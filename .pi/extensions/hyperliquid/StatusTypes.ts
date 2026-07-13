@@ -9,9 +9,9 @@ export type Dex = string
 
 /**
  * The bottom-section tabs, mirroring the CoinGlass Hyperliquid address page:
- * Positions · Transactions · Open Orders · Deposits & Withdrawals · Spot.
+ * Positions · Balances · Transactions · Open Orders · Deposits & Withdrawals · Spot.
  */
-export type HlTab = 'positions' | 'transactions' | 'orders' | 'deposits' | 'spot'
+export type HlTab = 'positions' | 'balances' | 'transactions' | 'orders' | 'deposits' | 'spot'
 
 export interface OpenOrder {
   readonly coin: string
@@ -192,4 +192,7 @@ export interface HyperliquidStatus {
   // yet — the account address is being resolved, not genuinely absent. Drives a
   // "loading" widget state instead of "Missing account address".
   readonly initializing?: boolean
+  // True when no agent authorization key is present — the user hasn't logged in.
+  // Drives a login-prompt widget state.
+  readonly unauthenticated?: boolean
 }

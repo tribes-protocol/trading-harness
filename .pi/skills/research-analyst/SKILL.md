@@ -1,107 +1,90 @@
 ---
 name: research-analyst
 description: >-
-  Expert on ENS identity resolution and finance-focused web research across crypto and stocks.
-  Handles ENS name/address lookups, targeted web search, page extraction, and multi-page crawl
-  synthesis. Use when structured tools cannot fully answer a finance question, or when protocol,
-  company, or concept research needs source-backed evidence.
+  Finance research specialist driven by one natural-language query. Handles: ENS name/address
+  resolution (forward and reverse) and cited multi-source web research on protocols, companies,
+  filings, and supply/demand concepts across crypto, securities, and commodities. Call when structured analyst skills and news
+  cannot fully answer and the question needs source-backed evidence or ENS identity. NOT for:
+  headlines, catalysts, or sentiment (use news); non-finance topics, one quick search, or reading
+  one known URL (use web-search); price, chart, or market data (route to the matching analyst skill).
 allowed-tools: bash read
 ---
 
 # Research Analyst
 
-Use this skill for identity resolution and focused finance research powered by the
-`research_analyst` Lucy specialist. It combines ENS tools with web search, scrape, and crawl
-when structured market tools cannot fully answer the question.
+Backing command group: `tribes-cli research-analyst`. One natural-language query drives a remote
+specialist that resolves ENS identities and performs cited multi-source finance web research.
+The CLI calls the specialist API itself — NEVER call the endpoint directly.
+Requires: an auth token (run `tribes-cli login` once if commands fail with auth errors).
 
-## When To Use
+## When to use
 
-Use this skill for:
+- ENS identity questions — resolve a name to an address or an address to a name.
+- Protocol, company, or concept explainers that need source-backed web evidence.
+- Deep research across official docs, filings, investor pages, or blogs.
+- NOT for headlines, catalysts, or sentiment — use `news` first.
+- NOT for non-finance topics, one quick search, or reading one known URL — use `web-search`.
+- NOT for prices, charts, or market data — use the matching analyst skill (AGENTS.md routing map).
 
-- ENS identity lookups (`name -> address` or `address -> name`)
-- Protocol/company/concept explainers that need web evidence
-- Deep research across docs, filings, blogs, or investor pages
-- Filling knowledge gaps where structured finance tools are insufficient
+## Hard rules
 
-## Core Capabilities
+1. The ENTIRE surface is `tribes-cli research-analyst ask --query "<text>"`. Internal specialist
+   tools (ENS resolvers, web search/scrape/crawl) are NOT subcommands — steer them via wording.
+2. The ONLY flag is `--query`; there is no `--out` and no filter flags — encode addresses,
+   preferred source domains, time windows, and depth inside the query text.
+3. MUST set a bash timeout of at least 120 seconds for this command — it can run for minutes.
+4. MAX 2 `ask` calls per user question: one well-specified query, one reworded retry, then stop.
+5. Keep returned source URLs in your final answer; say plainly when reliable info is unavailable.
 
-- Identity resolution:
-  - `ens_address_resolver` for name -> address
-  - `ens_reverse_lookup` for address -> name
-- Web research:
-  - `web_search` for focused source discovery
-  - `web_scrape` for extracting relevant page content
-  - `web_crawl` for multi-page docs/filings/blog synthesis
-- Gap-filling when structured market tools cannot answer
+## Command reference
 
-## Workflow Patterns
+| Subcommand | Purpose                                           | Required flags | Read-only or signed |
+| ---------- | ------------------------------------------------- | -------------- | ------------------- |
+| `ask`      | Send one natural-language query to the specialist | `--query`      | read-only           |
 
-ENS identity:
+Output is one free-text analysis string on stdout, not JSON — relay the prose, no fields to parse.
 
-- `ens_address_resolver` for name -> address.
-- `ens_reverse_lookup` for address -> name.
+## Examples
 
-Research ("What is [protocol/company]?" / "How does [concept] work?"):
-
-- `web_search` with a focused query.
-- `web_scrape` on the most relevant result.
-- Synthesize with source attribution.
-
-Deep research ("Explain how [protocol/company] works across docs/filings/blog"):
-
-- `web_search` to find canonical site roots.
-- `web_crawl` on docs/blog root URLs with appropriate depth and limit.
-- Synthesize across returned pages with source URLs.
-
-## Error Handling and Retries
-
-When a tool returns an error response:
-
-1. Diagnose whether input is parameter-fixable (wrong ENS name, bad URL, or weak query).
-2. If fixable, adjust inputs and retry the same tool. Attempt at least two retries with
-   modified parameters before giving up.
-3. If still failing, or not parameter-fixable (provider outage, rate limit, server error),
-   report the error with tool name, message, and user-intent summary.
-
-## Rules
-
-- Try ENS tools first for identity/address questions.
-- Use specific search queries, not vague ones.
-- Always include source URLs when citing web content.
-- Distinguish verified on-chain ENS data from web-sourced information.
-- For stock/company research, prioritize primary sources (investor relations, SEC pages,
-  earnings releases).
-- Stay focused on finance.
-- If reliable information is unavailable, say so clearly.
-
-## Input Guidance
-
-Best results come from queries that include:
-
-- Exact ENS names or wallet addresses for identity tasks
-- Protocol/company/concept plus a specific research goal
-- Preferred source domains when official docs/IR pages are required
-- Depth expectations (quick answer vs multi-page deep dive)
-
-## Command examples
-
-### Show CLI help
-
-```bash
-tribes-cli research-analyst --help
-```
-
-### Ask the specialist
+### Resolve an ENS name to an address
 
 ```bash
 tribes-cli research-analyst ask \
-  --query "how does Pendle work, with sources from official docs"
+  --query "Resolve vitalik.eth to its Ethereum address"
 ```
 
-## Endpoint Contract
+### Reverse-resolve an address to an ENS name
 
-The CLI calls:
+```bash
+tribes-cli research-analyst ask \
+  --query "What ENS name reverse-resolves to 0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045?"
+```
 
-- `POST /agent/lucy/research-analyst`
-- Query string param: `q=<user-query>`
-- Response: JSON object `{ "result": "<analysis string>" }`
+### Protocol explainer with cited sources
+
+```bash
+tribes-cli research-analyst ask \
+  --query "How does Pendle's vePENDLE model work? Use the official Pendle docs and cite URLs"
+```
+
+### Deep multi-source company dive
+
+```bash
+tribes-cli research-analyst ask \
+  --query "Summarize Coinbase's latest quarterly results and 2026 outlook using investor.coinbase.com and SEC filings; cite each source URL"
+```
+
+## Error recovery
+
+| Symptom                                  | Action                                                                            |
+| ---------------------------------------- | --------------------------------------------------------------------------------- |
+| Auth error (unauthorized, expired token) | Run `tribes-cli login`, retry the original command once, then stop and report.    |
+| Empty or off-target answer               | Reword `--query` once with more specific names, addresses, or domains; then stop. |
+| Timeout, 5xx, or rate limit              | Retry the same command once; if it fails again, stop and report — NEVER loop.     |
+
+## Related skills
+
+- `news` — first stop for market/asset news, catalysts, and sentiment.
+- `web-search` — one quick search, reading one known URL, or non-finance topics.
+- `browser` — JS-gated or fetch-blocked pages (401/403/challenge).
+- `fundamentals-analyst` — structured research profile of one listed coin.

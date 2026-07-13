@@ -27,3 +27,6 @@ jobs:
 
       - name: Build the world (ata + extensions + all skills)
         run: bun run build
+
+      - name: Tests (unit + skills contract)
+        run: bunx vitest run

@@ -1,103 +1,85 @@
 ---
 name: stock-analyst
 description: >-
-  Expert on stock market data and technical analysis. Handles real-time prices, NBBO quotes, OHLCV candles, ticker snapshots, market movers, market status, technical indicators, and stock news. Use when the user asks for stock price checks, quote data, market movers, stock TA, or ticker lookups.
+  Expert on stock market DATA. Handles: real-time prices, NBBO quotes, OHLCV candles, ticker
+  snapshots, stock movers, and market status. Call for any stock/equity data question. NOT for:
+  indicator values, signals, or backtests (use technical-analyst); stock news and sentiment
+  (use news); executing stock trades (use hyperliquid — stocks are Hyperliquid perps); crypto
+  movers or rankings (use market-strategist).
 allowed-tools: bash read
 ---
 
 # Stock Analyst
 
-Use this skill for stock market-data and technical-analysis research powered by
-the `stock_analyst` Lucy specialist.
+Backing command group: `tribes-cli stock-analyst`. Sends one natural-language question to the
+stock market-data specialist and returns a prose analysis.
+Requires: an auth token (run `tribes-cli login` once if commands fail with auth errors).
 
-## Your Expertise
+## When to use
 
-- Real-time stock prices: snapshots, last trade, change data
-- NBBO quotes: bid/ask prices, sizes, spreads
-- OHLCV candles: configurable timespan and date range
-- Market overview: full market snapshots, top gainers/losers
-- Ticker discovery: search by name or symbol
-- Market status: open/closed, after hours, early hours
-- Technical indicators: full TA suite for stocks (RSI, SMA, EMA, MACD,
-  Bollinger Bands, ADX, ATR, Momentum, OBV, ROC, Volume)
-- Stock news: latest headlines and articles
+- Price, quote, candle, snapshot, ticker-search, or market open/closed check for stocks.
+- Stock market movers — top gainers and losers among stocks.
+- NOT for indicator values, signals, backtests, or any indicator math — use `technical-analyst`.
+- NOT for stock news, catalysts, or sentiment — use `news`.
+- NOT for placing or sizing stock trades — use `hyperliquid` (stocks are Hyperliquid perps).
+- NOT for crypto movers or market-wide crypto data — use `market-strategist`.
 
-## When To Use
+## Hard rules
 
-Use this specialist for stock market data and technical analysis, including:
+1. The ONLY flag is `--query` — no `--out`, `--ticker`, or filter flags. Encode ticker,
+   timeframe, indicator set, and date range in the query text.
+2. Output is one free-text analysis string on stdout, not JSON.
+3. MUST set a bash timeout of at least 120 seconds (prefer 300) for `ask` (see AGENTS.md).
+4. The CLI calls the API itself — NEVER call the endpoint or curl directly.
+5. Run at most 1–2 refinement `ask` calls when a follow-up serves the original ask (see AGENTS.md).
+6. Relay exact figures with the timeframe and direction of change, never approximations.
+7. For unscoped movers/discovery, also run crypto via `market-strategist` and commodities via
+   `commodity-analyst` (AGENTS.md).
+8. Apply the Hyperliquid tradability guardrail before pitching trade ideas (see AGENTS.md).
 
-- Quick price checks and change/volume context for a ticker
-- Bid/ask/spread quote data
-- OHLCV candle pulls over a chosen timeframe
-- Market overview and top movers (gainers/losers)
-- Ticker search and company detail lookups
-- Market-hours / session status checks
-- Technical-indicator reads and multi-indicator TA on a stock
-- Latest stock-specific news headlines
+## Command reference
 
-## Typical Request Patterns
+| Subcommand | Purpose                                             | Required flags | Read-only or signed |
+| ---------- | --------------------------------------------------- | -------------- | ------------------- |
+| `ask`      | Natural-language query to the stock-data specialist | `--query`      | read-only           |
 
-Price check ("What's AAPL at?"):
+## Examples
 
-- Lead with price, change, and volume from the latest snapshot.
-
-Company detail ("Tell me about Apple"):
-
-- Return the snapshot price, then company info from stock details.
-
-Market overview ("How's the stock market?"):
-
-- Return top gainers and losers plus current market status/hours.
-
-Comparison ("AAPL vs MSFT"):
-
-- Return a market snapshot across both tickers.
-
-Technical analysis ("RSI for AAPL" / "MACD for TSLA" / "full TA on NVDA"):
-
-- Return the requested indicators (or the full TA suite) for the stock and timeframe.
-
-## Output Expectations
-
-- Lead with the price and change for price checks, then supporting data.
-- Always state the timeframe when returning candles or indicators.
-- Highlight direction of change (up, down, flat), not only raw figures.
-- Keep analysis concise, data-grounded, and decision-oriented.
-
-## Error Handling & Retries
-
-When backend retrieval returns an error response:
-
-1. Analyze the error and determine if it is fixable by adjusting input parameters.
-2. If fixable, adjust the parameters and retry. Attempt at least 2 retries before giving up.
-3. If retries fail, return a concise failure explanation and the most useful next step.
-
-## Rules
-
-- Use exact figures from tool output; never approximate.
-- When returning candles or indicators, note the timeframe.
-- Frame data in context: "AAPL +1.8% on the day" not just "AAPL is $232."
-- Keep responses data-grounded and concise.
-
-## Command examples
-
-### Show CLI help
+### Price and quote check
 
 ```bash
-tribes-cli stock-analyst --help
+tribes-cli stock-analyst ask --query "AAPL current price, day change, volume, and NBBO bid/ask spread"
 ```
 
-### Ask the specialist
+### Candles over a timeframe
 
 ```bash
-tribes-cli stock-analyst ask \
-  --query "what's AAPL trading at and give me the RSI and MACD on the daily"
+tribes-cli stock-analyst ask --query "Daily OHLCV candles for NVDA over the last 30 days, note the trend"
 ```
 
-## Endpoint Contract
+### Movers and market status
 
-The CLI calls:
+```bash
+tribes-cli stock-analyst ask --query "Top stock gainers and losers today, and is the market currently open?"
+```
 
-- `POST /agent/lucy/stock-analyst`
-- Query string param: `q=<user-query>`
-- Response: JSON object `{ "result": "<analysis string>" }`
+### Snapshot for sizing a trade
+
+```bash
+tribes-cli stock-analyst ask --query "Full snapshot for MSFT: last price, day range, volume, and 52-week range"
+```
+
+## Error recovery
+
+| Symptom                                  | Action                                                                                   |
+| ---------------------------------------- | ---------------------------------------------------------------------------------------- |
+| Auth error (unauthorized, expired token) | Run `tribes-cli login`, retry the original command once, then stop and report.           |
+| Any other API failure                    | Retry the same command once; if it fails again, stop and report the error.               |
+| Empty or off-topic answer                | Re-ask once with a tighter query (one ticker, explicit timeframe); then stop and report. |
+
+## Related skills
+
+- `technical-analyst` — indicator computation, signals, and backtests across asset classes.
+- `news` — stock news, catalysts, and sentiment for a ticker.
+- `hyperliquid` — discover the hosting dex and execute stock trades as Hyperliquid perps.
+- `market-strategist` — crypto movers, rankings, and market-wide aggregates.

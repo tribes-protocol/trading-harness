@@ -1,99 +1,104 @@
 ---
 name: wallet
-description: Wallet address/ID discovery and token balance retrieval across EVM, Solana, and Hyperliquid via the shared wallet CLI. Use to list agent wallet addresses and IDs or fetch portfolio balances, including before transaction or hyperliquid commands that need a wallet ID.
+description: >-
+  Operational wallet lookup. Handles: listing the agent's wallet addresses and Privy wallet IDs,
+  raw current token balances on EVM and Solana chains, and building unsigned transfer payloads
+  (EVM native/ERC-20, Solana SOL/SPL) for the transaction skill to broadcast. Call it before any
+  transaction, hyperliquid, or spot-trading command that needs a wallet ID or address. NOT for:
+  Hyperliquid perp/spot balances (use hyperliquid); net worth over time, PnL, or transaction
+  history (use wallet-analyst); broadcasting transactions (use transaction).
 allowed-tools: bash read
 ---
 
-# Wallet - Addresses and Balances
+# Wallet
 
-Use this skill for wallet address discovery and balance retrieval through the shared wallet CLI.
+Backing command group: `tribes-cli wallet`. Discovers the agent's wallet addresses and IDs,
+fetches raw balances, and builds unsigned transfer payloads.
+Requires: an auth token (run `tribes-cli login` once if commands fail with auth errors).
 
-## Requirements
+## When to use
 
-- `API_BASE_URL` must point at the API worker.
-- The wallet CLI exposes `list`, `assets`, `ethTransfer`, and `solTransfer`, for example:
+- Need a wallet ID or address for an execution command — run `list` first.
+- Need current token balances on EVM or Solana chains — run `assets`.
+- Need an unsigned transfer payload to hand to the `transaction` skill — run `ethTransfer` or
+  `solTransfer`.
+- NOT for Hyperliquid perp/spot balances — use `tribes-cli hyperliquid list-balances`
+  (`hyperliquid` skill).
+- NOT for historical net worth, PnL, or transfer history — use `wallet-analyst`.
+- NOT for broadcasting — use `transaction`.
+
+## Hard rules
+
+1. NEVER read `.tribes/privy-wallets.json` directly. `tribes-cli wallet list` is the only
+   source of wallet IDs and addresses.
+2. Transfer amounts are BASE UNITS (wei, raw token units, lamports), never decimals.
+   Wrong: `--amount 1.5` (rejected). Right: `--amount 1500000000000000000` (1.5 ETH, 18 decimals).
+3. NEVER mix wallet IDs across chains: `evmWalletId` signs EVM, `solWalletId` signs Solana.
+
+## Command reference
+
+| Subcommand    | Purpose                                    | Required flags                                                           | Read-only or signed |
+| ------------- | ------------------------------------------ | ------------------------------------------------------------------------ | ------------------- |
+| `list`        | List wallet addresses and Privy wallet IDs | none                                                                     | read-only           |
+| `assets`      | Token balances for given addresses         | `--wallet-addresses`                                                     | read-only           |
+| `ethTransfer` | Build unsigned EVM native/ERC-20 transfer  | `--chain-id`, `--token-id`, `--amount`, `--to-address`                   | read-only (builds)  |
+| `solTransfer` | Build unsigned Solana SOL/SPL transfer     | `--chain-id`, `--token-id`, `--amount`, `--from-address`, `--to-address` | read-only (builds)  |
+
+All subcommands accept `--out <file>` to write the JSON output to a file instead of stdout.
+
+## Examples
+
+### Get wallet addresses and IDs (run this before any execution command)
 
 ```bash
 tribes-cli wallet list
 ```
 
-## 1. List wallet addresses
+Output is a JSON array with the fields downstream commands need:
 
-Use the wallet CLI to discover current wallet addresses and IDs:
-
-```bash
-tribes-cli wallet list
+```json
+[
+  {
+    "evmWalletId": "wxyz1abcd2efgh3ijkl4mnop",
+    "evmWalletAddress": "0x1111111111111111111111111111111111111111",
+    "solWalletId": "abcd1wxyz2efgh3ijkl4mnop",
+    "solWalletAddress": "A1bC2dE3fG4hJ5kL6mN7pQ8rS9tU1vW2xY3zA4bC5dE"
+  }
+]
 ```
 
-## 2. Fetch balances
+Use `evmWalletId` / `solWalletId` as `--wallet-id`, and the matching address as `--from`.
 
-Pass wallet addresses explicitly to the CLI:
+### Fetch balances
 
 ```bash
 tribes-cli wallet assets \
-  --wallet-addresses <address1> <address2>
+  --wallet-addresses 0x1111111111111111111111111111111111111111 A1bC2dE3fG4hJ5kL6mN7pQ8rS9tU1vW2xY3zA4bC5dE
 ```
 
-Limit EVM balance lookups to specific chains with `--chain-ids` (space-separated numeric chain IDs). Omit it to query all supported EVM chains.
+Pass addresses as separate space-separated arguments. `--chain-ids` filters EVM lookups:
+
+- All addresses EVM: add `--chain-ids 1 8453` to limit chains, or omit to query all.
+- All addresses Solana: omit `--chain-ids`.
+- Mixed: Solana balances always return; `--chain-ids` only filters the EVM side.
+
+Supported EVM chain IDs: `1` Ethereum, `8453` Base, `42161` Arbitrum, `56` BSC, `137` Polygon,
+`10` Optimism.
+
+### Build an EVM transfer payload
+
+Native token uses `--token-id network`; ERC-20 uses the token contract address.
 
 ```bash
-tribes-cli wallet assets \
-  --wallet-addresses <evm-address> \
-  --chain-ids 1 8453
-```
-
-Supported EVM `chainIds`:
-
-- `1` - Ethereum
-- `8453` - Base
-- `42161` - Arbitrum
-- `56` - BSC
-- `137` - Polygon
-- `10` - Optimism
-
-When all provided wallet addresses are Solana addresses, omit `--chain-ids`.
-When Solana and EVM addresses are mixed, Solana balances are still returned and `--chain-ids` only filters EVM lookups.
-
-```bash
-tribes-cli wallet assets \
-  --wallet-addresses <solana-address>
-```
-
-Write output to a file when needed:
-
-```bash
-tribes-cli wallet assets \
-  --wallet-addresses <address1> <address2> \
-  --chain-ids 8453
-```
-
-Pass addresses as separate arguments after `--wallet-addresses`.
-
-## 3. Generate transfer payloads
-
-Use `ethTransfer` and `solTransfer` to build unsigned payloads before broadcasting with the transaction CLI. Amounts are in base units (wei, token raw units, lamports).
-
-### EVM native or ERC-20 transfer
-
-```bash
-tribes-cli wallet ethTransfer \
-  --chain-id 8453 \
-  --token-id network \
-  --amount 1000000000000000000 \
-  --to-address <recipient-evm-address>
-```
-
-For ERC-20, set `--token-id` to the token contract address. The output uses the token contract as `to` with encoded `transfer` calldata and `value: 0`.
-
-```bash
+# 5 USDC (6 decimals) on Arbitrum
 tribes-cli wallet ethTransfer \
   --chain-id 42161 \
   --token-id 0xaf88d065e77c8cc2239327c5edb3a432268e5831 \
   --amount 5000000 \
-  --to-address <recipient-evm-address>
+  --to-address 0x2222222222222222222222222222222222222222
 ```
 
-The command returns a flat JSON object with `chainId`, `to`, `value`, and `data`. Pass those fields directly to the transaction CLI:
+Output is a flat JSON object `{ chainId, to, value, data }`. Broadcast it with:
 
 ```bash
 tribes-cli transaction sendEthTransaction \
@@ -101,39 +106,44 @@ tribes-cli transaction sendEthTransaction \
   --to <to> \
   --value <value> \
   --data <data> \
-  --wallet-id <privy-evm-wallet-id>
+  --wallet-id <evmWalletId>
 ```
 
-### Solana native SOL or SPL transfer
+### Build a Solana transfer payload
 
-Native SOL uses the native mint id `So11111111111111111111111111111111111111111`. `--from-address` is required (fee payer).
+Native SOL uses mint id `So11111111111111111111111111111111111111111`; SPL tokens use the mint
+address. `--from-address` is required (fee payer). The builder adds an associated-token-account
+creation instruction when the recipient ATA does not exist.
 
 ```bash
+# 0.001 SOL (1000000 lamports)
 tribes-cli wallet solTransfer \
   --chain-id solana \
   --token-id So11111111111111111111111111111111111111111 \
   --amount 1000000 \
-  --from-address <sender-solana-address> \
-  --to-address <recipient-solana-address>
+  --from-address A1bC2dE3fG4hJ5kL6mN7pQ8rS9tU1vW2xY3zA4bC5dE \
+  --to-address B2cD3eF4gH5jK6lM7nP8qR9sT1uV2wX3yZ4aB5cD6eF
 ```
 
-For SPL tokens, pass the mint address as `--token-id`. The builder adds an associated token account creation instruction when the recipient ATA does not exist.
-
-The command returns a base64 serialized transaction string. Pass it directly to the transaction CLI:
+Output is a base64-serialized transaction string. Broadcast it with:
 
 ```bash
 tribes-cli transaction sendSolTransaction \
-  --transaction <instruction> \
-  --wallet-id <privy-sol-wallet-id>
+  --transaction <base64-transaction-from-solTransfer> \
+  --wallet-id <solWalletId>
 ```
 
-## Error handling
+## Error recovery
 
-| Symptom                        | Action                                                                   |
-| ------------------------------ | ------------------------------------------------------------------------ |
-| Need addresses                 | Run `tribes-cli wallet list`                                             |
-| Need portfolio balances        | Run `tribes-cli wallet assets --wallet-addresses <address1> <address2>`  |
-| Need balances on one EVM chain | Add `--chain-ids <id>` (for example `--chain-ids 8453` for Base)         |
-| Need EVM transfer payload      | Run `tribes-cli wallet ethTransfer --chain-id ... --token-id ...`        |
-| Need Solana transfer payload   | Run `tribes-cli wallet solTransfer --chain-id solana --from-address ...` |
-| Assets command failed          | Verify API bearer token and retry the same `assets` command              |
+| Symptom                                  | Action                                                                         |
+| ---------------------------------------- | ------------------------------------------------------------------------------ |
+| Auth error (unauthorized, expired token) | Run `tribes-cli login`, retry the original command once, then stop and report. |
+| Any other API failure                    | Retry the same command once; if it fails again, stop and report the error.     |
+| Amount rejected                          | You passed decimals — convert to base units (wei/raw/lamports) and retry.      |
+
+## Related skills
+
+- `transaction` — broadcasts the payloads built here.
+- `hyperliquid` — Hyperliquid balances, deposits, and orders (needs `evmWalletId` + `--from`).
+- `spot-trading` — DEX swaps/bridges (needs addresses and balances from here).
+- `wallet-analyst` — historical portfolio analytics (net worth, PnL, transfer history).
