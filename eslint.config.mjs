@@ -124,9 +124,6 @@ export default [
   {
     ignores: [
       '**/node_modules/**',
-      // Nested git worktrees live here; they are separate checkouts with their
-      // own tsconfig, so the project service can't resolve their files.
-      '.claude/**',
       '**/dist/**',
       '**/dist-test/**',
       '**/coverage/**',
