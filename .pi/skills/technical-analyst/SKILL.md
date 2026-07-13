@@ -1,8 +1,8 @@
 ---
 name: technical-analyst
 description: >-
-  The indicator and backtest COMPUTATION layer for any asset class (crypto tokens, stocks,
-  perps). Handles: momentum, trend, volatility, and volume indicators (RSI, MACD, SMA/EMA,
+  The indicator and backtest COMPUTATION layer for any asset class (crypto tokens, securities,
+  commodities, and perps). Handles: momentum, trend, volatility, and volume indicators (RSI, MACD, SMA/EMA,
   Bollinger, ADX, ATR, OBV, ROC) computed from OHLCV candles, multi-indicator confluence reads,
   and rule-based strategy backtests with entry/exit conditions. Call whenever the question is an
   indicator value, signal, setup, or backtest. NOT for: raw prices or candles with no indicator
@@ -20,7 +20,7 @@ Requires: an auth token (run `tribes-cli login` once if commands fail with auth 
 ## When to use
 
 - Need indicator values, signal reads, or multi-indicator confluence (RSI, MACD, SMA/EMA,
-  Bollinger, ADX, ATR, OBV, ROC) on any crypto token, stock, or perp — run `ask`.
+  Bollinger, ADX, ATR, OBV, ROC) on any crypto token, security, commodity, or perp — run `ask`.
 - Need a rule-based backtest with explicit entry/exit conditions — run `ask`.
 - NOT for raw candles or price history — use `fundamentals-analyst` or `stock-analyst`.
 - NOT for one token's live price, safety, or on-chain trades — use `token-analyst`.

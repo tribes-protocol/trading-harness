@@ -113,3 +113,4 @@ tribes-cli macros market | jq '{vix: .vix.value, us10y: .yields.us10y, curve: .y
 - `strategize` — consumes this snapshot plus `news` output when forming trade theses.
 - `prediction` — market-implied probabilities of macro events (rate cuts, elections).
 - `market-strategist` — crypto market-wide aggregates (caps, dominance, rankings).
+- `commodity-analyst` — turns gold, Brent, dollar, rates, and inflation context into a commodity thesis.

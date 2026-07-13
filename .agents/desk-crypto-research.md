@@ -1,6 +1,6 @@
 ---
 name: desk-crypto-research
-description: Crypto fundamentals + on-chain + smart-money researcher for a single perp. Use when the asset is a crypto token/coin (not an xyz stock).
+description: Crypto fundamentals + on-chain + smart-money researcher for a single perp. Use when the asset is a crypto token/coin, not a security perp.
 tools: bash
 inheritProjectContext: true
 inheritSkills: false
@@ -25,4 +25,4 @@ WHAT IT IS: one line
 FLOWS: smart-money accumulating | distributing | mixed | unclear
 STRUCTURAL RISKS: unlocks, thin liquidity, security/exit-liquidity flags (2-3 bullets)
 SUPPORTS SIDE?: does the fundamental/flow picture back a {SIDE} over {HORIZON}?
-COMPOSITE (fundamental) SCORE: 0-10 for this SIDE
+EVIDENCE QUALITY: strong | mixed | weak | unavailable
