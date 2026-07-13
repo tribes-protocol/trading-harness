@@ -120,24 +120,13 @@ tribes-cli hyperliquid list-assets --all-dexes --out /tmp/all-dexes.json
 tribes-cli hyperliquid list-assets --market spot
 ```
 
-The `--all-dexes` sweep spans many dexes and thousands of lines, so always write it to a file
-with `--out` and read every dex section in full — reading it inline risks truncation, and a
-section you never reach is NOT evidence of anything. Read the `xyz` dex FIRST: it lists most
-stock/equity tickers and commodity perps (metals, energy, ag), so any stock or commodity lookup
-confirms `xyz` before the others.
-
-NEVER conclude an asset, an asset class, or the whole venue is "delisted" / "not tradable" from a
-partial, truncated, or unread section. A not-tradable verdict requires having actually inspected
-that asset's section in the output — not having failed to process it. If any dex section was not
-read to completion, finish it before answering.
-
-Use `list-exchanges` only to resolve a venue label. Find the exact `dex` and `coin`/`pair`; never
-assume a dex. A HIP-3 market needs usable `referencePx`, coherent `midPx`/`oraclePx`, current
-nonzero `dayNtlVlm`, `dayBaseVlm`, and `openInterest`, tolerable `impactPxs`, and compliance with
-exchange-enforced `maxLeverage` and minimum notional. Reject `isDelisted` markets and honor any
-`requiresIsolatedMargin`, `onlyIsolated`, or `marginMode` constraint. Missing, zero, stale, or
-inconsistent data means `Listed but not currently actionable`; never infer liquidity from an
-external benchmark.
+Write the sweep to a file (`--out`) and read every dex section in full — inline reads truncate, and
+a section you never reach is not evidence. Read the `xyz` dex FIRST (it hosts most stock and
+commodity perps); never call an asset, class, or venue "delisted"/"not tradable" from an unread
+section. Use `list-exchanges` only to resolve a venue label; never assume a dex. A HIP-3 market
+needs usable `referencePx`, coherent `midPx`/`oraclePx`, nonzero `dayNtlVlm`/`dayBaseVlm`/
+`openInterest`, tolerable `impactPxs`, exchange-enforced `maxLeverage`/min notional, and no
+`isDelisted` flag; honor `requiresIsolatedMargin`/`onlyIsolated`/`marginMode`. Missing, zero, stale, or inconsistent data means `Listed but not currently actionable`; never infer liquidity externally.
 
 ## Sizing: convert "$N worth" and percentages first
 
