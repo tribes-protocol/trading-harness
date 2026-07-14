@@ -165,8 +165,11 @@ Pick the skill with these tie-breaker rules, in order:
 
 <!-- BEGIN synced skill routes (managed by .github/workflows/sync-harness-skills.yml) -->
 
+- `zipbox-browser` — Fast headless browser automation with Microsoft's Playwright CLI for JavaScript-rendered pages, clicks, typing, snapshots, screenshots, PDF capture, and console or network inspection.
 - `zipbox-caddy` — Safely add or remove HTTPS reverse-proxy sites in this sandbox's in-VM Caddy with the baked tribes-caddy CLI — never hand-edit the Caddyfile, because a bad config kills all browser access to the machine.
 - `zipbox-dns` — Manage DNS records under this sandbox's own public hostname with the baked tribes-dns CLI — expose subdomains and set, list, or delete server-pinned A/AAAA records below the apex.
+- `zipbox-email` — Read, organize, delete, mark as junk, and send this sandbox's zbox.sh email through the baked tribes-email CLI and its agent-scoped control-plane API.
+- `zipbox-websearch` — Search the open web and extract readable text from a known public URL through the sandbox-authenticated Tribes search endpoint.
 
 <!-- END synced skill routes -->
 
