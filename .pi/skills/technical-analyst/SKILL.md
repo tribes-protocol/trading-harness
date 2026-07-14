@@ -24,7 +24,7 @@ Requires: an auth token (run `tribes-cli login` once if commands fail with auth 
 - Need a rule-based backtest with explicit entry/exit conditions — run `ask`.
 - NOT for raw candles or price history — use `fundamentals-analyst` or `stock-analyst`.
 - NOT for one token's live price, safety, or on-chain trades — use `token-analyst`.
-- NOT for stock quotes, snapshots, or movers — use `stock-analyst`; stock news — use `news`.
+- NOT for stock quotes, snapshots, or candles — use `stock-analyst`; stock news — use `news`.
 - NOT for pool or pair OHLCV charts — use `defi-analyst`.
 
 ## Hard rules
@@ -84,7 +84,7 @@ Self-refine follow-up suggestions with at most 1–2 more `ask` calls (see AGENT
 
 ## Related skills
 
-- `stock-analyst` — stock prices, quotes, candles, snapshots, movers.
+- `stock-analyst` — stock prices, snapshots, candles, company profiles.
 - `fundamentals-analyst` — raw coin OHLCV candles and historical charts (no indicator math).
 - `strategize` — turns TA reads into a trade plan.
 - `hyperliquid` — tradability check and execution for TA-based trade ideas.

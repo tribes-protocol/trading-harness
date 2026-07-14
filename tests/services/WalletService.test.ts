@@ -40,6 +40,7 @@ describe('WalletService', () => {
     vi.stubEnv('API_BASE_URL', 'https://api.example.com')
     vi.stubEnv('API_BEARER_TOKEN', 'token-from-env')
     vi.stubEnv('PRIVY_APP_ID', 'privy-app-id')
+    vi.stubEnv('MARKETSTACK_API_KEY', 'marketstack-api-key')
 
     let capturedInit: RequestInit | undefined
     const fetchSpy = vi.fn(
@@ -78,6 +79,7 @@ describe('WalletService', () => {
     vi.stubEnv('API_BASE_URL', 'https://api.example.com')
     vi.stubEnv('API_BEARER_TOKEN', 'token-from-env')
     vi.stubEnv('PRIVY_APP_ID', 'privy-app-id')
+    vi.stubEnv('MARKETSTACK_API_KEY', 'marketstack-api-key')
 
     let capturedInit: RequestInit | undefined
     const fetchSpy = vi.fn(
@@ -117,6 +119,7 @@ describe('WalletService', () => {
     vi.stubEnv('API_BASE_URL', 'https://api.example.com')
     vi.stubEnv('API_BEARER_TOKEN', 'token-from-env')
     vi.stubEnv('PRIVY_APP_ID', 'privy-app-id')
+    vi.stubEnv('MARKETSTACK_API_KEY', 'marketstack-api-key')
 
     const { WalletService } = await import('@/services/WalletService')
     const walletService = new WalletService({
@@ -142,6 +145,7 @@ describe('WalletService', () => {
     vi.stubEnv('API_BASE_URL', 'https://api.example.com')
     vi.stubEnv('API_BEARER_TOKEN', 'token-from-env')
     vi.stubEnv('PRIVY_APP_ID', 'privy-app-id')
+    vi.stubEnv('MARKETSTACK_API_KEY', 'marketstack-api-key')
 
     const { WalletService } = await import('@/services/WalletService')
     const walletService = new WalletService({
@@ -168,6 +172,7 @@ describe('WalletService', () => {
     vi.stubEnv('API_BASE_URL', 'https://api.example.com')
     vi.stubEnv('API_BEARER_TOKEN', 'token-from-env')
     vi.stubEnv('PRIVY_APP_ID', 'privy-app-id')
+    vi.stubEnv('MARKETSTACK_API_KEY', 'marketstack-api-key')
 
     const { WalletService } = await import('@/services/WalletService')
     const walletService = new WalletService({
@@ -190,6 +195,7 @@ describe('WalletService', () => {
     vi.stubEnv('API_BASE_URL', 'https://api.example.com')
     vi.stubEnv('API_BEARER_TOKEN', 'token-from-env')
     vi.stubEnv('PRIVY_APP_ID', 'privy-app-id')
+    vi.stubEnv('MARKETSTACK_API_KEY', 'marketstack-api-key')
 
     const mockConnection = createMockSolConnection({ destinationAccountExists: false })
     const { WalletService } = await import('@/services/WalletService')

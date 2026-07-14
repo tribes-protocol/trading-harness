@@ -18,6 +18,7 @@ import { buildMacrosCommand } from '@/cli/Macros'
 import { buildNewsCommand } from '@/cli/News'
 import { buildPredictionCommand } from '@/cli/Prediction'
 import { buildSpotTradingCommand } from '@/cli/SpotTrading'
+import { buildStockAnalystCommand } from '@/cli/StockAnalyst'
 import { buildTokenCommand } from '@/cli/Token'
 import { buildTransactionCommand } from '@/cli/Transaction'
 import { buildWalletCommand } from '@/cli/Wallet'
@@ -43,6 +44,7 @@ function buildTribesCli(): Command {
   program.addCommand(buildNewsCommand())
   program.addCommand(buildMacrosCommand())
   program.addCommand(buildTokenCommand())
+  program.addCommand(buildStockAnalystCommand())
   program.addCommand(buildWebSearchCommand())
   program.addCommand(buildPredictionCommand())
 

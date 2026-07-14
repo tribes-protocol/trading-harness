@@ -142,7 +142,7 @@ Pick the skill with these tie-breaker rules, in order:
 | One coin: profile, links, supply, historical charts, where listed                 | `fundamentals-analyst` |
 | Trending tokens, new listings, smart-money flows                                  | `alpha-scout`          |
 | Global caps, dominance, rankings, crypto top movers                               | `market-strategist`    |
-| Stock or security prices, quotes, candles, movers, market status                  | `stock-analyst`        |
+| Stock or security prices, snapshots, candles, company profiles, ticker search     | `stock-analyst`        |
 | Commodity candidate research, macro drivers, and venue-quality scan               | `commodity-analyst`    |
 | Indicators, signals, backtests (any asset)                                        | `technical-analyst`    |
 | Liquidity pools, DEX pairs, TVL                                                   | `defi-analyst`         |
@@ -253,7 +253,9 @@ bun run bootstrap.sh
 
 ### The `tribes-cli` binary is the product
 
-Everything the trading agent can do is a subcommand of one CLI. `src/cli/Tribes.ts` is the single entry point: it composes one `build...Command()` builder per group: Wallet, Hyperliquid, Transaction, SpotTrading, News, Macros, Token, WebSearch, Prediction, plus 10 analyst agents. `bootstrap.sh` compiles this into a native `tribes-cli` binary on PATH so the agent runs `tribes-cli <group> <command> ...` with no per-call transpile or `@/` alias resolution.
+Everything the trading agent can do is a subcommand of one CLI. `src/cli/Tribes.ts` is the single entry point: it composes one `build...Command()` builder per group: Wallet, Hyperliquid, Transaction, SpotTrading, News, Macros, Token, StockAnalyst, WebSearch, Prediction, plus 9 analyst agents. `bootstrap.sh` compiles this into a native `tribes-cli` binary on PATH so the agent runs `tribes-cli <group> <command> ...` with no per-call transpile or `@/` alias resolution.
+
+A command group either calls its data source directly from a service under `src/services/` and prints JSON (Wallet, Hyperliquid, News, Macros, Token, StockAnalyst, …), or proxies a natural-language query to a backend specialist agent (the `ANALYSTS` registry). Direct groups answer in seconds and take structured flags; proxied ones take `--query` and can run for minutes.
 
 The `.pi/skills/<slug>/SKILL.md` files are documentation only. Each one points the agent at the matching `tribes-cli <group>` command. There is no executable code under `.pi/skills/`.
 
@@ -276,7 +278,7 @@ Services are dependency-injected by hand. A CLI builder constructs the services 
 
 ### Adding a new analyst
 
-The 10 analyst commands are data-driven, not hand-written. Add an entry to `ANALYSTS` in `src/common/Analysts.ts` with `cliName`, `endpointPath`, `description`, etc. `Tribes.ts` loops over the registry and `buildAnalystCommand` generates the command. They all proxy to `/agent/lucy/*` endpoints.
+The 9 analyst commands are data-driven, not hand-written. Add an entry to `ANALYSTS` in `src/common/Analysts.ts` with `cliName`, `endpointPath`, `description`, etc. `Tribes.ts` loops over the registry and `buildAnalystCommand` generates the command. They all proxy to `/agent/lucy/*` endpoints.
 
 ### Pi extensions
 
@@ -302,7 +304,7 @@ Prettier: no semicolons, single quotes, no trailing commas, width 100. TypeScrip
 
 ## Environment
 
-Config is resolved in `@/common/Env`. When `NODE_ENV` is unset, empty, or `production` (the default), `API_BASE_URL` and `PRIVY_APP_ID` are hardcoded to their production values — neither needs to be set. `PRIVY_APP_ID` is only read from (and required in) the env under a non-production `NODE_ENV`; `API_BASE_URL` is never read from the env. The one thing a run needs is a bearer token: `API_BEARER_TOKEN` (or the sandbox-injected `TRIBES_API_KEY`). It is typically auto-minted by the Tribes extension; if it is missing, run `tribes-cli login` first so a fresh token is fetched and persisted before other `tribes-cli` actions. Wallet private keys live in Privy, never locally. `.env*` and `.tribes/*.json` snapshots are gitignored.
+Config is resolved in `@/common/Env`. When `NODE_ENV` is unset, empty, or `production` (the default), `API_BASE_URL` and `PRIVY_APP_ID` are hardcoded to their production values — neither needs to be set. `PRIVY_APP_ID` is only read from (and required in) the env under a non-production `NODE_ENV`; `API_BASE_URL` is never read from the env. The one thing a run needs is a bearer token: `API_BEARER_TOKEN` (or the sandbox-injected `TRIBES_API_KEY`). It is typically auto-minted by the Tribes extension; if it is missing, run `tribes-cli login` first so a fresh token is fetched and persisted before other `tribes-cli` actions. Groups that call a data provider directly may need their own key, and no bearer token or login will substitute for a missing one: `stock-analyst` needs `MARKETSTACK_API_KEY`, which is required in the env under a non-production `NODE_ENV` and is a placeholder literal under production — production therefore depends on that literal being replaced with a real key outside this repo, and Marketstack answers `401 invalid_access_key` until it is. Wallet private keys live in Privy, never locally. `.env*` and `.tribes/*.json` snapshots are gitignored.
 
 ## Gotchas
 

@@ -24,7 +24,7 @@ Requires: an auth token (run `tribes-cli login` once if commands fail with auth 
 - Category rotation, recently added coins, quick multi-coin price checks, market-wide search.
 - NOT for a single token or coin — use `token-analyst` (on-chain) or `fundamentals-analyst` (profile).
 - NOT for trending-token discovery (`alpha-scout`), pools/DEXes (`defi-analyst`), CEX/derivatives (`exchange-analyst`).
-- NOT for stock movers (`stock-analyst`) or numeric macro indicators like CPI/VIX/DXY (`macros`).
+- NOT for stock prices or snapshots (`stock-analyst`) or numeric macro indicators like CPI/VIX/DXY (`macros`).
 
 ## Hard rules
 
@@ -86,7 +86,7 @@ tribes-cli market-strategist ask \
 
 - `token-analyst` — deep dive on one identified token; `fundamentals-analyst` — one coin's profile.
 - `alpha-scout` — trending/new-token and smart-money discovery before a token is chosen.
-- `stock-analyst` — the securities pass for unscoped movers/opportunity questions.
+- `stock-analyst` — the securities pass for unscoped movers/opportunity questions (price a named ticker list; it does not scan for movers).
 - `commodity-analyst` — the commodities pass for unscoped movers/opportunity questions.
 - `hyperliquid` — all-dex tradability and venue-quality check before trade ideas.
 - `strategize` — full market briefing combining macro, news, odds, and ideas.

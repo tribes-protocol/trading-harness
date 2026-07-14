@@ -26,7 +26,7 @@ Requires: an auth token (run `tribes-cli login` once if commands fail with auth 
 - The `strategize` skill needs the numeric half of macro state — pair with `news` for the
   narrative half.
 - NOT for why markets moved, headlines, or macro sentiment — use `news`.
-- NOT for individual stock quotes or stock movers — use `stock-analyst`.
+- NOT for individual stock quotes or snapshots — use `stock-analyst`.
 - NOT for crypto market cap, dominance, or rankings — use `market-strategist`.
 - NOT for market-implied odds of macro events (rate cuts, elections) — use `prediction`.
 

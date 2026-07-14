@@ -29,14 +29,6 @@ export const ANALYSTS = {
     errorLabel: 'Fundamentals analyst',
     askDescription: 'Send a query to the fundamentals_analyst specialist agent endpoint'
   },
-  stockAnalyst: {
-    cliName: 'stock-analyst-cli',
-    description:
-      'Expert on stock market data and technical analysis including prices, quotes, candles, snapshots, movers, TA indicators, and news.',
-    endpointPath: '/agent/lucy/stock-analyst',
-    errorLabel: 'Stock analyst',
-    askDescription: 'Send a query to the stock_analyst specialist agent endpoint'
-  },
   marketStrategist: {
     cliName: 'market-strategist-cli',
     description: 'Expert on the big-picture crypto market.',

@@ -90,11 +90,16 @@ the legs return because it needs the complete candidate list.
      --query "Trending tokens and smart-money accumulation over the last 24 hours"
    ```
 
-5. Securities ideas (timeout rule 2 applies):
+5. Securities ideas (`stock-analyst` + `news`):
+
+   `stock-analyst` prices the tickers you name; it does not hunt for movers. So take the
+   stock/equity perps listed on the `xyz` dex (the step-7 sweep) as the candidate universe, rank
+   them on day change, then pull catalysts for the names that moved (timeout rule 2 applies to
+   `news fetch`).
 
    ```bash
-   timeout 300 tribes-cli stock-analyst ask \
-     --query "Biggest US stock and listed-security movers today with their catalysts"
+   tribes-cli stock-analyst market-snapshot --tickers AAPL,MSFT,NVDA,TSLA,AMZN,GOOGL,META
+   timeout 300 tribes-cli news fetch --kind stock --ticker NVDA
    ```
 
 6. Commodity ideas (`commodity-analyst` skill):

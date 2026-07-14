@@ -14,3 +14,7 @@ export const API_BEARER_TOKEN = process.env.TRIBES_API_KEY ?? process.env.API_BE
 export const PRIVY_APP_ID = IS_PRODUCTION
   ? 'cmiwpjw6y0001l80b2er4lqzu'
   : ensureString(process.env.PRIVY_APP_ID, 'PRIVY_APP_ID is not set')
+
+export const MARKETSTACK_API_KEY = IS_PRODUCTION
+  ? 'MARKETSTACK_API_KEY'
+  : ensureString(process.env.MARKETSTACK_API_KEY, 'MARKETSTACK_API_KEY is not set')
