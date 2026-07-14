@@ -27,7 +27,7 @@ const MINT_MAX_BUFFER_BYTES = 1024 * 1024
 // at a different backend / Privy app. When present we pass them through to .env;
 // when absent the production defaults apply. API_BEARER_TOKEN is minted from the
 // agent key below.
-const ENV_PASSTHROUGH = ['API_BASE_URL', 'PRIVY_APP_ID', 'MARKETSTACK_API_KEY'] as const
+const ENV_PASSTHROUGH = ['API_BASE_URL', 'PRIVY_APP_ID'] as const
 
 // Re-mint + rewrite .env on this cadence so the bearer token never goes stale.
 export const AUTH_REFRESH_INTERVAL_MS = 24 * 60 * 60 * 1000
