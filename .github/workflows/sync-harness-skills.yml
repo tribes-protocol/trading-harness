@@ -34,6 +34,8 @@ concurrency:
 env:
   UPSTREAM_REPO: tribes-protocol/ai-harness-setup
   UPSTREAM_BRANCH: main
+  # Branch-local during P25 implementation so GitHub formats and verifies this
+  # draft. Restored to chore/sync-harness-skills before review.
   SYNC_BRANCH: feat/p25-1840-shared-skills
 
 jobs:
@@ -109,6 +111,7 @@ jobs:
           bun run lint
           bun run build
           bunx vitest run
+          sudo -E sh test/shared-skills-install.test.sh
 
       - name: Open or update the vendor PR
         if: env.UPSTREAM_SKILLS != ''
@@ -124,6 +127,7 @@ jobs:
           short_sha="${UPSTREAM_SHA:0:12}"
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git fetch origin "+refs/heads/$SYNC_BRANCH:refs/remotes/origin/$SYNC_BRANCH" || true
           git checkout -B "$SYNC_BRANCH"
           git add -A
           git commit -m "chore(skills): sync shared skills from ai-harness-setup@$short_sha"
