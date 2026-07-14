@@ -81,13 +81,13 @@ the legs return because it needs the complete candidate list.
    supply disruptions). Cite the leading outcome and probability only when the market is active
    and relevant; odds are supporting evidence, never a stand-alone trade signal.
 
-4. Crypto ideas (timeout rule 2 applies to each):
+4. Crypto ideas (timeout rule 2 applies to the `ask` call only):
 
    ```bash
    timeout 300 tribes-cli market-strategist ask \
      --query "Top crypto gainers and losers today, BTC dominance trend, and which sectors are rotating"
-   timeout 300 tribes-cli alpha-scout ask \
-     --query "Trending tokens and smart-money accumulation over the last 24 hours"
+   tribes-cli alpha-scout trending --chain solana --limit 10
+   tribes-cli alpha-scout sm-netflow --chains ethereum,solana --limit 10
    ```
 
 5. Securities ideas (`stock-analyst` + `news`):

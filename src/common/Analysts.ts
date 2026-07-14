@@ -1,13 +1,6 @@
 import type { AnalystConfig } from '@/types/Analyst'
 
 export const ANALYSTS = {
-  alphaScout: {
-    cliName: 'alpha-scout-cli',
-    description: 'Discovers emerging opportunities and tracks smart money signals.',
-    endpointPath: '/agent/lucy/alpha-scout',
-    errorLabel: 'Alpha scout',
-    askDescription: 'Send a query to the alpha_scout specialist agent endpoint'
-  },
   defiAnalyst: {
     cliName: 'defi-analyst-cli',
     description: 'Expert on DEX activity and liquidity pools.',

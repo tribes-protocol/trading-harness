@@ -42,6 +42,8 @@ describe('WalletService', () => {
     vi.stubEnv('PRIVY_APP_ID', 'privy-app-id')
     vi.stubEnv('MARKETSTACK_API_KEY', 'marketstack-api-key')
     vi.stubEnv('COIN_GECKO_PRO_API_KEY', 'coingecko-api-key')
+    vi.stubEnv('BIRDEYE_API_KEY', 'birdeye-api-key')
+    vi.stubEnv('NANSEN_API_KEY', 'nansen-api-key')
 
     let capturedInit: RequestInit | undefined
     const fetchSpy = vi.fn(
@@ -82,6 +84,8 @@ describe('WalletService', () => {
     vi.stubEnv('PRIVY_APP_ID', 'privy-app-id')
     vi.stubEnv('MARKETSTACK_API_KEY', 'marketstack-api-key')
     vi.stubEnv('COIN_GECKO_PRO_API_KEY', 'coingecko-api-key')
+    vi.stubEnv('BIRDEYE_API_KEY', 'birdeye-api-key')
+    vi.stubEnv('NANSEN_API_KEY', 'nansen-api-key')
 
     let capturedInit: RequestInit | undefined
     const fetchSpy = vi.fn(
@@ -123,6 +127,8 @@ describe('WalletService', () => {
     vi.stubEnv('PRIVY_APP_ID', 'privy-app-id')
     vi.stubEnv('MARKETSTACK_API_KEY', 'marketstack-api-key')
     vi.stubEnv('COIN_GECKO_PRO_API_KEY', 'coingecko-api-key')
+    vi.stubEnv('BIRDEYE_API_KEY', 'birdeye-api-key')
+    vi.stubEnv('NANSEN_API_KEY', 'nansen-api-key')
 
     const { WalletService } = await import('@/services/WalletService')
     const walletService = new WalletService({
@@ -150,6 +156,8 @@ describe('WalletService', () => {
     vi.stubEnv('PRIVY_APP_ID', 'privy-app-id')
     vi.stubEnv('MARKETSTACK_API_KEY', 'marketstack-api-key')
     vi.stubEnv('COIN_GECKO_PRO_API_KEY', 'coingecko-api-key')
+    vi.stubEnv('BIRDEYE_API_KEY', 'birdeye-api-key')
+    vi.stubEnv('NANSEN_API_KEY', 'nansen-api-key')
 
     const { WalletService } = await import('@/services/WalletService')
     const walletService = new WalletService({
@@ -178,6 +186,8 @@ describe('WalletService', () => {
     vi.stubEnv('PRIVY_APP_ID', 'privy-app-id')
     vi.stubEnv('MARKETSTACK_API_KEY', 'marketstack-api-key')
     vi.stubEnv('COIN_GECKO_PRO_API_KEY', 'coingecko-api-key')
+    vi.stubEnv('BIRDEYE_API_KEY', 'birdeye-api-key')
+    vi.stubEnv('NANSEN_API_KEY', 'nansen-api-key')
 
     const { WalletService } = await import('@/services/WalletService')
     const walletService = new WalletService({
@@ -202,6 +212,8 @@ describe('WalletService', () => {
     vi.stubEnv('PRIVY_APP_ID', 'privy-app-id')
     vi.stubEnv('MARKETSTACK_API_KEY', 'marketstack-api-key')
     vi.stubEnv('COIN_GECKO_PRO_API_KEY', 'coingecko-api-key')
+    vi.stubEnv('BIRDEYE_API_KEY', 'birdeye-api-key')
+    vi.stubEnv('NANSEN_API_KEY', 'nansen-api-key')
 
     const mockConnection = createMockSolConnection({ destinationAccountExists: false })
     const { WalletService } = await import('@/services/WalletService')

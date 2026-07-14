@@ -22,3 +22,11 @@ export const MARKETSTACK_API_KEY = IS_PRODUCTION
 export const COIN_GECKO_PRO_API_KEY = IS_PRODUCTION
   ? 'COIN_GECKO_PRO_API_KEY'
   : ensureString(process.env.COIN_GECKO_PRO_API_KEY, 'COIN_GECKO_PRO_API_KEY is not set')
+
+export const BIRDEYE_API_KEY = IS_PRODUCTION
+  ? 'BIRDEYE_API_KEY'
+  : ensureString(process.env.BIRDEYE_API_KEY, 'BIRDEYE_API_KEY is not set')
+
+export const NANSEN_API_KEY = IS_PRODUCTION
+  ? 'NANSEN_API_KEY'
+  : ensureString(process.env.NANSEN_API_KEY, 'NANSEN_API_KEY is not set')
