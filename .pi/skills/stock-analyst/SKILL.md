@@ -90,11 +90,11 @@ tribes-cli stock-analyst search --query "apple" --limit 5
 
 ## Error recovery
 
-| Symptom                              | Action                                                                              |
-| ------------------------------------ | ----------------------------------------------------------------------------------- |
-| `MARKETSTACK_API_KEY is not set`     | The key is missing from the environment. Stop and report; `tribes-cli login` cannot fix it. |
-| Any other API failure                | Retry the same command once; if it fails again, stop and report the error.          |
-| Empty `candles` or a `null` price    | Widen the date range, or confirm the ticker with `search`; then report the gap plainly. |
+| Symptom                           | Action                                                                                      |
+| --------------------------------- | ------------------------------------------------------------------------------------------- |
+| `MARKETSTACK_API_KEY is not set`  | The key is missing from the environment. Stop and report; `tribes-cli login` cannot fix it. |
+| Any other API failure             | Retry the same command once; if it fails again, stop and report the error.                  |
+| Empty `candles` or a `null` price | Widen the date range, or confirm the ticker with `search`; then report the gap plainly.     |
 
 ## Related skills
 
