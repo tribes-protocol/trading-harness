@@ -207,9 +207,9 @@ Preferred path in agent clients: use the Tribes login skill (`/tribes-login`, or
 
 ### Installing the skills
 
-The skill docs are vendored per client, one directory of `<slug>/SKILL.md` files per supported agent — `.pi/skills/` for Pi, `.claude/skills/` for Claude Code, and the matching `.<client>/skills/` for each other client. They ship in this repo, so cloning installs them: a client auto-discovers the skills in its own directory with no extra step.
+The skill docs live once at the repo root in `skills/`, one `<slug>/SKILL.md` directory per skill. Every client's skills directory — `.pi/skills/` for Pi, `.claude/skills/` for Claude Code, and the matching `.<client>/skills/` for each other client — is a symlink to that root directory. They ship in this repo, so cloning installs them: a client auto-discovers the skills in its own directory with no extra step.
 
-If your client reads skills from a directory that this repo does not already provide, copy (or symlink) the contents of `.pi/skills/` into that location. The skill files are documentation only — each one points at the matching `tribes-cli <group>` command — so they work as soon as `bootstrap.sh` has built `tribes-cli`.
+If your client reads skills from a directory that this repo does not already provide, symlink it to the root `skills/` directory (`ln -s ../skills .<client>/skills`). The skill files are documentation only — each one points at the matching `tribes-cli <group>` command — so they work as soon as `bootstrap.sh` has built `tribes-cli`.
 
 ## Runtime Preconditions
 
@@ -255,7 +255,7 @@ bun run bootstrap.sh
 
 Everything the trading agent can do is a subcommand of one CLI. `src/cli/Tribes.ts` is the single entry point: it composes one `build...Command()` builder per group: Wallet, Hyperliquid, Transaction, SpotTrading, News, Macros, Token, WebSearch, Prediction, plus 10 analyst agents. `bootstrap.sh` compiles this into a native `tribes-cli` binary on PATH so the agent runs `tribes-cli <group> <command> ...` with no per-call transpile or `@/` alias resolution.
 
-The `.pi/skills/<slug>/SKILL.md` files are documentation only. Each one points the agent at the matching `tribes-cli <group>` command. There is no executable code under `.pi/skills/`.
+The `skills/<slug>/SKILL.md` files are documentation only. Each one points the agent at the matching `tribes-cli <group>` command. There is no executable code under `skills/`.
 
 ### Layering
 

@@ -7,7 +7,7 @@ import { type AnalystConfig, AskAnalystCliOptionsSchema } from '@/types/Analyst'
 const VERSION = '1.0.0'
 
 // `alpha-scout-cli` -> `alpha-scout`: the command group name under `tribes-cli`,
-// which matches the skill slug (.pi/skills/<slug>/).
+// which matches the skill slug (skills/<slug>/).
 function commandName(config: AnalystConfig): string {
   return config.cliName.replace(/-cli$/, '')
 }

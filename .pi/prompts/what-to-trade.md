@@ -3,7 +3,7 @@ description: Scout the best actionable Hyperliquid trade idea and stress-test it
 argument-hint: "[optional focus hint like 'AI coins', 'stocks only', or 'commodities only']"
 ---
 
-Follow the `thesis` skill (`.pi/skills/thesis/SKILL.md`) in scout mode.
+Follow the `thesis` skill (`skills/thesis/SKILL.md`) in scout mode.
 
 $@
 

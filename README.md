@@ -115,7 +115,7 @@ tribes-cli hyperliquid trade-spot --from <0x-privy-wallet> --pair HYPE/USDC --si
 
 All executable code lives under a single root `src/` (one alias: `@/*` -> `./src/*`). Every
 command builder is composed into one entry, `src/cli/Tribes.ts`, which `bootstrap.sh` compiles
-into the `tribes-cli` binary. Each skill under `.pi/skills/<slug>/` is **documentation only** —
+into the `tribes-cli` binary. Each skill under `skills/<slug>/` is **documentation only** —
 its `SKILL.md` points the agent at the matching `tribes-cli <group>` command.
 
 ```text

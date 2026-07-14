@@ -6,7 +6,7 @@ import { describe, expect, it } from 'vitest'
 /**
  * Drift guard for the skills vendored from tribes-protocol/ai-harness-setup.
  *
- * The sync workflow writes .pi/skills/.synced.json = { upstreamSha, files: { path:
+ * The sync workflow writes skills/.synced.json = { upstreamSha, files: { path:
  * sha256 } } after prettier has run. Vendored files are machine-written and must
  * never be hand-edited: this test recomputes each recorded file's sha256 and fails
  * loudly on any mismatch (a hand-edit, a partial revert, or bit-rot).
@@ -16,7 +16,7 @@ import { describe, expect, it } from 'vitest'
  */
 
 const REPO_ROOT = join(__dirname, '..', '..')
-const MANIFEST_PATH = join(REPO_ROOT, '.pi', 'skills', '.synced.json')
+const MANIFEST_PATH = join(REPO_ROOT, 'skills', '.synced.json')
 
 describe('synced skills drift guard', () => {
   if (!existsSync(MANIFEST_PATH)) {
