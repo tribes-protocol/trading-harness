@@ -34,7 +34,7 @@ concurrency:
 env:
   UPSTREAM_REPO: tribes-protocol/ai-harness-setup
   UPSTREAM_BRANCH: main
-  SYNC_BRANCH: chore/sync-harness-skills
+  SYNC_BRANCH: feat/p25-1840-shared-skills
 
 jobs:
   sync:
