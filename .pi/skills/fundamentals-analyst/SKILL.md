@@ -43,20 +43,20 @@ Requires `COIN_GECKO_PRO_API_KEY` in the environment (already set in `.env`).
 
 ## Command reference
 
-| Subcommand              | Purpose                                              | Required flags         | Read-only or signed |
-| ----------------------- | ---------------------------------------------------- | ---------------------- | ------------------- |
-| `search`                | Resolve a name/symbol to a CoinGecko coin ID         | `--query`              | read-only           |
-| `coin`                  | Profile: price, cap, supply, categories, links       | `--id`                 | read-only           |
-| `history`               | Price/cap/volume snapshot on one date                | `--id --date`          | read-only           |
-| `market-chart`          | Price, market cap, volume time-series                | `--id`                 | read-only           |
-| `ohlc`                  | OHLC candles                                         | `--id`                 | read-only           |
-| `supply-chart`          | Circulating or total supply history                  | `--id --kind`          | read-only           |
-| `tickers`               | Where a coin trades: exchange, pair, volume, trust   | `--id`                 | read-only           |
-| `contract`              | Profile by contract address instead of coin ID       | `--network --address`  | read-only           |
-| `contract-market-chart` | Time-series by contract address                      | `--network --address`  | read-only           |
-| `token-price`           | Spot price by contract address                       | `--platform --addresses` | read-only         |
-| `exchange-rates`        | BTC-denominated fiat/crypto/commodity rates          | —                      | read-only           |
-| `supported-currencies`  | Quote currencies the pricing endpoints accept        | —                      | read-only           |
+| Subcommand              | Purpose                                            | Required flags           | Read-only or signed |
+| ----------------------- | -------------------------------------------------- | ------------------------ | ------------------- |
+| `search`                | Resolve a name/symbol to a CoinGecko coin ID       | `--query`                | read-only           |
+| `coin`                  | Profile: price, cap, supply, categories, links     | `--id`                   | read-only           |
+| `history`               | Price/cap/volume snapshot on one date              | `--id --date`            | read-only           |
+| `market-chart`          | Price, market cap, volume time-series              | `--id`                   | read-only           |
+| `ohlc`                  | OHLC candles                                       | `--id`                   | read-only           |
+| `supply-chart`          | Circulating or total supply history                | `--id --kind`            | read-only           |
+| `tickers`               | Where a coin trades: exchange, pair, volume, trust | `--id`                   | read-only           |
+| `contract`              | Profile by contract address instead of coin ID     | `--network --address`    | read-only           |
+| `contract-market-chart` | Time-series by contract address                    | `--network --address`    | read-only           |
+| `token-price`           | Spot price by contract address                     | `--platform --addresses` | read-only           |
+| `exchange-rates`        | BTC-denominated fiat/crypto/commodity rates        | —                        | read-only           |
+| `supported-currencies`  | Quote currencies the pricing endpoints accept      | —                        | read-only           |
 
 Common options: `--vs <currency>` (default `usd`), `--days <n|max>`, `--from`/`--to` (UNIX
 seconds), `--limit <n>` (most recent N points), `--out <file>`. `coin` takes `--community` and
@@ -92,12 +92,12 @@ tribes-cli fundamentals-analyst contract --network ethereum --address 0x69825081
 
 ## Error recovery
 
-| Symptom                            | Action                                                                        |
-| ---------------------------------- | ----------------------------------------------------------------------------- |
-| `COIN_GECKO_PRO_API_KEY is not set`| The key is missing from the environment. Stop and report; login cannot fix it. |
-| `coin not found`                   | The ID is wrong. Run `search` to get the real `id`, then retry once.          |
-| Any other API failure              | Retry the same command once; if it fails again, stop and report the error.    |
-| Empty points/candles array         | Widen the window (`--days`, or `--from`/`--to`); then report the gap plainly. |
+| Symptom                             | Action                                                                         |
+| ----------------------------------- | ------------------------------------------------------------------------------ |
+| `COIN_GECKO_PRO_API_KEY is not set` | The key is missing from the environment. Stop and report; login cannot fix it. |
+| `coin not found`                    | The ID is wrong. Run `search` to get the real `id`, then retry once.           |
+| Any other API failure               | Retry the same command once; if it fails again, stop and report the error.     |
+| Empty points/candles array          | Widen the window (`--days`, or `--from`/`--to`); then report the gap plainly.  |
 
 ## Related skills
 
