@@ -1,6 +1,6 @@
 name: Sync harness skills
 
-# Pull shared agent skills from tribes-protocol/ai-harness-setup into .pi/skills/.
+# Pull shared agent skills from tribes-protocol/ai-harness-setup into skills/.
 #
 # WHY PULL, NOT PUSH: the alternative — ai-harness-setup firing a
 # `repository_dispatch` at this repo whenever its skills change — would force that
@@ -137,7 +137,7 @@ jobs:
               --title "chore(skills): sync shared skills from ai-harness-setup" \
               --body "Automated pull of shared agent skills from \`tribes-protocol/ai-harness-setup@$short_sha\`.
 
-          Vendored into \`.pi/skills/\` (which every tool dot-dir already symlinks). These files are machine-written — edit them upstream, never here; the drift guard (\`tests/skills/SyncedSkills.test.ts\`) enforces it via the \`.pi/skills/.synced.json\` hash manifest.
+          Vendored into \`skills/\` (which every tool dot-dir already symlinks). These files are machine-written — edit them upstream, never here; the drift guard (\`tests/skills/SyncedSkills.test.ts\`) enforces it via the \`skills/.synced.json\` hash manifest.
 
           CI's \`SkillsContract.test.ts\` validating this diff (frontmatter, caps, cross-refs, routing map) is the end-to-end integration test of the sync channel."
           fi

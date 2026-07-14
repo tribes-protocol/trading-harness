@@ -12,9 +12,9 @@ node_modules/
 dist/
 *.tgz
 .pi/agent/npm/
-.pi/skills/**/node_modules/
-.pi/skills/**/dist/
-.pi/skills/**/dist-test/
+skills/**/node_modules/
+skills/**/dist/
+skills/**/dist-test/
 code/typescript/dist/
 .playwright-cli/
 todos/

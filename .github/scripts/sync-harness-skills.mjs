@@ -1,4 +1,4 @@
-// Vendor shared agent skills from tribes-protocol/ai-harness-setup into .pi/skills/.
+// Vendor shared agent skills from tribes-protocol/ai-harness-setup into skills/.
 //
 // This is a build/CI helper, NOT product source. It is a plain .mjs module so it
 // sits outside the repo's tsc/eslint/prettier surface (those only cover .ts/.mts
@@ -6,12 +6,12 @@
 //
 // Two phases, driven by --phase:
 //
-//   content   copy skills/<slug>/* -> .pi/skills/<slug>/* (never deleting local-only
+//   content   copy skills/<slug>/* -> skills/<slug>/* (never deleting local-only
 //             slugs), inject a "synced" marker after each SKILL.md H1, and regenerate
 //             the marker-fenced routing block inside AGENTS.md's "## Skill routing map".
 //
 //   manifest  hash every vendored file AFTER prettier has run and write
-//             .pi/skills/.synced.json = { upstreamSha, files: { path: sha256 } }.
+//             skills/.synced.json = { upstreamSha, files: { path: sha256 } }.
 //             The manifest is only rewritten when the file set actually changed, so a
 //             bare upstream-sha bump with identical skill content produces no diff.
 //
@@ -144,7 +144,7 @@ function updateRoutingMap(agentsPath, slugs, descriptions) {
 }
 
 function runContentPhase(sourceDir, repoRoot) {
-  const skillsRoot = join(repoRoot, '.pi', 'skills')
+  const skillsRoot = join(repoRoot, 'skills')
   const slugs = upstreamSlugs(sourceDir)
   if (slugs.length === 0) {
     console.log('sync: upstream exposes no skills — nothing to vendor')
@@ -168,7 +168,7 @@ function runContentPhase(sourceDir, repoRoot) {
 }
 
 function computeFileHashes(sourceDir, repoRoot) {
-  const skillsRoot = join(repoRoot, '.pi', 'skills')
+  const skillsRoot = join(repoRoot, 'skills')
   const files = {}
   for (const slug of upstreamSlugs(sourceDir)) {
     for (const relInSlug of walkRelative(join(sourceDir, slug))) {
@@ -190,7 +190,7 @@ function sameFileSet(a, b) {
 
 function runManifestPhase(sourceDir, repoRoot, upstreamSha) {
   if (upstreamSlugs(sourceDir).length === 0) return
-  const manifestPath = join(repoRoot, '.pi', 'skills', '.synced.json')
+  const manifestPath = join(repoRoot, 'skills', '.synced.json')
   const files = computeFileHashes(sourceDir, repoRoot)
 
   if (existsSync(manifestPath)) {

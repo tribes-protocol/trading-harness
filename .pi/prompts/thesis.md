@@ -3,7 +3,7 @@ description: Run the thesis desk — evaluate the current thesis position, then 
 argument-hint: "[asset and side like 'long HYPE', or empty for full cycle]"
 ---
 
-Follow the `thesis` skill (`.pi/skills/thesis/SKILL.md`) end to end.
+Follow the `thesis` skill (`skills/thesis/SKILL.md`) end to end.
 
 $@
 

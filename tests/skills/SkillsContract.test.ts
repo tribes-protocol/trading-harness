@@ -3,7 +3,7 @@ import { join } from 'path'
 import { describe, expect, it } from 'vitest'
 
 /**
- * Contract tests for the operator-facing skill docs under .pi/skills/.
+ * Contract tests for the operator-facing skill docs under skills/.
  *
  * The skills audit (skills-restructure branch) found real drift: stale binary
  * names, a forbidden wallet-snapshot path, cross-references to skills that do
@@ -12,7 +12,7 @@ import { describe, expect, it } from 'vitest'
  * operator model.
  */
 
-const SKILLS_DIR = join(__dirname, '..', '..', '.pi', 'skills')
+const SKILLS_DIR = join(__dirname, '..', '..', 'skills')
 const AGENTS_MD = join(__dirname, '..', '..', 'AGENTS.md')
 
 const FRONTMATTER_KEYS = new Set([

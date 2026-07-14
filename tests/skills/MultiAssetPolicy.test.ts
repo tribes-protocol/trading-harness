@@ -10,14 +10,14 @@ function readRepoFile(relativePath: string): string {
 
 describe('multi-asset trading policy', () => {
   const agents = readRepoFile('AGENTS.md')
-  const strategize = readRepoFile('.pi/skills/strategize/SKILL.md')
-  const thesis = readRepoFile('.pi/skills/thesis/SKILL.md')
-  const commodityAnalyst = readRepoFile('.pi/skills/commodity-analyst/SKILL.md')
-  const hyperliquid = readRepoFile('.pi/skills/hyperliquid/SKILL.md')
-  const tradeExecution = readRepoFile('.pi/skills/trade-execution/SKILL.md')
+  const strategize = readRepoFile('skills/strategize/SKILL.md')
+  const thesis = readRepoFile('skills/thesis/SKILL.md')
+  const commodityAnalyst = readRepoFile('skills/commodity-analyst/SKILL.md')
+  const hyperliquid = readRepoFile('skills/hyperliquid/SKILL.md')
+  const tradeExecution = readRepoFile('skills/trade-execution/SKILL.md')
   const judge = readRepoFile('.agents/desk-judge.md')
   const risk = readRepoFile('.agents/desk-risk.md')
-  const positionManagement = readRepoFile('.pi/skills/position-management/SKILL.md')
+  const positionManagement = readRepoFile('skills/position-management/SKILL.md')
 
   it('requires crypto, securities, and commodities in unscoped discovery', () => {
     expect(agents).toContain('cover crypto, securities, and commodities')
