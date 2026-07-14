@@ -14,6 +14,12 @@
 set -eu
 cd "$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)"
 
+# Install the synced zipbox catalog once under the sandbox-wide read-only path.
+# Trading-only skills remain real directories in this repo; the synced zipbox
+# entries become per-slug links to /root/skills.
+sh "$PWD/scripts/install-shared-skills.sh" \
+  || echo "[bootstrap] shared skills: install did not complete (non-fatal, continuing)"
+
 # Preallocate a swapfile sized to the VM's RAM, BEFORE the heavy steps below so
 # they all benefit. Each sandbox tier pins a fixed RAM size (xs=2G, s=4G, m=8G,
 # l=16G, …) but the tier is NOT passed into the guest — the only in-guest signal

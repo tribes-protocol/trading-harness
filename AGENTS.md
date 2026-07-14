@@ -165,8 +165,11 @@ Pick the skill with these tie-breaker rules, in order:
 
 <!-- BEGIN synced skill routes (managed by .github/workflows/sync-harness-skills.yml) -->
 
+- `zipbox-browser` — Fast headless browser automation with Microsoft's Playwright CLI for JavaScript-rendered pages, clicks, typing, snapshots, screenshots, PDF capture, and console or network inspection.
 - `zipbox-caddy` — Safely add or remove HTTPS reverse-proxy sites in this sandbox's in-VM Caddy with the baked tribes-caddy CLI — never hand-edit the Caddyfile, because a bad config kills all browser access to the machine.
 - `zipbox-dns` — Manage DNS records under this sandbox's own public hostname with the baked tribes-dns CLI — expose subdomains and set, list, or delete server-pinned A/AAAA records below the apex.
+- `zipbox-email` — Read, organize, delete, mark as junk, and send this sandbox's zbox.sh email through the baked tribes-email CLI and its agent-scoped control-plane API.
+- `zipbox-websearch` — Search the open web and extract readable text from a known public URL through the sandbox-authenticated Tribes search endpoint.
 
 <!-- END synced skill routes -->
 
@@ -207,9 +210,18 @@ Preferred path in agent clients: use the Tribes login skill (`/tribes-login`, or
 
 ### Installing the skills
 
-The skill docs live once at the repo root in `skills/`, one `<slug>/SKILL.md` directory per skill. Every client's skills directory — `.pi/skills/` for Pi, `.claude/skills/` for Claude Code, and the matching `.<client>/skills/` for each other client — is a symlink to that root directory. They ship in this repo, so cloning installs them: a client auto-discovers the skills in its own directory with no extra step.
+Trading-only skill docs live as real directories under repo-root `skills/`. On sandbox bootstrap,
+the synced `zipbox-*` catalog is installed read-only under `/root/skills`, and the matching
+repo-root entries become per-slug symlinks to that canonical catalog. Every client's skills
+directory — `.pi/skills/` for Pi, `.claude/skills/` for Claude Code, and the matching
+`.<client>/skills/` for each other client — remains a symlink to the mixed repo-root directory,
+so clients discover both the preserved trading skills and the shared zipbox skills without
+divergent copies.
 
-If your client reads skills from a directory that this repo does not already provide, symlink it to the root `skills/` directory (`ln -s ../skills .<client>/skills`). The skill files are documentation only — each one points at the matching `tribes-cli <group>` command — so they work as soon as `bootstrap.sh` has built `tribes-cli`.
+If your client reads skills from a directory that this repo does not already provide, symlink it
+to the repo-root `skills/` directory (`ln -s ../skills .<client>/skills`). Re-running
+`scripts/install-shared-skills.sh` refreshes only `zipbox-*` entries; it never removes a
+trading-only skill.
 
 ## Runtime Preconditions
 

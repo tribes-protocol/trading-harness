@@ -17,6 +17,14 @@ import { describe, expect, it } from 'vitest'
 
 const REPO_ROOT = join(__dirname, '..', '..')
 const MANIFEST_PATH = join(REPO_ROOT, 'skills', '.synced.json')
+const EXPECTED_UPSTREAM_SHA = '0857af0c1de5d480be2233eac4c58dfbe2577452'
+const EXPECTED_SHARED_FILES = [
+  'skills/zipbox-browser/SKILL.md',
+  'skills/zipbox-caddy/SKILL.md',
+  'skills/zipbox-dns/SKILL.md',
+  'skills/zipbox-email/SKILL.md',
+  'skills/zipbox-websearch/SKILL.md'
+]
 
 describe('synced skills drift guard', () => {
   if (!existsSync(MANIFEST_PATH)) {
@@ -28,11 +36,11 @@ describe('synced skills drift guard', () => {
 
   it('records a non-empty upstream commit sha', () => {
     expect(typeof manifest.upstreamSha).toBe('string')
-    expect(manifest.upstreamSha.length).toBeGreaterThan(0)
+    expect(manifest.upstreamSha).toBe(EXPECTED_UPSTREAM_SHA)
   })
 
-  it('lists at least one vendored file', () => {
-    expect(Object.keys(manifest.files ?? {}).length).toBeGreaterThan(0)
+  it('pins the complete shared zipbox catalog and no extra files', () => {
+    expect(Object.keys(manifest.files ?? {}).sort()).toEqual(EXPECTED_SHARED_FILES)
   })
 
   for (const [relativePath, expectedHash] of Object.entries(manifest.files ?? {})) {
