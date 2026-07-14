@@ -18,3 +18,7 @@ export const PRIVY_APP_ID = IS_PRODUCTION
 export const MARKETSTACK_API_KEY = IS_PRODUCTION
   ? 'MARKETSTACK_API_KEY'
   : ensureString(process.env.MARKETSTACK_API_KEY, 'MARKETSTACK_API_KEY is not set')
+
+export const COIN_GECKO_PRO_API_KEY = IS_PRODUCTION
+  ? 'COIN_GECKO_PRO_API_KEY'
+  : ensureString(process.env.COIN_GECKO_PRO_API_KEY, 'COIN_GECKO_PRO_API_KEY is not set')

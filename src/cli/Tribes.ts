@@ -12,6 +12,7 @@
 
 import { Command } from 'commander'
 
+import { buildFundamentalsAnalystCommand } from '@/cli/FundamentalsAnalyst'
 import { buildHyperliquidCommand } from '@/cli/Hyperliquid'
 import { buildLoginCommand } from '@/cli/Login'
 import { buildMacrosCommand } from '@/cli/Macros'
@@ -45,6 +46,7 @@ function buildTribesCli(): Command {
   program.addCommand(buildMacrosCommand())
   program.addCommand(buildTokenCommand())
   program.addCommand(buildStockAnalystCommand())
+  program.addCommand(buildFundamentalsAnalystCommand())
   program.addCommand(buildWebSearchCommand())
   program.addCommand(buildPredictionCommand())
 

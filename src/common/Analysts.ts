@@ -22,13 +22,6 @@ export const ANALYSTS = {
     errorLabel: 'Exchange analyst',
     askDescription: 'Send a query to the exchange_analyst specialist agent endpoint'
   },
-  fundamentalsAnalyst: {
-    cliName: 'fundamentals-analyst-cli',
-    description: 'Expert on in-depth coin research via CoinGecko data.',
-    endpointPath: '/agent/lucy/fundamentals-analyst',
-    errorLabel: 'Fundamentals analyst',
-    askDescription: 'Send a query to the fundamentals_analyst specialist agent endpoint'
-  },
   marketStrategist: {
     cliName: 'market-strategist-cli',
     description: 'Expert on the big-picture crypto market.',
