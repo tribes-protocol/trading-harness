@@ -54,15 +54,15 @@ When you're missing a decision (how much to risk, which asset, whether to procee
 
 ## Refine analyst answers before finishing
 
-The analyst specialists (`alpha-scout`, `token-analyst`, `defi-analyst`, and the other `tribes-cli` analysts) often end a reply with follow-up suggestions like "want me to rank these by evidence / chain-specific?". Treat those suggestions as a TODO list for **you**, not a menu you hand to the user. A specialist suggesting a next step is a signal that the current answer is not yet decision-grade.
+The analyst/data skills (`alpha-scout`, `token-analyst`, `defi-analyst`, and the others) return raw provider data, not a finished answer. A first pull is rarely decision-grade — there is almost always a sharpening follow-up (re-rank, tighten a filter, cross-check one signal against another). Treat that next step as a TODO for **you**, not a menu you hand to the user.
 
 Before ending your turn, run the refinements that would make the answer better serve the user's **original** question, then report the sharpened result — not the intermediate one. Concretely:
 
 - **Self-refine, don't ask, when** the next step clearly serves the original ask and is a cheap, read-only analyst call (re-rank, tighten a filter, cross-check one signal against another, narrow by chain/liquidity/market cap, drop noisy/wash-trade entries). Just do it behind the scenes.
 - **Stop and present when** results have converged, further passes only add noise, or the next step is a genuine user judgment call (how much to risk, which of several equally valid directions to pursue, whether to place a trade). That kind of choice is the user's — ask it plainly.
-- **Keep it bounded.** Do at most one or two refinement passes; analyst calls are slow and you should not loop indefinitely. If two passes have not produced a clean answer, present what you have plus the open question rather than calling again.
+- **Keep it bounded.** Do at most one or two refinement passes. These are cheap read-only calls, but don't loop indefinitely — if two passes have not produced a clean answer, present what you have plus the open question rather than calling again.
 
-The goal: the user receives a refined, actionable answer to what they actually asked, instead of a first-pass result that quietly stops at the specialist's "if you want, I can go deeper" line.
+The goal: the user receives a refined, actionable answer to what they actually asked, instead of a first-pass result that quietly stops one refinement short of a decision-grade answer.
 
 ## Multi-candidate comparison guardrail (hard rule)
 
@@ -91,7 +91,7 @@ Execution requirements before narrowing to a single thesis:
 ## Cross-asset routing guardrail (hard rule)
 
 For unscoped discovery/opportunity requests, cover crypto, securities, and commodities. Do not
-let the first specialist call lock the whole run into one asset class.
+let the first data-skill call lock the whole run into one asset class.
 
 Apply this guardrail to any unscoped request whose intent is idea discovery, relative
 opportunity ranking, momentum rotation, or entry timing.
@@ -182,9 +182,10 @@ These are canonical here; skills restate them in at most one line.
 - **Contiguous same-chain batching.** Never reorder multi-transaction broadcasts across chain
   boundaries; batch contiguous same-chain runs. The canonical algorithm lives in the
   `transaction` skill.
-- **Slow calls need generous timeouts.** Analyst `ask` commands and `news fetch` poll a backend
-  agent and can run for minutes. MUST set a bash timeout of at least 120 seconds (prefer 300)
-  when running them.
+- **Data comes from provider APIs directly.** The analyst/data skills read keys from `.env` (the
+  `src/common/Env.ts` constants) and call their providers directly — BirdEye, CoinGecko, Nansen,
+  FRED, NewsData, Marketstack, Moralis, Alchemy/Helius — so responses return in seconds, not
+  minutes. Give each network call a sensible bash timeout and retry a transient failure once.
 - **Non-auth API failures.** Retry the failed command once; if it fails again, stop and report
   the error plainly. (Auth failures follow Error Recovery below: `tribes-cli login`, retry once.)
 
@@ -267,7 +268,7 @@ bun run bootstrap.sh
 
 Everything the trading agent can do is a subcommand of one CLI. `src/cli/Tribes.ts` is the single entry point: it composes one `build...Command()` builder per group: Wallet, Hyperliquid, Transaction, SpotTrading, News, Macros, Token, WebSearch, Prediction, plus 10 analyst agents. `bootstrap.sh` compiles this into a native `tribes-cli` binary on PATH so the agent runs `tribes-cli <group> <command> ...` with no per-call transpile or `@/` alias resolution.
 
-The `skills/<slug>/SKILL.md` files are documentation only. Each one points the agent at the matching `tribes-cli <group>` command. There is no executable code under `skills/`.
+The `skills/<slug>/SKILL.md` files are documentation only; there is no executable code under `skills/`. The analyst/data skills (`token-analyst`, `alpha-scout`, `defi-analyst`, `exchange-analyst`, `fundamentals-analyst`, `market-strategist`, `wallet-analyst`, `technical-analyst`, `macros`, `news`, `stock-analyst`) document direct provider-API calls that read keys from `.env` (the `@/common/Env` constants) — see `docs/inlined-provider-apis.md`. The execution and utility skills (`hyperliquid`, `wallet`, `transaction`, `spot-trading`, `trade-execution`, `position-management`, etc.) point at the matching `tribes-cli <group>` command.
 
 ### Layering
 
@@ -314,7 +315,7 @@ Prettier: no semicolons, single quotes, no trailing commas, width 100. TypeScrip
 
 ## Environment
 
-Config is resolved in `@/common/Env`. When `NODE_ENV` is unset, empty, or `production` (the default), `API_BASE_URL` and `PRIVY_APP_ID` are hardcoded to their production values — neither needs to be set. `PRIVY_APP_ID` is only read from (and required in) the env under a non-production `NODE_ENV`; `API_BASE_URL` is never read from the env. The one thing a run needs is a bearer token: `API_BEARER_TOKEN` (or the sandbox-injected `TRIBES_API_KEY`). It is typically auto-minted by the Tribes extension; if it is missing, run `tribes-cli login` first so a fresh token is fetched and persisted before other `tribes-cli` actions. Wallet private keys live in Privy, never locally. `.env*` and `.tribes/*.json` snapshots are gitignored.
+Config is resolved in `@/common/Env`. When `NODE_ENV` is unset, empty, or `production` (the default), `API_BASE_URL` and `PRIVY_APP_ID` are hardcoded to their production values — neither needs to be set. `PRIVY_APP_ID` is only read from (and required in) the env under a non-production `NODE_ENV`; `API_BASE_URL` is never read from the env. The one thing a run needs is a bearer token: `API_BEARER_TOKEN` (or the sandbox-injected `TRIBES_API_KEY`). It is typically auto-minted by the Tribes extension; if it is missing, run `tribes-cli login` first so a fresh token is fetched and persisted before other `tribes-cli` actions. The inlined analyst/data skills additionally read provider API keys from `.env` — `BIRDEYE_API_KEY`, `COIN_GECKO_PRO_API_KEY`, `NANSEN_API_KEY`, `MARKETSTACK_API_KEY`, `FRED_API_KEY`, `NEWSDATAIO_API_KEY`, `MORALIS_API_KEY`, `ALCHEMY_API_KEY`, `HELIUS_API_KEY` — each exposed as a constant in `@/common/Env` and templated in `.env.example` (full catalog in `docs/inlined-provider-apis.md`). Wallet private keys live in Privy, never locally. `.env*` and `.tribes/*.json` snapshots are gitignored.
 
 ## Gotchas
 
