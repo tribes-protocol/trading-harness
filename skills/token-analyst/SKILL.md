@@ -13,9 +13,12 @@ allowed-tools: bash read
 
 # Token Analyst
 
-Backing command group: `tribes-cli token-analyst`. Sends one natural-language question to the
-token_analyst specialist and prints a plain-text on-chain analysis of one token to stdout.
-Requires: an auth token (run `tribes-cli login` once if commands fail with auth errors).
+Answer by calling on-chain data providers **directly** (BirdEye, Nansen, Moralis, and Alchemy/
+Helius RPC), reading keys from `.env`. Endpoints below; full catalog and auth details live in
+`docs/inlined-provider-apis.md`.
+
+> The former `tribes-cli token-analyst ask` backend proxy is **deprecated** — the backend is
+> being retired. Do the data pulls yourself against the provider APIs.
 
 ## When to use
 
@@ -27,59 +30,88 @@ Requires: an auth token (run `tribes-cli login` once if commands fail with auth 
 - NOT for market-wide rankings, top movers, or multi-coin price tables — use `market-strategist`.
 - NOT for pool, pair, or DEX questions — use `defi-analyst`.
 
-## Hard rules
+## Data sources
 
-1. The ONLY flag on `ask` is `--query` — no `--out`, no filter flags; encode chain, contract
-   address, and time window inside the query text.
-2. Output is one free-text analysis string on stdout, not JSON; use shell redirection for a file.
-3. MUST set a bash timeout of at least 120 seconds for `ask` — specialist calls are slow.
-4. The CLI calls the API itself — NEVER call the endpoint or curl directly.
-5. IF the symbol is ambiguous or the chain is unknown, THEN run `tribes-cli token search` first,
-   put the resolved chain + address into the `ask` query, and check the answer matches that token.
-6. Render token addresses as tribes.xyz Markdown links, never bare addresses (see AGENTS.md).
-7. Specialist follow-up suggestions are YOUR TODOs, not a user menu — at most 2 refinement passes.
-8. Verify Hyperliquid tradability before presenting a trade idea as actionable (AGENTS.md).
+These keys come from the environment — the same names the `src/common/Env.ts` constants
+read (`process.env.*`), loaded from `.env`. Reference them directly by name in the calls below. In a bare shell, load them once with
+`set -a; . ./.env; set +a`.
 
-## Command reference
+- **BirdEye** — `https://public-api.birdeye.so`, header `X-API-KEY` + `x-chain`. Primary source
+  for price, security, trades, holders, creation, OHLCV.
+- **Nansen** — `https://api.nansen.ai`, header `apiKey`, POST JSON. TokenGodMode flows, holders,
+  indicators, who-bought-sold, pnl leaderboard.
+- **Moralis** — `https://deep-index.moralis.io`, header `X-API-Key`. ERC-20 metadata/price.
+- **Alchemy / Helius** RPC — raw native/SPL balance and contract reads.
 
-| Subcommand | Purpose                            | Required flags | Read-only or signed |
-| ---------- | ---------------------------------- | -------------- | ------------------- |
-| `ask`      | Query the token_analyst specialist | `--query`      | read-only           |
+`x-chain` values: `1 ethereum`, `10 optimism`, `56 bsc`, `137 polygon`, `8453 base`,
+`42161 arbitrum`, `solana`.
 
-Deterministic name→address resolution uses `tribes-cli token search --query "<name or symbol>"`
-(JSON output, accepts `--out <file>`; full docs live in the `spot-trading` skill).
+## Endpoints (BirdEye unless noted)
+
+| Need                     | Endpoint                                            |
+| ------------------------ | --------------------------------------------------- |
+| Name/symbol → address    | `GET /defi/v3/search?keyword=&target=token`         |
+| Price (batch)            | `GET /defi/multi_price?list_address=`               |
+| Overview (vol/liq)       | `GET /defi/token_overview?address=`                 |
+| Security / rug flags     | `GET /defi/token_security?address=`                 |
+| Creation info            | `GET /defi/token_creation_info?address=`            |
+| Recent trades            | `GET /defi/v3/token/txs?address=`                   |
+| Whale trades (by volume) | `GET /defi/v3/token/txs-by-volume?token_address=`   |
+| Mint/burn                | `GET /defi/v3/token/mint-burn-txs?address=`         |
+| Holder distribution      | `GET /holder/v1/distribution?token_address=&top_n=` |
+| Historical price         | `GET /defi/history_price?address=&type=&time_from=&time_to=` |
+| OHLCV                    | `GET /defi/ohlcv?address=&type=&time_from=&time_to=`|
+| Deep flows / TGM (Nansen)| `POST /api/v1/tgm/{flows,holders,who-bought-sold,indicators,token-information}` |
+
+## Rules
+
+1. Resolve chain + token address BEFORE any data call. Given a symbol, resolve it with BirdEye
+   `/defi/v3/search` and pick the row with the strongest liquidity/FDV/volume footprint; state
+   which chain + asset you chose.
+2. Reference each key from the environment (`.env`, exposed as the `src/common/Env.ts` constants) — e.g. `$BIRDEYE_API_KEY`. Never hardcode a key.
+3. When presenting security findings, be direct about risks — lead with any red flag.
+4. Always include timestamp/timeframe context with price data. Every claim traces to a response.
+5. Run the follow-on pulls yourself (e.g. price → overview → security) — don't hand the user a
+   menu. At most 1–2 refinement passes, then present the sharpened answer (AGENTS.md).
+6. Render token addresses as tribes.xyz Markdown links, never bare addresses (AGENTS.md).
+7. Verify Hyperliquid tradability before presenting a trade idea as actionable (AGENTS.md).
 
 ## Examples
 
-### Price snapshot and whale flow (chain named, no address needed)
+### Security / rug-risk audit (contract known)
 
 ```bash
-timeout 300 tribes-cli token-analyst ask \
-  --query "current price, liquidity, 24h volume, and net whale buy/sell flow over the last 24 hours for WIF on solana"
+curl -s 'https://public-api.birdeye.so/defi/token_security?address=0x6982508145454ce325ddbe47a25d4ec3d2311933' \
+  -H "X-API-KEY: $BIRDEYE_API_KEY" -H 'x-chain: ethereum' -H 'accept: application/json'
 ```
 
-### Security / rug-risk audit (contract address known)
+### Price + overview snapshot (resolve symbol first)
 
 ```bash
-timeout 300 tribes-cli token-analyst ask \
-  --query "security audit for PEPE 0x6982508145454ce325ddbe47a25d4ec3d2311933 on ethereum: honeypot flags, ownership, mint authority, exit-liquidity risk"
+# 1) resolve WIF on solana → address
+curl -s 'https://public-api.birdeye.so/defi/v3/search?keyword=WIF&target=token&search_mode=exact&limit=5' \
+  -H "X-API-KEY: $BIRDEYE_API_KEY" -H 'x-chain: solana' -H 'accept: application/json'
+# 2) overview for the resolved address
+curl -s 'https://public-api.birdeye.so/defi/token_overview?address=<ADDR>' \
+  -H "X-API-KEY: $BIRDEYE_API_KEY" -H 'x-chain: solana' -H 'accept: application/json'
 ```
 
-### Ambiguous symbol — resolve first, then ask
+### Whale flow (Nansen TokenGodMode)
 
 ```bash
-tribes-cli token search --query "MOG"
-timeout 300 tribes-cli token-analyst ask \
-  --query "tokenomics, mint/burn history, and top-holder concentration for MOG <evm-address> on ethereum"
+curl -s -X POST 'https://api.nansen.ai/api/v1/tgm/who-bought-sold' \
+  -H "apiKey: $NANSEN_API_KEY" -H 'content-type: application/json' -H 'accept: application/json' \
+  -d '{"parameters":{"chain":"ethereum","tokenAddress":"0x6982508145454ce325ddbe47a25d4ec3d2311933","timeframe":"1d"}}'
 ```
 
 ## Error recovery
 
-| Symptom                                  | Action                                                                               |
-| ---------------------------------------- | ------------------------------------------------------------------------------------ |
-| Auth error (unauthorized, expired token) | Run `tribes-cli login`, retry the original command once, then stop and report.       |
-| Answer covers the wrong token            | Re-run `ask` with the exact chain + contract address from `tribes-cli token search`. |
-| Any other API failure                    | Retry the same command once; if it fails again, stop and report the error.           |
+| Symptom                                   | Action                                                                          |
+| ----------------------------------------- | ------------------------------------------------------------------------------- |
+| 401 / 403 from a provider                 | The key in `.env` is missing/invalid — check it, then retry once.               |
+| 429 / 5xx (rate limit or provider outage) | Wait briefly and retry once; if it still fails, stop and report plainly.        |
+| Answer covers the wrong token             | Re-resolve via `/defi/v3/search` and rerun with the exact chain + address.      |
+| Nansen body shape rejected (400)          | Adjust the `parameters` body for that endpoint; if unclear, use BirdEye equivalents. |
 
 ## Related skills
 

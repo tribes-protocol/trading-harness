@@ -12,9 +12,12 @@ allowed-tools: bash read
 
 # Defi Analyst
 
-Backing command group: `tribes-cli defi-analyst`. Sends one natural-language question to the
-DeFi specialist and returns a prose analysis of pools, pairs, and DEX activity.
-Requires: an auth token (run `tribes-cli login` once if commands fail with auth errors).
+Answer by calling pool/pair providers **directly** — CoinGecko on-chain (GeckoTerminal) for pool
+discovery and metrics, BirdEye for pair OHLCV and trades — reading keys from `.env`. Endpoints
+below; full catalog and auth details live in `docs/inlined-provider-apis.md`.
+
+> The former `tribes-cli defi-analyst ask` backend proxy is **deprecated** — the backend is being
+> retired. Run the pulls yourself.
 
 ## When to use
 
@@ -23,64 +26,72 @@ Requires: an auth token (run `tribes-cli login` once if commands fail with auth 
 - NOT for one token's price, security, or holders — use `token-analyst`.
 - NOT for trending tokens or smart-money discovery — use `alpha-scout`.
 
-## Hard rules
+## Data sources
 
-1. The ONLY flag is `--query` — no `--out`, `--network`, `--limit`, or filter flags. Encode
-   network, DEX, pool address, timeframe, and every TVL/volume/FDV threshold in the query text.
-2. Output is one free-text analysis string on stdout, not JSON.
-3. MUST set a bash timeout of at least 120 seconds (prefer 300) for `ask` (see AGENTS.md).
-4. The CLI calls the API itself — NEVER call the endpoint or curl directly.
-5. Run at most 1–2 refinement `ask` calls when a follow-up serves the original ask (see AGENTS.md).
-6. IF multiple pools match, THEN pick highest TVL with 24h volume above $100k, else ask to re-rank.
-7. Render pool and token addresses shown to the user as tribes.xyz Markdown links (see AGENTS.md).
-8. Before presenting pool findings as trade ideas, apply the Hyperliquid tradability guardrail
-   (see AGENTS.md).
+These keys come from the environment — the same names the `src/common/Env.ts` constants
+read (`process.env.*`), loaded from `.env`. Reference them directly by name in the calls below. In a bare shell, load them once with
+`set -a; . ./.env; set +a`.
 
-## Command reference
+- **CoinGecko on-chain (GeckoTerminal)** — `https://pro-api.coingecko.com`, header
+  `x-cg-pro-api-key`. All paths under `/api/v3/onchain`:
+  - Networks/DEXes: `/networks`, `/networks/{net}/dexes`.
+  - Pools: `/networks/{net}/pools`, `/networks/{net}/new_pools`, `/networks/trending_pools`,
+    `/networks/{net}/trending_pools`, `/networks/{net}/dexes/{dex}/pools`.
+  - Threshold discovery: `/pools/megafilter` (`fdv_usd_min/max`, `reserve_in_usd_min/max`,
+    `h24_volume_usd_min/max`, `sort`).
+  - Search: `/search/pools?query=`.
+  - One pool: `/networks/{net}/pools/{addr}` (+ `/ohlcv/{tf}`, `/trades`, `/info`).
+  - Categories: `/categories`, `/categories/{id}/pools`.
+- **BirdEye** — `https://public-api.birdeye.so`, header `X-API-KEY` + `x-chain`: pair overview
+  `/defi/v3/pair/overview/multiple`, pair OHLCV `/defi/ohlcv/pair` & `/defi/ohlcv/base_quote`,
+  pair trades `/defi/txs/pair`.
 
-| Subcommand | Purpose                                       | Required flags | Read-only or signed |
-| ---------- | --------------------------------------------- | -------------- | ------------------- |
-| `ask`      | Natural-language query to the DeFi specialist | `--query`      | read-only           |
+GeckoTerminal network slugs: `eth`, `base`, `bsc`, `polygon_pos`, `arbitrum`, `optimism`,
+`solana` (list them with `/api/v3/onchain/networks`).
+
+## Rules
+
+1. Reference each key from the environment (`.env`, exposed as the `src/common/Env.ts` constants) — e.g. `$BIRDEYE_API_KEY`. Never hardcode a key.
+2. Encode network, DEX, pool address, timeframe, and every TVL/volume/FDV threshold in the
+   request query params.
+3. IF multiple pools match, pick highest TVL with 24h volume above ~$100k; note the choice.
+4. Run at most 1–2 refinement pulls when a follow-up serves the original ask (AGENTS.md).
+5. Render pool and token addresses as tribes.xyz Markdown links (AGENTS.md).
+6. Apply the Hyperliquid tradability guardrail before presenting pool findings as trade ideas.
 
 ## Examples
 
-### Pool details by address
+### Trending pools on a network
 
 ```bash
-tribes-cli defi-analyst ask --query "Details for pool 0x88e6a0c2ddd26feeb64f039a2c41296fcb3f5640 on uniswap-v3 ethereum: TVL, 24h volume, fees, token composition"
+curl -s 'https://pro-api.coingecko.com/api/v3/onchain/networks/eth/trending_pools' \
+  -H "x-cg-pro-api-key: $COIN_GECKO_PRO_API_KEY" -H 'accept: application/json'
 ```
 
-### Top pools for a token
+### Threshold discovery (liquidity ≥ $500k, FDV ≤ $50M on base)
 
 ```bash
-tribes-cli defi-analyst ask --query "Top 5 SOL pools on solana by liquidity and 24h volume; compare fee tiers"
+curl -s 'https://pro-api.coingecko.com/api/v3/onchain/pools/megafilter?networks=base&reserve_in_usd_min=500000&fdv_usd_max=50000000&sort=h24_volume_usd_desc' \
+  -H "x-cg-pro-api-key: $COIN_GECKO_PRO_API_KEY" -H 'accept: application/json'
 ```
 
-### Trending or new pools with thresholds
+### One pool's details + hourly OHLCV
 
 ```bash
-tribes-cli defi-analyst ask --query "Trending pools on base in the last 24h with liquidity above $500k and FDV below $50M"
-```
-
-### DEX rankings by network
-
-```bash
-tribes-cli defi-analyst ask --query "Rank DEXes on arbitrum by 24h volume and list the top 3 pools of the leader"
-```
-
-### Pair OHLCV and recent trades
-
-```bash
-tribes-cli defi-analyst ask --query "Hourly OHLCV for the WETH/USDC 0.05% pool on uniswap-v3 ethereum over the last 3 days, plus notable recent trades"
+POOL=0x88e6a0c2ddd26feeb64f039a2c41296fcb3f5640
+curl -s "https://pro-api.coingecko.com/api/v3/onchain/networks/eth/pools/$POOL" \
+  -H "x-cg-pro-api-key: $COIN_GECKO_PRO_API_KEY" -H 'accept: application/json'
+curl -s "https://pro-api.coingecko.com/api/v3/onchain/networks/eth/pools/$POOL/ohlcv/hour?aggregate=1&limit=72" \
+  -H "x-cg-pro-api-key: $COIN_GECKO_PRO_API_KEY" -H 'accept: application/json'
 ```
 
 ## Error recovery
 
-| Symptom                                  | Action                                                                                              |
-| ---------------------------------------- | --------------------------------------------------------------------------------------------------- |
-| Auth error (unauthorized, expired token) | Run `tribes-cli login`, retry the original command once, then stop and report.                      |
-| Any other API failure                    | Retry the same command once; if it fails again, stop and report the error.                          |
-| Empty or off-topic answer                | Re-ask once with a tighter query (add network, DEX, pool address, timeframe); then stop and report. |
+| Symptom                                   | Action                                                                      |
+| ----------------------------------------- | --------------------------------------------------------------------------- |
+| 401 / 403 from a provider                 | The key in `.env` is missing/invalid — check it, then retry once.           |
+| 429 / 5xx (rate limit or outage)          | Wait briefly, retry once; if it still fails, stop and report plainly.       |
+| Empty or off-topic result                 | Tighten the query (network, DEX, pool address, timeframe) and retry once.   |
 
 ## Related skills
 

@@ -1,111 +1,98 @@
 ---
 name: macros
 description: >-
-  Numeric macro market snapshot as one JSON payload. Handles: DXY broad dollar index, US 2y/10y
-  Treasury yields and the 2s10s curve, VIX, Fed funds rate, CPI level and YoY inflation,
-  unemployment, gold, and Brent oil. Call for any question needing current macro NUMBERS —
-  interest rates, inflation print, dollar strength, oil price — or as the numeric half of macro
-  state for strategize (pair with news for narrative). NOT for: macro narrative, headlines, or
-  why markets moved (use news); individual stock quotes (use stock-analyst); crypto market caps,
-  dominance, or breadth (use market-strategist); event odds like rate-cut probabilities (use
-  prediction).
+  Numeric macro market snapshot. Handles: DXY broad dollar index, US 2y/10y Treasury yields and
+  the 2s10s curve, VIX, Fed funds rate, CPI level and YoY inflation, unemployment, gold, and
+  Brent oil. Call for any question needing current macro NUMBERS — interest rates, inflation
+  print, dollar strength, oil price — or as the numeric half of macro state for strategize (pair
+  with news for narrative). NOT for: macro narrative, headlines, or why markets moved (use news);
+  individual stock quotes (use stock-analyst); crypto market caps, dominance, or breadth (use
+  market-strategist); event odds like rate-cut probabilities (use prediction).
 allowed-tools: bash read
 ---
 
 # Macros
 
-Backing command group: `tribes-cli macros`. Fetches one structured JSON snapshot of numeric
-macro indicators (FRED-sourced). The CLI calls the API itself — NEVER call the endpoint or curl
-directly.
-Requires: an auth token (run `tribes-cli login` once if commands fail with auth errors).
+Fetch numeric macro indicators **directly** from **FRED** (St. Louis Fed), reading the key from
+`.env`. Series map below; full auth details live in `docs/inlined-provider-apis.md`.
+
+> The former `tribes-cli macros market` backend proxy is **deprecated** — the backend is being
+> retired. Pull the series from FRED yourself and assemble the snapshot.
 
 ## When to use
 
 - Need current macro numbers (10y yield, VIX level, DXY, CPI, Fed funds, unemployment, gold,
   Brent) before forming or defending a trade thesis.
-- The `strategize` skill needs the numeric half of macro state — pair with `news` for the
-  narrative half.
+- The `strategize` skill needs the numeric half of macro state — pair with `news` for narrative.
 - NOT for why markets moved, headlines, or macro sentiment — use `news`.
 - NOT for individual stock quotes or stock movers — use `stock-analyst`.
 - NOT for crypto market cap, dominance, or rankings — use `market-strategist`.
 - NOT for market-implied odds of macro events (rate cuts, elections) — use `prediction`.
 
-## Hard rules
+## Data source
 
-1. `market` is the ONLY subcommand in this group and it takes NO flags. NEVER invent variants.
-   Wrong: `tribes-cli macros yields`, `tribes-cli macros market --series DGS10`.
-   Right: `tribes-cli macros market`.
-2. There is NO `--out` flag here (unlike most tribes-cli commands) — JSON goes to stdout only.
-   Wrong: `tribes-cli macros market --out snap.json` (unknown option).
-   Right: `tribes-cli macros market > snap.json`.
-3. If the actual stdout keys differ from the schema below, trust the actual stdout.
+These keys come from the environment — the same names the `src/common/Env.ts` constants
+read (`process.env.*`), loaded from `.env`. Reference them directly by name in the calls below. In a bare shell, load them once with
+`set -a; . ./.env; set +a`.
 
-## Command reference
+FRED — `https://api.stlouisfed.org`. Endpoint:
+`GET /fred/series/observations?series_id=<ID>&api_key=$FRED_API_KEY&file_type=json&sort_order=desc&limit=<n>`
+with header `User-Agent: tribes-terminal-api/1.0`. A value of `.` means "no observation" — skip
+it.
 
-| Subcommand | Purpose                     | Required flags | Read-only or signed |
-| ---------- | --------------------------- | -------------- | ------------------- |
-| `market`   | Fetch macro market snapshot | none           | read-only           |
+## Series to fetch
 
-## Indicators
+| FRED series id     | Output slot          | Unit / meaning                              | limit |
+| ------------------ | -------------------- | ------------------------------------------- | ----- |
+| `DTWEXBGS`         | `dxy`                | broad dollar index level                    | 4     |
+| `DGS10`            | `yields.us10y`       | percent                                     | 4     |
+| `DGS2`             | `yields.us2y`        | percent                                     | 4     |
+| `T10Y2Y`           | `yields.curve_2s10s` | percentage points; negative = inverted      | 4     |
+| `VIXCLS`           | `vix`                | index level                                 | 4     |
+| `DFF`              | `fed_funds`          | percent                                     | 4     |
+| `CPIAUCSL`         | `cpi`                | index level; `yoy_pct` from ~13 months back | 14    |
+| `UNRATE`           | `unemployment`       | percent                                     | 4     |
+| `GOLDAMGBD228NLBM` | `gold`               | USD per troy ounce (optional series)        | 4     |
+| `DCOILBRENTEU`     | `brent`              | USD per barrel                              | 4     |
 
-Series fetched (FRED ID → output key, with units):
+`change_pct` (dxy, vix, gold, brent) = percent change vs. the previous observation.
+`curve_2s10s` falls back to `us10y - us2y` if `T10Y2Y` is missing. `cpi.yoy_pct` compares the
+latest CPI to the observation ~12 months earlier (hence `limit=14`).
 
-| FRED ID          | Output key           | Unit / meaning                             |
-| ---------------- | -------------------- | ------------------------------------------ |
-| DTWEXBGS         | `dxy.value`          | broad dollar index level                   |
-| DGS10            | `yields.us10y`       | percent                                    |
-| DGS2             | `yields.us2y`        | percent                                    |
-| T10Y2Y           | `yields.curve_2s10s` | percentage points; negative = inverted     |
-| VIXCLS           | `vix.value`          | index level                                |
-| DFF              | `fed_funds.value`    | percent                                    |
-| CPIAUCSL         | `cpi.value`          | index level; `cpi.yoy_pct` = YoY inflation |
-| UNRATE           | `unemployment.value` | percent                                    |
-| GOLDAMGBD228NLBM | `gold.value`         | USD per troy ounce                         |
-| DCOILBRENTEU     | `brent.value`        | USD per barrel                             |
+## Rules
 
-`change_pct` fields (dxy, vix, gold, brent) are the percent change since the previous
-observation (day over day). All values are nullable — partial outages do not fail the payload.
+1. Reference each key from the environment (`.env`, exposed as the `src/common/Env.ts` constants) — e.g. `$BIRDEYE_API_KEY`. Never hardcode a key.
+2. Fetch only the series the question needs — do not always pull all ten.
+3. Each series is independent: a failed one does not block the others. Report which series failed
+   and answer with the available fields.
+4. Send the `User-Agent` header — FRED rejects some requests without it.
 
 ## Examples
 
-### Fetch the full macro snapshot
+### One series (10-year Treasury yield, latest point)
 
 ```bash
-tribes-cli macros market
+curl -s "https://api.stlouisfed.org/fred/series/observations?series_id=DGS10&api_key=$FRED_API_KEY&file_type=json&sort_order=desc&limit=4" \
+  -H 'User-Agent: tribes-terminal-api/1.0' | jq '.observations[0]'
 ```
 
-Output schema (keys the operator parses):
-
-```json
-{
-  "generated_at": "2026-05-14T15:00:00Z",
-  "source": "fred",
-  "dxy": { "value": 105.2, "change_pct": 0.4, "as_of": "2026-05-14" },
-  "yields": { "us10y": 4.21, "us2y": 4.88, "curve_2s10s": -0.67, "as_of": "2026-05-14" },
-  "vix": { "value": 18.9, "change_pct": -2.1, "as_of": "2026-05-14" },
-  "fed_funds": { "value": 5.33, "as_of": "2026-05-14" },
-  "cpi": { "value": 315.2, "yoy_pct": 3.2, "as_of": "2026-04-01" },
-  "unemployment": { "value": 4.0, "as_of": "2026-04-01" },
-  "gold": { "value": 2330.1, "change_pct": 0.8, "as_of": "2026-05-14" },
-  "brent": { "value": 82.4, "change_pct": -0.5, "as_of": "2026-05-14" },
-  "errors": [{ "series": "DGS10", "error": "..." }]
-}
-```
-
-### Extract only the fields you need
+### Full snapshot (loop the series map)
 
 ```bash
-tribes-cli macros market | jq '{vix: .vix.value, us10y: .yields.us10y, curve: .yields.curve_2s10s}'
+for s in DTWEXBGS DGS10 DGS2 T10Y2Y VIXCLS DFF UNRATE GOLDAMGBD228NLBM DCOILBRENTEU; do
+  v=$(curl -s "https://api.stlouisfed.org/fred/series/observations?series_id=$s&api_key=$FRED_API_KEY&file_type=json&sort_order=desc&limit=1" \
+    -H 'User-Agent: tribes-terminal-api/1.0' | jq -r '.observations[0] | "\(.date) \(.value)"')
+  echo "$s $v"
+done
 ```
 
 ## Error recovery
 
-| Symptom                                     | Action                                                                                                     |
-| ------------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
-| Auth error (unauthorized, expired token)    | Run `tribes-cli login`, retry the original command once, then stop and report.                             |
-| `errors` array non-empty / needed key null  | Report which series failed and answer with the available fields — do NOT retry the whole payload.          |
-| `error: unknown option`                     | You passed a flag; `market` takes none. Rerun bare and redirect stdout if you need a file (`> snap.json`). |
-| Any other API failure (whole command fails) | Retry the same command once; if it fails again, stop and report the error.                                 |
+| Symptom                                   | Action                                                                        |
+| ----------------------------------------- | ----------------------------------------------------------------------------- |
+| 400 / "Bad Request. api_key"              | The `FRED_API_KEY` in `.env` is missing/invalid — check it, then retry once.  |
+| 429 / 5xx (rate limit or outage)          | Wait briefly, retry once; if it still fails, stop and report plainly.         |
+| A needed series returns only `.` values   | Report that series as unavailable and answer with the fields you have.        |
 
 ## Related skills
 

@@ -13,9 +13,11 @@ allowed-tools: bash read
 
 # Exchange Analyst
 
-Backing command group: `tribes-cli exchange-analyst`. Sends one natural-language question to the
-exchange/derivatives specialist and prints one free-text analysis string to stdout.
-Requires: an auth token (run `tribes-cli login` once if commands fail with auth errors).
+Answer by calling **CoinGecko Pro** directly, reading the key from `.env`. Endpoints below; full
+catalog and auth details live in `docs/inlined-provider-apis.md`.
+
+> The former `tribes-cli exchange-analyst ask` backend proxy is **deprecated** — the backend is
+> being retired. Run the pulls yourself.
 
 ## When to use
 
@@ -29,55 +31,63 @@ Requires: an auth token (run `tribes-cli login` once if commands fail with auth 
 - NOT for DEX pools, pairs, or on-chain liquidity — use `defi-analyst`.
 - NOT for placing or canceling orders — use `hyperliquid` or `trade-execution`.
 
-## Hard rules
+## Data source
 
-1. MUST set a bash timeout of at least 120 seconds for this command — it polls a backend agent
-   and can run for minutes (see AGENTS.md).
-2. The ONLY flag is `--query`; there is no `--out` and no filter flags — encode venue, scope
-   (spot exchange, derivatives, treasury), and time window inside the natural-language query
-   text. Output is one free-text analysis string on stdout, not JSON.
-3. The CLI calls the API itself — NEVER call the endpoint or curl directly.
-4. MAX 2 passes per question: one broad ask, then at most one narrowed follow-up ask. Then
-   report what you have.
-5. Findings here are research only — verify Hyperliquid tradability via the `hyperliquid` skill
-   before presenting any asset as an actionable trade idea (see AGENTS.md).
+These keys come from the environment — the same names the `src/common/Env.ts` constants
+read (`process.env.*`), loaded from `.env`. Reference them directly by name in the calls below. In a bare shell, load them once with
+`set -a; . ./.env; set +a`.
 
-## Command reference
+CoinGecko Pro — `https://pro-api.coingecko.com`, header `x-cg-pro-api-key`.
 
-| Subcommand | Purpose                                              | Required flags | Read-only or signed |
-| ---------- | ---------------------------------------------------- | -------------- | ------------------- |
-| `ask`      | Ask the exchange/derivatives specialist one question | `--query`      | read-only           |
+Paths under `/api/v3`:
+
+- Exchanges: `/exchanges`, `/exchanges/list`, `/exchanges/{id}`, `/exchanges/{id}/tickers`,
+  `/exchanges/{id}/volume_chart[/range]`.
+- Derivatives: `/derivatives`, `/derivatives/exchanges[/list]`, `/derivatives/exchanges/{id}`.
+- Public treasuries: `/entities/list`, `/public_treasury/{entity}`,
+  `/public_treasury/{entity}/{coin}/holding_chart`, `/{entity}/public_treasury/{coin}`,
+  `/public_treasury/{entity}/transaction_history`.
+
+## Rules
+
+1. Reference each key from the environment (`.env`, exposed as the `src/common/Env.ts` constants) — e.g. `$BIRDEYE_API_KEY`. Never hardcode a key.
+2. Encode venue, scope (spot exchange, derivatives, treasury), ordering, and time window in the
+   request query params.
+3. At most 2 passes per question: one broad pull, then one narrowed follow-up. Then report.
+4. Findings here are research only — verify Hyperliquid tradability via the `hyperliquid` skill
+   before presenting any asset as an actionable trade idea (AGENTS.md).
+5. Perp/derivatives venue depth ON Hyperliquid still routes to the `hyperliquid` skill.
 
 ## Examples
 
 ### Rank centralized exchanges
 
 ```bash
-tribes-cli exchange-analyst ask \
-  --query "rank the top 10 spot exchanges by 24h volume and trust score"
+curl -s 'https://pro-api.coingecko.com/api/v3/exchanges?per_page=10&page=1' \
+  -H "x-cg-pro-api-key: $COIN_GECKO_PRO_API_KEY" -H 'accept: application/json'
 ```
 
-### Compare derivatives open interest and funding
+### Derivatives exchanges by open interest
 
 ```bash
-tribes-cli exchange-analyst ask \
-  --query "open interest and funding rates for BTC futures across Binance, Bybit, and OKX"
+curl -s 'https://pro-api.coingecko.com/api/v3/derivatives/exchanges?order=open_interest_btc_desc&per_page=20' \
+  -H "x-cg-pro-api-key: $COIN_GECKO_PRO_API_KEY" -H 'accept: application/json'
 ```
 
-### Track public treasury holdings
+### Public treasury holdings for a coin
 
 ```bash
-tribes-cli exchange-analyst ask \
-  --query "which public companies hold the most BTC, and their latest treasury transactions"
+curl -s 'https://pro-api.coingecko.com/api/v3/companies/public_treasury/bitcoin' \
+  -H "x-cg-pro-api-key: $COIN_GECKO_PRO_API_KEY" -H 'accept: application/json'
 ```
 
 ## Error recovery
 
-| Symptom                                  | Action                                                                         |
-| ---------------------------------------- | ------------------------------------------------------------------------------ |
-| Auth error (unauthorized, expired token) | Run `tribes-cli login`, retry the original command once, then stop and report. |
-| Any other API failure                    | Retry the same command once; if it fails again, stop and report the error.     |
-| Command exceeds your bash timeout        | Re-run once with a 300-second timeout; if it times out again, stop and report. |
+| Symptom                                   | Action                                                                    |
+| ----------------------------------------- | ------------------------------------------------------------------------- |
+| 401 / 403                                 | The `COIN_GECKO_PRO_API_KEY` in `.env` is missing/invalid — check, retry. |
+| 429 / 5xx (rate limit or outage)          | Wait briefly, retry once; if it still fails, stop and report plainly.     |
+| Empty / off-topic result                  | Tighten the query (venue, ordering, coin) and retry once.                 |
 
 ## Related skills
 

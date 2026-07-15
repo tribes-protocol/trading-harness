@@ -1,94 +1,82 @@
 ---
 name: news
 description: >-
-  Asset-scoped market news and sentiment. Handles: fetching analyzed news items with
-  bullish/bearish sentiment for a specific token, perp coin, or stock ticker, plus a web fallback
-  chain for macro or uncovered topics. Call it FIRST for any market/asset news, catalyst, or
-  sentiment question. NOT for: numeric macro indicators like CPI, yields, VIX (use macros); event
-  odds and market-implied probabilities (use prediction); general web lookups or topics this news
-  API does not cover (use web-search).
+  Asset-scoped market news and sentiment. Handles: fetching news items for a specific token, perp
+  coin, or stock ticker and forming a bullish/bearish read, plus a web fallback chain for macro or
+  uncovered topics. Call it FIRST for any market/asset news, catalyst, or sentiment question. NOT
+  for: numeric macro indicators like CPI, yields, VIX (use macros); event odds and market-implied
+  probabilities (use prediction); general web lookups or topics NewsData does not cover (use
+  web-search).
 allowed-tools: bash read
 ---
 
 # News
 
-Backing command group: `tribes-cli news`. Fetches analyzed news items with sentiment for one
-token, perp, or stock, polling the backend until analysis completes.
-Requires: an auth token (run `tribes-cli login` once if commands fail with auth errors).
+Fetch headlines **directly** from **NewsData.io** (reading the key from `.env`), then form your
+own sentiment read. Endpoints below; full auth details live in `docs/inlined-provider-apis.md`.
+
+> The former `tribes-cli news fetch` backend proxy is **deprecated** — the backend is being
+> retired. It also scored sentiment for you; now you derive the bullish/bearish read yourself from
+> the fetched headlines.
 
 ## When to use
 
-- Need headlines, catalysts, or sentiment for a specific token, perp coin, or stock — run `fetch`.
-- Need macro or commodity news narrative — no CLI kind exists; use the web fallback chain below.
+- Need headlines, catalysts, or sentiment for a specific token, perp coin, or stock.
+- Need macro or commodity news narrative — use the web fallback chain below.
 - NOT for numeric macro indicators (CPI, yields, VIX, DXY) — use `macros`.
 - NOT for event odds or market-implied probabilities — use `prediction`.
 - NOT for general non-asset web questions or reading one known URL — use `web-search`.
 - NOT for source-backed deep research on protocols or companies — use `research-analyst`.
 
-## Hard rules
+## Data source
 
-1. MUST set a bash timeout of at least 120 seconds for every `tribes-cli news fetch` call
-   (prefer 300 — the CLI polls every 30s with up to 10 retries, so worst case is ~300s).
-2. The CLI calls the API itself — NEVER call the endpoint or curl directly.
-3. Sentiment values in CLI output are `bullish | bearish | neutral | unknown` — use this
-   vocabulary in your own notes. Wrong: `"sentiment": "positive"`. Right: `"sentiment": "bullish"`.
-4. Raw JSON is internal working material — the user-facing answer MUST be a plain-language
-   summary (headline themes, net sentiment, trading implication), never dumped JSON.
+These keys come from the environment — the same names the `src/common/Env.ts` constants
+read (`process.env.*`), loaded from `.env`. Reference them directly by name in the calls below. In a bare shell, load them once with
+`set -a; . ./.env; set +a`.
 
-## Command reference
+NewsData.io — `https://newsdata.io`, key as a query param.
 
-| Subcommand | Purpose                                      | Required flags                                                                                    | Read-only or signed |
-| ---------- | -------------------------------------------- | ------------------------------------------------------------------------------------------------- | ------------------- |
-| `fetch`    | Fetch asset news, poll while still analyzing | `--kind token\|perp\|stock`; token: `--chain-id`, `--token-id`; perp: `--coin`; stock: `--ticker` | read-only           |
+Endpoints (query: `apikey=$NEWSDATAIO_API_KEY`, `qInTitle=<terms>`, `removeduplicate=1`, optional
+`language=en`):
 
-Optional flags: `--cursor <cursor>` (pagination — pass the cursor from the previous response to
-page further), `--out <file>` (write the JSON to a file, then Read it — use for long payloads).
+- `GET /api/1/crypto` — crypto news.
+- `GET /api/1/latest` — latest headlines.
+- `GET /api/1/market` — market news.
 
-## Resolve the asset before calling fetch
+## Resolve the query terms
 
-- IF kind is token → you need the exact `chainId` + `tokenId` (address/mint). Resolve a bare
-  symbol with `tribes-cli token search --query PEPE` (documented in `spot-trading`) and take
-  `chainId` and the token address from the top match.
-- IF kind is perp → use the exact coin symbol; keep any dex prefix (e.g. `<dex>:MSFT`). Confirm it
-  with `tribes-cli hyperliquid list-assets --dex <name>` (`hyperliquid` skill) when unsure.
-- IF kind is stock → uppercase the ticker and trim whitespace (Nvidia → `NVDA`).
-- IF several assets plausibly match → ask one short, non-technical question, e.g. "There are a
-  few tokens called PEPE — do you mean the big one on Ethereum?"
+NewsData searches by title terms, so scope with the asset's name/ticker rather than an address:
+
+- Token/coin → asset name + ticker (e.g. `PEPE`), on `/api/1/crypto`.
+- Perp → the coin symbol; drop any dex prefix for the search (`<dex>:MSFT` → `MSFT`).
+- Stock → the ticker and/or company name (`NVDA` / `Nvidia`), on `/api/1/market` or `/api/1/latest`.
+
+## Rules
+
+1. Reference each key from the environment (`.env`, exposed as the `src/common/Env.ts` constants) — e.g. `$BIRDEYE_API_KEY`. Never hardcode a key.
+2. Derive sentiment yourself and use the vocabulary `bullish | bearish | neutral | unknown`.
+   Wrong: `"positive"`. Right: `"bullish"`.
+3. The user-facing answer is a plain-language summary (headline themes, net sentiment, trading
+   implication) — never dumped JSON.
+4. If NewsData returns nothing useful for the asset, switch to the web fallback chain.
 
 ## Examples
 
-### Perp news
+### Crypto news for one coin
 
 ```bash
-tribes-cli news fetch \
-  --kind perp \
-  --coin BTC
+curl -s "https://newsdata.io/api/1/crypto?apikey=$NEWSDATAIO_API_KEY&qInTitle=bitcoin&removeduplicate=1&language=en"
 ```
 
-Output is JSON on stdout: items (title, url, source, publishedAt, sentiment) plus a cursor.
-
-### Token news (exact chain + address required)
+### Stock/market news for a ticker
 
 ```bash
-tribes-cli news fetch \
-  --kind token \
-  --chain-id 1 \
-  --token-id 0xA0b86991c6218b36c1d19d4a2e9eb0ce3606eb48
-```
-
-### Stock news, next page, written to a file
-
-```bash
-tribes-cli news fetch \
-  --kind stock \
-  --ticker NVDA \
-  --cursor eyJwYWdlIjoyfQ \
-  --out /tmp/nvda-news.json
+curl -s "https://newsdata.io/api/1/market?apikey=$NEWSDATAIO_API_KEY&qInTitle=NVDA&removeduplicate=1&language=en"
 ```
 
 ## Web fallback chain
 
-Use only when the CLI path is exhausted (see Error recovery) or the topic has no CLI kind
+Use when NewsData is exhausted (see Error recovery) or the topic has no good NewsData coverage
 (macro, commodities, sector-wide themes).
 
 1. Build one targeted query and reuse it across sources:
@@ -103,12 +91,11 @@ Use only when the CLI path is exhausted (see Error recovery) or the topic has no
 
 ## Error recovery
 
-| Symptom                                                                 | Action                                                                         |
-| ----------------------------------------------------------------------- | ------------------------------------------------------------------------------ |
-| Auth error (unauthorized, expired token)                                | Run `tribes-cli login`, retry the original command once, then stop and report. |
-| Non-auth API failure (5xx, network error)                               | Retry the same command once; if it fails again, switch to the web fallback.    |
-| Bash timeout, or empty/`unknown`-only items after the CLI's own retries | Switch to the web fallback chain.                                              |
-| `command not found: tribes-cli`                                         | Run `sh bootstrap.sh` from the harness root, then retry.                       |
+| Symptom                                   | Action                                                                        |
+| ----------------------------------------- | ----------------------------------------------------------------------------- |
+| 401 / 403 / "Invalid API key"             | The `NEWSDATAIO_API_KEY` in `.env` is missing/invalid — check it, then retry. |
+| 429 / 5xx (rate limit or outage)          | Wait briefly, retry once; if it still fails, switch to the web fallback.      |
+| Empty results for the asset               | Broaden `qInTitle`, try `/api/1/latest`, else switch to the web fallback.     |
 
 ## Related skills
 
@@ -116,5 +103,4 @@ Use only when the CLI path is exhausted (see Error recovery) or the topic has no
 - `prediction` — event odds and market-implied probabilities.
 - `web-search` — general web search and the first hop of the fallback chain.
 - `browser` — JS-gated or fetch-blocked pages during fallback.
-- `spot-trading` — documents `tribes-cli token search` (symbol → chainId + address).
 - `strategize` — consumes this skill's output for full market briefings.

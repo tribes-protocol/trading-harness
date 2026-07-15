@@ -1,8 +1,8 @@
 ---
 name: stock-analyst
 description: >-
-  Expert on stock market DATA. Handles: real-time prices, NBBO quotes, OHLCV candles, ticker
-  snapshots, stock movers, and market status. Call for any stock/equity data question. NOT for:
+  Expert on stock market DATA. Handles: real-time/latest prices, OHLCV candles (intraday and
+  end-of-day), ticker search and details. Call for any stock/equity data question. NOT for:
   indicator values, signals, or backtests (use technical-analyst); stock news and sentiment
   (use news); executing stock trades (use hyperliquid — stocks are Hyperliquid perps); crypto
   movers or rankings (use market-strategist).
@@ -11,71 +11,77 @@ allowed-tools: bash read
 
 # Stock Analyst
 
-Backing command group: `tribes-cli stock-analyst`. Sends one natural-language question to the
-stock market-data specialist and returns a prose analysis.
-Requires: an auth token (run `tribes-cli login` once if commands fail with auth errors).
+Answer by calling **Marketstack** directly, reading the key from `.env`. Endpoints below; full
+auth details live in `docs/inlined-provider-apis.md`.
+
+> The former `tribes-cli stock-analyst ask` backend proxy is **deprecated** — the backend is being
+> retired. Run the pulls yourself.
 
 ## When to use
 
-- Price, quote, candle, snapshot, ticker-search, or market open/closed check for stocks.
-- Stock market movers — top gainers and losers among stocks.
+- Latest price/quote, or intraday/EOD candles, for a stock ticker.
+- Ticker search or ticker details (name, exchange).
 - NOT for indicator values, signals, backtests, or any indicator math — use `technical-analyst`.
 - NOT for stock news, catalysts, or sentiment — use `news`.
 - NOT for placing or sizing stock trades — use `hyperliquid` (stocks are Hyperliquid perps).
 - NOT for crypto movers or market-wide crypto data — use `market-strategist`.
 
-## Hard rules
+## Data source
 
-1. The ONLY flag is `--query` — no `--out`, `--ticker`, or filter flags. Encode ticker,
-   timeframe, indicator set, and date range in the query text.
-2. Output is one free-text analysis string on stdout, not JSON.
-3. MUST set a bash timeout of at least 120 seconds (prefer 300) for `ask` (see AGENTS.md).
-4. The CLI calls the API itself — NEVER call the endpoint or curl directly.
-5. Run at most 1–2 refinement `ask` calls when a follow-up serves the original ask (see AGENTS.md).
-6. Relay exact figures with the timeframe and direction of change, never approximations.
-7. For unscoped movers/discovery, also run crypto via `market-strategist` and commodities via
-   `commodity-analyst` (AGENTS.md).
-8. Apply the Hyperliquid tradability guardrail before pitching trade ideas (see AGENTS.md).
+These keys come from the environment — the same names the `src/common/Env.ts` constants
+read (`process.env.*`), loaded from `.env`. Reference them directly by name in the calls below. In a bare shell, load them once with
+`set -a; . ./.env; set +a`.
 
-## Command reference
+Marketstack — `https://api.marketstack.com`, key as a query param.
 
-| Subcommand | Purpose                                             | Required flags | Read-only or signed |
-| ---------- | --------------------------------------------------- | -------------- | ------------------- |
-| `ask`      | Natural-language query to the stock-data specialist | `--query`      | read-only           |
+Endpoints (all take `access_key=$MARKETSTACK_API_KEY`):
+
+- Search/details: `/v2/tickerslist?search=<name>`, `/v2/tickers/{ticker}`.
+- Price/quote: `/v2/stockprice?ticker=<TICKER>`, `/v2/eod/latest?symbols=<TICKER>`,
+  `/v2/intraday/latest?symbols=<TICKER>`.
+- Candles: `/v2/eod?symbols=&date_from=&date_to=&sort=DESC&limit=`,
+  `/v2/intraday?symbols=&interval=<1min|5min|15min|1hour>&date_from=&date_to=`.
+
+## Rules
+
+1. Reference each key from the environment (`.env`, exposed as the `src/common/Env.ts` constants) — e.g. `$BIRDEYE_API_KEY`. Never hardcode a key.
+2. Uppercase and trim tickers (Nvidia → `NVDA`). Resolve an unknown name via `/v2/tickerslist`.
+3. Relay exact figures with the timeframe and direction of change, never approximations.
+4. **Coverage gap:** Marketstack has no market-wide movers, market open/closed status, or NBBO
+   quote (those need a Massive key, not configured). If asked, say the data source doesn't cover
+   it rather than guessing.
+5. For unscoped movers/discovery, run crypto via `market-strategist` and commodities via
+   `commodity-analyst` (AGENTS.md), and note the stock-movers gap.
+6. Apply the Hyperliquid tradability guardrail before pitching trade ideas (AGENTS.md).
 
 ## Examples
 
-### Price and quote check
+### Latest price/quote
 
 ```bash
-tribes-cli stock-analyst ask --query "AAPL current price, day change, volume, and NBBO bid/ask spread"
+curl -s "https://api.marketstack.com/v2/stockprice?access_key=$MARKETSTACK_API_KEY&ticker=AAPL"
 ```
 
-### Candles over a timeframe
+### Daily (EOD) candles over a range
 
 ```bash
-tribes-cli stock-analyst ask --query "Daily OHLCV candles for NVDA over the last 30 days, note the trend"
+curl -s "https://api.marketstack.com/v2/eod?access_key=$MARKETSTACK_API_KEY&symbols=NVDA&date_from=2026-06-15&date_to=2026-07-15&sort=DESC&limit=30"
 ```
 
-### Movers and market status
+### Ticker search
 
 ```bash
-tribes-cli stock-analyst ask --query "Top stock gainers and losers today, and is the market currently open?"
-```
-
-### Snapshot for sizing a trade
-
-```bash
-tribes-cli stock-analyst ask --query "Full snapshot for MSFT: last price, day range, volume, and 52-week range"
+curl -s "https://api.marketstack.com/v2/tickerslist?access_key=$MARKETSTACK_API_KEY&search=microsoft&limit=5"
 ```
 
 ## Error recovery
 
-| Symptom                                  | Action                                                                                   |
-| ---------------------------------------- | ---------------------------------------------------------------------------------------- |
-| Auth error (unauthorized, expired token) | Run `tribes-cli login`, retry the original command once, then stop and report.           |
-| Any other API failure                    | Retry the same command once; if it fails again, stop and report the error.               |
-| Empty or off-topic answer                | Re-ask once with a tighter query (one ticker, explicit timeframe); then stop and report. |
+| Symptom                                   | Action                                                                       |
+| ----------------------------------------- | ---------------------------------------------------------------------------- |
+| 401 / 403 / "access_key" error            | The `MARKETSTACK_API_KEY` in `.env` is missing/invalid — check it, then retry.|
+| 429 / 5xx (rate limit or outage)          | Wait briefly, retry once; if it still fails, stop and report plainly.        |
+| Empty result / unknown ticker             | Resolve the symbol via `/v2/tickerslist`, then rerun with the exact ticker.  |
+| Movers / market-status / NBBO requested   | Not available via Marketstack — say so plainly (needs a Massive key).        |
 
 ## Related skills
 

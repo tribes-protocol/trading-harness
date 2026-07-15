@@ -13,9 +13,11 @@ allowed-tools: bash read
 
 # Market Strategist
 
-Backing command group: `tribes-cli market-strategist`. Sends one natural-language question to the
-market_strategist specialist and prints its market-wide crypto analysis.
-Requires: an auth token (run `tribes-cli login` once if commands fail with auth errors).
+Answer by calling **CoinGecko Pro** directly, reading the key from `.env`. Endpoints below; full
+catalog and auth details live in `docs/inlined-provider-apis.md`.
+
+> The former `tribes-cli market-strategist ask` backend proxy is **deprecated** — the backend is
+> being retired. Run the pulls yourself.
 
 ## When to use
 
@@ -26,61 +28,65 @@ Requires: an auth token (run `tribes-cli login` once if commands fail with auth 
 - NOT for trending-token discovery (`alpha-scout`), pools/DEXes (`defi-analyst`), CEX/derivatives (`exchange-analyst`).
 - NOT for stock movers (`stock-analyst`) or numeric macro indicators like CPI/VIX/DXY (`macros`).
 
-## Hard rules
+## Data source
 
-1. `ask` is the ONLY subcommand and `--query` is its ONLY flag — no `--out`, no filter flags.
-   NEVER invent subcommands such as `gainers` or `chart`.
-2. Encode time window, scope, and metric focus inside the query text.
-   Wrong: `--query "gainers"`. Right: `--query "top 10 gainers over the last 24h with market caps"`.
-3. MUST set a bash timeout of at least 120 seconds for this command — it polls a backend agent.
-4. Output is one free-text analysis string on stdout, not JSON — NEVER JSON-parse it. The CLI
-   calls the API itself — NEVER call the endpoint or curl directly.
-5. Before presenting movers or rankings as actionable trade ideas, verify Hyperliquid
+These keys come from the environment — the same names the `src/common/Env.ts` constants
+read (`process.env.*`), loaded from `.env`. Reference them directly by name in the calls below. In a bare shell, load them once with
+`set -a; . ./.env; set +a`.
+
+CoinGecko Pro — `https://pro-api.coingecko.com`, header `x-cg-pro-api-key`.
+
+Paths under `/api/v3`:
+
+- Global: `/global`, `/global/decentralized_finance_defi`, `/global/market_cap_chart`.
+- Rankings & movers: `/coins/markets`, `/coins/top_gainers_losers`.
+- Categories & new coins: `/coins/categories[/list]`, `/coins/list[/new]`.
+- Quick prices & search: `/simple/price`, `/search`, `/search/trending`, `/asset_platforms`,
+  `/token_lists/{platform}/all.json`.
+
+## Rules
+
+1. Reference each key from the environment (`.env`, exposed as the `src/common/Env.ts` constants) — e.g. `$BIRDEYE_API_KEY`. Never hardcode a key.
+2. Encode time window, scope, and metric focus in the request query params.
+3. Before presenting movers or rankings as actionable trade ideas, verify Hyperliquid
    tradability with `hyperliquid list-assets --all-dexes` and split actionable, watchlist-only,
-   and not-tradable markets (see AGENTS.md).
-6. For unscoped "top movers" or opportunity requests, also run the securities side via
-   `stock-analyst` and the commodities side via `commodity-analyst` (cross-asset guardrail, see
-   AGENTS.md).
-7. Treat the specialist's trailing "want me to…" suggestions as your own refinement TODOs, max
-   1–2 passes (see AGENTS.md).
-
-## Command reference
-
-| Subcommand | Purpose                                          | Required flags | Read-only or signed |
-| ---------- | ------------------------------------------------ | -------------- | ------------------- |
-| `ask`      | Free-text market-wide question to the specialist | `--query`      | read-only           |
+   and not-tradable markets (AGENTS.md).
+4. For unscoped "top movers" or opportunity requests, also run the securities side via
+   `stock-analyst` and the commodities side via `commodity-analyst` (cross-asset guardrail).
+5. Run at most 1–2 refinement pulls when a follow-up serves the original ask (AGENTS.md).
 
 ## Examples
 
 ### Market overview ("how's the market?")
 
 ```bash
-tribes-cli market-strategist ask \
-  --query "global crypto market overview for the last 24h: total market cap, BTC dominance, DeFi TVL, top gainers and losers"
+curl -s 'https://pro-api.coingecko.com/api/v3/global' \
+  -H "x-cg-pro-api-key: $COIN_GECKO_PRO_API_KEY" -H 'accept: application/json'
+curl -s 'https://pro-api.coingecko.com/api/v3/global/decentralized_finance_defi' \
+  -H "x-cg-pro-api-key: $COIN_GECKO_PRO_API_KEY" -H 'accept: application/json'
 ```
 
-### Top movers with rankings context
+### Top movers (24h gainers and losers)
 
 ```bash
-tribes-cli market-strategist ask \
-  --query "top 10 crypto gainers and losers over the last 24h with market caps, plus top 20 coins by market cap with 7d performance"
+curl -s 'https://pro-api.coingecko.com/api/v3/coins/top_gainers_losers?vs_currency=usd&duration=24h' \
+  -H "x-cg-pro-api-key: $COIN_GECKO_PRO_API_KEY" -H 'accept: application/json'
 ```
 
-### Category rotation, trend, and new listings
+### Ranking table with 7d performance
 
 ```bash
-tribes-cli market-strategist ask \
-  --query "category performance for AI, DeFi, and meme sectors over 7d, total market cap trend over 30 days, and notable coins added this week"
+curl -s 'https://pro-api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=20&page=1&price_change_percentage=7d' \
+  -H "x-cg-pro-api-key: $COIN_GECKO_PRO_API_KEY" -H 'accept: application/json'
 ```
 
 ## Error recovery
 
-| Symptom                                  | Action                                                                         |
-| ---------------------------------------- | ------------------------------------------------------------------------------ |
-| Auth error (unauthorized, expired token) | Run `tribes-cli login`, retry the original command once, then stop and report. |
-| Command killed before output             | You set too short a bash timeout — rerun with a 300-second timeout.            |
-| Unknown option error                     | Drop the extra flag — `--query` is the only flag.                              |
-| Any other API failure                    | Retry the same command once; if it fails again, stop and report the error.     |
+| Symptom                                   | Action                                                                    |
+| ----------------------------------------- | ------------------------------------------------------------------------- |
+| 401 / 403                                 | The `COIN_GECKO_PRO_API_KEY` in `.env` is missing/invalid — check, retry. |
+| 429 / 5xx (rate limit or outage)          | Wait briefly, retry once; if it still fails, stop and report plainly.     |
+| Empty / off-topic result                  | Tighten the query (window, ordering, coin set) and retry once.            |
 
 ## Related skills
 

@@ -13,9 +13,11 @@ allowed-tools: bash read
 
 # Fundamentals Analyst
 
-Backing command group: `tribes-cli fundamentals-analyst`. Sends a natural-language research
-question to a CoinGecko-backed specialist and prints one plain-text analysis to stdout.
-Requires: an auth token (run `tribes-cli login` once if commands fail with auth errors).
+Answer by calling **CoinGecko Pro** directly, reading the key from `.env`. Endpoints below; full
+catalog and auth details live in `docs/inlined-provider-apis.md`.
+
+> The former `tribes-cli fundamentals-analyst ask` backend proxy is **deprecated** — the backend
+> is being retired. Run the pulls yourself.
 
 ## When to use
 
@@ -27,60 +29,66 @@ Requires: an auth token (run `tribes-cli login` once if commands fail with auth 
 - NOT for discovering trending or new coins — use `alpha-scout`.
 - NOT for market-wide rankings or quick price tables — use `market-strategist`.
 
-## Hard rules
+## Data source
 
-1. The ENTIRE surface is `tribes-cli fundamentals-analyst ask --query "<question>"`. `ask` is
-   the only subcommand and `--query` its only flag — no `--out`, no filter flags. Encode coin,
-   timeframe, and output type inside the query text.
-2. MUST set a bash timeout of at least 120 seconds for this command — it polls a backend agent
-   and can run for minutes.
-3. Output is one free-text analysis string on stdout, not JSON — read it, never parse fields.
-4. Always state an explicit timeframe in historical queries ("last 90 days", "2026-04-01 to
-   2026-07-01"). NEVER say "recently".
-5. Bundle related asks into ONE query per research goal instead of many small calls.
-6. Treat trailing follow-up suggestions as your own TODOs — at most 1–2 refinement `ask` calls.
+These keys come from the environment — the same names the `src/common/Env.ts` constants
+read (`process.env.*`), loaded from `.env`. Reference them directly by name in the calls below. In a bare shell, load them once with
+`set -a; . ./.env; set +a`.
 
-## Command reference
+CoinGecko Pro — `https://pro-api.coingecko.com`, header `x-cg-pro-api-key`.
 
-| Subcommand | Purpose                                                | Required flags | Read-only or signed |
-| ---------- | ------------------------------------------------------ | -------------- | ------------------- |
-| `ask`      | Send one research question to the CoinGecko specialist | `--query`      | read-only           |
+Paths under `/api/v3` (use the lowercase, hyphenated CoinGecko id: `bitcoin`, `ethereum`,
+`render-token`; resolve an unknown name/symbol with `/search?query=`):
+
+- Profile & links: `/coins/{id}` (community/developer/market data via query flags),
+  history `/coins/{id}/history?date=DD-MM-YYYY`, tickers/listings `/coins/{id}/tickers`.
+- Charts & candles: `/coins/{id}/market_chart[/range]`, `/coins/{id}/ohlc[/range]`.
+- Supply trends: `/coins/{id}/circulating_supply_chart[/range]`,
+  `/coins/{id}/total_supply_chart[/range]`.
+- By contract: `/coins/{network}/contract/{address}` (+ `/market_chart[/range]`),
+  price `/simple/token_price/{platform}`.
+- Fiat: `/exchange_rates`, `/simple/supported_vs_currencies`.
+
+## Rules
+
+1. Reference each key from the environment (`.env`, exposed as the `src/common/Env.ts` constants) — e.g. `$BIRDEYE_API_KEY`. Never hardcode a key.
+2. Always use an explicit timeframe/date range in historical pulls — NEVER "recently".
+3. Bundle the pulls a research goal needs (profile + supply + listings), then synthesize once.
+4. Output is your own synthesis of the JSON — relay figures with their timeframe.
+5. Run at most 1–2 refinement pulls when a follow-up serves the original ask (AGENTS.md).
 
 ## Examples
 
-Use the CoinGecko coin ID when known (lowercase, hyphenated: `bitcoin`, `ethereum`,
-`render-token`). If unknown, put the name/symbol — or the contract address plus its chain
-(`0x6982508145454ce325ddbe47a25d4ec3d2311933 on ethereum`) — in the query and let the
-specialist resolve it.
-
-### Full coin profile with supply trend
+### Full coin profile (market + community + developer data)
 
 ```bash
-tribes-cli fundamentals-analyst ask \
-  --query "Full profile for solana: description, links, community and developer activity, plus circulating vs total supply trend over the last 180 days"
+curl -s 'https://pro-api.coingecko.com/api/v3/coins/solana?localization=false&tickers=false&market_data=true&community_data=true&developer_data=true' \
+  -H "x-cg-pro-api-key: $COIN_GECKO_PRO_API_KEY" -H 'accept: application/json'
 ```
 
-### Historical chart with raw candles
+### Historical chart over an explicit range
 
 ```bash
-tribes-cli fundamentals-analyst ask \
-  --query "Price, volume, and market cap chart for ethereum from 2026-04-01 to 2026-07-01, plus daily OHLC candles for the last 30 days"
+FROM=$(date -j -f %Y-%m-%d 2026-04-01 +%s 2>/dev/null || date -d 2026-04-01 +%s)
+TO=$(date -j -f %Y-%m-%d 2026-07-01 +%s 2>/dev/null || date -d 2026-07-01 +%s)
+curl -s "https://pro-api.coingecko.com/api/v3/coins/ethereum/market_chart/range?vs_currency=usd&from=$FROM&to=$TO" \
+  -H "x-cg-pro-api-key: $COIN_GECKO_PRO_API_KEY" -H 'accept: application/json'
 ```
 
-### Exchange listings and fiat rates for one coin
+### Exchange listings for a coin
 
 ```bash
-tribes-cli fundamentals-analyst ask \
-  --query "Which exchanges list chainlink, what volume does each ticker do, and what is its current price in USD, EUR, and JPY?"
+curl -s 'https://pro-api.coingecko.com/api/v3/coins/chainlink/tickers?page=1' \
+  -H "x-cg-pro-api-key: $COIN_GECKO_PRO_API_KEY" -H 'accept: application/json'
 ```
 
 ## Error recovery
 
-| Symptom                                         | Action                                                                         |
-| ----------------------------------------------- | ------------------------------------------------------------------------------ |
-| Auth error (unauthorized, expired token)        | Run `tribes-cli login`, retry the original command once, then stop and report. |
-| `Fundamentals analyst request failed: <status>` | Retry the same command once; if it fails again, stop and report the error.     |
-| Answer says the coin is unknown                 | Re-ask with the coin's name, symbol, or contract address stated in the query.  |
+| Symptom                                   | Action                                                                    |
+| ----------------------------------------- | ------------------------------------------------------------------------- |
+| 401 / 403                                 | The `COIN_GECKO_PRO_API_KEY` in `.env` is missing/invalid — check, retry. |
+| 429 / 5xx (rate limit or outage)          | Wait briefly, retry once; if it still fails, stop and report plainly.     |
+| 404 / "coin not found"                    | Resolve the id via `/search?query=<name>` and rerun with the exact id.    |
 
 ## Related skills
 

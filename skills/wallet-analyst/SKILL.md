@@ -12,9 +12,12 @@ allowed-tools: bash read
 
 # Wallet Analyst
 
-Backing command group: `tribes-cli wallet-analyst`. One subcommand, `ask`, sends a
-natural-language query to the specialist; output is one free-text analysis string, not JSON.
-Requires: an auth token (run `tribes-cli login` once if commands fail with auth errors).
+Answer by calling portfolio providers **directly** — BirdEye for wallet net worth/PnL/history,
+Nansen profiler for address analytics, Alchemy/Helius RPC for raw balances — reading keys from
+`.env`. Endpoints below; full catalog and auth details live in `docs/inlined-provider-apis.md`.
+
+> The former `tribes-cli wallet-analyst ask` backend proxy is **deprecated** — the backend is
+> being retired. Run the pulls yourself.
 
 ## When to use
 
@@ -26,62 +29,65 @@ Requires: an auth token (run `tribes-cli login` once if commands fail with auth 
   `wallet`.
 - NOT for Hyperliquid positions, open orders, or perp/spot balances — use `hyperliquid`.
 
-## Hard rules
+## Data sources
 
-1. MUST set a bash timeout of at least 120 seconds (prefer 300) — `ask` polls a backend agent.
-2. The ONLY flag is `--query`. There is no `--out`, no `--address`, no timeframe flag — write
-   the wallet address, timeframe, and focus into the query text itself.
-3. MUST run `tribes-cli wallet list` first and embed the returned address in the query. NEVER
-   assume a default wallet.
-   Wrong: `--query "my PnL last 30d"` (no address — may analyze the wrong or no wallet).
-   Right: `--query "realized and unrealized PnL for <evm-address> over the last 30d"`.
-4. The CLI calls the API itself — NEVER call the endpoint or curl directly.
-5. Treat the specialist's trailing "want me to…" suggestions as your own TODO: run at most 1–2
-   refinement asks, then present the sharpened answer (see AGENTS.md).
+These keys come from the environment — the same names the `src/common/Env.ts` constants
+read (`process.env.*`), loaded from `.env`. Reference them directly by name in the calls below. In a bare shell, load them once with
+`set -a; . ./.env; set +a`.
 
-## Command reference
+- **BirdEye** — `https://public-api.birdeye.so`, header `X-API-KEY` + `x-chain`:
+  net worth `/wallet/v2/current-net-worth` & `/wallet/v2/net-worth`, details
+  `/wallet/v2/net-worth-details`, PnL `/wallet/v2/pnl` & `/wallet/v2/pnl/summary`, balance change
+  `/wallet/v2/balance-change`, holdings `/v1/wallet/token_list`, tx history `/v1/wallet/tx_list`.
+- **Nansen profiler** — `https://api.nansen.ai`, header `apiKey`, POST:
+  `POST /api/v1/profiler/address/{current-balance,historical-balances,transactions,counterparties,related-wallets,pnl,pnl-summary,labels}`.
+- **Alchemy / Helius** RPC (`ALCHEMY_API_KEY` / `HELIUS_API_KEY`) for raw native/SPL balance reads.
 
-| Subcommand | Purpose                                    | Required flags | Read-only or signed |
-| ---------- | ------------------------------------------ | -------------- | ------------------- |
-| `ask`      | Natural-language portfolio analytics query | `--query`      | read-only           |
+`x-chain` values: `1 ethereum`, `10 optimism`, `56 bsc`, `137 polygon`, `8453 base`,
+`42161 arbitrum`, `solana`.
+
+## Rules
+
+1. Reference each key from the environment (`.env`, exposed as the `src/common/Env.ts` constants) — e.g. `$BIRDEYE_API_KEY`. Never hardcode a key.
+2. Always analyze a specific address. For "my" wallet, get the address from `tribes-cli wallet
+   list` first, then query that exact address — NEVER assume a default.
+3. Pick the right chain (`x-chain`) for the wallet; run per-chain if the wallet spans chains.
+4. Run the follow-on pulls yourself (net worth → PnL → balance-change attribution); at most 1–2
+   refinement passes, then present the sharpened answer (AGENTS.md).
+5. Render token/wallet addresses shown to the user as tribes.xyz Markdown links (AGENTS.md).
 
 ## Examples
 
-### Portfolio snapshot (holdings and net worth)
+### Portfolio snapshot (holdings + net worth)
 
 ```bash
-tribes-cli wallet-analyst ask \
-  --query "current holdings and total USD net worth for <evm-address> across all chains, with composition breakdown"
+curl -s 'https://public-api.birdeye.so/wallet/v2/current-net-worth?wallet=<ADDRESS>&sort_by=value_usd&sort_type=desc&limit=100&offset=0' \
+  -H "X-API-KEY: $BIRDEYE_API_KEY" -H 'x-chain: solana' -H 'accept: application/json'
 ```
 
-### Performance review (PnL)
+### Performance review (PnL summary)
 
 ```bash
-tribes-cli wallet-analyst ask \
-  --query "realized and unrealized PnL for <evm-address> over the last 30d, overall and per-token"
+curl -s 'https://public-api.birdeye.so/wallet/v2/pnl/summary?wallet=<ADDRESS>&duration=30d' \
+  -H "X-API-KEY: $BIRDEYE_API_KEY" -H 'x-chain: solana' -H 'accept: application/json'
 ```
 
-### Activity and flows
+### Address activity (Nansen profiler transactions)
 
 ```bash
-tribes-cli wallet-analyst ask \
-  --query "all transfers in and out of <evm-address> in the last 7d, with totals per token"
-```
-
-### Net worth change attribution
-
-```bash
-tribes-cli wallet-analyst ask \
-  --query "why did the net worth of <evm-address> change over the last 7d — balance changes and PnL context"
+curl -s -X POST 'https://api.nansen.ai/api/v1/profiler/address/transactions' \
+  -H "apiKey: $NANSEN_API_KEY" -H 'content-type: application/json' -H 'accept: application/json' \
+  -d '{"parameters":{"address":"<ADDRESS>","chain":"ethereum","timeframe":"7d"}}'
 ```
 
 ## Error recovery
 
-| Symptom                                              | Action                                                                                       |
-| ---------------------------------------------------- | -------------------------------------------------------------------------------------------- |
-| Auth error (unauthorized/expired token)              | Run `tribes-cli login`, retry the original command once, then stop and report.               |
-| `Wallet analyst request failed: <status>` (non-auth) | Retry the same command once; if it fails again, stop and report the error.                   |
-| Answer covers the wrong or no wallet                 | You omitted the address — rerun with the address from `tribes-cli wallet list` in the query. |
+| Symptom                                   | Action                                                                          |
+| ----------------------------------------- | ------------------------------------------------------------------------------- |
+| 401 / 403 from a provider                 | The key in `.env` is missing/invalid — check it, then retry once.               |
+| 429 / 5xx (rate limit or outage)          | Wait briefly, retry once; if it still fails, stop and report plainly.           |
+| Result covers the wrong / empty wallet    | You used the wrong address or chain — rerun with the address from `wallet list`.|
+| Nansen body shape rejected (400)          | Adjust the `parameters` body; fall back to the BirdEye wallet endpoints.        |
 
 ## Related skills
 

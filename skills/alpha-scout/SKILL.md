@@ -10,8 +10,11 @@ allowed-tools: bash read
 
 # Alpha Scout
 
-Backing command group: `tribes-cli alpha-scout` — one natural-language query in, one free-text
-analysis string out. Requires: an auth token (run `tribes-cli login` once on auth failures).
+Answer by calling discovery providers **directly** (BirdEye + Nansen), reading keys from `.env`.
+Endpoints below; full catalog and auth details live in `docs/inlined-provider-apis.md`.
+
+> The former `tribes-cli alpha-scout ask` backend proxy is **deprecated** — the backend is being
+> retired. Run the discovery pulls yourself.
 
 ## When to use
 
@@ -22,67 +25,64 @@ analysis string out. Requires: an auth token (run `tribes-cli login` once on aut
 - NOT for market-wide rankings, global caps, or top gainers/losers — use `market-strategist`.
 - NOT for trending or new pools and DEX pairs — use `defi-analyst`.
 
-## Hard rules
+## Data sources
 
-1. The ONLY flag is `--query` — no `--out`, no filter flags; encode every filter (time window,
-   chain, signal type, exclusions) inside the query text.
-2. Output is one free-text analysis string on stdout, not JSON; use shell redirection for a file.
-3. MUST set a bash timeout of at least 120 seconds for this command — specialist calls are slow.
-4. The CLI calls the API itself — NEVER call the endpoint or curl directly.
-5. Specialist follow-up suggestions are YOUR TODOs, not a user menu — at most 2 refinement passes.
+These keys come from the environment — the same names the `src/common/Env.ts` constants
+read (`process.env.*`), loaded from `.env`. Reference them directly by name in the calls below. In a bare shell, load them once with
+`set -a; . ./.env; set +a`.
 
-## Command reference
+- **BirdEye** — `https://public-api.birdeye.so`, header `X-API-KEY` [+ `x-chain`]:
+  trending `GET /defi/token_trending`, new listings `GET /defi/v2/tokens/new_listing`,
+  smart-money token list `GET /smart-money/v1/token/list`, name→address `GET /defi/v3/search`.
+- **Nansen** — `https://api.nansen.ai`, header `apiKey`, POST JSON: smart-money
+  `POST /api/v1/smart-money/{netflow,holdings,historical-holdings,dex-trades,perp-trades,dcas}`.
 
-| Subcommand | Purpose                                | Required flags | Read-only or signed |
-| ---------- | -------------------------------------- | -------------- | ------------------- |
-| `ask`      | Query the alpha-scout specialist agent | `--query`      | read-only           |
+`x-chain` values: `1 ethereum`, `10 optimism`, `56 bsc`, `137 polygon`, `8453 base`,
+`42161 arbitrum`, `solana`.
 
-Query quality decides answer quality. Wrong: `--query "whales?"`. Right:
-`--query "tokens with largest net smart-money inflow last 48h on Base, exclude stablecoins"`.
+## Rules
+
+1. Reference each key from the environment (`.env`, exposed as the `src/common/Env.ts` constants) — e.g. `$BIRDEYE_API_KEY`. Never hardcode a key.
+2. Filter deliberately: choose the chain (`x-chain`), a sort, and a limit that match the ask.
+3. Intersect signals yourself — a token that is BOTH trending and net-accumulated by smart money
+   ranks above one that only shows up in a single list.
+4. Verify Hyperliquid tradability before presenting ideas as executable (AGENTS.md guardrail).
+5. IF the request was unscoped, add securities (`stock-analyst`) and commodities
+   (`commodity-analyst`) passes (AGENTS.md cross-asset guardrail).
+6. Hand off a chosen token: on-chain deep-dive → `token-analyst`; profile → `fundamentals-analyst`.
 
 ## Examples
 
-### What's hot right now (trending × smart-money intersect)
-
-1. Run the trending query, then the smart-money query:
+### What's hot right now (trending)
 
 ```bash
-timeout 300 tribes-cli alpha-scout ask \
-  --query "top 10 trending tokens in the last 24 hours across all chains"
-timeout 300 tribes-cli alpha-scout ask \
-  --query "which tokens are smart-money wallets net accumulating over the last 24 hours"
+curl -s 'https://public-api.birdeye.so/defi/token_trending?sort_type=desc&offset=0&limit=20' \
+  -H "X-API-KEY: $BIRDEYE_API_KEY" -H 'x-chain: solana' -H 'accept: application/json'
 ```
 
-2. Intersect the lists; report tokens in BOTH first as strongest candidates, the rest secondary.
-
-### Smart-money accumulation
+### Smart-money accumulation (Nansen netflow)
 
 ```bash
-timeout 300 tribes-cli alpha-scout ask \
-  --query "tokens with the largest net smart-money inflows over the past 7 days on Solana, exclude stablecoins and wrapped assets"
+curl -s -X POST 'https://api.nansen.ai/api/v1/smart-money/netflow' \
+  -H "apiKey: $NANSEN_API_KEY" -H 'content-type: application/json' -H 'accept: application/json' \
+  -d '{"parameters":{"chains":["solana"],"timeframe":"7d","excludeStablecoins":true}}'
 ```
 
-### New listings (then validate with one trending or smart-money overlap pass)
+### New listings (then validate with a trending or smart-money overlap)
 
 ```bash
-timeout 300 tribes-cli alpha-scout ask \
-  --query "notable new token listings from the last 72 hours with early volume or smart-money interest"
+curl -s "https://public-api.birdeye.so/defi/v2/tokens/new_listing?limit=20&time_to=$(date +%s)" \
+  -H "X-API-KEY: $BIRDEYE_API_KEY" -H 'x-chain: solana' -H 'accept: application/json'
 ```
-
-## Post-discovery checklist
-
-1. Verify Hyperliquid tradability before presenting ideas as executable (AGENTS.md guardrail).
-2. IF the request was unscoped, THEN add securities (`stock-analyst`) and commodities
-   (`commodity-analyst`) passes; see AGENTS.md.
-3. Hand off a chosen token: on-chain deep-dive → `token-analyst`; profile → `fundamentals-analyst`.
 
 ## Error recovery
 
-| Symptom                                  | Action                                                                                       |
-| ---------------------------------------- | -------------------------------------------------------------------------------------------- |
-| Auth error (unauthorized, expired token) | Run `tribes-cli login`, retry the original command once, then stop and report.               |
-| Empty or vague specialist answer         | Rephrase the query once with a tighter window/chain/signal; if still vague, stop and report. |
-| Any other API failure                    | Retry the same command once; if it fails again, stop and report the error.                   |
+| Symptom                                   | Action                                                                        |
+| ----------------------------------------- | ----------------------------------------------------------------------------- |
+| 401 / 403 from a provider                 | The key in `.env` is missing/invalid — check it, then retry once.             |
+| 429 / 5xx (rate limit or outage)          | Wait briefly, retry once; if it still fails, stop and report plainly.         |
+| Empty or thin result                      | Widen the window/limit or switch chain once; if still thin, report the gap.   |
+| Nansen body shape rejected (400)          | Adjust the `parameters` body for that endpoint.                               |
 
 ## Related skills
 
