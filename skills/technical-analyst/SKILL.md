@@ -39,6 +39,26 @@ read (`process.env.*`), loaded from `.env`. Reference them directly by name in t
   `/market_chart/range` (header `x-cg-pro-api-key`).
 - **Stock/commodity perp** — get candles from `stock-analyst` (Marketstack) or the perp venue.
 
+## Workflow patterns
+
+- **Resolve first:** symbol/name → address via BirdEye `/defi/v3/search?chain=<net>&keyword=`
+  (address given but chain missing → search by the address). Never guess chain/address or reuse a
+  remembered identifier the user didn't give.
+- **Indicators:** fetch OHLCV once (BirdEye `/defi/ohlcv` for a token, CoinGecko `/coins/{id}/ohlc`
+  for a coin, Marketstack for a stock), then compute RSI/MACD/SMA/EMA/Bollinger/ADX/ATR/OBV/ROC
+  from the candles and read overbought/oversold/neutral with exact numbers.
+- **Perps:** pass the coin EXACTLY as written, keeping any dex prefix (e.g. `xyz:CL`, `flx:AAPL`) —
+  the prefixed form is the real identifier; the bare symbol fails. `xyz:`/builder-dex assets are
+  Hyperliquid HIP-3 perps (tokenized stocks/commodities/FX), not real-exchange listings.
+- **Backtest:** define entry conditions (all true) + exit conditions (any triggers), run them
+  bar-by-bar over the candles, and report trade count, win rate, PnL, and max drawdown. Win rate
+  > 50% + positive avg PnL = viable; drawdown > 20% = risky; < 10 trades = widen the period.
+
+Also: if the user gave **no** timeframe and a fetch returns too few candles, auto-retry the next
+lower timeframe silently — **1W → 1D → 4H → 1H → 15m → 5m → 1m** — and note which was used; if all
+are exhausted, report insufficient history and stop. If the user **did** specify a timeframe/window,
+do NOT auto-downgrade — state the minimum needed and suggest a wider window. Never fabricate candles.
+
 ## Rules
 
 1. Reference each key from the environment (`.env`, exposed as the `src/common/Env.ts` constants) — e.g. `$BIRDEYE_API_KEY`. Never hardcode a key.

@@ -37,6 +37,19 @@ read (`process.env.*`), loaded from `.env`. Reference them directly by name in t
 `x-chain` values: `1 ethereum`, `10 optimism`, `56 bsc`, `137 polygon`, `8453 base`,
 `42161 arbitrum`, `solana`.
 
+## Workflow patterns
+
+- **"What's trending / hot?":** `/defi/token_trending` (BirdEye) → smart-money (Nansen
+  `/smart-money/netflow` or BirdEye `/smart-money/v1/token/list`) → **cross-reference**: a token
+  that is BOTH trending and net-accumulated by smart money is a stronger signal than either alone.
+- **"What are whales buying?":** Nansen `/smart-money/netflow` / `/holdings` (filter chain, window).
+- **New-token discovery:** `/defi/v2/tokens/new_listing` — and **flag the age** (fresh = higher risk).
+- **Resolve a name/symbol** with `/defi/v3/search?chain=<net>&keyword=` before deeper tools.
+
+Also: prioritize recency (alpha is being early); include the timeframe + signal strength; do NOT
+make buy/sell recommendations — present the data and let the user decide. Holder/trader deep-dives
+hand off to `token-analyst`. On a fixable param error, adjust and retry (≤2×) before giving up.
+
 ## Rules
 
 1. Reference each key from the environment (`.env`, exposed as the `src/common/Env.ts` constants) — e.g. `$BIRDEYE_API_KEY`. Never hardcode a key.

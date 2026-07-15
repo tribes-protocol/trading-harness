@@ -46,6 +46,23 @@ read (`process.env.*`), loaded from `.env`. Reference them directly by name in t
 GeckoTerminal network slugs: `eth`, `base`, `bsc`, `polygon_pos`, `arbitrum`, `optimism`,
 `solana` (list them with `/api/v3/onchain/networks`).
 
+## Workflow patterns
+
+- **Pool by address:** `/onchain/networks/{net}/pools/{addr}` → `/ohlcv/{tf}` (charts) →
+  `/trades` (recent activity).
+- **Pools for a token:** `/onchain/networks/{net}/tokens/{addr}/pools` → BirdEye
+  `/defi/v3/pair/overview/multiple` to compare → drill into ohlcv/trades.
+- **Discovery ("what pools are hot?"):** `/onchain/networks/trending_pools` (or `/{net}/trending_pools`)
+  → `/{net}/new_pools` (launches) → `/{net}/pools` (rankings) → `/onchain/pools/megafilter`
+  (FDV/liquidity/volume thresholds).
+- **DEX analysis:** `/onchain/networks/{net}/dexes` → `/{net}/dexes/{dex}/pools`.
+- **Pair-level:** BirdEye `/defi/ohlcv/base_quote` → `/defi/txs/pair` → `/defi/v3/pair/overview/multiple`.
+- **Category:** `/onchain/categories` → `/categories/{id}/pools`.
+
+Also: give BOTH volume AND liquidity context (high volume + low liquidity ≠ high liquidity + low
+volume); normalize comparisons to the same timeframe; flag new-pool age; state the network. On a
+fixable param error, adjust and retry (≤2×) before giving up.
+
 ## Rules
 
 1. Reference each key from the environment (`.env`, exposed as the `src/common/Env.ts` constants) — e.g. `$BIRDEYE_API_KEY`. Never hardcode a key.

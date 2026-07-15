@@ -45,6 +45,22 @@ Paths under `/api/v3`:
   `/public_treasury/{entity}/{coin}/holding_chart`, `/{entity}/public_treasury/{coin}`,
   `/public_treasury/{entity}/transaction_history`.
 
+## Workflow patterns
+
+- **Exchange overview:** `/exchanges` (rankings) → `/exchanges/{id}` (profile) →
+  `/exchanges/{id}/volume_chart` (trend). Use `/exchanges/list` to find a valid id first.
+- **Exchange tickers:** `/exchanges/{id}/tickers` — what pairs it lists and at what volume.
+- **Derivatives:** `/derivatives` (all instruments) → `/derivatives/exchanges` (rankings) →
+  `/derivatives/exchanges/{id}` (detail). Use `/derivatives/exchanges/list` for valid ids.
+- **Treasuries ("what does MicroStrategy hold?"):** `/entities/list` → `/public_treasury/{entity}`
+  → `/public_treasury/{entity}/{coin}/holding_chart` → `.../transaction_history`.
+- **"Who holds the most BTC?":** `/companies/public_treasury/bitcoin`.
+- **Perps depth / positions / funding on Hyperliquid** → the `hyperliquid` skill (not here).
+
+Also: normalize exchange comparisons to the same metric (24h volume, trust score); state the
+instrument type (perp/futures/options) for derivatives; frame treasury data as institutional
+sentiment. On a fixable param error, adjust and retry (≤2×) before giving up.
+
 ## Rules
 
 1. Reference each key from the environment (`.env`, exposed as the `src/common/Env.ts` constants) — e.g. `$BIRDEYE_API_KEY`. Never hardcode a key.

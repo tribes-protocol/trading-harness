@@ -60,6 +60,23 @@ read (`process.env.*`), loaded from `.env`. Reference them directly by name in t
 | OHLCV                    | `GET /defi/ohlcv?address=&type=&time_from=&time_to=`|
 | Deep flows / TGM (Nansen)| `POST /api/v1/tgm/{flows,holders,who-bought-sold,indicators,token-information}` |
 
+## Workflow patterns
+
+- **Quick price:** `/defi/multi_price` for spot; add `/defi/token_overview` for liquidity/volume.
+- **Due diligence ("is X safe?"):** `/defi/v3/token/meta-data/multiple` → `/defi/token_security`
+  (rug flags) → `/defi/v3/token/market-data/multiple` (mcap/liq/vol) → `/defi/token_creation_info`
+  if the launch looks suspicious.
+- **Charts/history:** `/defi/token_overview` for current context → `/defi/history_price`
+  (`type` + `time_from`/`time_to`) for ranged history.
+- **Trade/whale analysis:** `/defi/v3/token/txs` (recent) → `/defi/v3/token/txs-by-volume` (whales)
+  → `/defi/txs/token/seek_by_time` (time-windowed) → `/defi/v3/all-time/trades/single` (lifetime),
+  or Nansen `tgm/who-bought-sold` for buyer/seller breakdown.
+- **Holders:** `/holder/v1/distribution` for concentration; Nansen `tgm/holders` for labeled holders.
+- **Resolve a symbol first** with `/defi/v3/search?chain=<net>&keyword=`.
+
+On a fixable error (wrong chain/address/param) adjust and retry (up to 2×) before giving up; on
+429/5xx/auth, retry once then report plainly. If chain or address is missing, ask for the exact field.
+
 ## Rules
 
 1. Resolve chain + token address BEFORE any data call. Given a symbol, resolve it with BirdEye

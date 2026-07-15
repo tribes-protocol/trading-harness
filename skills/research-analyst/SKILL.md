@@ -44,6 +44,20 @@ deterministic on-chain resolution instead, an EVM RPC call against the ENS regis
 Ethereum mainnet works (`ALCHEMY_API_KEY`), but it requires namehash + `eth_call`; prefer the
 `web-search` path unless exact on-chain resolution is required.
 
+## Workflow patterns
+
+- **ENS identity:** name → address, or address → name — resolve via `web-search` (read the ENS
+  record / a reputable explorer), or on-chain via the ENS registry (`ALCHEMY_API_KEY`).
+- **Research ("what is X? / how does Y work?"):** one focused `web-search` query → read the most
+  relevant result → synthesize with source attribution.
+- **Deep research ("across its docs / all announcements"):** `web-search` to find the site → read
+  the docs/blog root and key pages (use `browser` for JS-gated pages) → synthesize across pages
+  with source URLs.
+
+Also: try ENS first for identity questions; craft specific (not vague) queries; distinguish
+verified on-chain data (ENS) from web-sourced claims; stay focused on finance; if reliable info
+isn't found, say so. Reword a failing query once or twice before giving up.
+
 ## Rules
 
 1. Keep returned source URLs in your final answer; attribute each material claim.

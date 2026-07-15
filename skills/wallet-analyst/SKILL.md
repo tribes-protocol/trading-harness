@@ -43,6 +43,22 @@ read (`process.env.*`), loaded from `.env`. Reference them directly by name in t
 `x-chain` values: `1 ethereum`, `10 optimism`, `56 bsc`, `137 polygon`, `8453 base`,
 `42161 arbitrum`, `solana`.
 
+## Workflow patterns
+
+- **Portfolio overview ("what's in my wallet?"):** `/wallet/v2/current-net-worth` (total) →
+  `/wallet/v2/net-worth-details` (position breakdown) → `/v1/wallet/token_list` (holdings); add
+  Nansen `/profiler/address/current-balance` for labeled DeFi exposure.
+- **Performance ("how am I doing / my PnL"):** `/wallet/v2/pnl/summary` (overall) → `/wallet/v2/pnl`
+  (per-token) → `/wallet/v2/net-worth` (trend).
+- **Activity/transfers:** `/v1/wallet/tx_list` → `/wallet/v2/balance-change`; Nansen
+  `/profiler/address/transactions` for labeled counterparties.
+- **Net-worth attribution:** `/wallet/v2/net-worth` (trend) → `/wallet/v2/balance-change` (what
+  moved) → `/wallet/v2/pnl/summary` (performance context).
+
+Also: start broad (total) before drilling in; label PnL clearly (realized vs unrealized, absolute
+vs %); show BOTH token amounts and USD; state timeframes. On a fixable param error, adjust and
+retry (≤2×) before giving up.
+
 ## Rules
 
 1. Reference each key from the environment (`.env`, exposed as the `src/common/Env.ts` constants) — e.g. `$BIRDEYE_API_KEY`. Never hardcode a key.

@@ -41,6 +41,20 @@ Paths under `/api/v3`:
 - Quick prices & search: `/simple/price`, `/search`, `/search/trending`, `/asset_platforms`,
   `/token_lists/{platform}/all.json`.
 
+## Workflow patterns
+
+- **Market overview ("how's the market?"):** `/global` (mcap, BTC dominance) →
+  `/global/decentralized_finance_defi` (DeFi health) → `/coins/top_gainers_losers` (today's movers)
+  → `/global/market_cap_chart` (trend).
+- **Rankings ("top coins / best performers"):** `/coins/markets` (sorted) → `/coins/categories`
+  (sector breakdown).
+- **Category rotation:** `/coins/categories` → drill into a category.
+- **Quick price:** `/simple/price` by CoinGecko id. **Search:** `/search`, `/search/trending`.
+
+Also: use exact figures — never approximate; include the timeframe; this is the macro lens — for
+token-level on-chain data (holders/trades/security) note it's `token-analyst`'s job. On a fixable
+param error, adjust and retry (≤2×) before giving up.
+
 ## Rules
 
 1. Reference each key from the environment (`.env`, exposed as the `src/common/Env.ts` constants) — e.g. `$BIRDEYE_API_KEY`. Never hardcode a key.

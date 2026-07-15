@@ -39,6 +39,20 @@ Endpoints (all take `access_key=$MARKETSTACK_API_KEY`):
 - Candles: `/v2/eod?symbols=&date_from=&date_to=&sort=DESC&limit=`,
   `/v2/intraday?symbols=&interval=<1min|5min|15min|1hour>&date_from=&date_to=`.
 
+## Workflow patterns
+
+- **Quote ("what's AAPL at?"):** `/v2/stockprice?ticker=` (or `/v2/eod/latest?symbols=`).
+- **Details ("tell me about Apple"):** `/v2/stockprice` → `/v2/tickers/{ticker}` (name/exchange).
+- **Compare (AAPL vs MSFT):** `/v2/eod/latest?symbols=AAPL,MSFT`.
+- **Candles:** `/v2/eod?symbols=&date_from=&date_to=&sort=DESC` (daily) or
+  `/v2/intraday?symbols=&interval=<1min|5min|15min|1hour>`.
+- **Technicals / signals** → hand to `technical-analyst` (fetch candles here, compute there).
+- **Movers / market open-closed / NBBO** → NOT available via Marketstack (needs a Massive key);
+  say so rather than guessing.
+
+Also: lead with price + change on a quote; use exact figures — never approximate; never say "stand
+by" — only return data you have. On a fixable param error, adjust and retry (≤2×) before giving up.
+
 ## Rules
 
 1. Reference each key from the environment (`.env`, exposed as the `src/common/Env.ts` constants) — e.g. `$BIRDEYE_API_KEY`. Never hardcode a key.

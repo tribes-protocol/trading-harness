@@ -46,6 +46,22 @@ Paths under `/api/v3` (use the lowercase, hyphenated CoinGecko id: `bitcoin`, `e
   price `/simple/token_price/{platform}`.
 - Fiat: `/exchange_rates`, `/simple/supported_vs_currencies`.
 
+## Workflow patterns
+
+- **Coin research ("tell me about X"):** `/coins/{id}` (profile, links, market/community/dev data).
+- **Historical performance:** `/coins/{id}/market_chart[/range]` (price/vol/mcap) →
+  `/coins/{id}/ohlc[/range]` (candles). Use `days` for a relative lookback or `from`/`to` for a
+  specific range.
+- **Supply analysis:** `/coins/{id}/circulating_supply_chart[/range]` and `/total_supply_chart[/range]`.
+- **Where a coin trades:** `/coins/{id}/tickers`.
+- **Contract lookup:** `/coins/{net}/contract/{addr}` → `.../market_chart`.
+- **Point-in-time snapshot:** `/coins/{id}/history?date=DD-MM-YYYY`. **Fiat:** `/exchange_rates`,
+  `/simple/token_price/{platform}`.
+
+Also: this is aggregated/historical data (source: CoinGecko), not live on-chain — for holders/
+security/live trades use `token-analyst`; always state the timeframe; use exact figures. On a
+fixable param error (bad id/date/currency), adjust and retry (≤2×) before giving up.
+
 ## Rules
 
 1. Reference each key from the environment (`.env`, exposed as the `src/common/Env.ts` constants) — e.g. `$BIRDEYE_API_KEY`. Never hardcode a key.
