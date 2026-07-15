@@ -13,4 +13,10 @@ export const API_BEARER_TOKEN = process.env.TRIBES_API_KEY ?? process.env.API_BE
 
 export const PRIVY_APP_ID = IS_PRODUCTION
   ? 'cmiwpjw6y0001l80b2er4lqzu'
-  : ensureString(process.env.PRIVY_APP_ID, 'PRIVY_APP_ID is not set')
+  : ensureString(
+      process.env.PRIVY_APP_ID,
+      'PRIVY_APP_ID is not set. A development build (NODE_ENV=development) targets ' +
+        'localhost and needs your local Privy app id. Add PRIVY_APP_ID=<id> to .env, ' +
+        'then rebuild with `bun run setup:dev`. To use the production backend instead, ' +
+        'run `bun run setup:prod` (the default for a fresh clone).'
+    )

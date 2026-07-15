@@ -245,6 +245,8 @@ bun run lint           # eslint, --max-warnings 0 (zero-tolerance)
 bun run lint:fix       # eslint --fix
 bun run format         # prettier --write
 bun run knip           # dead-code / unused-export detection
+bun run setup:dev      # rebuild tribes-cli against localhost (needs PRIVY_APP_ID in .env)
+bun run setup:prod     # rebuild tribes-cli against tribes.xyz (the default backend)
 ```
 
 `bun run test` is only a typecheck. To run the actual unit tests:
@@ -314,7 +316,9 @@ Prettier: no semicolons, single quotes, no trailing commas, width 100. TypeScrip
 
 ## Environment
 
-Config is resolved in `@/common/Env`. When `NODE_ENV` is unset, empty, or `production` (the default), `API_BASE_URL` and `PRIVY_APP_ID` are hardcoded to their production values — neither needs to be set. `PRIVY_APP_ID` is only read from (and required in) the env under a non-production `NODE_ENV`; `API_BASE_URL` is never read from the env. The one thing a run needs is a bearer token: `API_BEARER_TOKEN` (or the sandbox-injected `TRIBES_API_KEY`). It is typically auto-minted by the Tribes extension; if it is missing, run `tribes-cli login` first so a fresh token is fetched and persisted before other `tribes-cli` actions. Wallet private keys live in Privy, never locally. `.env*` and `.tribes/*.json` snapshots are gitignored.
+Config is resolved in `@/common/Env`. When `NODE_ENV` is unset, empty, or `production` (the default), `API_BASE_URL` and `PRIVY_APP_ID` are hardcoded to their production values — neither needs to be set. Under a non-production `NODE_ENV` the URLs point at localhost (`http://localhost:8787` API, `http://localhost:3000` web) and `PRIVY_APP_ID` is read from (and required in) the env; `API_BASE_URL` is never read from the env. The one thing a run needs is a bearer token: `API_BEARER_TOKEN` (or the sandbox-injected `TRIBES_API_KEY`). It is typically auto-minted by the Tribes extension; if it is missing, run `tribes-cli login` first so a fresh token is fetched and persisted before other `tribes-cli` actions. Wallet private keys live in Privy, never locally. `.env*` and `.tribes/*.json` snapshots are gitignored.
+
+**Production is the default; development is opt-in.** `bun build --compile` inlines `NODE_ENV` at build time, so the environment is fixed when the binary is compiled — editing `.env` afterwards does not change an already-compiled binary. `bootstrap.sh` compiles with `NODE_ENV=production`, so a fresh clone always targets `tribes.xyz`. To point the local `tribes-cli` at a localhost stack, run `bun run setup:dev` (it requires `PRIVY_APP_ID` in `.env` and fails with an explanation if it is missing); `bun run setup:prod` rebuilds back to production.
 
 ## Gotchas
 
