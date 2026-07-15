@@ -13,9 +13,24 @@ allowed-tools: bash read
 
 # Technical Analyst
 
-This is the **computation layer**: fetch OHLCV candles from a provider (reading keys from `.env`),
-then compute the indicators or run the backtest yourself over those candles. Candle sources and
-full auth details live in `docs/inlined-provider-apis.md`.
+This is the **computation layer**.
+
+**Preferred — one-shot indicator snapshot:**
+
+```bash
+tribes-cli indicators --kind token --asset BTC --chain ethereum --timeframe 1D --days 365
+tribes-cli indicators --kind perp  --asset BTC --timeframe 4H --days 60 --indicators rsi,macd,atr
+tribes-cli indicators --kind stock --asset NVDA --timeframe 1D --days 365
+```
+
+Fetches OHLCV once and returns the latest RSI(14, +signal), MACD(12/26/9), SMA(20/50/200),
+EMA(12/26), Bollinger(20,2), ADX(14), ATR(14, +%), OBV, ROC(10), Momentum(10) — filter with
+`--indicators`, choose the price basis with `--source` (close|hl2|hlc3|ohlc4). Same
+`--kind/--asset/--chain/--timeframe/--days` contract as `candles`.
+
+**For custom periods, non-standard indicators, or backtests:** fetch raw candles with
+`tribes-cli candles …` (same flags) and compute over them yourself. Provider/auth details live in
+`docs/inlined-provider-apis.md`.
 
 ## When to use
 

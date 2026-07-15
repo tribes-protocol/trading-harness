@@ -14,6 +14,7 @@ import { Command } from 'commander'
 
 import { buildCandlesCommand } from '@/cli/Candles'
 import { buildHyperliquidCommand } from '@/cli/Hyperliquid'
+import { buildIndicatorsCommand } from '@/cli/Indicators'
 import { buildLoginCommand } from '@/cli/Login'
 import { buildMacrosCommand } from '@/cli/Macros'
 import { buildNewsCommand } from '@/cli/News'
@@ -42,6 +43,7 @@ function buildTribesCli(): Command {
   program.addCommand(buildNewsCommand())
   program.addCommand(buildMacrosCommand())
   program.addCommand(buildCandlesCommand())
+  program.addCommand(buildIndicatorsCommand())
   program.addCommand(buildTokenCommand())
   program.addCommand(buildWebSearchCommand())
   program.addCommand(buildPredictionCommand())
