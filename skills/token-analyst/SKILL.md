@@ -17,9 +17,6 @@ Answer by calling on-chain data providers **directly** (BirdEye, Nansen, Moralis
 Helius RPC), reading keys from `.env`. Endpoints below; full catalog and auth details live in
 `docs/inlined-provider-apis.md`.
 
-> The former `tribes-cli token-analyst ask` backend proxy is **deprecated** — the backend is
-> being retired. Do the data pulls yourself against the provider APIs.
-
 ## When to use
 
 - Current price, liquidity, and volume snapshot for one identified token.
@@ -50,7 +47,7 @@ read (`process.env.*`), loaded from `.env`. Reference them directly by name in t
 
 | Need                     | Endpoint                                            |
 | ------------------------ | --------------------------------------------------- |
-| Name/symbol → address    | `GET /defi/v3/search?keyword=&target=token`         |
+| Name/symbol → address    | `GET /defi/v3/search?chain=<net>&keyword=&target=token` (chain is a QUERY param here, not the x-chain header; skip `search_mode=exact` — it over-filters) |
 | Price (batch)            | `GET /defi/multi_price?list_address=`               |
 | Overview (vol/liq)       | `GET /defi/token_overview?address=`                 |
 | Security / rug flags     | `GET /defi/token_security?address=`                 |
@@ -88,9 +85,10 @@ curl -s 'https://public-api.birdeye.so/defi/token_security?address=0x69825081454
 ### Price + overview snapshot (resolve symbol first)
 
 ```bash
-# 1) resolve WIF on solana → address
-curl -s 'https://public-api.birdeye.so/defi/v3/search?keyword=WIF&target=token&search_mode=exact&limit=5' \
-  -H "X-API-KEY: $BIRDEYE_API_KEY" -H 'x-chain: solana' -H 'accept: application/json'
+# 1) resolve WIF on solana → address (chain= is a query param; sort by liquidity to pick the real one)
+curl -s 'https://public-api.birdeye.so/defi/v3/search?chain=solana&keyword=WIF&target=token&sort_by=liquidity&sort_type=desc&limit=5' \
+  -H "X-API-KEY: $BIRDEYE_API_KEY" -H 'accept: application/json' \
+  | jq -r '[.data.items[].result[]?] | sort_by(-(.liquidity//0)) | .[0] | {symbol,address,liquidity}'
 # 2) overview for the resolved address
 curl -s 'https://public-api.birdeye.so/defi/token_overview?address=<ADDR>' \
   -H "X-API-KEY: $BIRDEYE_API_KEY" -H 'x-chain: solana' -H 'accept: application/json'
@@ -98,10 +96,17 @@ curl -s 'https://public-api.birdeye.so/defi/token_overview?address=<ADDR>' \
 
 ### Whale flow (Nansen TokenGodMode)
 
+Nansen bodies are **flat snake_case JSON** — no `parameters` wrapper. TGM endpoints take
+`chain` + `token_address`; time-scoped ones (`who-bought-sold`, `flows`, `transfers`) use
+`date:{from,to}` (YYYY-MM-DD), while `token-information`/`indicators`/`flow-intelligence` use a
+`timeframe` enum (`5m|1h|6h|12h|1d|7d`).
+
 ```bash
+PEPE=0x6982508145454ce325ddbe47a25d4ec3d2311933
+FROM=$(date -u -v-7d +%F 2>/dev/null || date -u -d '7 days ago' +%F); TO=$(date -u +%F)
 curl -s -X POST 'https://api.nansen.ai/api/v1/tgm/who-bought-sold' \
   -H "apiKey: $NANSEN_API_KEY" -H 'content-type: application/json' -H 'accept: application/json' \
-  -d '{"parameters":{"chain":"ethereum","tokenAddress":"0x6982508145454ce325ddbe47a25d4ec3d2311933","timeframe":"1d"}}'
+  -d "{\"chain\":\"ethereum\",\"token_address\":\"$PEPE\",\"date\":{\"from\":\"$FROM\",\"to\":\"$TO\"},\"pagination\":{\"page\":1,\"per_page\":50}}"
 ```
 
 ## Error recovery
@@ -111,7 +116,7 @@ curl -s -X POST 'https://api.nansen.ai/api/v1/tgm/who-bought-sold' \
 | 401 / 403 from a provider                 | The key in `.env` is missing/invalid — check it, then retry once.               |
 | 429 / 5xx (rate limit or provider outage) | Wait briefly and retry once; if it still fails, stop and report plainly.        |
 | Answer covers the wrong token             | Re-resolve via `/defi/v3/search` and rerun with the exact chain + address.      |
-| Nansen body shape rejected (400)          | Adjust the `parameters` body for that endpoint; if unclear, use BirdEye equivalents. |
+| Nansen 400/422 (body rejected)            | Body must be flat snake_case (no `parameters` wrapper); add the required `date:{from,to}`. |
 
 ## Related skills
 

@@ -16,9 +16,6 @@ allowed-tools: bash read
 Fetch numeric macro indicators **directly** from **FRED** (St. Louis Fed), reading the key from
 `.env`. Series map below; full auth details live in `docs/inlined-provider-apis.md`.
 
-> The former `tribes-cli macros market` backend proxy is **deprecated** — the backend is being
-> retired. Pull the series from FRED yourself and assemble the snapshot.
-
 ## When to use
 
 - Need current macro numbers (10y yield, VIX level, DXY, CPI, Fed funds, unemployment, gold,

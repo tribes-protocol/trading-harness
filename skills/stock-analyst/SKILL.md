@@ -14,9 +14,6 @@ allowed-tools: bash read
 Answer by calling **Marketstack** directly, reading the key from `.env`. Endpoints below; full
 auth details live in `docs/inlined-provider-apis.md`.
 
-> The former `tribes-cli stock-analyst ask` backend proxy is **deprecated** — the backend is being
-> retired. Run the pulls yourself.
-
 ## When to use
 
 - Latest price/quote, or intraday/EOD candles, for a stock ticker.

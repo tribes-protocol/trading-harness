@@ -13,9 +13,6 @@ allowed-tools: bash read
 Answer by calling discovery providers **directly** (BirdEye + Nansen), reading keys from `.env`.
 Endpoints below; full catalog and auth details live in `docs/inlined-provider-apis.md`.
 
-> The former `tribes-cli alpha-scout ask` backend proxy is **deprecated** — the backend is being
-> retired. Run the discovery pulls yourself.
-
 ## When to use
 
 - "What's trending?" / "What's hot right now?" — trending-token discovery.
@@ -62,10 +59,14 @@ curl -s 'https://public-api.birdeye.so/defi/token_trending?sort_type=desc&offset
 
 ### Smart-money accumulation (Nansen netflow)
 
+Nansen bodies are **flat snake_case JSON** — no `parameters` wrapper. `smart-money/netflow` takes
+`chains:[...]` (e.g. `ethereum`, `solana`, `base`, `bnb`, `arbitrum`, or `all`), an optional
+`filters` object (`include_stablecoins`, `include_native_tokens`, …), and optional `pagination`.
+
 ```bash
 curl -s -X POST 'https://api.nansen.ai/api/v1/smart-money/netflow' \
   -H "apiKey: $NANSEN_API_KEY" -H 'content-type: application/json' -H 'accept: application/json' \
-  -d '{"parameters":{"chains":["solana"],"timeframe":"7d","excludeStablecoins":true}}'
+  -d '{"chains":["solana"],"filters":{"include_stablecoins":false},"pagination":{"page":1,"per_page":20}}'
 ```
 
 ### New listings (then validate with a trending or smart-money overlap)
@@ -82,7 +83,7 @@ curl -s "https://public-api.birdeye.so/defi/v2/tokens/new_listing?limit=20&time_
 | 401 / 403 from a provider                 | The key in `.env` is missing/invalid — check it, then retry once.             |
 | 429 / 5xx (rate limit or outage)          | Wait briefly, retry once; if it still fails, stop and report plainly.         |
 | Empty or thin result                      | Widen the window/limit or switch chain once; if still thin, report the gap.   |
-| Nansen body shape rejected (400)          | Adjust the `parameters` body for that endpoint.                               |
+| Nansen 400/422 (body rejected)            | Body must be flat snake_case (no `parameters` wrapper); use `chains`+`filters`. |
 
 ## Related skills
 

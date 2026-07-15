@@ -16,9 +16,6 @@ Answer by calling portfolio providers **directly** — BirdEye for wallet net wo
 Nansen profiler for address analytics, Alchemy/Helius RPC for raw balances — reading keys from
 `.env`. Endpoints below; full catalog and auth details live in `docs/inlined-provider-apis.md`.
 
-> The former `tribes-cli wallet-analyst ask` backend proxy is **deprecated** — the backend is
-> being retired. Run the pulls yourself.
-
 ## When to use
 
 - Net worth now or its trend over time (24h/7d/30d).
@@ -74,10 +71,14 @@ curl -s 'https://public-api.birdeye.so/wallet/v2/pnl/summary?wallet=<ADDRESS>&du
 
 ### Address activity (Nansen profiler transactions)
 
+Nansen bodies are **flat snake_case JSON** — no `parameters` wrapper. Profiler endpoints take
+`address` + `chain` + a required `date:{from,to}` (YYYY-MM-DD), plus optional `filters`.
+
 ```bash
+FROM=$(date -u -v-7d +%F 2>/dev/null || date -u -d '7 days ago' +%F); TO=$(date -u +%F)
 curl -s -X POST 'https://api.nansen.ai/api/v1/profiler/address/transactions' \
   -H "apiKey: $NANSEN_API_KEY" -H 'content-type: application/json' -H 'accept: application/json' \
-  -d '{"parameters":{"address":"<ADDRESS>","chain":"ethereum","timeframe":"7d"}}'
+  -d "{\"address\":\"<ADDRESS>\",\"chain\":\"ethereum\",\"date\":{\"from\":\"$FROM\",\"to\":\"$TO\"}}"
 ```
 
 ## Error recovery
@@ -87,7 +88,7 @@ curl -s -X POST 'https://api.nansen.ai/api/v1/profiler/address/transactions' \
 | 401 / 403 from a provider                 | The key in `.env` is missing/invalid — check it, then retry once.               |
 | 429 / 5xx (rate limit or outage)          | Wait briefly, retry once; if it still fails, stop and report plainly.           |
 | Result covers the wrong / empty wallet    | You used the wrong address or chain — rerun with the address from `wallet list`.|
-| Nansen body shape rejected (400)          | Adjust the `parameters` body; fall back to the BirdEye wallet endpoints.        |
+| Nansen 400/422 (body rejected)            | Body must be flat snake_case with a required `date:{from,to}`; no `parameters` wrapper. |
 
 ## Related skills
 

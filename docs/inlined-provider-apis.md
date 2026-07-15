@@ -1,8 +1,6 @@
 # Inlined provider APIs
 
-**Direct provider calls are the default data path for the analyst skills.** The backend
-specialist proxy (`tribes-cli <analyst> ask`, proxied to `/agent/lucy/*`) is being retired, so
-each analyst skill now hits its third-party providers directly. This document is the shared
+The analyst skills call their third-party data providers directly. This document is the shared
 catalog of those providers: base URLs, auth, `.env` key names, and the endpoints behind each
 analyst's functionality.
 
@@ -101,7 +99,7 @@ Auth header on every request: `X-API-KEY: $BIRDEYE_API_KEY`. Chain-scoped endpoi
 | Trending tokens          | `GET /defi/token_trending`        | `sort_type`, `offset`, `limit`      |
 | New listings             | `GET /defi/v2/tokens/new_listing` | `time_to`, `limit`                  |
 | Smart-money token list   | `GET /smart-money/v1/token/list`  | `interval`, `trader_style`, `sort_by`|
-| Search (name→address)    | `GET /defi/v3/search`             | `keyword`, `target`, `search_mode`  |
+| Search (name→address)    | `GET /defi/v3/search`             | `chain` (QUERY param, not x-chain header), `keyword`, `target`; results under `data.items[].result[]`; skip `search_mode=exact` |
 
 ### Pair / pool endpoints (defi-analyst)
 
@@ -129,6 +127,17 @@ curl -s 'https://public-api.birdeye.so/defi/token_security?address=0x69825081454
 All endpoints are `POST` with a JSON body. Headers: `apiKey: $NANSEN_API_KEY`,
 `content-type: application/json`, `accept: application/json`.
 
+**Body shape (verified):** flat snake_case JSON — there is **no** `parameters` wrapper. Common fields:
+
+- Smart-money (`/smart-money/*`): `chains:[...]` (`ethereum`, `solana`, `base`, `bnb`, `arbitrum`,
+  `avalanche`, … or `all`), optional `filters` (`include_stablecoins`, `include_native_tokens`,
+  `token_address`, `market_cap_usd`, …), optional `pagination:{page,per_page}`, `order_by`.
+- TokenGodMode (`/tgm/*`): `chain` + `token_address`. Time-scoped ones (`who-bought-sold`,
+  `flows`, `transfers`, `dex-trades`) require `date:{from,to}` (`YYYY-MM-DD`); the summary ones
+  (`token-information`, `indicators`, `flow-intelligence`) use `timeframe` (`5m|1h|6h|12h|1d|7d`).
+- Profiler (`/profiler/address/*`): `address` + `chain` + required `date:{from,to}`, optional
+  `filters`, `hide_spam_token`.
+
 ### Smart money (alpha-scout)
 
 `POST /api/v1/smart-money/netflow` · `/holdings` · `/historical-holdings` · `/dex-trades` ·
@@ -150,13 +159,17 @@ plus `/api/v1/search/entity-name`, `/api/v1/search/general`, `/api/v1/perp-leade
 **Worked example** (smart-money netflow):
 
 ```bash
+# smart-money netflow (ethereum, exclude stablecoins)
 curl -s -X POST 'https://api.nansen.ai/api/v1/smart-money/netflow' \
   -H "apiKey: $NANSEN_API_KEY" -H 'content-type: application/json' -H 'accept: application/json' \
-  -d '{"parameters":{"chains":["ethereum"],"timeframe":"1d"}}'
-```
+  -d '{"chains":["ethereum"],"filters":{"include_stablecoins":false},"pagination":{"page":1,"per_page":20}}'
 
-> Request bodies vary per endpoint. When a body shape is unknown, prefer the backend
-> `tribes-cli <analyst> ask` path, which builds the correct payload.
+# TGM who-bought-sold (needs date:{from,to})
+FROM=$(date -u -v-7d +%F 2>/dev/null || date -u -d '7 days ago' +%F); TO=$(date -u +%F)
+curl -s -X POST 'https://api.nansen.ai/api/v1/tgm/who-bought-sold' \
+  -H "apiKey: $NANSEN_API_KEY" -H 'content-type: application/json' -H 'accept: application/json' \
+  -d "{\"chain\":\"ethereum\",\"token_address\":\"0x6982508145454ce325ddbe47a25d4ec3d2311933\",\"date\":{\"from\":\"$FROM\",\"to\":\"$TO\"}}"
+```
 
 ---
 
@@ -313,9 +326,8 @@ curl -s "https://api.marketstack.com/v2/stockprice?access_key=$MARKETSTACK_API_K
 
 ## Notes and guardrails
 
-- **Direct API is the default.** The old `tribes-cli <analyst> ask` backend proxy is deprecated
-  and being retired; do not rely on it. Pull data from the providers directly and do the
-  multi-step reasoning (disambiguation, cross-checks, synthesis) in the skill itself.
+- **Pull data from the providers directly** and do the multi-step reasoning (disambiguation,
+  cross-checks, synthesis) in the skill itself.
 - **Keys stay in `.env`.** Read them with the `grep | cut` one-liner. Never paste a key into a
   command literal, a skill file, or any committed file.
 - **Rate limits & errors.** On non-auth failure, retry once, then stop and report (per AGENTS.md).

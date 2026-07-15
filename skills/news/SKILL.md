@@ -15,10 +15,6 @@ allowed-tools: bash read
 Fetch headlines **directly** from **NewsData.io** (reading the key from `.env`), then form your
 own sentiment read. Endpoints below; full auth details live in `docs/inlined-provider-apis.md`.
 
-> The former `tribes-cli news fetch` backend proxy is **deprecated** — the backend is being
-> retired. It also scored sentiment for you; now you derive the bullish/bearish read yourself from
-> the fetched headlines.
-
 ## When to use
 
 - Need headlines, catalysts, or sentiment for a specific token, perp coin, or stock.

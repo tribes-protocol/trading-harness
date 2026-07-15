@@ -16,9 +16,6 @@ allowed-tools: bash read
 Answer by calling **CoinGecko Pro** directly, reading the key from `.env`. Endpoints below; full
 catalog and auth details live in `docs/inlined-provider-apis.md`.
 
-> The former `tribes-cli exchange-analyst ask` backend proxy is **deprecated** — the backend is
-> being retired. Run the pulls yourself.
-
 ## When to use
 
 - Rank or compare centralized exchanges by volume, trust, or market coverage.

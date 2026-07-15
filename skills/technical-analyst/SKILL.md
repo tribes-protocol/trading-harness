@@ -17,9 +17,6 @@ This is the **computation layer**: fetch OHLCV candles from a provider (reading 
 then compute the indicators or run the backtest yourself over those candles. Candle sources and
 full auth details live in `docs/inlined-provider-apis.md`.
 
-> The former `tribes-cli technical-analyst ask` backend proxy is **deprecated** — the backend is
-> being retired. The indicator math no longer runs remotely; compute it here from the candles.
-
 ## When to use
 
 - Indicator values, signal reads, or multi-indicator confluence (RSI, MACD, SMA/EMA, Bollinger,

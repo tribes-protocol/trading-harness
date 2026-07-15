@@ -16,9 +16,6 @@ Answer by calling pool/pair providers **directly** — CoinGecko on-chain (Gecko
 discovery and metrics, BirdEye for pair OHLCV and trades — reading keys from `.env`. Endpoints
 below; full catalog and auth details live in `docs/inlined-provider-apis.md`.
 
-> The former `tribes-cli defi-analyst ask` backend proxy is **deprecated** — the backend is being
-> retired. Run the pulls yourself.
-
 ## When to use
 
 - The subject is a liquidity pool, trading pair, or DEX — details, metrics, charts, trades.
