@@ -2,17 +2,14 @@ import { stdout } from 'node:process'
 
 import { Command } from 'commander'
 
-import { API_BASE_URL, API_BEARER_TOKEN } from '@/common/Env'
+import { FRED_API_KEY } from '@/common/Env'
 import { MacrosService } from '@/services/MacrosService'
 import { ensureJsonTreeString } from '@/utils/Lang'
 
 const VERSION = '1.0.0'
 
 export function buildMacrosCommand(): Command {
-  const macrosService = new MacrosService({
-    apiBaseUrl: API_BASE_URL,
-    apiBearerToken: API_BEARER_TOKEN
-  })
+  const macrosService = new MacrosService({ fredApiKey: FRED_API_KEY })
 
   const program = new Command('macros')
   program.description('Macros market snapshot CLI').version(VERSION)

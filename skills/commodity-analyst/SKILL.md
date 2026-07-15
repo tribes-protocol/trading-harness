@@ -65,10 +65,9 @@ macro series as a stated gap; do not replace it with a stale value.
 
 ### 3. Research supply, demand, and the catalyst calendar
 
-```bash
-timeout 300 tribes-cli research-analyst ask \
-  --query "Research the current supply, demand, inventories, policy, weather or geopolitical drivers, and scheduled catalysts for {COMMODITY} over the next {HORIZON}. Use primary or industry sources where possible and cite URLs. Explain what would support or invalidate a {SIDE} thesis."
-```
+Use the `research-analyst` skill: research current supply, demand, inventories, policy, weather or
+geopolitical drivers, and scheduled catalysts for {COMMODITY} over the next {HORIZON}; prefer
+primary/industry sources and cite URLs; explain what would support or invalidate a {SIDE} thesis.
 
 This is the source-backed structural leg. It is not a price or venue-data substitute.
 
@@ -85,10 +84,9 @@ paywall, CAPTCHA, or access control.
 
 ### 5. Check structure and levels
 
-```bash
-timeout 300 tribes-cli technical-analyst ask \
-  --query "Analyze Hyperliquid {DEX}:{COIN} daily, 4h, and 1h for a {SIDE} over {HORIZON}: trend, RSI, MACD, ATR, support/resistance, proposed entry, target, and invalidation. State whether the move is feasible relative to normal range."
-```
+Use the `technical-analyst` skill: analyze Hyperliquid {DEX}:{COIN} on daily/4h/1h for a {SIDE}
+over {HORIZON} — trend, RSI, MACD, ATR, support/resistance, proposed entry, target, and
+invalidation; state whether the move is feasible relative to normal range.
 
 The target and invalidation must come from structure and volatility, not a fixed percentage
 bracket.

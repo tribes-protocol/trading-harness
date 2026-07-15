@@ -83,19 +83,14 @@ the legs return because it needs the complete candidate list.
 
 4. Crypto ideas (timeout rule 2 applies to each):
 
-   ```bash
-   timeout 300 tribes-cli market-strategist ask \
-     --query "Top crypto gainers and losers today, BTC dominance trend, and which sectors are rotating"
-   timeout 300 tribes-cli alpha-scout ask \
-     --query "Trending tokens and smart-money accumulation over the last 24 hours"
-   ```
+   - Use the `market-strategist` skill: top crypto gainers/losers today, BTC dominance trend, and
+     which sectors are rotating.
+   - Use the `alpha-scout` skill: trending tokens and smart-money accumulation over the last 24h.
 
 5. Securities ideas (timeout rule 2 applies):
 
-   ```bash
-   timeout 300 tribes-cli stock-analyst ask \
-     --query "Biggest US stock and listed-security movers today with their catalysts"
-   ```
+   - Use the `stock-analyst` skill: biggest US stock / listed-security movers today with their
+     catalysts.
 
 6. Commodity ideas (`commodity-analyst` skill):
 

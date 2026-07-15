@@ -65,8 +65,8 @@ These are DEFAULTS: the user MAY override any of them explicitly; record overrid
 2. `tribes-cli hyperliquid list-open-orders --all-dexes --address <evm-address>`
 3. `tribes-cli hyperliquid list-balances --address <evm-address>` — read `accountValue` and
    `withdrawable`.
-4. PnL context (timeout ≥ 120s): `tribes-cli wallet-analyst ask --query "Realized and
-unrealized PnL for wallet <evm-address> over the last 30 days, by token"`.
+4. PnL context: use the `wallet-analyst` skill for realized and unrealized PnL for wallet
+<evm-address> over the last 30 days, by token.
 5. Fill this template per position and flag every safety concern:
 
 ```markdown

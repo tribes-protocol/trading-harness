@@ -266,7 +266,7 @@ bun run bootstrap.sh
 
 ### The `tribes-cli` binary is the product
 
-Everything the trading agent can do is a subcommand of one CLI. `src/cli/Tribes.ts` is the single entry point: it composes one `build...Command()` builder per group: Wallet, Hyperliquid, Transaction, SpotTrading, News, Macros, Token, WebSearch, Prediction, plus 10 analyst agents. `bootstrap.sh` compiles this into a native `tribes-cli` binary on PATH so the agent runs `tribes-cli <group> <command> ...` with no per-call transpile or `@/` alias resolution.
+Everything the trading agent can do is a subcommand of one CLI. `src/cli/Tribes.ts` is the single entry point: it composes one `build...Command()` builder per group: Wallet, Hyperliquid, Transaction, SpotTrading, News, Macros, Token, WebSearch, Prediction. `bootstrap.sh` compiles this into a native `tribes-cli` binary on PATH so the agent runs `tribes-cli <group> <command> ...` with no per-call transpile or `@/` alias resolution. `macros market` fetches FRED directly (inline, using `FRED_API_KEY`); the analyst/data skills call their providers directly rather than routing through the CLI.
 
 The `skills/<slug>/SKILL.md` files are documentation only; there is no executable code under `skills/`. The analyst/data skills (`token-analyst`, `alpha-scout`, `defi-analyst`, `exchange-analyst`, `fundamentals-analyst`, `market-strategist`, `wallet-analyst`, `technical-analyst`, `macros`, `news`, `stock-analyst`) document direct provider-API calls that read keys from `.env` (the `@/common/Env` constants) — see `docs/inlined-provider-apis.md`. The execution and utility skills (`hyperliquid`, `wallet`, `transaction`, `spot-trading`, `trade-execution`, `position-management`, etc.) point at the matching `tribes-cli <group>` command.
 
@@ -280,16 +280,12 @@ cli/        Commander builders. Parse argv, validate with a zod schema from type
 services/   Business logic + external I/O (Hyperliquid SDK, Privy, RPCs, the Tribes API).
 helpers/    Cross-cutting machinery (JWT, auth keys, Privy CLI wrapper, EvmRegistry,
             TerminalApiRequest, output writing, analyst-CLI factory).
-common/     Foundation: Env, Constants, Web3, Analysts registry.
+common/     Foundation: Env, Constants, Web3.
 utils/      Pure helpers (Lang, Chain, Solana, News parsing). No side effects.
 types/      zod schemas + inferred TS types. One concern per file, PascalCase filename.
 ```
 
 Services are dependency-injected by hand. A CLI builder constructs the services it needs using env constants from `@/common/Env`.
-
-### Adding a new analyst
-
-The 10 analyst commands are data-driven, not hand-written. Add an entry to `ANALYSTS` in `src/common/Analysts.ts` with `cliName`, `endpointPath`, `description`, etc. `Tribes.ts` loops over the registry and `buildAnalystCommand` generates the command. They all proxy to `/agent/lucy/*` endpoints.
 
 ### Pi extensions
 
