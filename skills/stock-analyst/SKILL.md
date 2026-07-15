@@ -44,9 +44,11 @@ Endpoints (all take `access_key=$MARKETSTACK_API_KEY`):
 - **Quote ("what's AAPL at?"):** `/v2/stockprice?ticker=` (or `/v2/eod/latest?symbols=`).
 - **Details ("tell me about Apple"):** `/v2/stockprice` → `/v2/tickers/{ticker}` (name/exchange).
 - **Compare (AAPL vs MSFT):** `/v2/eod/latest?symbols=AAPL,MSFT`.
-- **Candles:** `/v2/eod?symbols=&date_from=&date_to=&sort=DESC` (daily) or
-  `/v2/intraday?symbols=&interval=<1min|5min|15min|1hour>`.
-- **Technicals / signals** → hand to `technical-analyst` (fetch candles here, compute there).
+- **Candles:** prefer the unified command
+  `tribes-cli candles --kind stock --asset <TICKER> --timeframe 1D --days <n>` (uniform
+  `[{timestamp,open,high,low,close,volume}]`, null bars stripped); raw fallback is
+  `/v2/eod?symbols=&date_from=&date_to=&sort=DESC` or `/v2/intraday?symbols=&interval=<1min|…|1hour>`.
+- **Technicals / signals** → hand to `technical-analyst` (fetch candles via the command above, compute there).
 - **Movers / market open-closed / NBBO** → NOT available via Marketstack (needs a Massive key);
   say so rather than guessing.
 

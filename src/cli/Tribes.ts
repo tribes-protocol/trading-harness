@@ -12,6 +12,7 @@
 
 import { Command } from 'commander'
 
+import { buildCandlesCommand } from '@/cli/Candles'
 import { buildHyperliquidCommand } from '@/cli/Hyperliquid'
 import { buildLoginCommand } from '@/cli/Login'
 import { buildMacrosCommand } from '@/cli/Macros'
@@ -40,6 +41,7 @@ function buildTribesCli(): Command {
   // Market data + research.
   program.addCommand(buildNewsCommand())
   program.addCommand(buildMacrosCommand())
+  program.addCommand(buildCandlesCommand())
   program.addCommand(buildTokenCommand())
   program.addCommand(buildWebSearchCommand())
   program.addCommand(buildPredictionCommand())

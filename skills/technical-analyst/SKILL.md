@@ -29,15 +29,27 @@ full auth details live in `docs/inlined-provider-apis.md`.
 
 ## Candle sources
 
-These keys come from the environment — the same names the `src/common/Env.ts` constants
-read (`process.env.*`), loaded from `.env`. Reference them directly by name in the calls below. In a bare shell, load them once with
-`set -a; . ./.env; set +a`.
+**Preferred — one unified command** (handles symbol→address resolution, chain header, timestamps,
+source-format differences, null-bar stripping, and rolls up non-native timeframes via aggregation;
+returns a uniform `[{timestamp, open, high, low, close, volume}]`):
 
-- **Crypto token** — BirdEye `GET /defi/ohlcv?address=&type=<1m|5m|15m|1H|4H|1D|1W>&time_from=&time_to=`
-  (header `X-API-KEY` + `x-chain`).
-- **Coin by id / longer history** — CoinGecko `GET /api/v3/coins/{id}/ohlc/range` or
-  `/market_chart/range` (header `x-cg-pro-api-key`).
-- **Stock/commodity perp** — get candles from `stock-analyst` (Marketstack) or the perp venue.
+```bash
+tribes-cli candles --kind token --asset BTC  --chain ethereum --timeframe 1D --days 45
+tribes-cli candles --kind token --asset SOL  --chain solana   --timeframe 4H --days 10
+tribes-cli candles --kind perp  --asset BTC                   --timeframe 4H --days 10
+tribes-cli candles --kind stock --asset NVDA                  --timeframe 1D --days 45
+```
+
+Same `token|perp|stock` vocabulary as the `AssetIdentity` type / `news`. `--kind token` (BirdEye,
+needs `--chain`) resolves majors like BTC→WBTC / SOL→wSOL for you; `--kind perp` (Hyperliquid —
+pass the coin verbatim incl. any `xyz:` dex prefix; **no 6H**); `--kind stock` (Marketstack, USD
+EOD/intraday). Timeframes: `1m,5m,15m,30m,1H,2H,4H,6H,8H,12H,1D,3D,1W,1M`.
+
+**Fallback — raw provider curls** (keys from `.env`, loaded with `set -a; . ./.env; set +a`):
+
+- **Crypto token** — BirdEye `GET /defi/ohlcv?address=&type=&time_from=&time_to=` (header `X-API-KEY` + `x-chain`).
+- **Coin by id / longer history** — CoinGecko `GET /api/v3/coins/{id}/ohlc/range` (header `x-cg-pro-api-key`).
+- **Stock** — Marketstack `GET /v2/eod` / `/v2/intraday`.
 
 ## Workflow patterns
 
