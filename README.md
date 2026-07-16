@@ -23,7 +23,7 @@ By default (`NODE_ENV` unset, empty, or `production`) the Tribes API base and Pr
 are **baked into the binary** — there is nothing to configure to run against production.
 The only thing a run needs is auth (a bearer token), and that is handled for you:
 
-- In a Tribes sandbox the control plane injects the token (`TRIBES_API_KEY`); no login step.
+- In a Tribes sandbox the host provisions the agent's signing key and the extension mints the token from it; no login step.
 - Anywhere else (Claude Code, a local shell), run `tribes-cli login` — or the `/tribes-login`
   skill — once to mint and persist an `API_BEARER_TOKEN`.
 
