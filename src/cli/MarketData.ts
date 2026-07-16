@@ -5,6 +5,7 @@ import { writeOutput } from '@/helpers/WriteOutput'
 import { CoinGeckoService } from '@/services/CoinGeckoService'
 import {
   CoinGeckoCoinCommandOptionsSchema,
+  CoinGeckoDefiCommandOptionsSchema,
   CoinGeckoGlobalCommandOptionsSchema,
   CoinGeckoOhlcCommandOptionsSchema,
   CoinGeckoPricesCommandOptionsSchema,
@@ -73,6 +74,19 @@ export function buildMarketDataCommand(): Command {
     .action(async (options: unknown): Promise<void> => {
       const request = CoinGeckoGlobalCommandOptionsSchema.parse(options)
       const response = await coinGeckoService.getGlobal()
+      await writeOutput({
+        output: ensureJsonTreeString(response),
+        outPath: request.out ?? undefined
+      })
+    })
+
+  program
+    .command('defi')
+    .description('Global DeFi aggregates (DeFi market cap, 24h volume, dominance)')
+    .option('--out <file>', 'Write output JSON to file')
+    .action(async (options: unknown): Promise<void> => {
+      const request = CoinGeckoDefiCommandOptionsSchema.parse(options)
+      const response = await coinGeckoService.getGlobalDefi()
       await writeOutput({
         output: ensureJsonTreeString(response),
         outPath: request.out ?? undefined

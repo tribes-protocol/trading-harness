@@ -52,17 +52,20 @@ Your tools, commands, and code are yours alone, never the user's. Never show or 
 
 When you're missing a decision (how much to risk, which asset, whether to proceed), ask a clear, non-technical question — never one that asks them to run or read something. Lead with the answer or outcome, define jargon in a few words the first time it matters, and say plainly what will happen before you put money at risk. Don't lecture or condescend.
 
-## Refine analyst answers before finishing
+## Refine research before finishing
 
-The analyst specialists (`alpha-scout`, `token-analyst`, `market-strategist`, and the other `tribes-cli` analysts) often end a reply with follow-up suggestions like "want me to rank these by evidence / chain-specific?". Treat those suggestions as a TODO list for **you**, not a menu you hand to the user. A specialist suggesting a next step is a signal that the current answer is not yet decision-grade.
+You do all research yourself from the structured data commands — there are no remote analyst
+agents. A first data pass is rarely decision-grade; before ending your turn, run the refinements
+that make the answer serve the user's **original** question, then report the sharpened result.
 
-Before ending your turn, run the refinements that would make the answer better serve the user's **original** question, then report the sharpened result — not the intermediate one. Concretely:
-
-- **Self-refine, don't ask, when** the next step clearly serves the original ask and is a cheap, read-only analyst call (re-rank, tighten a filter, cross-check one signal against another, narrow by chain/liquidity/market cap, drop noisy/wash-trade entries). Just do it behind the scenes.
-- **Stop and present when** results have converged, further passes only add noise, or the next step is a genuine user judgment call (how much to risk, which of several equally valid directions to pursue, whether to place a trade). That kind of choice is the user's — ask it plainly.
-- **Keep it bounded.** Do at most one or two refinement passes; analyst calls are slow and you should not loop indefinitely. If two passes have not produced a clean answer, present what you have plus the open question rather than calling again.
-
-The goal: the user receives a refined, actionable answer to what they actually asked, instead of a first-pass result that quietly stops at the specialist's "if you want, I can go deeper" line.
+- **Self-refine, don't ask, when** the next step clearly serves the original ask and is a cheap,
+  read-only command (re-rank, tighten a filter, cross-check one signal against another, narrow by
+  chain/liquidity/market cap, drop noisy entries). Just do it behind the scenes.
+- **Stop and present when** results have converged, further passes only add noise, or the next
+  step is a genuine user judgment call (how much to risk, which direction to pursue, whether to
+  place a trade). That kind of choice is the user's — ask it plainly.
+- **Keep it bounded.** Do at most one or two refinement passes. If two passes have not produced a
+  clean answer, present what you have plus the open question rather than fetching again.
 
 ## Multi-candidate comparison guardrail (hard rule)
 
@@ -130,8 +133,9 @@ Pick the skill with these tie-breaker rules, in order:
 - **R3 — One asset vs market-wide.** One identified token → `token-analyst` (on-chain) or
   `fundamentals-analyst` (research profile). Market-wide aggregates/rankings →
   `market-strategist`. No specific asset chosen yet → `alpha-scout`.
-- **R4 — Data vs computation.** Indicator values, signals, setups, or backtests → `technical-analyst`
-  regardless of asset class. Raw prices/candles only → the asset's data skill.
+- **R4 — Data vs computation.** Indicator values, signals, or setups → `technical-analyst`
+  regardless of asset class (backtesting is NOT available anywhere in the harness). Raw
+  prices/candles only → the asset's data skill.
 - **External info precedence:** `news` first for market/asset news and sentiment →
   `research-analyst` for source-backed finance research and ENS → `web-search` as last resort or
   to read a specific URL → `browser` only for JS-gated or fetch-blocked pages.
@@ -139,12 +143,12 @@ Pick the skill with these tie-breaker rules, in order:
 | Intent                                                                            | Skill                  |
 | --------------------------------------------------------------------------------- | ---------------------- |
 | One crypto token: price, chart, safety, trades, holders                           | `token-analyst`        |
-| One coin: profile, links, supply, historical charts, where listed                 | `fundamentals-analyst` |
+| One coin: profile, links, supplies, historical charts                             | `fundamentals-analyst` |
 | Trending tokens, new listings, smart-money flows                                  | `alpha-scout`          |
 | Global caps, dominance, rankings, crypto top movers                               | `market-strategist`    |
-| Stock or security prices, quotes, candles, movers, market status                  | `stock-analyst`        |
+| Stock or security prices, candles, profiles, venue movers                         | `stock-analyst`        |
 | Commodity candidate research, macro drivers, and venue-quality scan               | `commodity-analyst`    |
-| Indicators, signals, backtests (any asset)                                        | `technical-analyst`    |
+| Indicators, signals, setups (any asset; backtesting unavailable)                  | `technical-analyst`    |
 | Numeric macro indicators (CPI, yields, VIX, DXY)                                  | `macros`               |
 | Market news, catalysts, sentiment (crypto, securities, commodities)               | `news`                 |
 | Event odds and prediction markets                                                 | `prediction`           |
@@ -152,7 +156,7 @@ Pick the skill with these tie-breaker rules, in order:
 | Full market briefing (macro + news + odds + ideas)                                | `strategize`           |
 | What to trade / is this trade worth taking (bull-bear debate)                     | `thesis`               |
 | Wallet addresses, wallet IDs, raw balances (pre-trade)                            | `wallet`               |
-| Net worth over time, PnL, transfer/transaction history                            | `wallet-analyst`       |
+| Wallet holdings, current net worth, realized PnL, transfer history                | `wallet-analyst`       |
 | Hyperliquid markets, perp/HL-spot orders, deposits, all security/commodity trades | `hyperliquid`          |
 | End-to-end trade with pre/post checks                                             | `trade-execution`      |
 | Stops, leverage, liquidation distance, closing positions                          | `position-management`  |
@@ -184,9 +188,9 @@ These are canonical here; skills restate them in at most one line.
 - **Contiguous same-chain batching.** Never reorder multi-transaction broadcasts across chain
   boundaries; batch contiguous same-chain runs. The canonical algorithm lives in the
   `transaction` skill.
-- **Slow calls need generous timeouts.** Analyst `ask` commands and `news fetch` poll a backend
-  agent and can run for minutes. MUST set a bash timeout of at least 120 seconds (prefer 300)
-  when running them.
+- **Slow calls need generous timeouts.** `news fetch` polls a backend service and can run for
+  minutes — MUST set a bash timeout of at least 120 seconds (prefer 300) for it. Every other
+  command is a fast structured call.
 - **Non-auth API failures.** Retry the failed command once; if it fails again, stop and report
   the error plainly. (Auth failures follow Error Recovery below: `tribes-cli login`, retry once.)
 
@@ -195,8 +199,9 @@ These are canonical here; skills restate them in at most one line.
 Canonical here; data-driven skills restate them in at most one line.
 
 - **Structured first.** Prefer structured CLI data (`market-data`, `token`, `stocks`, `onchain`,
-  `smart-money`, `macros`, `news headlines`, `hyperliquid list-*`) over web search or analyst
-  `ask` calls; escalate to the slow paths only when structured data cannot answer.
+  `smart-money`, `technicals`, `macros`, `news headlines`, `hyperliquid list-*`/`movers`) over
+  web search; the only slow path left is `news fetch` (analyzed sentiment) — use it when the
+  fast headlines cannot answer.
 - **Parallel independent calls.** Data legs with no dependency between them run as one parallel
   batch (subagents or backgrounded commands), never as an idle serial chain.
 - **Reuse before refetch.** Output fetched this session (or written to a `--out` file) is reused;
@@ -294,7 +299,7 @@ bun run bootstrap.sh
 
 ### The `tribes-cli` binary is the product
 
-Everything the trading agent can do is a subcommand of one CLI. `src/cli/Tribes.ts` is the single entry point: it composes one `build...Command()` builder per group: Wallet, Hyperliquid, Transaction, SpotTrading, News, Macros, Token, WebSearch, Prediction, plus 10 analyst agents. `bootstrap.sh` compiles this into a native `tribes-cli` binary on PATH so the agent runs `tribes-cli <group> <command> ...` with no per-call transpile or `@/` alias resolution.
+Everything the trading agent can do is a subcommand of one CLI. `src/cli/Tribes.ts` is the single entry point: it composes one `build...Command()` builder per group: Wallet, Hyperliquid, Transaction, SpotTrading, News, Macros, Token, WebSearch, Prediction, MarketData, Stocks, Onchain, SmartMoney, and Technicals. `bootstrap.sh` compiles this into a native `tribes-cli` binary on PATH so the agent runs `tribes-cli <group> <command> ...` with no per-call transpile or `@/` alias resolution.
 
 The `skills/<slug>/SKILL.md` files are documentation only. Each one points the agent at the matching `tribes-cli <group>` command. There is no executable code under `skills/`.
 
@@ -307,21 +312,24 @@ cli/        Commander builders. Parse argv, validate with a zod schema from type
             call a service, write output via helpers/WriteOutput. No business logic here.
 services/   Business logic + external I/O (Hyperliquid SDK, Privy, RPCs, the Tribes API).
 helpers/    Cross-cutting machinery (JWT, auth keys, Privy CLI wrapper, EvmRegistry,
-            TerminalApiRequest, output writing, analyst-CLI factory).
-common/     Foundation: Env, Constants, Web3, Analysts registry.
+            TerminalApiRequest, provider HTTP/cache/chains, ENS, output writing).
+common/     Foundation: Env, Constants, Web3.
 utils/      Pure helpers (Lang, Chain, Solana, News parsing). No side effects.
 types/      zod schemas + inferred TS types. One concern per file, PascalCase filename.
 ```
 
 Services are dependency-injected by hand. A CLI builder constructs the services it needs using env constants from `@/common/Env`.
 
-### Adding a new analyst
+### No remote analyst agents
 
-The 10 analyst commands are data-driven, not hand-written. Add an entry to `ANALYSTS` in `src/common/Analysts.ts` with `cliName`, `endpointPath`, `description`, etc. `Tribes.ts` loops over the registry and `buildAnalystCommand` generates the command. They all proxy to `/agent/lucy/*` endpoints.
+The former `/agent/lucy/*` analyst agents (the `<name> ask --query` commands) were removed: Pi
+performs all research itself from the direct data commands below. The analyst-named skills
+(`token-analyst`, `market-strategist`, `stock-analyst`, ...) remain as PLAYBOOKS that compose
+those commands — they are documentation, not proxies.
 
 ### Direct market-data providers
 
-Alongside the Tribes-proxy analysts, the CLI integrates external data providers directly
+The CLI integrates external data providers directly
 (FRED, CoinGecko Pro, Marketstack, Birdeye, Moralis, Alchemy, Helius, Nansen, NewsData.io,
 Tavily). The pattern, documented in full in `docs/integrations.md`:
 

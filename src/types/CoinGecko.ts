@@ -288,6 +288,34 @@ export const CoinGeckoTopCommandOptionsSchema = z.object({
   out: z.string().nullish()
 })
 
+// GET /api/v3/global/decentralized_finance_defi — numerics arrive as strings.
+export const CoinGeckoRawDefiSchema = z.object({
+  data: z.object({
+    defi_market_cap: z.string().nullish(),
+    eth_market_cap: z.string().nullish(),
+    defi_to_eth_ratio: z.string().nullish(),
+    trading_volume_24h: z.string().nullish(),
+    defi_dominance: z.string().nullish(),
+    top_coin_name: z.string().nullish(),
+    top_coin_defi_dominance: z.number().nullish()
+  })
+})
+
+export const CoinGeckoDefiSnapshotSchema = z.object({
+  source: z.literal('coingecko'),
+  defi_market_cap_usd: z.number().nullish(),
+  defi_trading_volume_24h_usd: z.number().nullish(),
+  defi_dominance_pct: z.number().nullish(),
+  top_coin_name: z.string().nullish(),
+  top_coin_defi_dominance_pct: z.number().nullish()
+})
+export type CoinGeckoDefiSnapshot = z.infer<typeof CoinGeckoDefiSnapshotSchema>
+
+export const CoinGeckoDefiCommandOptionsSchema = z.object({
+  out: z.string().nullish()
+})
+export type CoinGeckoDefiCommandOptions = z.infer<typeof CoinGeckoDefiCommandOptionsSchema>
+
 export const CoinGeckoGlobalCommandOptionsSchema = z.object({
   out: z.string().nullish()
 })

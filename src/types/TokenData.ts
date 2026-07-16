@@ -297,7 +297,7 @@ export const BIRDEYE_OHLCV_INTERVALS = [
   '1M'
 ] as const
 
-const BirdeyeOhlcvIntervalSchema = z.enum(BIRDEYE_OHLCV_INTERVALS)
+export const BirdeyeOhlcvIntervalSchema = z.enum(BIRDEYE_OHLCV_INTERVALS)
 export type BirdeyeOhlcvInterval = z.infer<typeof BirdeyeOhlcvIntervalSchema>
 
 export const TokenMarketCommandOptionsSchema = z.object({

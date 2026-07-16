@@ -86,9 +86,6 @@ describe('computePerpMovers', () => {
       asOf: AS_OF
     })
 
-    expect(result.funding_extremes.map((m) => m.name)).toEqual([
-      'STRETCHED_POS',
-      'STRETCHED_NEG'
-    ])
+    expect(result.funding_extremes.map((m) => m.name)).toEqual(['STRETCHED_POS', 'STRETCHED_NEG'])
   })
 })

@@ -18,7 +18,7 @@ const CHAINS_FLAG_DESCRIPTION =
   `Comma-separated chain ids (${SUPPORTED_CHAIN_IDS_TEXT}); ` + 'defaults to all supported chains'
 
 // Nansen-backed smart-money CLI group: a fast deterministic complement to the
-// alpha-scout and wallet-analyst agents.
+// alpha-scout and wallet-analyst skill playbooks.
 export function buildSmartMoneyCommand(): Command {
   const nansenService = new NansenService({ apiKey: NANSEN_API_KEY })
 

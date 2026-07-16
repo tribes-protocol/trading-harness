@@ -64,7 +64,8 @@ Steps 1–3 are independent — run as ONE parallel batch. Steps 4–5 are optio
 
    30 daily bars, newest first: trend direction, distance from the 30-day high/low, yesterday's
    close vs the venue mark (divergence = mark vs `close` of the newest bar). Escalate to
-   `technical-analyst ask` only when indicator math (RSI, ATR, levels) is actually needed.
+   `tribes-cli technicals indicators --symbol <TICKER> --limit 120` when indicator math
+   (RSI, ATR, levels) is actually needed.
 
 3. Catalysts and earnings proximity (`news` skill):
 
@@ -154,7 +155,7 @@ fetch` provides that). A PASS is never a guarantee — it means no red flags wer
 ## Related skills
 
 - `execution-quality` — the microstructure/cost half; run both before sizing.
-- `stock-analyst` — owns the `stocks` commands; deeper quotes/movers via `ask`.
+- `stock-analyst` — the stock-data playbook that owns the `stocks` commands.
 - `technical-analyst` — indicator math on the candles when the trend read needs it.
 - `news` — owns `headlines` and the analyzed `fetch --kind stock` path.
 - `prediction` — regulatory/macro binary odds.

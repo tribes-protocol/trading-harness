@@ -1,15 +1,17 @@
 import { Command } from 'commander'
 
 import { SOL_CONNECTION } from '@/common/Web3'
+import { lookupEnsAddress, resolveEnsName } from '@/helpers/Ens'
 import { writeOutput } from '@/helpers/WriteOutput'
 import { WalletService } from '@/services/WalletService'
+import { EnsResolveCommandOptionsSchema } from '@/types/Ens'
 import {
   EthTransferCommandOptionsSchema,
   ListWalletAssetsCommandOptionsSchema,
   ListWalletsCommandOptionsSchema,
   SolTransferCommandOptionsSchema
 } from '@/types/WalletCli'
-import { ensureJsonTreeString } from '@/utils/Lang'
+import { ensureJsonTreeString, isNullish, prepend0x } from '@/utils/Lang'
 
 const VERSION = '1.0.0'
 
@@ -18,6 +20,23 @@ export function buildWalletCommand(): Command {
 
   const program = new Command('wallet')
   program.description('Wallet CLI').version(VERSION)
+
+  program
+    .command('resolve-ens')
+    .description('Resolve an ENS name to an address, or reverse-resolve an address (mainnet)')
+    .option('--name <ensName>', 'ENS name to resolve, e.g. vitalik.eth')
+    .option('--address <address>', 'EVM address to reverse-resolve')
+    .option('--out <file>', 'Write output JSON to file')
+    .action(async (options: unknown): Promise<void> => {
+      const request = EnsResolveCommandOptionsSchema.parse(options)
+      const response = !isNullish(request.name)
+        ? await resolveEnsName(request.name)
+        : await lookupEnsAddress(prepend0x(ensureAddress(request.address)))
+      await writeOutput({
+        output: ensureJsonTreeString(response),
+        outPath: request.out ?? undefined
+      })
+    })
 
   program
     .command('list')
@@ -113,4 +132,11 @@ export function buildWalletCommand(): Command {
     })
 
   return program
+}
+
+function ensureAddress(address: string | null | undefined): string {
+  if (isNullish(address)) {
+    throw new Error('--address is required when --name is not given')
+  }
+  return address
 }

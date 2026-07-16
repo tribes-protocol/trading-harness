@@ -124,7 +124,7 @@ bootstrap.sh               # First-boot: install deps + compile tribes-cli, inst
 src/                       # ALL code: command builders + shared foundation (@/*)
   cli/                     # Tribes.ts (the tribes-cli entry) + one builder per group:
                            #   Wallet, Hyperliquid, Transaction, SpotTrading, Token, News,
-                           #   Macros, WebSearch, Prediction, 9 analysts
+                           #   Macros, WebSearch, Prediction, Technicals, ...
   common/ helpers/ services/ types/ utils/
 .pi/
   agent/

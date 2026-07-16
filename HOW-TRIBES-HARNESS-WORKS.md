@@ -218,23 +218,23 @@ For "is this trade worth it?" questions, the agent doesn't just answer — it co
 
 ## Part 4 — Research (before, during, or instead of trading)
 
-The harness has a bench of specialist analysts it consults before you trade — or just to answer a question. You reach all of them the same way: by asking.
+The agent researches everything itself from live market data — structured APIs for prices, candles, news, macro, on-chain flows, and prediction markets. You reach all of it the same way: by asking.
 
-| Specialist               | What it covers                                                                   | Ask something like                                |
-| ------------------------ | -------------------------------------------------------------------------------- | ------------------------------------------------- |
-| Market overview          | Global market cap, Bitcoin dominance, top gainers and losers, sector performance | 💬 "How's the market? Who's up big today?"        |
-| News & sentiment         | Catalysts and headlines for a coin, stock, or theme                              | 💬 "Any news moving Solana this week?"            |
-| Macro                    | Dollar index, Treasury yields, VIX, gold, oil, CPI                               | 💬 "What's the macro backdrop right now?"         |
-| Smart money & discovery  | Trending tokens, new listings, what large successful wallets are buying          | 💬 "What's smart money accumulating?"             |
-| Technicals & backtests   | Momentum, trend, and volatility indicators; testing a strategy against history   | 💬 "Give me the technical picture on ETH."        |
-| Prediction markets       | What Polymarket implies about rate cuts, elections, and other binary outcomes    | 💬 "What are the odds the Fed cuts next meeting?" |
-| Token safety             | On-chain audits of a token's contract, holders, and liquidity                    | 💬 "Is this token a rug?"                         |
-| Your portfolio           | Net worth over time, realized and unrealized P&L, per-token performance          | 💬 "Break down my P&L by position."               |
-| DeFi, exchanges & stocks | DEX pools and pairs, exchange and derivatives data, stock quotes and technicals  | 💬 "What are the deepest ETH pools right now?"    |
+| Specialist              | What it covers                                                                   | Ask something like                                |
+| ----------------------- | -------------------------------------------------------------------------------- | ------------------------------------------------- |
+| Market overview         | Global market cap, Bitcoin dominance, top gainers and losers, sector performance | 💬 "How's the market? Who's up big today?"        |
+| News & sentiment        | Catalysts and headlines for a coin, stock, or theme                              | 💬 "Any news moving Solana this week?"            |
+| Macro                   | Dollar index, Treasury yields, VIX, gold, oil, CPI                               | 💬 "What's the macro backdrop right now?"         |
+| Smart money & discovery | Trending tokens, new listings, what large successful wallets are buying          | 💬 "What's smart money accumulating?"             |
+| Technicals              | Momentum, trend, and volatility indicators computed from real candles            | 💬 "Give me the technical picture on ETH."        |
+| Prediction markets      | What Polymarket implies about rate cuts, elections, and other binary outcomes    | 💬 "What are the odds the Fed cuts next meeting?" |
+| Token safety            | On-chain audits of a token's contract, holders, and liquidity                    | 💬 "Is this token a rug?"                         |
+| Your portfolio          | Holdings, current net worth, realized P&L and win rate, transfer history         | 💬 "Break down my P&L by position."               |
+| Stocks                  | Official daily candles, company profiles, live stock-perp movers on the venue    | 💬 "How did NVDA trade this month?"               |
 
 Three things the agent does for you automatically:
 
-- **It synthesizes.** For an open-ended question like _"find me a good setup,"_ it pulls several specialists together and gives you a decision-grade answer, not a raw data dump.
+- **It synthesizes.** For an open-ended question like _"find me a good setup,"_ it pulls several data sources together and gives you a decision-grade answer, not a raw data dump.
 - **It looks across markets.** Ask for opportunities without naming an asset class and it scans crypto, securities, _and_ commodities, presenting all three — unless you scope it yourself ("crypto only").
 - **It can brief you like a morning desk note.** Say _"give me a market briefing"_ and you get the macro numbers, the headlines, prediction-market odds, and ideas across crypto, securities, and commodities — split into what's tradable now versus watchlist-only.
 

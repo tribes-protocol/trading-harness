@@ -22,13 +22,12 @@ import { buildPredictionCommand } from '@/cli/Prediction'
 import { buildSmartMoneyCommand } from '@/cli/SmartMoney'
 import { buildSpotTradingCommand } from '@/cli/SpotTrading'
 import { buildStocksCommand } from '@/cli/Stocks'
+import { buildTechnicalsCommand } from '@/cli/Technicals'
 import { buildTokenCommand } from '@/cli/Token'
 import { buildTransactionCommand } from '@/cli/Transaction'
 import { buildWalletCommand } from '@/cli/Wallet'
 import { buildWebSearchCommand } from '@/cli/WebSearch'
-import { ANALYSTS } from '@/common/Analysts'
 import { KNOWN_SECRET_VALUES } from '@/common/Env'
-import { buildAnalystCommand } from '@/helpers/AnalystCli'
 import { redactSecrets } from '@/helpers/ProviderHttp'
 
 const VERSION = '1.0.0'
@@ -53,13 +52,9 @@ function buildTribesCli(): Command {
   program.addCommand(buildPredictionCommand())
   program.addCommand(buildMarketDataCommand())
   program.addCommand(buildStocksCommand())
+  program.addCommand(buildTechnicalsCommand())
   program.addCommand(buildOnchainCommand())
   program.addCommand(buildSmartMoneyCommand())
-
-  // Specialist analyst agents (alpha-scout, market-strategist, … wallet-analyst).
-  for (const config of Object.values(ANALYSTS)) {
-    program.addCommand(buildAnalystCommand(config))
-  }
 
   program.addCommand(buildLoginCommand())
 

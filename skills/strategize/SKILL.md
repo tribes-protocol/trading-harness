@@ -34,10 +34,11 @@ commands fail with auth errors).
 
 1. An unscoped briefing MUST include crypto, securities, and commodities. Skip a class only when
    the user explicitly scoped the request.
-2. MUST set a bash timeout of at least 120 seconds (prefer 300) for every analyst `ask` and
-   `news fetch` leg.
-3. Analyst legs take ONLY `--query` — no `--out`, no filter flags; encode chain, time window,
-   and filters inside the query text. Output is one free-text analysis string on stdout.
+2. MUST set a bash timeout of at least 120 seconds (prefer 300) for every `news fetch` leg —
+   the one remaining slow call; all other legs are fast structured commands.
+3. Data legs are structured commands with the exact flags shown — write each leg to its
+   `--out` file so the parallel batch can be read back; there is no free-text analyst output
+   anywhere in this cycle.
 4. Evidence gate: NEVER open or increase a position from a single signal — odds alone, one
    indicator, or one headline is never enough. Require at least two independent supporting
    signals and the user's explicit go-ahead. A coherent conditional idea can be shown with a
@@ -83,21 +84,28 @@ the legs return because it needs the complete candidate list.
    supply disruptions). Cite the leading outcome and probability only when the market is active
    and relevant; odds are supporting evidence, never a stand-alone trade signal.
 
-4. Crypto ideas (timeout rule 2 applies to each):
+4. Crypto ideas (fast structured commands; `market-strategist` and `alpha-scout` skills):
 
    ```bash
-   timeout 300 tribes-cli market-strategist ask \
-     --query "Top crypto gainers and losers today, BTC dominance trend, and which sectors are rotating"
-   timeout 300 tribes-cli alpha-scout ask \
-     --query "Trending tokens and smart-money accumulation over the last 24 hours"
+   tribes-cli market-data top --limit 100 --change 1h,24h,7d --out /tmp/strat-top.json
+   tribes-cli market-data trending --out /tmp/strat-trending.json
+   tribes-cli smart-money netflows --limit 25 --out /tmp/strat-netflows.json
+   tribes-cli hyperliquid movers --dex main --out /tmp/strat-mv-main.json
    ```
 
-5. Securities ideas (timeout rule 2 applies):
+   Candidates = movers/trending names intersected with smart-money accumulation; follow the
+   `alpha-scout` playbook for the intersect method and validation passes.
+
+5. Securities ideas (fast structured commands; `stock-analyst` skill):
 
    ```bash
-   timeout 300 tribes-cli stock-analyst ask \
-     --query "Biggest US stock and listed-security movers today with their catalysts"
+   tribes-cli hyperliquid movers --dex xyz --limit 10 --out /tmp/strat-mv-xyz.json
+   tribes-cli news headlines --query "stocks movers earnings" --category business --size 10 \
+     --out /tmp/strat-stock-news.json
    ```
+
+   Live venue movers are the tradable-universe read; attach dated catalysts from headlines
+   (and `news fetch --kind stock --ticker X` for analyzed sentiment on shortlisted names).
 
 6. Commodity ideas (`commodity-analyst` skill):
 
@@ -189,7 +197,7 @@ only; NEVER commit journal files.
 | ---------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
 | Auth error (unauthorized, expired token) | Run `tribes-cli login`, retry the original command once, then stop and report.                             |
 | One leg fails after a single retry       | Continue with the remaining legs; list the failed leg under `## Gaps` — NEVER abort the cycle for one leg. |
-| Analyst leg hits the bash timeout        | Treat it as a failed leg; do not rerun it more than once.                                                  |
+| `news fetch` hits the bash timeout       | Treat it as a failed leg; do not rerun it more than once.                                                  |
 | No candidate clears the quality pass     | Run one refinement pass for liquid tradable substitutes, then present the watchlist with the gap stated.   |
 | `command not found: tribes-cli`          | Run `sh bootstrap.sh` from the harness root, then retry.                                                   |
 

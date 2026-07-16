@@ -66,9 +66,14 @@ macro series as a stated gap; do not replace it with a stale value.
 ### 3. Research supply, demand, and the catalyst calendar
 
 ```bash
-timeout 300 tribes-cli research-analyst ask \
-  --query "Research the current supply, demand, inventories, policy, weather or geopolitical drivers, and scheduled catalysts for {COMMODITY} over the next {HORIZON}. Use primary or industry sources where possible and cite URLs. Explain what would support or invalidate a {SIDE} thesis."
+tribes-cli news headlines --query "{COMMODITY} supply demand inventories OPEC weather" --size 10
+tribes-cli web-search search --query "{COMMODITY} supply demand inventories policy geopolitics"
+tribes-cli web-search extract --url "<the 1-3 most primary sources from the search>"
 ```
+
+Synthesize the supply/demand mechanism yourself with per-claim citations (URL + date), following
+the `research-analyst` cited-research playbook. Relevant FRED series add the numeric backbone:
+`tribes-cli macros series --id DCOILBRENTEU --limit 20` (Brent) and similar.
 
 This is the source-backed structural leg. It is not a price or venue-data substitute.
 
@@ -85,13 +90,20 @@ paywall, CAPTCHA, or access control.
 
 ### 5. Check structure and levels
 
+There is no candle history for HIP-3 commodity perps, so build structure from what exists
+(the `technical-analyst` skill documents the indicator method):
+
 ```bash
-timeout 300 tribes-cli technical-analyst ask \
-  --query "Analyze Hyperliquid {DEX}:{COIN} daily, 4h, and 1h for a {SIDE} over {HORIZON}: trend, RSI, MACD, ATR, support/resistance, proposed entry, target, and invalidation. State whether the move is feasible relative to normal range."
+tribes-cli hyperliquid movers --dex {DEX} --limit 20
+tribes-cli macros series --id {FRED_SERIES_ID} --limit 20
 ```
 
-The target and invalidation must come from structure and volatility, not a fixed percentage
-bracket.
+The venue read gives mark vs prevDay and funding; the FRED daily series (e.g. DCOILBRENTEU for
+Brent) gives the 20-day range and breakout context. When the commodity has a liquid ETF proxy
+(SLV, GLD, USO), `tribes-cli technicals indicators --symbol {ETF} --limit 120` yields a full
+indicator pack on official closes — label it a PROXY read. The target and invalidation must come
+from structure and volatility, not a fixed percentage bracket; state when structure evidence is
+thin.
 
 ### 6. Run the final venue-quality review
 

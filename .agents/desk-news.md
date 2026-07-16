@@ -15,9 +15,10 @@ Choose the asset-class-appropriate path:
 
 - Crypto perp: use the exact perp coin form.
 - Equity/security with an underlying ticker: use stock news for the underlying ticker.
-- Commodity: there is no commodity `news fetch` kind. Use the documented `news` web fallback
-  chain (targeted `web-search`, then `browser` only for a blocked source) rather than forcing an
-  invalid CLI request.
+- Commodity: there is no commodity `news fetch` kind. Run
+  `tribes-cli news headlines --query "{ASSET} supply demand OPEC weather" --size 10` first
+  (fast dated leads), then the documented `news` web fallback chain (targeted `web-search`,
+  then `browser` only for a blocked source) rather than forcing an invalid CLI request.
 
 For a covered crypto perp, run:
 

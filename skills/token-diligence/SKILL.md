@@ -81,11 +81,13 @@ Steps 1–4 are independent — run as ONE parallel batch. Step 5 runs only on a
 
    Look for hack/exploit/depeg/delisting/team-dump reports in the last 48h.
 
-5. Escalation (only if steps 1–4 conflict or leave a material unknown):
+5. Escalation (only if steps 1–4 conflict or leave a material unknown) — deepen with direct
+   data, per the `token-analyst` playbook:
 
    ```bash
-   timeout 300 tribes-cli token-analyst ask \
-     --query "security audit and exit-liquidity risk for <symbol> <addr> on <chain>: honeypot, authorities, LP lock, notable holder behavior"
+   tribes-cli onchain transfers --address <top-holder-addr> --chain <chain> --limit 25
+   tribes-cli technicals indicators --address <addr> --chain <chain> --interval 4H
+   tribes-cli news headlines --query "<token name> exploit OR rug OR audit" --size 10
    ```
 
 ## Verdict rules
@@ -154,7 +156,7 @@ CAUTION + size context to `thesis` or `trade-execution` — the verdict itself a
 
 ## Related skills
 
-- `token-analyst` — owns the fast-path `token` commands and the escalation `ask`.
+- `token-analyst` — the deep-dive playbook that owns the `token` command group.
 - `alpha-scout` — discovery upstream; hands candidates here before they become ideas.
 - `thesis` — consumes the verdict in its research pack for on-chain candidates.
 - `execution-quality` — venue microstructure/cost check for Hyperliquid-listed markets.

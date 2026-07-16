@@ -3,6 +3,7 @@ import { providerFetchJson } from '@/helpers/ProviderHttp'
 import type {
   CoinGeckoChangeWindow,
   CoinGeckoCoinProfile,
+  CoinGeckoDefiSnapshot,
   CoinGeckoGlobalSnapshot,
   CoinGeckoOhlcDays,
   CoinGeckoOhlcSeries,
@@ -15,12 +16,14 @@ import type {
 import {
   CoinGeckoCoinProfileSchema,
   CoinGeckoCoinResponseSchema,
+  CoinGeckoDefiSnapshotSchema,
   CoinGeckoGlobalResponseSchema,
   CoinGeckoGlobalSnapshotSchema,
   CoinGeckoMarketsResponseSchema,
   CoinGeckoOhlcResponseSchema,
   CoinGeckoOhlcSeriesSchema,
   CoinGeckoPricesSchema,
+  CoinGeckoRawDefiSchema,
   CoinGeckoSearchResponseSchema,
   CoinGeckoSearchResultsSchema,
   CoinGeckoSimplePriceResponseSchema,
@@ -40,6 +43,7 @@ import { compactMap, isNullish } from '@/utils/Lang'
 const COINGECKO_BASE_URL = 'https://pro-api.coingecko.com'
 const SIMPLE_PRICE_PATH = '/api/v3/simple/price'
 const COINS_MARKETS_PATH = '/api/v3/coins/markets'
+const GLOBAL_DEFI_PATH = '/api/v3/global/decentralized_finance_defi'
 const GLOBAL_PATH = '/api/v3/global'
 const TRENDING_PATH = '/api/v3/search/trending'
 const SEARCH_PATH = '/api/v3/search'
@@ -216,6 +220,25 @@ export class CoinGeckoService {
       eth_dominance_pct: snapshot.market_cap_percentage?.eth ?? null,
       market_cap_change_percentage_24h_usd: snapshot.market_cap_change_percentage_24h_usd ?? null,
       updated_at: snapshot.updated_at ?? null
+    })
+  }
+
+  // DeFi global aggregates; numerics arrive as strings and are parsed here.
+  async getGlobalDefi(): Promise<CoinGeckoDefiSnapshot> {
+    this.ensureConfigured()
+    const data = await cachedProviderJson({
+      cacheKey: 'coingecko:global-defi',
+      ttlMs: GLOBAL_CACHE_TTL_MS,
+      fetchFn: async () => this.fetchJson({ path: GLOBAL_DEFI_PATH, searchParams: {} })
+    })
+    const parsed = CoinGeckoRawDefiSchema.parse(data).data
+    return CoinGeckoDefiSnapshotSchema.parse({
+      source: 'coingecko',
+      defi_market_cap_usd: toFiniteNumber(parsed.defi_market_cap),
+      defi_trading_volume_24h_usd: toFiniteNumber(parsed.trading_volume_24h),
+      defi_dominance_pct: toFiniteNumber(parsed.defi_dominance),
+      top_coin_name: parsed.top_coin_name ?? null,
+      top_coin_defi_dominance_pct: parsed.top_coin_defi_dominance ?? null
     })
   }
 

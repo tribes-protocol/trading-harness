@@ -15,18 +15,24 @@ discovered dex; do not assume a preset venue.
 Run:
 
 ```
-timeout 300 tribes-cli stock-analyst ask --query "Current snapshot for {TICKER} at ~{PRICE}: price, day range, volume, NBBO spread, recent daily candles, and market status. Frame the price action for a {SIDE} over {HORIZON}."
-timeout 300 tribes-cli research-analyst ask --query "Deep fundamental read on {TICKER}: financials, valuation, latest earnings/guidance, corporate actions, float and short interest, material filings, analyst actions, and event calendar over the next {HORIZON}. Cite primary sources where possible."
+tribes-cli stocks eod --symbols {TICKER} --limit 30
+tribes-cli stocks ticker --symbol {TICKER}
+tribes-cli technicals indicators --symbol {TICKER} --limit 120
+timeout 300 tribes-cli news fetch --kind stock --ticker {TICKER}
+tribes-cli news headlines --query "{TICKER} earnings OR guidance OR filing" --size 10
+tribes-cli web-search search --query "{TICKER} short interest float earnings date"
 ```
 
-`stock-analyst` owns quotes, candles, volume, movers, and market status. `research-analyst` owns
-financials, valuation, filings, and sourced catalyst research. Flag anything that makes a levered
-{SIDE} over {HORIZON} risky: earnings inside the window, low float/high short interest, stretched
-valuation, dilution, a thin underlying market, or an unverified HIP-3 venue.
+The venue mark comes from the boss's framing (live perp); Marketstack gives the official EOD
+tape and profile; deeper fundamentals (valuation, filings, float/short interest) follow the
+`research-analyst` cited-web-research playbook via `web-search`. Flag anything that makes a
+levered {SIDE} over {HORIZON} risky: earnings inside the window (timing UNKNOWN counts as risk),
+low float/high short interest, dilution, a thin underlying market, or an unverified HIP-3 venue.
+No NBBO quote source exists — say so instead of inventing spreads.
 
 Return only:
 
-MARKET SNAPSHOT: price action, volume/spread, and market-status read
+MARKET SNAPSHOT: price action and volume (no market-status or NBBO source exists — say so)
 BUSINESS SNAPSHOT: one line
 VALUATION/FLOAT: valuation posture plus float/short-interest note
 EVENTS IN HORIZON: earnings/filings/ex-div inside {HORIZON}, else "none"

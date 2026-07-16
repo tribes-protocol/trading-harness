@@ -42,7 +42,7 @@ signed commands.
    state before reporting.
 5. Every signed command MUST carry `--from` and its matching `--wallet-id` (rule in
    `hyperliquid`); add `--dex <name>` on every command for a position on a non-main dex.
-6. `wallet-analyst ask` is slow — MUST set a bash timeout of at least 120 seconds for it.
+6. `news fetch` is the only slow call — MUST set a bash timeout of at least 120 seconds for it.
 
 ## Risk policy defaults
 
@@ -65,8 +65,10 @@ These are DEFAULTS: the user MAY override any of them explicitly; record overrid
 2. `tribes-cli hyperliquid list-open-orders --all-dexes --address <evm-address>`
 3. `tribes-cli hyperliquid list-balances --address <evm-address>` — read `accountValue` and
    `withdrawable`.
-4. PnL context (timeout ≥ 120s): `tribes-cli wallet-analyst ask --query "Realized and
-unrealized PnL for wallet <evm-address> over the last 30 days, by token"`.
+4. PnL context (fast): realized PnL and win rate via
+   `tribes-cli smart-money wallet-pnl --address <evm-address> --chain 42161 --days 30`; unrealized
+   PnL comes from the live `list-positions` output itself (the `wallet-analyst` playbook covers the
+   full wallet review).
 5. Fill this template per position and flag every safety concern:
 
 ```markdown

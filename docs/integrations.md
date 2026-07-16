@@ -1,9 +1,10 @@
 # Direct market-data provider integrations
 
-The harness integrates ten external data providers directly, alongside the existing
-Tribes-proxy analysts. Direct integrations give the agent deterministic, structured,
-seconds-fast data (the analyst `ask` commands poll a backend agent and take minutes) and
-provide fallbacks when the Tribes proxy is unavailable.
+The harness integrates ten external data providers directly — these are the agent's ONLY
+research surface: the former remote analyst agents (`<name> ask`) were removed, and Pi performs
+all analysis itself from the structured commands below (plus the `technicals` indicator engine
+computed from their candles). Direct integrations give deterministic, seconds-fast data and
+fallbacks when the Tribes proxy is unavailable.
 
 ## Shared machinery
 
@@ -39,7 +40,7 @@ Every normalized payload carries a `source` field naming the provider that actua
 ### CoinGecko Pro — crypto market data (`market-data`)
 
 - Purpose: fast structured crypto prices, rankings, global aggregates, trending, coin profiles,
-  OHLC, id search. Complements the `market-strategist`/`fundamentals-analyst` agents.
+  OHLC, id search. The data surface behind the `market-strategist`/`fundamentals-analyst` playbooks.
 - Commands: `market-data prices|top|global|trending|coin|ohlc|search`.
 - Base: `pro-api.coingecko.com/api/v3`, header `x-cg-pro-api-key` (Pro keys only — Demo keys
   need a different base URL and are not supported).
@@ -54,7 +55,7 @@ Every normalized payload carries a `source` field naming the provider that actua
 ### Marketstack — stock market data (`stocks`)
 
 - Purpose: deterministic equity EOD/intraday OHLCV, ticker search, ticker profiles.
-  Complements the `stock-analyst` agent.
+  The data surface behind the `stock-analyst` playbook.
 - Commands: `stocks eod|intraday|search|ticker`.
 - Base: `api.marketstack.com/v2` (v1 is deprecated), `access_key` query param (redacted
   everywhere; cache keys built from non-secret query parts only).
@@ -91,7 +92,7 @@ Every normalized payload carries a `source` field naming the provider that actua
 ### Birdeye — per-token on-chain market data (`token`)
 
 - Purpose: deterministic token price/overview/OHLCV/security/holders/trending across Solana +
-  major EVM chains. Fast complement to the `token-analyst` agent.
+  major EVM chains. The data surface behind the `token-analyst` playbook.
 - Commands: `token price|overview|ohlcv|security|holders|trending` (existing `token search`
   proxy command unchanged).
 - Base: `public-api.birdeye.so`, headers `X-API-KEY` + `x-chain` (slugs from ProviderChains).

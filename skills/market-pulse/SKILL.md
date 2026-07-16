@@ -15,7 +15,7 @@ allowed-tools: bash read
 # Market Pulse
 
 A playbook, not a command group: composes fast structured commands (documented in full by their
-owning skills) into one regime snapshot in seconds — no slow analyst `ask` calls. Follows the
+owning skills) into one regime snapshot in seconds — every leg is a fast call. Follows the
 market-data reliability invariants in AGENTS.md (sources + timestamps, facts vs interpretation,
 partial results). Requires an auth token only for the `macros` proxy path (which falls back to
 direct FRED anyway); every other leg runs on direct provider keys or public venue data.

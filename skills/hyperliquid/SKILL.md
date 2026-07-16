@@ -16,8 +16,8 @@ allowed-tools: bash read
 # Hyperliquid
 
 Backing command group: `tribes-cli hyperliquid` — market discovery, account state, and live
-execution on the Hyperliquid venue. Requires: an auth token (run `tribes-cli login` once if
-commands fail with auth errors) and `evmWalletId` + EVM address from `wallet` for signed commands.
+execution. Requires an auth token (`tribes-cli login` on auth errors) and `evmWalletId` + EVM
+address from `wallet` for signed commands.
 
 ## When to use
 
@@ -69,6 +69,7 @@ flags. Defaults: `--dex main`, `--type market`, `--tif Gtc`, `--margin-mode cros
 | -------------------- | ---------------------------------------------------------------------- | -------------------------------------------------------------------- | ------------------- |
 | `list-exchanges`     | List perp dexes, including `main`                                      | none                                                                 | read-only           |
 | `list-assets`        | Tradable assets; use `--all-dexes`, `--dex <name>`, or `--market spot` | none                                                                 | read-only           |
+| `movers`             | Top 24h movers + funding extremes for one dex (live markets only)      | none (`--dex`, `--min-volume`, `--limit`)                            | read-only           |
 | `list-balances`      | Perp account summary + spot token balances                             | `--address`                                                          | read-only           |
 | `list-positions`     | Open perp positions AND active TWAPs (source of `twapId`)              | `--address`                                                          | read-only           |
 | `list-open-orders`   | Resting orders, perp + spot                                            | `--address`                                                          | read-only           |
@@ -287,8 +288,7 @@ tribes-cli hyperliquid withdraw \
 ## Related skills
 
 - `wallet` — `evmWalletId` and addresses; run before any signed command.
-- `spot-trading` — on-chain DEX swaps/bridges, including converting funds to Arbitrum USDC.
-- `transaction` — broadcasts the conversion transactions inside the funding flow.
+- `spot-trading` + `transaction` — on-chain swaps/bridges and their broadcast (funding flow).
 - `position-management` — stops, leverage policy, liquidation distance, closing positions.
 
 ## Before you finish

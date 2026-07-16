@@ -16,11 +16,17 @@ Run:
 
 ```
 tribes-cli macros market
-timeout 300 tribes-cli research-analyst ask --query "Research {ASSET} supply, demand, inventories, policy, weather or geopolitical drivers, and scheduled catalysts over the next {HORIZON}. Explain what supports or invalidates a {SIDE} thesis and cite primary or industry sources."
-tribes-cli web-search search --query "{ASSET} supply demand inventories policy weather geopolitics news {HORIZON}"
-timeout 300 tribes-cli technical-analyst ask --query "Analyze Hyperliquid {DEX}:{ASSET} daily, 4h, and 1h for a {SIDE} over {HORIZON}: trend, ATR, support/resistance, entry, target, and invalidation."
-tribes-cli hyperliquid list-assets --all-dexes
+tribes-cli news headlines --query "{ASSET} supply demand inventories OPEC weather" --size 10
+tribes-cli web-search search --query "{ASSET} supply demand inventories policy weather geopolitics"
+tribes-cli macros series --id {FRED_SERIES_ID} --limit 20   # e.g. DCOILBRENTEU for Brent
+tribes-cli hyperliquid list-assets --all-dexes --out /tmp/desk-all-dexes.json
 ```
+
+Supply/demand synthesis follows the `research-analyst` cited-web-research playbook (extract the
+1-3 most primary sources via `tribes-cli web-search extract --url ...`). For the technical read,
+derive levels from the venue's own data: 24h move and swing context via
+`tribes-cli hyperliquid movers --dex {DEX}` plus the mark/prevDay fields for {DEX}:{ASSET} in the
+sweep file — there is no candle history for HIP-3 perps, so say when structure evidence is thin.
 
 Commodity news has no `news fetch` kind, so the targeted web search is the documented news
 fallback. Retain dated, attributable sources and treat blocked sources as gaps unless the browser

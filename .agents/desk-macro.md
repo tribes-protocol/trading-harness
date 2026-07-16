@@ -17,12 +17,12 @@ tribes-cli macros market
 
 Then select the relevant context instead of forcing a crypto read onto every trade:
 
-- Crypto: `market-strategist` for market breadth, dominance, and sector rotation.
-- Security: use the research pack's stock/news evidence plus macro exposures such as rates,
-  currency, and volatility.
+- Crypto: `tribes-cli market-data global` + `tribes-cli market-data top --limit 100 --change 24h`
+  for breadth/dominance, and `tribes-cli hyperliquid movers --dex main` for venue positioning.
+- Security: `tribes-cli hyperliquid movers --dex xyz` (live equity-perp tape incl. xyz:SP500)
+  plus macro exposures such as rates, currency, and volatility.
 - Commodity: use `desk-commodity-research` / `commodity-analyst` supply-demand context plus
-  dollar, rates, inflation, gold, and Brent data. Do not run `market-strategist` as a substitute
-  for commodity research.
+  dollar, rates, inflation, and Brent data (live commodity perps: `movers --dex xyz`).
 
 Return a compact block, nothing else:
 
