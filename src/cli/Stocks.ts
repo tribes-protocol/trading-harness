@@ -26,6 +26,7 @@ export function buildStocksCommand(): Command {
     .option('--date-from <date>', 'Earliest bar date (YYYY-MM-DD or ISO-8601)')
     .option('--date-to <date>', 'Latest bar date (YYYY-MM-DD or ISO-8601)')
     .option('--limit <count>', 'Bars to return (default 100, max 1000)')
+    .option('--exchange <mic>', 'Pin one exchange by MIC (e.g. XNAS) to exclude secondary listings')
     .option('--latest', 'Latest available EOD bar per symbol (ignores --date-from/--date-to)')
     .option('--out <file>', 'Write output JSON to file')
     .action(async (options: unknown): Promise<void> => {
@@ -34,6 +35,7 @@ export function buildStocksCommand(): Command {
         symbols: request.symbols,
         dateFrom: request.dateFrom ?? null,
         dateTo: request.dateTo ?? null,
+        exchange: request.exchange ?? null,
         limit: request.limit,
         latest: request.latest
       })

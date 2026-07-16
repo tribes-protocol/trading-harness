@@ -9,6 +9,7 @@ import type { BirdeyeOhlcvInterval } from '@/types/TokenData'
 import type { NormalizedCandle } from '@/utils/Indicators'
 import { atr, bollinger, ema, macd, rateOfChange, rsi, sma, swingLevels } from '@/utils/Indicators'
 import { compactMap, isNullish } from '@/utils/Lang'
+import { dominantCurrencyBars } from '@/utils/MarketstackEod'
 
 // Indicator computation over any of the harness's candle sources: CoinGecko
 // (coins by id), Marketstack (equities by ticker, daily EOD), Birdeye
@@ -70,9 +71,12 @@ export class TechnicalsService {
       limit: params.limit,
       latest: false
     })
+    // Marketstack can interleave secondary-listing bars in other currencies
+    // (e.g. a CLP Santiago listing) — reduce to the dominant currency first.
+    const { bars } = dominantCurrencyBars(series.bars)
     const candles = normalize(
       compactMap(
-        series.bars.map((bar) => {
+        bars.map((bar) => {
           if (
             isNullish(bar.open) ||
             isNullish(bar.high) ||

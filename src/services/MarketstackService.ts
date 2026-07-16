@@ -50,6 +50,7 @@ type GetEodBarsParams = {
   readonly symbols: string
   readonly dateFrom: string | null
   readonly dateTo: string | null
+  readonly exchange?: string | null
   readonly limit: number
   // true -> /v2/eod/latest (latest bar per symbol; date range not applicable)
   readonly latest: boolean
@@ -97,6 +98,9 @@ export class MarketstackService {
     const symbols = ensureSymbolList(params.symbols)
     const path = params.latest ? EOD_LATEST_PATH : EOD_PATH
     const query: Record<string, string> = { symbols, limit: String(params.limit) }
+    if (typeof params.exchange === 'string' && params.exchange.length > 0) {
+      query.exchange = params.exchange
+    }
     if (!params.latest) {
       if (!isNullish(params.dateFrom)) {
         query.date_from = params.dateFrom

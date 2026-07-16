@@ -52,6 +52,8 @@ const MarketstackEodBarSchema = z.object({
   price_currency: z.string().nullish()
 })
 
+export type MarketstackEodBar = z.infer<typeof MarketstackEodBarSchema>
+
 export const MarketstackEodSeriesSchema = z.object({
   source: z.literal('marketstack'),
   pagination: MarketstackPaginationSchema,
@@ -208,6 +210,7 @@ export type MarketstackTickerProfile = z.infer<typeof MarketstackTickerProfileSc
 const MARKETSTACK_DATE_PREFIX = /^\d{4}-\d{2}-\d{2}/
 
 export const MarketstackEodCommandOptionsSchema = z.object({
+  exchange: z.string().trim().min(1).nullish(),
   symbols: z.string().trim().min(1, 'symbols must be a comma-separated list, e.g. AAPL,MSFT'),
   dateFrom: z
     .string()
