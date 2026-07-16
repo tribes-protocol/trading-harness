@@ -21,7 +21,9 @@ commands fail with auth errors).
 ## When to use
 
 - The user asks for a market briefing, "how are markets", a strategy cycle, or a trading-plan
-  refresh — run the full procedure below.
+  refresh — run the full procedure below. For a numbers-only quick read without candidate
+  ideas, run `market-pulse` instead (it can also serve as this cycle's fast pre-read for
+  legs 1–3).
 - Another skill (`macros`, `news`, `prediction`) hands off for "the full picture".
 - NOT for one macro number (VIX, CPI, 10y yield) — use `macros`.
 - NOT for one asset's headlines or sentiment — use `news`.
@@ -193,6 +195,7 @@ only; NEVER commit journal files.
 
 ## Related skills
 
+- `market-pulse` — fast numeric regime snapshot; the pre-read for legs 1–3.
 - `macros` — numeric macro state, including gold and Brent.
 - `news` — asset narrative and the fallback chain for commodity news.
 - `prediction` — event-odds context.

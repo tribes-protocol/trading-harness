@@ -92,7 +92,9 @@ timeout 300 tribes-cli alpha-scout ask \
 1. Verify Hyperliquid tradability before presenting ideas as executable (AGENTS.md guardrail).
 2. IF the request was unscoped, THEN add securities (`stock-analyst`) and commodities
    (`commodity-analyst`) passes; see AGENTS.md.
-3. Hand off a chosen token: on-chain deep-dive → `token-analyst`; profile → `fundamentals-analyst`.
+3. Run `token-diligence` on any on-chain token before presenting it as actionable — a FAIL
+   verdict demotes it to watchlist with the reason stated.
+4. Hand off a chosen token: on-chain deep-dive → `token-analyst`; profile → `fundamentals-analyst`.
 
 ## Error recovery
 
@@ -105,5 +107,6 @@ timeout 300 tribes-cli alpha-scout ask \
 ## Related skills
 
 - `token-analyst` — deep-dive on one identified token (price, security, trades, holders).
+- `token-diligence` — PASS/CAUTION/FAIL safety gate before a discovery becomes an idea.
 - `fundamentals-analyst` — research profile of one listed coin.
 - `hyperliquid` — tradability verification and execution for discovered ideas.

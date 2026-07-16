@@ -139,5 +139,7 @@ GAPS: <unavailable source, missing market data, or none>
 - `browser` — only for JS-gated or blocked sources.
 - `technical-analyst` — trend, volatility, entry, target, and invalidation analysis.
 - `hyperliquid` — all-dex discovery, venue quality, and execution mechanics.
+- `execution-quality` — spread/impact/funding cost check at size before a commodity-perp order.
+- `market-pulse` — live commodity-perp movers (xyz dex) in the fast regime read.
 - `thesis` — judge-led debate for a selected commodity candidate.
 - `trade-execution` — places a quality-cleared trade after authorization.

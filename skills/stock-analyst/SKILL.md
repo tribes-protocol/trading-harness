@@ -103,6 +103,7 @@ tribes-cli stocks search --query "broadcom"
 ## Related skills
 
 - `technical-analyst` — indicator computation, signals, and backtests across asset classes.
+- `security-diligence` — pre-trade catalyst/trend/venue gate that composes this skill's data.
 - `news` — stock news, catalysts, and sentiment for a ticker.
 - `hyperliquid` — discover the hosting dex and execute stock trades as Hyperliquid perps.
 - `market-strategist` — crypto movers, rankings, and market-wide aggregates.

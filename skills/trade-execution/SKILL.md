@@ -62,6 +62,13 @@ tribes-cli hyperliquid list-assets --market spot
 - IF the asset is not listed, or its quality data is missing, zero, stale, or inconsistent → STOP.
   Tell the user it is not currently actionable on Hyperliquid and offer watchlist context only.
 
+### 1b. Execution quality (recommended for size)
+
+For any order that is large relative to the market, or when entry method (market vs ladder vs
+TWAP) is undecided, run the `execution-quality` read on the resolved dex+coin at the intended
+notional before sizing — it computes spread, impact, size pressure, and funding drag, and
+recommends go / reduce / slice. Mandatory when `thesis` hands off an auto-entry.
+
 ### 2. Wallet
 
 ```bash
@@ -168,6 +175,9 @@ TP/SL line only if the user explicitly waived exits.
 - `hyperliquid` — every command this playbook runs; funding paths, order types, margin rules.
 - `wallet` — `evmWalletId` and addresses (step 2).
 - `position-management` — stop-loss/leverage defaults (step 5) and everything after the entry.
+- `execution-quality` — pre-order cost/liquidity read (step 1b).
+- `token-diligence` — contract-safety gate before on-chain token buys (spot-trading path).
+- `security-diligence` — catalyst/trend gate before stock-perp entries.
 - `spot-trading` — the user wants an on-chain DEX swap or bridge instead of a Hyperliquid order.
 - `strategize` — market briefing and trade ideas before there is a trade to execute.
 - `thesis` — the bull-vs-bear judge-led debate that hands approved trades to this playbook.

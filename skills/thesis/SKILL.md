@@ -92,9 +92,14 @@ its `.agents/` definition. Do not blend roles or imply independent debate when i
    run the crypto, securities, and commodity research paths. Filter every candidate through the
    all-dex quality review before deep research. Pick the strongest one or two candidates; do not
    debate more.
-3. Assemble the research pack (the stage-1 parallel batch above).
+3. Assemble the research pack (the stage-1 parallel batch above). For an on-chain token
+   candidate, include a `token-diligence` verdict in the pack; for a stock-perp candidate, a
+   `security-diligence` verdict — a FAIL from either is a hard safety failure. A fresh
+   `market-pulse` read may serve as desk-macro's regime baseline.
 4. Run the stage-2 debate and the judge.
-5. Run `desk-risk` for live safety and execution feasibility.
+5. Run `desk-risk` for live safety and execution feasibility; it uses the `execution-quality`
+   read (spread, impact, size pressure, funding drag at the proposed size) as its
+   execution-feasibility evidence.
 6. Record the outcome: an authorized auto-entry approved by the judge and safety review becomes a
    thesis entry; proposed, conditional, or rejected outcomes become a proposal file with the
    judge's key uncertainty.
@@ -167,6 +172,10 @@ and decision. Also append the verdict one-liner to the `strategize` journal for 
 ## Related skills
 
 - `strategize` — cross-asset briefing and daily journal.
+- `market-pulse` — fast regime read for the macro desk.
+- `token-diligence` — safety gate included in the pack for on-chain token candidates.
+- `security-diligence` — the equivalent gate for stock-perp candidates.
+- `execution-quality` — the desk-risk execution-feasibility check.
 - `commodity-analyst` — commodity discovery, research, and venue-quality path.
 - `trade-execution` — places an approved trade and verifies the fill.
 - `position-management` — stops, margin, and closes on the resulting position.
