@@ -290,6 +290,24 @@ Services are dependency-injected by hand. A CLI builder constructs the services 
 
 The 10 analyst commands are data-driven, not hand-written. Add an entry to `ANALYSTS` in `src/common/Analysts.ts` with `cliName`, `endpointPath`, `description`, etc. `Tribes.ts` loops over the registry and `buildAnalystCommand` generates the command. They all proxy to `/agent/lucy/*` endpoints.
 
+### Direct market-data providers
+
+Alongside the Tribes-proxy analysts, the CLI integrates external data providers directly
+(FRED, CoinGecko Pro, Marketstack, Birdeye, Moralis, Alchemy, Helius, Nansen, NewsData.io,
+Tavily). The pattern, documented in full in `docs/integrations.md`:
+
+- Keys come ONLY from env vars exported in `@/common/Env` (empty string = provider disabled);
+  they must never be logged, echoed in errors, or written to output. `Tribes.ts` redacts all
+  known secrets from fatal error output as a last resort.
+- All provider I/O goes through `@/helpers/ProviderHttp` (timeouts, bounded retries with
+  Retry-After handling, secret redaction) and read-only lookups are cached by
+  `@/helpers/ProviderCache` under the gitignored `.tribes/provider-cache/` (cache keys never
+  contain keys).
+- Responses are normalized into named zod schemas with a `source` field naming the provider;
+  capabilities with multiple providers fall back in a documented order (e.g. `macros market`
+  proxy → FRED, `web-search` proxy → Tavily, `token price` Birdeye → Moralis).
+- Per-provider chain slugs live in `@/helpers/ProviderChains` — never inline them.
+
 ### Pi extensions
 
 These run inside Pi, not via `tribes-cli`, and are pinned to the exact Pi API version:

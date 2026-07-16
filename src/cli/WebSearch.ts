@@ -1,6 +1,6 @@
 import { Command } from 'commander'
 
-import { API_BASE_URL, API_BEARER_TOKEN } from '@/common/Env'
+import { API_BASE_URL, API_BEARER_TOKEN, TAVILY_API_KEY } from '@/common/Env'
 import { WebSearchService } from '@/services/WebSearchService'
 import { WebExtractCliOptionsSchema, WebSearchCliOptionsSchema } from '@/types/WebSearch'
 import { ensureJsonTreeString } from '@/utils/Lang'
@@ -10,7 +10,8 @@ const VERSION = '1.0.0'
 export function buildWebSearchCommand(): Command {
   const webSearchService = new WebSearchService({
     apiBaseUrl: API_BASE_URL,
-    apiBearerToken: API_BEARER_TOKEN
+    apiBearerToken: API_BEARER_TOKEN,
+    tavilyApiKey: TAVILY_API_KEY
   })
 
   const program = new Command('web-search')

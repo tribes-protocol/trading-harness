@@ -19,7 +19,8 @@ Requires: an auth token (run `tribes-cli login` once if commands fail with auth 
 ## When to use
 
 - Need headlines, catalysts, or sentiment for a specific token, perp coin, or stock — run `fetch`.
-- Need macro or commodity news narrative — no CLI kind exists; use the web fallback chain below.
+- Need macro, commodity, or keyword-topic headlines fast — run `headlines` (NewsData.io-backed,
+  seconds, no polling) before reaching for the web fallback chain.
 - NOT for numeric macro indicators (CPI, yields, VIX, DXY) — use `macros`.
 - NOT for event odds or market-implied probabilities — use `prediction`.
 - NOT for general non-asset web questions or reading one known URL — use `web-search`.
@@ -37,12 +38,20 @@ Requires: an auth token (run `tribes-cli login` once if commands fail with auth 
 
 ## Command reference
 
-| Subcommand | Purpose                                      | Required flags                                                                                    | Read-only or signed |
-| ---------- | -------------------------------------------- | ------------------------------------------------------------------------------------------------- | ------------------- |
-| `fetch`    | Fetch asset news, poll while still analyzing | `--kind token\|perp\|stock`; token: `--chain-id`, `--token-id`; perp: `--coin`; stock: `--ticker` | read-only           |
+| Subcommand  | Purpose                                        | Required flags                                                                                    | Read-only or signed |
+| ----------- | ---------------------------------------------- | ------------------------------------------------------------------------------------------------- | ------------------- |
+| `fetch`     | Fetch asset news, poll while still analyzing   | `--kind token\|perp\|stock`; token: `--chain-id`, `--token-id`; perp: `--coin`; stock: `--ticker` | read-only           |
+| `headlines` | Fast raw headlines (crypto, business, keyword) | one of `--query` / `--coin` / `--category`                                                        | read-only           |
 
-Optional flags: `--cursor <cursor>` (pagination — pass the cursor from the previous response to
-page further), `--out <file>` (write the JSON to a file, then Read it — use for long payloads).
+`fetch` optional flags: `--cursor <cursor>` (pagination — pass the cursor from the previous
+response to page further), `--out <file>` (write the JSON to a file, then Read it).
+
+`headlines` optional flags: `--coin btc,eth` (≤5, routes to the crypto feed; not combinable with
+`--category`/`--country`), `--category business,technology` (≤5), `--country us,gb` (≤5),
+`--language en`, `--timeframe <1-48 hours>`, `--size <1-50>`, `--page <token from next_page>`,
+`--out <file>`. Items are raw headlines with provider sentiment (`positive|negative|neutral` or
+null) — NOT the analyzed bullish/bearish sentiment `fetch` produces; treat it as leads, and run
+`fetch` when you need analyzed per-asset sentiment.
 
 ## Resolve the asset before calling fetch
 
@@ -86,10 +95,20 @@ tribes-cli news fetch \
   --out /tmp/nvda-news.json
 ```
 
+### Fast headlines for macro / commodities / keyword topics
+
+```bash
+tribes-cli news headlines --query "OPEC production cut" --category business --size 10
+tribes-cli news headlines --coin btc,eth --size 10
+```
+
+Sentiment rule 3 applies only to `fetch`; `headlines` sentiment is the provider's
+`positive|negative|neutral` (or null) and is a lead, not an analyzed signal.
+
 ## Web fallback chain
 
-Use only when the CLI path is exhausted (see Error recovery) or the topic has no CLI kind
-(macro, commodities, sector-wide themes).
+Use only when both CLI paths are exhausted (see Error recovery) — `headlines` first for macro,
+commodities, and sector-wide themes; then the web chain below.
 
 1. Build one targeted query and reuse it across sources:
    - Stock/perp: ticker + company name + catalysts (`earnings`, `guidance`, `analyst`, `demand`).
@@ -103,12 +122,13 @@ Use only when the CLI path is exhausted (see Error recovery) or the topic has no
 
 ## Error recovery
 
-| Symptom                                                                 | Action                                                                         |
-| ----------------------------------------------------------------------- | ------------------------------------------------------------------------------ |
-| Auth error (unauthorized, expired token)                                | Run `tribes-cli login`, retry the original command once, then stop and report. |
-| Non-auth API failure (5xx, network error)                               | Retry the same command once; if it fails again, switch to the web fallback.    |
-| Bash timeout, or empty/`unknown`-only items after the CLI's own retries | Switch to the web fallback chain.                                              |
-| `command not found: tribes-cli`                                         | Run `sh bootstrap.sh` from the harness root, then retry.                       |
+| Symptom                                                                 | Action                                                                                  |
+| ----------------------------------------------------------------------- | --------------------------------------------------------------------------------------- |
+| Auth error (unauthorized, expired token)                                | Run `tribes-cli login`, retry the original command once, then stop and report.          |
+| Non-auth API failure (5xx, network error)                               | Retry the same command once; if it fails again, try `headlines`, then the web fallback. |
+| Bash timeout, or empty/`unknown`-only items after the CLI's own retries | Try `headlines` for the same asset/topic, then the web fallback chain.                  |
+| `headlines` says NEWSDATAIO_API_KEY is not set                          | Skip straight to the web fallback chain.                                                |
+| `command not found: tribes-cli`                                         | Run `sh bootstrap.sh` from the harness root, then retry.                                |
 
 ## Related skills
 

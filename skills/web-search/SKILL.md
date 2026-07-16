@@ -15,6 +15,8 @@ allowed-tools: bash read
 Backing command group: `tribes-cli web-search`. Searches the open web and extracts the readable
 text of a specific page.
 Requires: an auth token (run `tribes-cli login` once if commands fail with auth errors).
+If the search proxy is unavailable, the CLI transparently retries against the Tavily API
+directly (same output shape) — you do not need to do anything different.
 
 ## When to use
 

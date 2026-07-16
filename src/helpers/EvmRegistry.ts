@@ -1,9 +1,10 @@
-import { Chain, createPublicClient, http, PublicClient, Transport } from 'viem'
+import { Chain, createPublicClient, fallback, http, PublicClient, Transport } from 'viem'
 
 import { EvmChainId, EvmChainIdSchema } from '@/types/ChainId'
 import type { IEvmRegistry } from '@/types/IEvmRegistry'
 
-type ChainConfig = [Chain, string]
+// [chain, primary RPC URL, optional ordered fallback RPC URLs]
+type ChainConfig = [Chain, string, string[]?]
 
 export class EvmRegistry implements IEvmRegistry {
   private readonly chainConfigs: Map<number, ChainConfig> = new Map()
@@ -14,19 +15,32 @@ export class EvmRegistry implements IEvmRegistry {
     // Ensure no duplicate chains
     const seenChainIds = new Set<number>()
 
-    for (const [chain, rpcUrl] of chainConfigs) {
+    for (const [chain, rpcUrl, fallbackRpcUrls] of chainConfigs) {
       if (seenChainIds.has(chain.id)) {
         throw new Error(`Duplicate chain id ${chain.id} found`)
       }
 
       seenChainIds.add(chain.id)
-      this.chainConfigs.set(chain.id, [chain, rpcUrl])
+      this.chainConfigs.set(chain.id, [chain, rpcUrl, fallbackRpcUrls])
 
-      // Create transport with retry configuration
-      const transport = http(rpcUrl, {
-        retryCount: 3,
-        retryDelay: 1000
-      })
+      // Create transport with retry configuration; when fallback RPC URLs are
+      // configured (e.g. Alchemy), viem rotates to them on primary failure.
+      // Inner transports inside fallback() MUST NOT set their own retryCount:
+      // an explicit inner value overrides the 0 that fallback() injects, and
+      // combined with the outer transport's own retries it multiplies every
+      // failing call by 8x (4 inner attempts x 4 rotations x 2 transports).
+      // Single-URL chains keep the retry config on the http transport itself.
+      const allRpcUrls = [rpcUrl, ...(fallbackRpcUrls ?? [])]
+      const transport =
+        allRpcUrls.length === 1
+          ? http(rpcUrl, {
+              retryCount: 3,
+              retryDelay: 1000
+            })
+          : fallback(
+              allRpcUrls.map((url) => http(url)),
+              { retryCount: 3, retryDelay: 1000 }
+            )
 
       this.transports[chain.id] = transport
 

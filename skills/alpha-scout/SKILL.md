@@ -13,6 +13,11 @@ allowed-tools: bash read
 Backing command group: `tribes-cli alpha-scout` — one natural-language query in, one free-text
 analysis string out. Requires: an auth token (run `tribes-cli login` once on auth failures).
 
+Deterministic fast paths (structured JSON, seconds): `tribes-cli smart-money` (Nansen-backed)
+for smart-money netflows/holdings/DEX trades, and `tribes-cli token trending` (Birdeye-backed,
+documented in `token-analyst`) for per-chain trending tokens. Prefer them for raw signal data;
+use `ask` for cross-signal synthesis and validation passes.
+
 ## When to use
 
 - "What's trending?" / "What's hot right now?" — trending-token discovery.
@@ -39,6 +44,19 @@ analysis string out. Requires: an auth token (run `tribes-cli login` once on aut
 
 Query quality decides answer quality. Wrong: `--query "whales?"`. Right:
 `--query "tokens with largest net smart-money inflow last 48h on Base, exclude stablecoins"`.
+
+Fast-path group `tribes-cli smart-money` (structured JSON, all accept `--out`; `--chains` /
+`--chain` take harness chain ids `1 8453 56 42161 10 137 solana`):
+
+| Subcommand    | Purpose                                                                                                               | Required flags         |
+| ------------- | --------------------------------------------------------------------------------------------------------------------- | ---------------------- |
+| `netflows`    | Tokens smart money is net buying/selling (`--timeframe 1h\|24h\|7d\|30d`)                                             | none                   |
+| `holdings`    | Aggregate smart-money portfolio holdings                                                                              | none                   |
+| `dex-trades`  | Individual smart-money DEX trades                                                                                     | none                   |
+| `token-flows` | Flow series for one token (`--days`; check the `granularity` field — rows are hourly for windows ≤7 days, else daily) | `--address`, `--chain` |
+| `wallet-pnl`  | One wallet's realized PnL and win rate over `--days` (default 30)                                                     | `--address`, `--chain` |
+
+If a `smart-money` command reports its key is not set or a plan restriction, fall back to `ask`.
 
 ## Examples
 

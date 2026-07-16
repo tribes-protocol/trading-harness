@@ -16,6 +16,12 @@ Backing command group: `tribes-cli wallet-analyst`. One subcommand, `ask`, sends
 natural-language query to the specialist; output is one free-text analysis string, not JSON.
 Requires: an auth token (run `tribes-cli login` once if commands fail with auth errors).
 
+Deterministic fast path: `tribes-cli onchain` (Moralis/Alchemy/Helius-backed, structured JSON,
+seconds) for raw wallet facts about ANY address — token balances with USD values, EVM net
+worth, and recent transfers. Also `tribes-cli smart-money wallet-pnl` (documented in
+`alpha-scout`) for one wallet's realized PnL and win rate. Use `ask` for trends over time,
+attribution, and unrealized PnL narratives.
+
 ## When to use
 
 - Net worth now or its trend over time (24h/7d/30d).
@@ -44,6 +50,17 @@ Requires: an auth token (run `tribes-cli login` once if commands fail with auth 
 | Subcommand | Purpose                                    | Required flags | Read-only or signed |
 | ---------- | ------------------------------------------ | -------------- | ------------------- |
 | `ask`      | Natural-language portfolio analytics query | `--query`      | read-only           |
+
+Fast-path group `tribes-cli onchain` (structured JSON, all accept `--out`; chain ids:
+`1 8453 56 42161 10 137 solana`):
+
+| Subcommand  | Purpose                                              | Required flags         |
+| ----------- | ---------------------------------------------------- | ---------------------- |
+| `balances`  | Token balances with USD values (`--limit ≤200`)      | `--address`, `--chain` |
+| `net-worth` | Total USD net worth across EVM chains (`--chains`)   | `--address`            |
+| `transfers` | Recent transfers, direction-labeled (`--limit ≤100`) | `--address`, `--chain` |
+
+If an `onchain` command reports its keys are not set or all providers failed, use `ask`.
 
 ## Examples
 

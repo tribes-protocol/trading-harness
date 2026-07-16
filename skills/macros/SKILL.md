@@ -15,9 +15,11 @@ allowed-tools: bash read
 # Macros
 
 Backing command group: `tribes-cli macros`. Fetches one structured JSON snapshot of numeric
-macro indicators (FRED-sourced). The CLI calls the API itself — NEVER call the endpoint or curl
-directly.
+macro indicators (FRED-sourced), plus arbitrary single-series FRED lookups. The CLI calls the
+API itself — NEVER call the endpoint or curl directly.
 Requires: an auth token (run `tribes-cli login` once if commands fail with auth errors).
+If the snapshot proxy is unavailable, `market` automatically rebuilds the same payload from the
+FRED API directly (a note is printed to stderr); `series` always goes to FRED directly.
 
 ## When to use
 
@@ -32,19 +34,22 @@ Requires: an auth token (run `tribes-cli login` once if commands fail with auth 
 
 ## Hard rules
 
-1. `market` is the ONLY subcommand in this group and it takes NO flags. NEVER invent variants.
+1. The ONLY subcommands are `market` (no flags) and `series` (`--id`, optional `--limit`,
+   `--out`). NEVER invent variants.
    Wrong: `tribes-cli macros yields`, `tribes-cli macros market --series DGS10`.
-   Right: `tribes-cli macros market`.
-2. There is NO `--out` flag here (unlike most tribes-cli commands) — JSON goes to stdout only.
-   Wrong: `tribes-cli macros market --out snap.json` (unknown option).
-   Right: `tribes-cli macros market > snap.json`.
+   Right: `tribes-cli macros market`, `tribes-cli macros series --id DGS10`.
+2. `market` has NO `--out` flag — JSON goes to stdout only (`> snap.json` to save). `series`
+   does accept `--out <file>`.
 3. If the actual stdout keys differ from the schema below, trust the actual stdout.
+4. `series` needs a valid FRED series id (alphanumeric, e.g. DGS10, VIXCLS, T10Y3M). If unsure
+   of the id, do not guess — use the snapshot fields or research the id first.
 
 ## Command reference
 
-| Subcommand | Purpose                     | Required flags | Read-only or signed |
-| ---------- | --------------------------- | -------------- | ------------------- |
-| `market`   | Fetch macro market snapshot | none           | read-only           |
+| Subcommand | Purpose                                 | Required flags | Read-only or signed |
+| ---------- | --------------------------------------- | -------------- | ------------------- |
+| `market`   | Fetch macro market snapshot             | none           | read-only           |
+| `series`   | Latest observations for one FRED series | `--id`         | read-only           |
 
 ## Indicators
 
@@ -98,6 +103,17 @@ Output schema (keys the operator parses):
 tribes-cli macros market | jq '{vix: .vix.value, us10y: .yields.us10y, curve: .yields.curve_2s10s}'
 ```
 
+### Fetch one FRED series directly (recent history, any series id)
+
+```bash
+tribes-cli macros series --id T10Y3M --limit 20
+```
+
+Output: `{ "source": "fred-direct", "series_id": "T10Y3M", "points": [{ "date", "value" }, ...] }`
+with points newest first and market holidays (missing values) already dropped. Use it for macro
+series the snapshot lacks (e.g. 3-month curve, real yields, M2) or for short recent history of a
+snapshot series.
+
 ## Error recovery
 
 | Symptom                                     | Action                                                                                                     |
@@ -105,6 +121,8 @@ tribes-cli macros market | jq '{vix: .vix.value, us10y: .yields.us10y, curve: .y
 | Auth error (unauthorized, expired token)    | Run `tribes-cli login`, retry the original command once, then stop and report.                             |
 | `errors` array non-empty / needed key null  | Report which series failed and answer with the available fields — do NOT retry the whole payload.          |
 | `error: unknown option`                     | You passed a flag; `market` takes none. Rerun bare and redirect stdout if you need a file (`> snap.json`). |
+| stderr says "falling back to direct FRED"   | Not an error — same shape, direct source. Note: gold is always null there (FRED discontinued the series).  |
+| `series` says FRED_API_KEY is not set       | Direct FRED lookups are unavailable in this environment — answer from `market` fields instead.             |
 | Any other API failure (whole command fails) | Retry the same command once; if it fails again, stop and report the error.                                 |
 
 ## Related skills

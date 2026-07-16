@@ -15,6 +15,10 @@ Backing command group: `tribes-cli stock-analyst`. Sends one natural-language qu
 stock market-data specialist and returns a prose analysis.
 Requires: an auth token (run `tribes-cli login` once if commands fail with auth errors).
 
+Deterministic fast path: `tribes-cli stocks` (Marketstack-backed, structured JSON, no specialist
+round-trip) covers EOD/intraday candles, ticker search, and ticker profiles — prefer it when you
+need raw numbers fast; use `ask` when you need interpretation, movers, or market status.
+
 ## When to use
 
 - Price, quote, candle, snapshot, ticker-search, or market open/closed check for stocks.
@@ -43,6 +47,17 @@ Requires: an auth token (run `tribes-cli login` once if commands fail with auth 
 | ---------- | --------------------------------------------------- | -------------- | ------------------- |
 | `ask`      | Natural-language query to the stock-data specialist | `--query`      | read-only           |
 
+Fast-path group `tribes-cli stocks` (structured JSON; all subcommands accept `--out <file>`):
+
+| Subcommand | Purpose                                      | Required flags | Notes                                      |
+| ---------- | -------------------------------------------- | -------------- | ------------------------------------------ |
+| `eod`      | End-of-day OHLCV bars (newest first)         | `--symbols`    | `--latest` for last bar; `--date-from/-to` |
+| `intraday` | Intraday OHLCV bars                          | `--symbols`    | `--interval` (default 1hour); plan-gated   |
+| `search`   | Find tickers by name or symbol               | `--query`      | returns ticker + exchange MIC              |
+| `ticker`   | One ticker's profile (sector, ISIN, listing) | `--symbol`     | —                                          |
+
+If a `stocks` command reports the key is not set or a plan restriction, fall back to `ask`.
+
 ## Examples
 
 ### Price and quote check
@@ -67,6 +82,14 @@ tribes-cli stock-analyst ask --query "Top stock gainers and losers today, and is
 
 ```bash
 tribes-cli stock-analyst ask --query "Full snapshot for MSFT: last price, day range, volume, and 52-week range"
+```
+
+### Fast structured candles (no specialist round-trip)
+
+```bash
+tribes-cli stocks eod --symbols AAPL,MSFT --latest
+tribes-cli stocks eod --symbols NVDA --date-from 2026-06-01 --limit 30
+tribes-cli stocks search --query "broadcom"
 ```
 
 ## Error recovery

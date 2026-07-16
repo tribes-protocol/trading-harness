@@ -15,15 +15,21 @@ import { Command } from 'commander'
 import { buildHyperliquidCommand } from '@/cli/Hyperliquid'
 import { buildLoginCommand } from '@/cli/Login'
 import { buildMacrosCommand } from '@/cli/Macros'
+import { buildMarketDataCommand } from '@/cli/MarketData'
 import { buildNewsCommand } from '@/cli/News'
+import { buildOnchainCommand } from '@/cli/Onchain'
 import { buildPredictionCommand } from '@/cli/Prediction'
+import { buildSmartMoneyCommand } from '@/cli/SmartMoney'
 import { buildSpotTradingCommand } from '@/cli/SpotTrading'
+import { buildStocksCommand } from '@/cli/Stocks'
 import { buildTokenCommand } from '@/cli/Token'
 import { buildTransactionCommand } from '@/cli/Transaction'
 import { buildWalletCommand } from '@/cli/Wallet'
 import { buildWebSearchCommand } from '@/cli/WebSearch'
 import { ANALYSTS } from '@/common/Analysts'
+import { KNOWN_SECRET_VALUES } from '@/common/Env'
 import { buildAnalystCommand } from '@/helpers/AnalystCli'
+import { redactSecrets } from '@/helpers/ProviderHttp'
 
 const VERSION = '1.0.0'
 
@@ -45,6 +51,10 @@ function buildTribesCli(): Command {
   program.addCommand(buildTokenCommand())
   program.addCommand(buildWebSearchCommand())
   program.addCommand(buildPredictionCommand())
+  program.addCommand(buildMarketDataCommand())
+  program.addCommand(buildStocksCommand())
+  program.addCommand(buildOnchainCommand())
+  program.addCommand(buildSmartMoneyCommand())
 
   // Specialist analyst agents (alpha-scout, defi-analyst, … wallet-analyst).
   for (const config of Object.values(ANALYSTS)) {
@@ -62,6 +72,7 @@ async function runCli(): Promise<void> {
 }
 
 void runCli().catch((error: unknown) => {
-  process.stderr.write(`${error instanceof Error ? error.message : 'Unknown error'}\n`)
+  const message = error instanceof Error ? error.message : 'Unknown error'
+  process.stderr.write(`${redactSecrets(message, KNOWN_SECRET_VALUES)}\n`)
   process.exit(1)
 })

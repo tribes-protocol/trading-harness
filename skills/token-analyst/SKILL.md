@@ -17,6 +17,11 @@ Backing command group: `tribes-cli token-analyst`. Sends one natural-language qu
 token_analyst specialist and prints a plain-text on-chain analysis of one token to stdout.
 Requires: an auth token (run `tribes-cli login` once if commands fail with auth errors).
 
+Deterministic fast path: `tribes-cli token price|overview|ohlcv|security|holders|trending`
+(Birdeye-backed with Moralis/CoinGecko fallbacks, structured JSON, seconds) — prefer it for raw
+numbers on a resolved chain+address; use `ask` for interpretation, whale flow narrative, and
+anything needing judgment.
+
 ## When to use
 
 - Current price, liquidity, and volume snapshot for one identified token.
@@ -48,6 +53,21 @@ Requires: an auth token (run `tribes-cli login` once if commands fail with auth 
 
 Deterministic name→address resolution uses `tribes-cli token search --query "<name or symbol>"`
 (JSON output, accepts `--out <file>`; full docs live in the `spot-trading` skill).
+
+Fast-path subcommands on `tribes-cli token` (structured JSON, all accept `--out`; chain ids:
+`1 8453 56 42161 10 137 solana`):
+
+| Subcommand | Purpose                                        | Required flags         |
+| ---------- | ---------------------------------------------- | ---------------------- |
+| `price`    | Live price + liquidity                         | `--address`, `--chain` |
+| `overview` | Mcap, FDV, volume, 24h change, holder count    | `--address`, `--chain` |
+| `ohlcv`    | Candles (`--interval 1m…1M`, `--limit ≤1000`)  | `--address`, `--chain` |
+| `security` | Rug-risk checks (mint/freeze, taxes, honeypot) | `--address`, `--chain` |
+| `holders`  | Top holders (`--limit ≤100`)                   | `--address`, `--chain` |
+| `trending` | Trending tokens on one chain (`--limit ≤50`)   | none (default solana)  |
+
+The `source` field names the provider that answered (birdeye, moralis, coingecko-onchain). If a
+fast-path command errors after its fallbacks, use `ask` instead.
 
 ## Examples
 
