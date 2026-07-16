@@ -30,6 +30,8 @@ import {
   HyperliquidUsdTransferCommandOptionsSchema,
   HyperliquidWithdrawCommandOptionsSchema
 } from '@/types/Hyperliquid'
+import { HyperliquidMoversCommandOptionsSchema } from '@/types/HyperliquidMovers'
+import { computePerpMovers } from '@/utils/HyperliquidMovers'
 import { ensureJsonTreeString } from '@/utils/Lang'
 
 const VERSION = '1.0.0'
@@ -168,6 +170,30 @@ export function buildHyperliquidCommand(): Command {
           : request.allDexes
             ? await hyperliquidService.listAllPerpAssets()
             : await hyperliquidService.listPerpAssets(request.dex)
+      const output = ensureJsonTreeString(response)
+      await writeOutput({
+        output,
+        outPath: request.out ?? undefined
+      })
+    })
+
+  program
+    .command('movers')
+    .description('Top 24h movers and funding extremes for one perp dex (live markets only)')
+    .option('--dex <dex>', 'Perp dex name', 'main')
+    .option('--min-volume <usd>', 'Minimum day notional volume in USD (default 1000000)')
+    .option('--limit <count>', 'Rows per list (default 10, max 50)')
+    .option('--out <file>', 'Write output JSON to file')
+    .action(async (options: unknown): Promise<void> => {
+      const request = HyperliquidMoversCommandOptionsSchema.parse(options)
+      const result = await hyperliquidService.listPerpAssets(request.dex)
+      const response = computePerpMovers({
+        dex: request.dex,
+        assets: result.assets,
+        minVolumeUsd: request.minVolume,
+        limit: request.limit,
+        asOf: new Date().toISOString()
+      })
       const output = ensureJsonTreeString(response)
       await writeOutput({
         output,

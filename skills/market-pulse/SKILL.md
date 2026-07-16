@@ -90,16 +90,17 @@ continue and list it under Gaps.
    commodities from two dex reads:
 
    ```bash
-   tribes-cli hyperliquid list-assets --dex main --out /tmp/pulse-hl-main.json
-   tribes-cli hyperliquid list-assets --dex xyz --out /tmp/pulse-hl-xyz.json
+   tribes-cli hyperliquid movers --dex main --limit 10 --out /tmp/pulse-mv-main.json
+   tribes-cli hyperliquid movers --dex xyz --limit 10 --out /tmp/pulse-mv-xyz.json
    ```
 
-   LIVE filter first — it is authoritative over any ticker named below, because listings
-   change: use ONLY entries with `isDelisted` false AND `dayNtlVlm` > 0 AND a non-null
-   `markPx`. Frozen/delisted perps keep stale marks (`markPx` = `prevDayPx`, zero volume/OI) —
-   e.g. `xyz:VIX`, `xyz:DXY`, `xyz:CORN` were delisted as of 2026-07; never read them as data.
-   Compute 24h moves as `markPx / prevDayPx − 1`. `funding` is a DECIMAL FRACTION per hour
-   (raw 0.0000125 = 0.00125%/hr) — multiply by 100 for %/hr before comparing to thresholds.
+   `movers` applies the LIVE filter (not delisted, priced, dayNtlVlm ≥ `--min-volume`, default
+   $1M), computes `change_24h_pct`, and returns `funding_extremes` (|raw| ≥ 0.00005 =
+   0.005%/hr) with funding in BOTH raw and %/hr forms — no manual math. For individual index /
+   commodity levels not in the top movers, fall back to `list-assets --dex xyz --out ...` and
+   apply the same live filter yourself: skip `isDelisted`/null-priced entries (frozen perps
+   keep stale marks — e.g. `xyz:VIX`, `xyz:DXY`, `xyz:CORN` were delisted as of 2026-07); 24h
+   move = `markPx / prevDayPx − 1`; raw `funding` × 100 = %/hr.
 
    - Crypto (`main`): majors (BTC, ETH, SOL + top OI coins). Baseline funding ≈ raw 0.0000125
      (0.00125%/hr ≈ 11%/yr); stretched when |raw funding| ≥ 0.00005 (0.005%/hr ≈ 44%/yr, 4×
