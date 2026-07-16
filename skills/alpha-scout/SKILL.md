@@ -4,7 +4,7 @@ description: >-
   Discovers opportunities BEFORE a specific token is chosen. Handles: trending tokens, new token
   listings, and smart-money flows and accumulation. Call to find what is hot or where smart money
   is rotating. NOT for: one identified token's price, safety, or trades (use token-analyst);
-  market-wide rankings or top movers (use market-strategist); trending pools (use defi-analyst).
+  market-wide rankings or top movers (use market-strategist); trending pools (use research-analyst).
 allowed-tools: bash read
 ---
 
@@ -25,7 +25,7 @@ use `ask` for cross-signal synthesis and validation passes.
 - "Any new tokens worth watching?" — new listings plus a validation pass.
 - NOT for one identified token's price, security, or trades — use `token-analyst`.
 - NOT for market-wide rankings, global caps, or top gainers/losers — use `market-strategist`.
-- NOT for trending or new pools and DEX pairs — use `defi-analyst`.
+- NOT for trending or new pools and DEX pairs — no structured source; use `research-analyst`.
 
 ## Hard rules
 

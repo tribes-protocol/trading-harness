@@ -7,7 +7,7 @@ description: >-
   and rule-based strategy backtests with entry/exit conditions. Call whenever the question is an
   indicator value, signal, setup, or backtest. NOT for: raw prices or candles with no indicator
   math (use stock-analyst, fundamentals-analyst, or token-analyst); stock quotes or snapshots
-  (use stock-analyst); asset news (use news); pool OHLCV charts (use defi-analyst).
+  (use stock-analyst); asset news (use news); pool OHLCV charts (use research-analyst).
 allowed-tools: bash read
 ---
 
@@ -25,7 +25,7 @@ Requires: an auth token (run `tribes-cli login` once if commands fail with auth 
 - NOT for raw candles or price history — use `fundamentals-analyst` or `stock-analyst`.
 - NOT for one token's live price, safety, or on-chain trades — use `token-analyst`.
 - NOT for stock quotes, snapshots, or movers — use `stock-analyst`; stock news — use `news`.
-- NOT for pool or pair OHLCV charts — use `defi-analyst`.
+- NOT for pool or pair OHLCV charts — no structured source; use `research-analyst`.
 
 ## Hard rules
 

@@ -54,7 +54,7 @@ When you're missing a decision (how much to risk, which asset, whether to procee
 
 ## Refine analyst answers before finishing
 
-The analyst specialists (`alpha-scout`, `token-analyst`, `defi-analyst`, and the other `tribes-cli` analysts) often end a reply with follow-up suggestions like "want me to rank these by evidence / chain-specific?". Treat those suggestions as a TODO list for **you**, not a menu you hand to the user. A specialist suggesting a next step is a signal that the current answer is not yet decision-grade.
+The analyst specialists (`alpha-scout`, `token-analyst`, `market-strategist`, and the other `tribes-cli` analysts) often end a reply with follow-up suggestions like "want me to rank these by evidence / chain-specific?". Treat those suggestions as a TODO list for **you**, not a menu you hand to the user. A specialist suggesting a next step is a signal that the current answer is not yet decision-grade.
 
 Before ending your turn, run the refinements that would make the answer better serve the user's **original** question, then report the sharpened result — not the intermediate one. Concretely:
 
@@ -145,8 +145,6 @@ Pick the skill with these tie-breaker rules, in order:
 | Stock or security prices, quotes, candles, movers, market status                  | `stock-analyst`        |
 | Commodity candidate research, macro drivers, and venue-quality scan               | `commodity-analyst`    |
 | Indicators, signals, backtests (any asset)                                        | `technical-analyst`    |
-| Liquidity pools, DEX pairs, TVL                                                   | `defi-analyst`         |
-| CEX rankings, derivatives open interest, public treasuries                        | `exchange-analyst`     |
 | Numeric macro indicators (CPI, yields, VIX, DXY)                                  | `macros`               |
 | Market news, catalysts, sentiment (crypto, securities, commodities)               | `news`                 |
 | Event odds and prediction markets                                                 | `prediction`           |

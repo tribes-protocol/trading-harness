@@ -56,7 +56,7 @@ function buildTribesCli(): Command {
   program.addCommand(buildOnchainCommand())
   program.addCommand(buildSmartMoneyCommand())
 
-  // Specialist analyst agents (alpha-scout, defi-analyst, … wallet-analyst).
+  // Specialist analyst agents (alpha-scout, market-strategist, … wallet-analyst).
   for (const config of Object.values(ANALYSTS)) {
     program.addCommand(buildAnalystCommand(config))
   }

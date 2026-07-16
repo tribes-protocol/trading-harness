@@ -174,6 +174,11 @@ file cache via `TRIBES_PROVIDER_CACHE_BASE`.
 
 ## Not integrated / intentionally narrow
 
+- Pool/pair/DEX-level data (TVL, pool OHLCV, pair analysis, DEX rankings) and CEX/derivatives
+  data (exchange rankings, open interest, funding, public treasuries) have NO structured source:
+  the `defi-analyst` and `exchange-analyst` skills that covered them were removed in July 2026
+  by owner decision. Questions in those areas route to `research-analyst` / `web-search`.
+
 - Alchemy Prices API and Portfolio API: overlapping coverage already provided by
   CoinGecko/Birdeye/Moralis; Portfolio's 2-address/5-network caps make it a poor fit.
 - NewsData.io `/archive`: paid-plan-gated and the harness trades on current news.

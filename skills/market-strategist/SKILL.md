@@ -7,7 +7,7 @@ description: >-
   and market-wide search. Call for "how's the market?", crypto rankings, crypto top movers,
   category rotation, or broad trend questions. NOT for: one token's price, chart, or safety (use
   token-analyst); deep single-coin research (use fundamentals-analyst); pool or DEX-level TVL
-  (use defi-analyst); stock movers (use stock-analyst); numeric macro indicators (use macros).
+  (use research-analyst); stock movers (use stock-analyst); numeric macro indicators (use macros).
 allowed-tools: bash read
 ---
 
@@ -28,7 +28,7 @@ question needs interpretation (category rotation, "how's the market" narrative, 
 - Crypto ranking tables, daily top gainers/losers, market-cap trends over time.
 - Category rotation, recently added coins, quick multi-coin price checks, market-wide search.
 - NOT for a single token or coin — use `token-analyst` (on-chain) or `fundamentals-analyst` (profile).
-- NOT for trending-token discovery (`alpha-scout`), pools/DEXes (`defi-analyst`), CEX/derivatives (`exchange-analyst`).
+- NOT for trending-token discovery (`alpha-scout`); pool/DEX-level or CEX/derivatives data has no structured source — use `research-analyst`.
 - NOT for stock movers (`stock-analyst`) or numeric macro indicators like CPI/VIX/DXY (`macros`).
 
 ## Hard rules

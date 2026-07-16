@@ -9,7 +9,7 @@ description: >-
   trade-execution); protecting, resizing, or closing existing positions (use
   position-management); on-chain DEX swaps or bridges — "spot" here means Hyperliquid's own spot
   exchange only (use spot-trading); wallet IDs, addresses, or cross-chain balances (use wallet);
-  net worth or PnL history (use wallet-analyst); CEX/derivatives research (use exchange-analyst).
+  net worth or PnL history (use wallet-analyst); CEX/derivatives research (use research-analyst).
 allowed-tools: bash read
 ---
 

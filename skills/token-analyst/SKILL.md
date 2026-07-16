@@ -7,7 +7,7 @@ description: >-
   resolution. Call for any question about a specific token's price, safety, trades, or holders.
   NOT for: coin profiles, supply trends, or exchange listings (use fundamentals-analyst);
   trending or new-token discovery (use alpha-scout); market-wide rankings or multi-coin prices
-  (use market-strategist); pool or DEX analysis (use defi-analyst).
+  (use market-strategist); pool or DEX analysis (use research-analyst).
 allowed-tools: bash read
 ---
 
@@ -30,7 +30,7 @@ anything needing judgment.
 - NOT for coin profiles, supply trends, or exchange listings — use `fundamentals-analyst`.
 - NOT for trending tokens, new listings, or smart-money discovery — use `alpha-scout`.
 - NOT for market-wide rankings, top movers, or multi-coin price tables — use `market-strategist`.
-- NOT for pool, pair, or DEX questions — use `defi-analyst`.
+- NOT for pool, pair, or DEX questions — no structured source; use `research-analyst`.
 
 ## Hard rules
 
@@ -106,5 +106,4 @@ timeout 300 tribes-cli token-analyst ask \
 - `fundamentals-analyst` — CoinGecko research profile of one listed coin.
 - `alpha-scout` — discovery before a specific token is chosen.
 - `market-strategist` — market-wide aggregates, rankings, and movers.
-- `defi-analyst` — pools, pairs, and DEX activity.
 - `technical-analyst` — indicator math and backtests on candles.

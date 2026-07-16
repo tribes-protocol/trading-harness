@@ -8,20 +8,6 @@ export const ANALYSTS = {
     errorLabel: 'Alpha scout',
     askDescription: 'Send a query to the alpha_scout specialist agent endpoint'
   },
-  defiAnalyst: {
-    cliName: 'defi-analyst-cli',
-    description: 'Expert on DEX activity and liquidity pools.',
-    endpointPath: '/agent/lucy/defi-analyst',
-    errorLabel: 'DeFi analyst',
-    askDescription: 'Send a query to the defi_analyst specialist agent endpoint'
-  },
-  exchangeAnalyst: {
-    cliName: 'exchange-analyst-cli',
-    description: 'Expert on exchanges, derivatives, and institutional crypto holdings.',
-    endpointPath: '/agent/lucy/exchange-analyst',
-    errorLabel: 'Exchange analyst',
-    askDescription: 'Send a query to the exchange_analyst specialist agent endpoint'
-  },
   fundamentalsAnalyst: {
     cliName: 'fundamentals-analyst-cli',
     description: 'Expert on in-depth coin research via CoinGecko data.',
