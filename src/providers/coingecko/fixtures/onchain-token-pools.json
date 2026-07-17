@@ -1,0 +1,113 @@
+{
+  "_fixture": {
+    "note": "constructed from official docs field definitions (see docs/research/providers/coingecko-pro.json), not captured live data. GET /onchain/networks/{network}/tokens/{token_address}/pools with include=base_token,quote_token,dex — numeric attribute values are JSON strings per the docs example; the adapter must ignore keys starting with '_'.",
+    "docsUrl": "https://docs.coingecko.com/reference/top-pools-contract-address"
+  },
+  "data": [
+    {
+      "id": "eth_0x88e6a0c2ddd26feeb64f039a2c41296fcb3f5640",
+      "type": "pool",
+      "attributes": {
+        "address": "0x88e6a0c2ddd26feeb64f039a2c41296fcb3f5640",
+        "name": "USDC / WETH 0.05%",
+        "pool_created_at": "2021-05-04T23:11:00Z",
+        "base_token_price_usd": "0.999894",
+        "quote_token_price_usd": "3660.85",
+        "base_token_price_native_currency": "0.000273132",
+        "quote_token_price_native_currency": "1.0",
+        "base_token_price_quote_token": "0.00027313",
+        "quote_token_price_base_token": "3661.23",
+        "token_price_usd": "0.999894",
+        "fdv_usd": "63280516307",
+        "market_cap_usd": "63280516307",
+        "reserve_in_usd": "545933958.0815",
+        "volume_usd": {
+          "m5": "12345.5",
+          "m15": "56789.1",
+          "m30": "123456.7",
+          "h1": "2345678.9",
+          "h6": "15678901.2",
+          "h24": "65665560.4792908"
+        },
+        "price_change_percentage": {
+          "m5": "0",
+          "m15": "0.01",
+          "m30": "-0.01",
+          "h1": "0.02",
+          "h6": "-0.03",
+          "h24": "0.05"
+        },
+        "transactions": {
+          "h24": { "buys": 1203, "sells": 1104, "buyers": 802, "sellers": 751 }
+        }
+      },
+      "relationships": {
+        "base_token": {
+          "data": { "id": "eth_0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48", "type": "token" }
+        },
+        "quote_token": {
+          "data": { "id": "eth_0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2", "type": "token" }
+        },
+        "dex": { "data": { "id": "uniswap_v3", "type": "dex" } },
+        "network": { "data": { "id": "eth", "type": "network" } }
+      }
+    },
+    {
+      "id": "eth_0x397ff1542f962076d0bfe58ea045ffa2d347aca0",
+      "type": "pool",
+      "attributes": {
+        "address": "0x397ff1542f962076d0bfe58ea045ffa2d347aca0",
+        "name": "USDC / WETH",
+        "pool_created_at": "2020-05-19T20:22:00Z",
+        "base_token_price_usd": "0.9999",
+        "quote_token_price_usd": "3660.11",
+        "token_price_usd": "0.9999",
+        "reserve_in_usd": "12345678.9",
+        "volume_usd": {
+          "h24": "1234567.89"
+        }
+      },
+      "relationships": {
+        "base_token": {
+          "data": { "id": "eth_0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48", "type": "token" }
+        },
+        "quote_token": {
+          "data": { "id": "eth_0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2", "type": "token" }
+        },
+        "dex": { "data": { "id": "sushiswap", "type": "dex" } },
+        "network": { "data": { "id": "eth", "type": "network" } }
+      }
+    }
+  ],
+  "included": [
+    {
+      "id": "eth_0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+      "type": "token",
+      "attributes": {
+        "address": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+        "name": "USD Coin",
+        "symbol": "USDC",
+        "decimals": 6,
+        "image_url": "https://coin-images.coingecko.com/coins/images/6319/large/usdc.png",
+        "coingecko_coin_id": "usd-coin"
+      }
+    },
+    {
+      "id": "eth_0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2",
+      "type": "token",
+      "attributes": {
+        "address": "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2",
+        "name": "Wrapped Ether",
+        "symbol": "WETH",
+        "decimals": 18,
+        "image_url": "https://coin-images.coingecko.com/coins/images/2518/large/weth.png",
+        "coingecko_coin_id": "weth"
+      }
+    },
+    {
+      "id": "uniswap_v3",
+      "type": "dex",
+      "attributes": { "name": "Uniswap V3" }
+    }
+  ]
+}

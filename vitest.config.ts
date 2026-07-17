@@ -1,18 +1,9 @@
-import { defineConfig } from 'vitest/config'
+import { defineConfig } from 'vitest/config';
 
 export default defineConfig({
-  resolve: {
-    tsconfigPaths: true
-  },
   test: {
+    include: ['src/**/*.test.ts', 'tests/**/*.test.ts'],
     environment: 'node',
-    include: ['tests/**/*.test.ts'],
-    passWithNoTests: true,
-    coverage: {
-      provider: 'v8',
-      reporter: ['text', 'json-summary', 'json'],
-      reportsDirectory: './coverage',
-      include: ['src/**']
-    }
-  }
-})
+    testTimeout: 15_000,
+  },
+});

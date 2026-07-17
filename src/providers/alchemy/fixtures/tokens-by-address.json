@@ -1,0 +1,50 @@
+{
+  "_fixture": {
+    "note": "constructed from official docs field definitions (see docs/research/providers/alchemy.json), not captured live data",
+    "docsUrl": "https://www.alchemy.com/docs/data/portfolio-apis/portfolio-api-endpoints/portfolio-api-endpoints/get-tokens-by-address"
+  },
+  "data": {
+    "tokens": [
+      {
+        "address": "0x1e6e8695fab3eb382534915ea8d7cc1d1994b152",
+        "network": "eth-mainnet",
+        "tokenAddress": null,
+        "tokenBalance": "1500000000000000000",
+        "tokenMetadata": {
+          "name": "Ether",
+          "symbol": "ETH",
+          "decimals": 18,
+          "logo": null
+        },
+        "tokenPrices": [
+          {
+            "currency": "usd",
+            "value": "4608.2208671202",
+            "lastUpdatedAt": "2026-07-17T08:20:00Z"
+          }
+        ],
+        "error": null
+      },
+      {
+        "address": "0x1e6e8695fab3eb382534915ea8d7cc1d1994b152",
+        "network": "eth-mainnet",
+        "tokenAddress": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+        "tokenBalance": "2500750000",
+        "tokenMetadata": {
+          "name": "USD Coin",
+          "symbol": "USDC",
+          "decimals": 6,
+          "logo": "https://static.alchemyapi.io/images/assets/3408.png"
+        },
+        "tokenPrices": [
+          {
+            "currency": "usd",
+            "value": "1.0001",
+            "lastUpdatedAt": "2026-07-17T08:20:00Z"
+          }
+        ],
+        "error": null
+      }
+    ]
+  }
+}

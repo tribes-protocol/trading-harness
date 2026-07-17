@@ -1,0 +1,26 @@
+{
+  "_fixture": {
+    "note": "constructed from official docs field definitions (see docs/research/providers/nansen.json), not captured live data",
+    "docsUrl": "https://docs.nansen.ai/"
+  },
+  "data": [
+    {
+      "chain": "ethereum",
+      "token_address": "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2",
+      "token_symbol": "WETH",
+      "net_flow_1h_usd": 125034.55,
+      "net_flow_24h_usd": -2103450.12,
+      "net_flow_7d_usd": 8450230.9,
+      "net_flow_30d_usd": 15320800.25,
+      "token_sectors": ["DeFi"],
+      "trader_count": 142,
+      "token_age_days": 2950,
+      "market_cap_usd": 11500000000
+    }
+  ],
+  "pagination": {
+    "page": 1,
+    "per_page": 100,
+    "is_last_page": true
+  }
+}

@@ -1,0 +1,24 @@
+{
+  "_fixture": {
+    "note": "constructed from official docs field definitions (see docs/research/providers/moralis.json), not captured live data",
+    "docsUrl": "https://docs.moralis.com/data-api/solana/price/token-price.md"
+  },
+  "tokenAddress": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+  "pairAddress": "58oQChx4yWmvKdwLLZzBi4ChoCc2fqCUWBkwMihLYQo2",
+  "nativePrice": {
+    "value": "6100000",
+    "decimals": 9,
+    "name": "Solana",
+    "symbol": "SOL"
+  },
+  "usdPrice": 0.9998,
+  "exchangeAddress": "675kPX9MHTjS2zt1qfr1NYHuzeLXfQM9H24wFSUt1Mp8",
+  "exchangeName": "Raydium AMM v4",
+  "logo": "https://example.invalid/logos/usdc.png",
+  "name": "USD Coin",
+  "symbol": "USDC",
+  "usdPrice24h": 1.0001,
+  "usdPrice24hrUsdChange": -0.0003,
+  "usdPrice24hrPercentChange": -0.03,
+  "isVerifiedContract": true
+}

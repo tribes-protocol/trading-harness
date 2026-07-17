@@ -1,0 +1,40 @@
+{
+  "_fixture": {
+    "note": "constructed from official docs field definitions (see docs/research/providers/newsdata.json), not captured live data; second page of the latest.json cursor sequence",
+    "docsUrl": "https://newsdata.io/documentation"
+  },
+  "status": "success",
+  "totalResults": 3,
+  "results": [
+    {
+      "article_id": "1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e",
+      "title": "Oil Slips as OPEC+ Signals Output Increase",
+      "link": "https://www.energy-daily.test/markets/oil-slips-opec-output",
+      "keywords": ["oil", "opec"],
+      "creator": null,
+      "description": "Crude futures eased after OPEC+ delegates signaled a further production increase for September.",
+      "content": null,
+      "pubDate": "2026-07-16 15:47:30",
+      "pubDateTZ": "UTC",
+      "image_url": null,
+      "video_url": null,
+      "source_id": "energy_daily",
+      "source_name": "Energy Daily",
+      "source_priority": 5310,
+      "source_url": "https://www.energy-daily.test",
+      "source_icon": null,
+      "language": "english",
+      "country": ["united kingdom"],
+      "category": ["business"],
+      "datatype": "news",
+      "fetched_at": "2026-07-16 15:52:19",
+      "sentiment": null,
+      "sentiment_stats": null,
+      "ai_tag": null,
+      "ai_region": null,
+      "ai_org": null,
+      "duplicate": false
+    }
+  ],
+  "nextPage": null
+}

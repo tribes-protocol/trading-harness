@@ -1,0 +1,20 @@
+{
+  "_fixture": {
+    "note": "constructed from official docs field definitions (see docs/research/providers/alchemy.json), not captured live data. Per the by-address endpoint reference, response items carry network+address (NOT symbol, which appears only on by-symbol responses).",
+    "docsUrl": "https://www.alchemy.com/docs/data/prices-api/prices-api-endpoints/prices-api-endpoints/get-token-prices-by-address"
+  },
+  "data": [
+    {
+      "network": "eth-mainnet",
+      "address": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+      "prices": [
+        {
+          "currency": "USD",
+          "value": "1.0001",
+          "lastUpdatedAt": "2026-07-17T08:20:00Z"
+        }
+      ],
+      "error": null
+    }
+  ]
+}

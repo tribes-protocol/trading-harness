@@ -1,0 +1,15 @@
+{
+  "_fixture": {
+    "note": "constructed from official docs field definitions (see docs/research/providers/marketstack.json), not captured live data — this is the documented error envelope example verbatim from the Getting Started page",
+    "docsUrl": "https://docs.apilayer.com/marketstack/docs/getting-started"
+  },
+  "error": {
+    "code": "validation_error",
+    "message": "Request failed with validation error",
+    "context": {
+      "symbols": [
+        { "key": "missing_symbols", "message": "You did not specify any symbols." }
+      ]
+    }
+  }
+}

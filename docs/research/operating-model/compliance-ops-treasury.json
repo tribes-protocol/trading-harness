@@ -1,0 +1,501 @@
+{
+  "area": "Compliance, operations, and treasury",
+  "reviewDate": "undefined",
+  "threeLinesOfDefense": {
+    "framework": "IIA Three Lines Model (July 2020 update of the Three Lines of Defense). The 2020 update dropped 'defense' from the name, is principles-based rather than structural, and stresses that first- and second-line roles can be blended within management while the third line (internal audit) must remain independent of management and report functionally to the governing body.",
+    "firstLine": "Functions that own and manage risk in day-to-day processes: portfolio management/trading (out of scope here), Trade Operations / Middle & Back Office, Fund Accounting & NAV Oversight, and Treasury (cash, collateral, financing, counterparty relationship management). They execute controls embedded in their workflows (reconciliations, four-eyes checks, wire dual authorization, margin verification).",
+    "secondLine": "Functions that set policy, advise, monitor, and challenge the first line: Compliance (regulatory adherence, ethics, surveillance), Risk Management (market/credit/counterparty limit-setting, model risk oversight per SR 11-7 analogues), and valuation control/valuation committee governance. Second line is independent of revenue generation but remains part of management.",
+    "thirdLine": "Internal Audit: independent, objective assurance to the board/audit committee on the effectiveness of governance, risk management, and controls across both first and second lines. Must not design or operate the controls it audits.",
+    "caveat": "The IIA's 2020 model explicitly warns against treating the lines as rigid organizational silos; in hedge funds, some activities (e.g., NAV oversight, counterparty due diligence) have both first-line execution and second-line challenge components, and firms below a size threshold often have no in-house third line at all (co-sourced or absent, mitigated by external audit and administrator SOC 1 reports)."
+  },
+  "departments": [
+    {
+      "name": "Compliance, Controls & Auditability (Legal & Compliance)",
+      "line": "Second line",
+      "mandate": "Establish, maintain, and enforce the firm's regulatory compliance program so that the adviser and its funds meet obligations under the applicable regimes (SEC Investment Advisers Act, CFTC/NFA where derivatives are traded, FCA SM&CR/SYSC for UK entities, AIFMD/ESMA for EU funds), prevent and detect violations (insider trading, conflicts, marketing abuses), and preserve a complete, auditable record of the firm's activities.",
+      "responsibilities": [
+        "Maintain written compliance policies and procedures reasonably designed to prevent violations, with a documented annual effectiveness review (SEC Rule 206(4)-7; the 2023 amendment requires the annual review to be documented in writing); appoint an empowered Chief Compliance Officer",
+        "Administer the Code of Ethics and personal trading regime (SEC Rule 204A-1): access-person initial holdings reports within 10 days, quarterly transaction reports within 30 days of quarter end, annual holdings reports, mandatory pre-clearance of IPOs and limited offerings, and firm-specific pre-clearance/blackout rules",
+        "Maintain restricted and watch lists and MNPI/information-barrier controls (Advisers Act Section 204A); chaperone expert-network calls; run diligence over alternative data providers",
+        "Review and approve marketing and investor communications under the SEC Marketing Rule (Rule 206(4)-1): seven general prohibitions, conditions for testimonials/endorsements and third-party ratings, net-of-fees performance, prescribed time periods, hypothetical-performance policies",
+        "Books and records program (SEC Rule 204-2): retention generally five years from fiscal year of last entry, first two years easily accessible; capture of electronic communications including off-channel channels (SEC has levied >$2B in penalties since 2021 for off-channel communications failures, including standalone private fund managers)",
+        "Own the regulatory filing calendar: Form ADV annual amendment, Form PF (quarterly within 60 days for large hedge fund advisers >= $1.5B hedge fund RAUM; annual within 120 days for other filers), 13F/13D/13G, Form CPO-PQR / CTA-PR and NFA annual self-examination questionnaire for CFTC-registered entities, TCFD/FCA and AIFMD Annex IV reporting for non-US entities",
+        "Trade surveillance (insider trading patterns, front-running, wash/cross trades, best execution exceptions) and e-communications surveillance sampling",
+        "Conflicts-of-interest identification and management (allocation of investment opportunities, principal/cross trades, fee and expense allocation, side letters/preferential terms)",
+        "Custody Rule compliance (Rule 206(4)-2): monitor qualified-custodian arrangements and the audit exception (audited financials delivered to investors within 120 days of fiscal year end)",
+        "AML/CFT program oversight: KYC on investors (usually executed by the fund administrator/transfer agent under delegation, with manager oversight); UK MLRO (SMF17) duties where applicable",
+        "Compliance training, annual attestations and certifications, gifts & entertainment and political contributions (pay-to-play, Rule 206(4)-5) logs",
+        "Regulatory exam and inquiry management (SEC Division of Examinations, FCA supervision); remediation tracking of findings"
+      ],
+      "workflows": [
+        {
+          "name": "Personal trading pre-clearance and monitoring",
+          "cadence": "Daily (pre-clearance requests); quarterly (transaction reports within 30 days of quarter end); annually (holdings reports)",
+          "description": "Access persons request pre-clearance; compliance checks against restricted/watch lists, blackout windows, and client trading; broker feeds reconciled against reported transactions; exceptions escalated and logged.",
+          "inputs": "Employee pre-clearance requests, broker confirm/statement feeds, restricted and watch lists, firm trade blotter",
+          "outputs": "Approvals/denials, exception reports, violation log entries, quarterly/annual certification records"
+        },
+        {
+          "name": "Restricted list and information barrier maintenance",
+          "cadence": "Event-driven with daily review",
+          "description": "Names added/removed when the firm receives MNPI (NDAs, private placements, board seats, expert networks); list pushed to OMS/EMS as hard pre-trade blocks; wall-crossing procedures documented.",
+          "inputs": "Deal team/legal notifications, NDA log, expert network usage records",
+          "outputs": "Updated restricted/watch lists distributed to trading systems, wall-crossing memos, chaperone notes"
+        },
+        {
+          "name": "Marketing and investor-communication review",
+          "cadence": "Per item, with periodic re-approval of standing materials",
+          "description": "Review of pitch books, DDQs, performance tear sheets, letters against Marketing Rule general prohibitions and performance presentation requirements; substantiation files maintained.",
+          "inputs": "Draft materials from IR/business development, performance data from fund accounting, GIPS composites if claimed",
+          "outputs": "Approved materials with review evidence, substantiation records retained under Rule 204-2"
+        },
+        {
+          "name": "Annual compliance program review",
+          "cadence": "Annual (with continuous forensic/periodic testing quarterly)",
+          "description": "Test adequacy and effectiveness of policies against business changes, regulatory developments, and testing results; document the review in writing; present findings to senior management/board.",
+          "inputs": "Testing results, violation logs, exam findings, regulatory change inventory, business change log",
+          "outputs": "Written annual review report, updated policies/procedures, remediation plan"
+        },
+        {
+          "name": "Regulatory filing production",
+          "cadence": "Per filing calendar (ADV annual within 90 days of FYE; Form PF quarterly within 60 days for large hedge fund advisers; 13F quarterly; CPO-PQR quarterly/annually)",
+          "description": "Assemble position, leverage, liquidity, counterparty, and investor data from operations, treasury, risk, and the administrator; validate; file; retain workpapers.",
+          "inputs": "Fund accounting NAV data, treasury financing/counterparty data, risk exposure data, administrator investor data",
+          "outputs": "Filed forms, filing workpapers, sign-off evidence"
+        },
+        {
+          "name": "Trade and e-communications surveillance",
+          "cadence": "Daily (trade surveillance alerts); weekly/monthly (e-comms sampling and lexicon review)",
+          "description": "Automated surveillance over the firm blotter versus restricted lists, news/MNPI events, and personal trading; archived e-comms searched against lexicons; alerts triaged, investigated, documented.",
+          "inputs": "Trade blotter from operations, archived communications, restricted list, news/corporate events",
+          "outputs": "Alert dispositions, investigation files, escalation memos"
+        }
+      ],
+      "controls": [
+        "CCO with sufficient seniority, authority, and resources; direct access to senior management and the board (SEC compliance rule adopting release); in UK, SMF16 Compliance Oversight owns SYSC 6 delivery with personal regulatory accountability",
+        "Written policies covering information barriers, personal trading, restricted/watch lists, pre-clearance and blackout procedures, and annual certifications (Section 204A obligation)",
+        "Documented annual review (written record required post-2023 amendment); board/management reporting of findings",
+        "Immutable, accessible record retention (5 years, first 2 easily accessible); e-comms captured on approved channels only; off-channel attestation and technical controls",
+        "Violation log with remediation tracking and escalation criteria; whistleblower/violation self-reporting channel required by the Code of Ethics",
+        "Segregation from first-line P&L: compliance staff compensation not tied to investment performance"
+      ],
+      "independence": "Fully independent second line: must be independent of the investment and revenue functions; typically reports to CEO, GC, or directly to fund boards. Not outsourced at institutional scale (outsourced/fractional CCOs are common only at small advisers and draw SEC scrutiny when under-resourced).",
+      "dependencies": [
+        "Operations for a complete, timely trade blotter and position data (surveillance and filings)",
+        "Fund accounting/administrator for performance and investor data (marketing review, Form PF, custody rule)",
+        "Treasury for counterparty, leverage, and financing data (Form PF, Annex IV)",
+        "IT for archiving, surveillance tooling, and access controls",
+        "HR for onboarding/offboarding of access persons",
+        "External counsel and fund boards for governance escalation"
+      ],
+      "handoffs": [
+        {"to": "Front office / Trading", "direction": "outbound", "content": "Restricted/watch list updates pushed as pre-trade blocks to OMS/EMS; wall-crossing clearances; trade approvals for principal/cross trades"},
+        {"to": "Trade Operations", "direction": "inbound", "content": "Daily trade blotter, allocations, and settlement data feeding surveillance and regulatory reporting"},
+        {"to": "Fund Accounting & NAV Oversight", "direction": "inbound", "content": "Performance figures, fee calculations, and audited financials supporting marketing review, Form PF, and custody rule compliance"},
+        {"to": "Treasury", "direction": "inbound", "content": "Counterparty exposures, borrowings/financing terms, UMR AANA calculations for Form PF and derivatives documentation compliance"},
+        {"to": "Investor Relations / Marketing", "direction": "bidirectional", "content": "Draft marketing materials in; approved materials with disclosure requirements out; side-letter terms in for conflicts and MFN review"},
+        {"to": "Internal Audit", "direction": "bidirectional", "content": "Compliance program documentation and testing results provided for audit; audit findings on the compliance program received for remediation"},
+        {"to": "Board / Management Committee", "direction": "outbound", "content": "Annual review results, material violations, exam findings, and regulatory change impact assessments"}
+      ],
+      "regulatoryBasis": [
+        "SEC Rule 206(4)-7 (compliance programs; documented annual review)",
+        "SEC Rule 204A-1 (code of ethics; access person reporting; IPO/limited-offering pre-clearance)",
+        "Advisers Act Section 204A (policies to prevent misuse of MNPI)",
+        "SEC Rule 204-2 (books and records; 5-year retention)",
+        "SEC Rule 206(4)-1 (Marketing Rule)",
+        "SEC Rule 206(4)-2 (Custody Rule; audit exception with 120-day delivery)",
+        "Form PF (SEC/CFTC joint); Form CPO-PQR / CTA-PR and NFA self-examination for CFTC registrants",
+        "FCA SYSC 6 and SM&CR (SMF16 Compliance Oversight, SMF17 MLRO)",
+        "AIFMD (Annex IV reporting; depositary interaction) for EU-marketed funds"
+      ],
+      "practiceNotes": [
+        "Regulatory requirement vs practice: the compliance program, code of ethics, records, and marketing review are hard legal requirements; the depth of surveillance tooling, e-comms lexicon sophistication, and forensic-testing cadence are institutional practice that scales with AUM and strategy complexity",
+        "Combined GC/CCO roles are common at mid-size funds; large multi-strategy platforms separate them and add dedicated surveillance and regulatory-reporting teams",
+        "SEC 2026 exam priorities keep private fund advisers in scope through fiduciary duty, conflicts, valuation, and emerging-technology lenses, and prioritize never-examined advisers",
+        "Judgment call: where regulatory-report production sits (compliance vs a finance/regulatory-reporting shared service) varies by firm; ownership of filing accuracy stays with compliance either way"
+      ]
+    },
+    {
+      "name": "Trade Operations (Middle & Back Office)",
+      "line": "First line",
+      "mandate": "Ensure every trade the firm executes is captured, allocated, confirmed/affirmed, settled, and reflected accurately in books and records; maintain integrity of positions and cash through systematic reconciliation; process lifecycle events (corporate actions, OTC events) without loss.",
+      "responsibilities": [
+        "Trade capture validation and allocation from OMS/EMS to accounting and counterparties",
+        "Matching, confirmation, and affirmation: under US T+1 (effective 28 May 2024, SEC amendments to Rule 15c6-1 and new Rule 15c6-2), allocations, confirmations, and affirmations must complete as soon as technologically practicable and no later than end of trade date; advisers must meet DTCC affirmation cutoffs",
+        "Settlement instruction management (SSIs), settlement monitoring, fail management and buy-in avoidance; CLS/FX settlement coordination",
+        "Daily cash and position reconciliation against prime brokers, custodians, and (at NAV frequency) the fund administrator; break investigation and resolution with documented aging and escalation",
+        "Corporate actions processing (dividends, splits, rights, elections) and OTC derivative lifecycle management (resets, expiries, novations, compressions)",
+        "Reference/static data management (security master, counterparty SSIs, broker codes)",
+        "Commission, fee, and financing charge verification against broker agreements",
+        "Recordkeeping for trade records required by Rule 204-2 (order memoranda, confirmations)"
+      ],
+      "workflows": [
+        {
+          "name": "Trade capture, matching, and affirmation",
+          "cadence": "Daily, intraday, with end-of-trade-date affirmation deadline (T+1 regime; 9:00 pm ET DTCC affirmation cutoff commonly used as the operational target)",
+          "description": "Executed trades flow from OMS; operations validates economics, allocates, matches via central matching utilities (e.g., CTM), affirms broker confirms, and issues settlement instructions.",
+          "inputs": "OMS/EMS executions, broker confirmations, SSI database, security master",
+          "outputs": "Affirmed trades, settlement instructions to custodian/PB, exceptions queue"
+        },
+        {
+          "name": "Settlement monitoring and fail management",
+          "cadence": "Daily",
+          "description": "Track pending settlements, chase fails with brokers/custodians, quantify funding impact of fails, escalate aged fails.",
+          "inputs": "Custodian/PB settlement status feeds, affirmed trade file",
+          "outputs": "Fail report with aging, resolution actions, funding impact notice to treasury"
+        },
+        {
+          "name": "Cash and position reconciliation",
+          "cadence": "Daily (cash, positions, trades vs PBs/custodians); monthly (full trial-balance reconciliation vs fund administrator at NAV)",
+          "description": "Automated matching of internal books vs external records using reconciliation keys; breaks investigated, categorized (timing vs true error), corrected at source, and signed off.",
+          "inputs": "Internal position/cash ledgers, PB/custodian/admin data files",
+          "outputs": "Break reports with dispositions, adjusted books, monthly rec sign-off pack"
+        },
+        {
+          "name": "Corporate actions and OTC lifecycle processing",
+          "cadence": "Event-driven, checked daily",
+          "description": "Capture announcements from custodians/vendors, validate against positions, obtain elections from portfolio managers where voluntary, book entitlements, reconcile outcomes.",
+          "inputs": "Custodian/vendor corporate-action feeds, position records, PM election decisions",
+          "outputs": "Booked entitlements/adjustments, election instructions, reconciliation evidence"
+        }
+      ],
+      "controls": [
+        "Segregation of duties: trade execution (front office) separated from confirmation/settlement (operations) — a foundational fraud control in AIMA operational-risk sound practice",
+        "Four-eyes review on manual bookings and break adjustments; maker-checker on static data changes",
+        "Break aging thresholds with mandatory escalation; unresolved-break reporting to COO/CFO",
+        "Exception-based dashboards with full audit trail; reconciliation evidence retained per Rule 204-2",
+        "Independent data feeds (broker/custodian direct) rather than manual re-keying"
+      ],
+      "independence": "Embedded first line under the COO; independence is achieved through segregation of duties from the front office rather than organizational separation from management. Must not report into portfolio management.",
+      "dependencies": [
+        "Front office OMS/EMS for timely, accurate executions and allocations",
+        "Prime brokers, custodians, and clearing brokers for confirms, settlement status, and data files",
+        "Fund administrator for NAV-cycle reconciliation",
+        "Reference data vendors and matching utilities (DTCC CTM/TradeSuite)",
+        "Treasury for funding of settlements and fail financing"
+      ],
+      "handoffs": [
+        {"to": "Front office / Trading", "direction": "bidirectional", "content": "Trade economics queries and booking corrections in; validated positions and start-of-day P&L files out"},
+        {"to": "Treasury", "direction": "outbound", "content": "Projected settlement obligations, failed-trade funding impacts, and confirmed cash movements feeding the daily cash position"},
+        {"to": "Fund Accounting & NAV Oversight", "direction": "outbound", "content": "Clean, reconciled trade/position/cash data as the basis for shadow books and administrator oversight"},
+        {"to": "Compliance", "direction": "outbound", "content": "Complete daily trade blotter for surveillance and regulatory reporting; records supporting exam requests"},
+        {"to": "Risk Management", "direction": "outbound", "content": "Confirmed positions feeding exposure, liquidity, and counterparty risk measurement"},
+        {"to": "Fund administrator", "direction": "bidirectional", "content": "Trade files and break queries out; administrator records and NAV-cycle reconciliations in"}
+      ],
+      "regulatoryBasis": [
+        "SEC Rule 15c6-1 as amended (T+1 standard settlement cycle, effective 28 May 2024)",
+        "SEC Rule 15c6-2 (same-day allocation/confirmation/affirmation policies with broker-dealers)",
+        "New Advisers Act Rule 204-2 recordkeeping amendments for T+1 (records of allocations, confirmations, affirmations with timestamps)",
+        "FINRA Regulatory Notice 24-04 (T+1 implementation)",
+        "CSDR settlement discipline for European settlement activity"
+      ],
+      "practiceNotes": [
+        "Widely accepted practice: daily automated reconciliation of cash and positions against every prime broker and custodian; monthly full reconciliation against the administrator; exception-based workflows",
+        "Judgment call: degree of outsourcing — many funds outsource middle-office processing to administrators (SS&C, BNY, etc.) while retaining an internal oversight/exception team; multi-strategy platforms usually keep it in-house for speed and control",
+        "T+1 compressed timelines pushed affirmation into trade date and increased pressure on FX funding for non-USD investors — an operations/treasury coordination point that did not exist under T+2"
+      ]
+    },
+    {
+      "name": "Fund Accounting, NAV Oversight & Financial Control",
+      "line": "First line (execution) with second-line valuation governance via the valuation committee",
+      "mandate": "Ensure the official NAV produced by the third-party fund administrator is accurate, that valuations follow the fund's valuation policy, that fees and expenses are correctly calculated and allocated, and that fund financial statements are audited and delivered on time.",
+      "responsibilities": [
+        "Oversight of the third-party administrator's NAV production: full shadow accounting or risk-based NAV review (P&L reconciliation, pricing checks, accrual verification, capital activity verification)",
+        "Independent price verification support and valuation committee operation: tolerance-based price challenge process, fair-valued/Level 3 asset review, valuation policy maintenance (AIMA Guide to Sound Practices for Hedge Fund Valuation recommends segregating valuation authority from portfolio management)",
+        "Management fee, incentive fee/carry, equalization, and expense allocation verification (a recurring SEC enforcement theme)",
+        "Capital activity: subscriptions/redemptions processing with the administrator/transfer agent; gates, side pockets, and lock-up mechanics",
+        "Annual audited financial statements (GAAP/IFRS) — delivery to investors within 120 days of fiscal year end under the Custody Rule audit exception; audit PBC management",
+        "Investor allocations, side-letter economic terms implementation checks, tax reporting support (K-1s, PFIC)",
+        "Performance calculation and GIPS composite maintenance where compliance with GIPS is claimed (more common at institutional asset managers than hedge funds)",
+        "Month-end close calendar management and administrator SLA/KPI monitoring; review of the administrator's SOC 1 report"
+      ],
+      "workflows": [
+        {
+          "name": "Daily P&L estimation and flash NAV",
+          "cadence": "Daily",
+          "description": "Produce internal P&L/NAV estimate from reconciled positions and vendor prices; compare against administrator/PB equity; investigate material divergences immediately rather than waiting for month-end.",
+          "inputs": "Reconciled positions from operations, market data/vendor prices, accrual schedules",
+          "outputs": "Daily P&L pack for PMs/management, divergence alerts"
+        },
+        {
+          "name": "Monthly NAV oversight cycle",
+          "cadence": "Monthly (or at each dealing date)",
+          "description": "Review administrator's preliminary NAV pack: tie out positions, cash, pricing sources, accruals, fees, capital activity; run shadow or risk-based checks; challenge pricing exceptions; sign off official NAV for release.",
+          "inputs": "Administrator NAV pack, internal shadow books, pricing tolerance reports, fee terms, capital activity files",
+          "outputs": "Signed NAV approval, pricing challenge log, break/adjustment log, investor statements released via administrator"
+        },
+        {
+          "name": "Valuation committee",
+          "cadence": "Monthly or quarterly, plus ad hoc for events",
+          "description": "Review fair-valued and hard-to-price positions, approve pricing source hierarchy changes and model-based valuations, document rationale; voting membership excludes or outweighs portfolio management.",
+          "inputs": "Level 2/3 position inventory, broker quotes, model valuations, third-party valuation agent reports",
+          "outputs": "Valuation minutes and approvals, updated pricing matrix, marks fed to administrator"
+        },
+        {
+          "name": "Annual audit and financial statements",
+          "cadence": "Annual (interim fieldwork quarterly where applicable)",
+          "description": "Coordinate auditor fieldwork, produce financial statements with administrator, resolve audit adjustments, deliver audited statements to investors within 120 days (custody rule audit exception).",
+          "inputs": "Administrator trial balance, valuation support, legal confirmations, expense support",
+          "outputs": "Audited financial statements, management representation letters, audit adjustment log"
+        }
+      ],
+      "controls": [
+        "Independent third-party administrator produces the official NAV (institutional-standard control; self-administration is now rare and a due-diligence red flag for hedge funds)",
+        "Segregation between those who maintain primary records (administrator) and shadow records (manager ops/finance); within the shadow team, entry vs review vs sign-off separated",
+        "Documented valuation policy with pricing source hierarchy and tolerance thresholds; valuation committee with authority independent of portfolio management",
+        "Fee calculations independently recomputed before crystallization; expense allocations tested against governing documents",
+        "Administrator SOC 1 (ISAE 3402) review annually; SLA/KPI scorecards",
+        "NAV error policy with materiality thresholds and investor compensation rules"
+      ],
+      "independence": "The official NAV is independent by construction (third-party administrator); the manager's oversight team is first line under the CFO. Valuation governance (valuation committee, pricing policy) functions as second-line challenge and should be structurally insulated from portfolio management influence. Under AIFMD, the depositary adds an external oversight layer (cash-flow monitoring, safekeeping, and oversight of NAV procedures).",
+      "dependencies": [
+        "Fund administrator (official books and records, investor register, NAV production)",
+        "Trade operations for reconciled positions/cash",
+        "Market data vendors and third-party valuation agents",
+        "External auditors",
+        "Treasury for cash and financing balances/accruals",
+        "Legal/compliance for fund terms, side letters, and fee disclosure alignment"
+      ],
+      "handoffs": [
+        {"to": "Fund administrator", "direction": "bidirectional", "content": "Trade files, marks for fair-valued assets, expense accruals, and capital activity instructions out; preliminary and final NAV packs, investor register data in"},
+        {"to": "Investor Relations", "direction": "outbound", "content": "Final NAV and performance figures for investor statements and letters (released through the administrator)"},
+        {"to": "Compliance", "direction": "outbound", "content": "Performance data with methodology documentation for Marketing Rule substantiation; fee/expense data for Form PF and ADV"},
+        {"to": "Treasury", "direction": "bidirectional", "content": "Redemption/subscription cash requirements out to treasury for liquidity planning; financing cost accruals in from treasury"},
+        {"to": "Risk Management", "direction": "outbound", "content": "Official P&L and NAV series for risk model backtesting and performance attribution"},
+        {"to": "External auditors", "direction": "bidirectional", "content": "PBC schedules and valuation support out; audit findings and adjustments in"},
+        {"to": "Depositary (EU funds)", "direction": "bidirectional", "content": "Cash-flow and asset records for the depositary's cash monitoring and safekeeping verification; oversight exceptions back"}
+      ],
+      "regulatoryBasis": [
+        "SEC Custody Rule 206(4)-2 (surprise exam or audited financials within 120 days under the audit exception)",
+        "Form PF (valuation and performance data)",
+        "AIFMD Articles 19 (valuation) and 21 (depositary: cash monitoring, safekeeping, oversight) with ESMA technical advice",
+        "GAAP/IFRS financial reporting; GIPS standards where compliance is claimed (voluntary standard, not regulation)",
+        "SEC 2026 exam priorities flag valuation practices for alternative/illiquid assets"
+      ],
+      "practiceNotes": [
+        "Practice varies materially: full shadow accounting (complete parallel books) vs risk-based oversight (verify high-stakes calculations only) is a genuine cost/benefit judgment call; vendors advocate full shadowing, consultants increasingly endorse risk-based models for smaller funds; large multi-strategy firms typically run full shadow books",
+        "US hedge funds have no depositary requirement — administrator oversight is a contractual/best-practice control; EU AIFs add the depositary as a regulatory control layer, so the operating model differs by domicile",
+        "The valuation committee is near-universal institutional practice but its composition and veto rights are firm judgment calls; the consistent principle (AIMA, SEC exam focus) is independence from portfolio management"
+      ]
+    },
+    {
+      "name": "Treasury (Cash, Collateral, Margin, Financing & Counterparty Management)",
+      "line": "First line (execution and relationship ownership); counterparty credit limits set by second-line risk",
+      "mandate": "Safeguard and optimize the fund's unencumbered cash and collateral, meet all margin and settlement obligations, minimize financing costs across prime brokers and financing counterparties, and manage counterparty relationships and concentration so that no single counterparty failure impairs the fund.",
+      "responsibilities": [
+        "Daily cash management: consolidate balances across PBs/custodians/banks, sweep idle cash to money funds/T-bills, maintain operating buffers, minimize unremunerated or at-risk balances (post-2008 Lehman and 2023 regional-bank lessons: hold excess cash away from prime brokers at custodians)",
+        "Cash and liquidity forecasting: project settlements, margin calls, redemptions, expenses; stress liquidity under market shocks aligned with risk's liquidity framework",
+        "Margin management: verify/replicate broker margin calls (house vs regulatory), dispute erroneous calls, forecast margin as a forward-looking metric, model margin impact of new trades pre-execution",
+        "Collateral management under ISDA CSAs: variation margin exchange (daily), regulatory initial margin where in scope of UMR (two-way, segregated at third-party custodian, SIMM-calculated; AANA threshold $8B monitored annually over March-May), collateral eligibility, haircuts, substitution, cheapest-to-deliver optimization, rehypothecation limits",
+        "Financing: negotiate and monitor PB financing spreads, stock-loan rates and rebates, repo funding for fixed income, term financing/lock-up agreements to secure balance-sheet commitment",
+        "Counterparty management: onboarding and documentation (PB agreements, ISDA/CSA, MSFTA, futures agreements) with legal; ongoing due diligence on counterparty credit standing; exposure monitoring (cash, excess margin, unsettled trades, OTC MTM) and diversification across multiple primes — a core multi-strategy sound practice reinforced post-Archegos by BCBS counterparty credit risk guidelines (2024) and BCBS-CPMI-IOSCO margin work",
+        "Wire and payment execution with strict controls; FX execution for funding and share-class hedging where in mandate",
+        "Broker vote input and wallet allocation aligned to service and balance-sheet provision"
+      ],
+      "workflows": [
+        {
+          "name": "Daily cash positioning and sweep",
+          "cadence": "Daily (morning position, intraday updates)",
+          "description": "Aggregate opening balances across all counterparties, net expected settlements/margin/subscriptions-redemptions, fund shortfalls, sweep excess to approved vehicles, document placements against counterparty limits.",
+          "inputs": "Bank/PB/custodian balance feeds, operations settlement projections, margin call estimates, capital activity calendar from fund accounting",
+          "outputs": "Daily cash position report, funding instructions/wires, sweep tickets, exceptions vs counterparty cash limits"
+        },
+        {
+          "name": "Margin call processing and dispute management",
+          "cadence": "Daily (calls typically due same day/next day)",
+          "description": "Receive VM/IM calls, independently recompute against internal models and CSA/PB terms, agree or dispute within tolerance, instruct collateral movements, track disputes to resolution.",
+          "inputs": "Counterparty margin calls, internal margin replication, CSA terms database, position/MTM data",
+          "outputs": "Agreed/disputed call records, collateral movement instructions, dispute log, margin efficiency metrics"
+        },
+        {
+          "name": "Financing and collateral optimization review",
+          "cadence": "Weekly operational review; monthly/quarterly strategic review",
+          "description": "Compare financing spreads, stock-loan rates, and margin methodologies across counterparties; rebalance positions/collateral to the most efficient venue; review term-financing coverage vs portfolio liquidity.",
+          "inputs": "PB financing reports, internal cost-of-carry analytics, margin replication outputs, portfolio liquidity profile",
+          "outputs": "Rebalancing instructions, financing cost attribution by strategy, renegotiation agenda"
+        },
+        {
+          "name": "Counterparty review",
+          "cadence": "Quarterly committee, with daily exposure monitoring and event-driven reviews",
+          "description": "Review counterparty credit metrics (CDS spreads, ratings, earnings), exposures vs limits set by risk, concentration by counterparty and service, documentation gaps, and contingency/portability plans.",
+          "inputs": "Exposure reports, market credit indicators, risk-set limits, legal documentation inventory",
+          "outputs": "Counterparty review minutes, limit-breach escalations, onboarding/offboarding decisions, contingency playbooks"
+        },
+        {
+          "name": "UMR threshold and documentation monitoring",
+          "cadence": "Annual AANA calculation (March-May average), ongoing IM threshold monitoring ($50M per relationship)",
+          "description": "Calculate aggregate average notional of uncleared derivatives to determine UMR phase-in status; monitor IM exposure vs the $50M exchange threshold; stand up segregation/custody documentation before crossing.",
+          "inputs": "Derivatives notional data, SIMM calculations, ISDA documentation status",
+          "outputs": "AANA determination memo, IM threshold monitoring report, custodian segregation account setup"
+        }
+      ],
+      "controls": [
+        "Dual authorization on all wire payments with callback verification for new instructions (single most important treasury fraud control); payment authority matrix approved by CFO/COO",
+        "Independent margin replication rather than accepting broker calls at face value; dispute thresholds and escalation",
+        "Counterparty exposure limits set by second-line risk, monitored daily by treasury, with breach escalation to the counterparty/risk committee",
+        "Segregated IM custody accounts under UMR; rehypothecation limits contractually capped and monitored",
+        "Excess cash policy: unencumbered cash held at custodian banks/money funds, not at prime brokers, beyond required margin",
+        "Documentation inventory control: no trading with a counterparty before executed legal docs and limits exist"
+      ],
+      "independence": "Embedded first line under CFO/COO; not independent of management, but structurally separated from the front office for payment and collateral authority. Second-line risk management must independently own counterparty credit limits and liquidity stress standards that treasury operates within.",
+      "dependencies": [
+        "Trade operations for settlement projections, fails, and position data",
+        "Risk management for counterparty limits, liquidity stress scenarios, and margin model validation",
+        "Fund accounting for capital activity (redemption funding) and expense cash needs",
+        "Legal for ISDA/CSA/PB documentation negotiation",
+        "Prime brokers, custodians, tri-party agents, and money-market vehicles",
+        "Front office for pre-trade margin/financing impact consultation"
+      ],
+      "handoffs": [
+        {"to": "Front office / Portfolio managers", "direction": "bidirectional", "content": "Pre-trade margin and financing-cost impact analysis out; anticipated trading/leverage plans in; financing cost attribution by strategy out (treasury-as-value-driver model per Barclays/Hazeltree practice literature)"},
+        {"to": "Trade Operations", "direction": "bidirectional", "content": "Funding confirmations and collateral movement instructions out; settlement obligations, fails, and reconciled cash in"},
+        {"to": "Risk Management", "direction": "bidirectional", "content": "Daily counterparty exposure and liquidity data out; approved counterparty limits and stress scenarios in"},
+        {"to": "Compliance", "direction": "outbound", "content": "Financing, leverage, and counterparty data for Form PF, Annex IV, and side-letter/disclosure consistency"},
+        {"to": "Fund Accounting & NAV Oversight", "direction": "outbound", "content": "Interest/financing accruals, collateral balances, and cash positions for NAV; confirmation of redemption funding"},
+        {"to": "Prime brokers / counterparties", "direction": "bidirectional", "content": "Margin agreements/disputes, collateral movements, financing negotiations out; margin calls, rate sheets, balance reports in"}
+      ],
+      "regulatoryBasis": [
+        "BCBS-IOSCO margin requirements for non-centrally cleared derivatives, implemented as CFTC/prudential-regulator margin rules in the US and EMIR in the EU (UMR: VM since 2017, IM phased through 2022, $8B AANA final phase)",
+        "Dodd-Frank/EMIR clearing and margin obligations for cleared derivatives",
+        "BCBS Guidelines for Counterparty Credit Risk (final December 2024, post-Archegos) — addressed to banks but defines the diligence hedge funds must now support",
+        "FSB work on leverage in nonbank financial intermediation (July 2025) — direction-of-travel for fund leverage/financing transparency",
+        "SEC Rule 15c6-1/2 T+1 funding implications; Regulation T and portfolio margin rules for US margin accounts"
+      ],
+      "practiceNotes": [
+        "Regulatory vs practice: UMR margin exchange is a legal requirement where in scope; multi-prime diversification, margin replication, and excess-cash segregation are institutional sound practice (AIMA, prime brokerage consulting literature), not law",
+        "Firm-size variation: sub-$1B funds often run treasury as a part-time CFO/controller task with the admin and PB doing the heavy lifting; multi-strategy platforms run dedicated treasury desks with optimization technology (e.g., Hazeltree-class tooling) and treat financing alpha as a P&L line",
+        "Post-Archegos, prime brokers demand deeper fund transparency (concentration, leverage across primes); funds face a judgment call between transparency-for-terms and information leakage",
+        "Counterparty risk ownership is genuinely split in practice: some firms put exposure monitoring in treasury, others in risk; the consistent principle is that limit-setting must sit with a function independent of the relationship owner"
+      ]
+    },
+    {
+      "name": "Internal Audit (Third Line)",
+      "line": "Third line",
+      "mandate": "Provide the governing body (board/audit committee) with independent, objective assurance on the adequacy and effectiveness of governance, risk management, and internal controls across all first- and second-line functions, per the IIA Three Lines Model.",
+      "responsibilities": [
+        "Develop and execute a risk-based internal audit plan approved by the audit committee/board",
+        "Audit first-line control operation (reconciliation integrity, wire controls, NAV oversight execution, collateral management) and second-line effectiveness (compliance program testing quality, risk limit governance, valuation committee discipline)",
+        "Validate remediation of audit, exam, and compliance findings",
+        "Review third-party oversight: administrator SOC 1 scope adequacy, outsourced middle-office controls, key vendor risk",
+        "Where quantitative models are material, assess model risk governance against SR 11-7-style standards (inventory, independent validation, effective challenge) — SR 11-7 binds banks, but its framework is the reference standard institutional allocators and auditors apply to fund model governance; US banking agencies issued revised model risk guidance in 2026",
+        "Report results, themes, and open-issue aging to the audit committee/board"
+      ],
+      "workflows": [
+        {
+          "name": "Annual audit planning and risk assessment",
+          "cadence": "Annual, refreshed semi-annually",
+          "description": "Enterprise risk assessment across departments; plan approved by audit committee; coverage cycle ensures high-risk processes audited on defined frequency.",
+          "inputs": "Risk assessments, prior findings, regulatory exam results, business change inventory",
+          "outputs": "Approved audit plan, coverage map"
+        },
+        {
+          "name": "Audit execution and reporting",
+          "cadence": "Per plan (typically 4-12 audits/year depending on firm size)",
+          "description": "Fieldwork testing control design and operating effectiveness; findings rated, agreed with management, remediation dates tracked.",
+          "inputs": "Process documentation, control evidence, system data, walkthroughs",
+          "outputs": "Audit reports with ratings, management action plans, issue-tracking entries"
+        },
+        {
+          "name": "Issue validation and board reporting",
+          "cadence": "Quarterly",
+          "description": "Verify closed issues with evidence; report open/overdue issues and thematic risks to the audit committee.",
+          "inputs": "Remediation evidence, issue tracker",
+          "outputs": "Quarterly audit committee pack, validated closures"
+        }
+      ],
+      "controls": [
+        "Functional reporting line to the board/audit committee, administrative line to CEO at most — never to CFO/COO whose areas it audits (IIA independence principle)",
+        "Audit charter approved by the board; unrestricted access to records, personnel, and systems",
+        "No operational responsibilities: internal audit must not design or operate the controls it assures (IIA 2020 model: independence does not mean isolation, but assurance must be free of management responsibility)",
+        "External quality assessment of the IA function periodically (IIA standards: at least every five years)"
+      ],
+      "independence": "Fully independent — the defining characteristic of the third line. Reports functionally to the governing body.",
+      "dependencies": [
+        "All first- and second-line departments for evidence and access",
+        "External auditors (coordination to avoid duplication; reliance decisions)",
+        "Administrator/vendor SOC 1 reports",
+        "Board/audit committee for mandate and escalation"
+      ],
+      "handoffs": [
+        {"to": "Board / Audit committee", "direction": "outbound", "content": "Audit plan, reports, thematic risk observations, open-issue aging"},
+        {"to": "Compliance", "direction": "bidirectional", "content": "Audit findings on the compliance program out; compliance testing results and violation data in as audit inputs (coordinated to preserve second-line vs third-line distinction)"},
+        {"to": "Operations / Treasury / Fund Accounting", "direction": "bidirectional", "content": "Evidence requests and findings out; remediation evidence in"}
+      ],
+      "regulatoryBasis": [
+        "IIA Three Lines Model (2020) and IIA Global Internal Audit Standards — professional standards, not fund regulation",
+        "No SEC rule requires a hedge fund adviser to maintain internal audit; FCA SYSC 6.2 requires an internal audit function 'where appropriate and proportionate'; AIFMD requires a permanent internal audit function for AIFMs where proportionate",
+        "SR 11-7 / revised 2026 US interagency model risk guidance as the reference framework for model governance assurance (binding on banks; benchmark practice for funds)"
+      ],
+      "practiceNotes": [
+        "Practice varies most here: many hedge funds below roughly $5-10B AUM have no standalone internal audit and rely on external audit, administrator SOC 1 reports, mock SEC exams, and co-sourced audits from Big-4/consultants; large multi-strategy platforms and traditional institutional asset managers maintain in-house IA as standard",
+        "Recommendation-grade judgment: a co-sourced internal audit function (internally owned plan, externally executed fieldwork) is the accepted proportionate model for mid-size funds",
+        "The 2020 IIA update reframes IA as contributing to value creation, not only 'defense', and stresses regular interaction with management without impairing independence"
+      ]
+    }
+  ],
+  "structuralRecommendations": [
+    "Keep Compliance organizationally separate from Operations and Treasury: compliance is second line (policy, monitoring, challenge) while operations/treasury are first line (execution); merging them into one 'compliance-ops' department collapses the lines and is contrary to the IIA model and SEC expectations for an empowered, independent CCO",
+    "Split 'Operations & Treasury Analytics' into two functions at multi-strategy scale — Trade Operations (settlement/reconciliation/lifecycle) and Treasury (cash/collateral/margin/financing/counterparties) — with a shared data backbone; at small firms they are legitimately one team under the COO/CFO",
+    "Place NAV oversight in Fund Accounting/Financial Control (first line) with a valuation committee providing second-line challenge; do not place NAV oversight inside Compliance — compliance tests the process, it should not operate it",
+    "Counterparty management: relationship ownership and exposure monitoring in Treasury (first line), but credit limit-setting and stress standards must sit with independent Risk (second line) — the post-Archegos supervisory theme is precisely the failure of that separation",
+    "Add an explicit third line: internal audit (in-house at large scale, co-sourced at mid-scale); without it the three-lines structure is incomplete and board assurance rests solely on external audit and SOC 1 reports",
+    "Regulatory reporting (Form PF, Annex IV, CPO-PQR) is best run as a documented cross-functional production process with data owned by Operations/Treasury/Fund Accounting and filing accountability owned by Compliance — assigning it wholly to either side creates data-quality or accountability gaps",
+    "Model/analytics governance for the research platform itself should follow SR 11-7 structure: model owners in the first line, an independent validation/challenge role in the second line, and audit coverage in the third line"
+  ],
+  "disagreementsAndVariation": [
+    "Shadow accounting depth: vendors and some administrators advocate full parallel shadow books; consultants and many mid-size managers endorse risk-based NAV oversight (verify pricing, fees, and high-impact calculations only). No regulatory mandate settles this in the US; it is a cost/control judgment that scales with AUM and strategy complexity",
+    "Internal audit presence: IIA and bank-derived governance models treat the third line as essential; actual hedge fund practice frequently omits it below a size threshold, substituting external audit, SOC 1 reliance, and mock regulatory exams. FCA/AIFMD apply proportionality language rather than a hard requirement",
+    "Counterparty risk ownership: some firms house exposure monitoring in treasury, others in the risk function; sources agree only that limit-setting must be independent of the relationship owner",
+    "Outsourced CCO/compliance: common and accepted at small advisers; SEC exam findings and institutional investor due diligence push larger firms strongly toward in-house compliance — a size-dependent split rather than a single standard",
+    "Terminology drift: the IIA officially replaced 'Three Lines of Defense' with the 'Three Lines Model' in 2020 and softened rigid line boundaries; many regulators (e.g., NCUA guidance) and practitioners still use the older 3LOD framing — substance is aligned, labels are not",
+    "US vs EU control architecture: US hedge funds rely on the administrator + custody rule audit as the external control layer; EU AIFs add a depositary with statutory cash-flow monitoring, safekeeping, and oversight duties — operating models must be domicile-aware",
+    "Off-channel communications enforcement: aggressive SEC sweep 2021-2025 (>$2B penalties, extended to standalone private fund managers in April 2024); more recent commentary suggests the current Commission has de-prioritized purely technical off-channel cases, but the recordkeeping rule itself is unchanged — firms should not relax capture controls",
+    "SR 11-7 applies to banking organizations, not funds; treating it as the fund's model-governance standard is widely accepted institutional practice (and allocator expectation) but is a voluntary adoption, not a regulatory obligation — and US agencies issued revised model risk guidance in 2026 that firms should track"
+  ],
+  "sourcesConsulted": [
+    {"url": "https://www.theiia.org/en/content/communications/2020/july/20-july-2020-iia-issues-important-update-to-three-lines-model/", "whatItSupported": "IIA's July 2020 update replacing 'Three Lines of Defense' with the Three Lines Model; principles-based framing; first/second/third line role definitions"},
+    {"url": "https://www.theiia.org/globalassets/documents/resources/the-iias-three-lines-model-an-update-of-the-three-lines-of-defense-july-2020/three-lines-model-updated-english.pdf", "whatItSupported": "Primary IIA Three Lines Model document (line roles, internal audit independence); located via search — PDF text layer was not machine-extractable in this session, content corroborated via IIA announcement and secondary summaries"},
+    {"url": "https://www.sec.gov/rules-regulations/2003/12/compliance-programs-investment-companies-investment-advisers", "whatItSupported": "SEC Rule 206(4)-7 adopting release: written policies, CCO appointment, annual review requirement"},
+    {"url": "https://www.kitces.com/blog/annual-compliance-review-sec-investment-adviser-written-requirements-rule-20647/", "whatItSupported": "2023 amendment requiring the annual compliance review to be documented in writing"},
+    {"url": "https://www.sec.gov/rules-regulations/2004/07/investment-adviser-codes-ethics", "whatItSupported": "SEC Rule 204A-1 adopting release: access persons, initial/quarterly/annual reporting deadlines (10/30/45 days), IPO and limited-offering pre-clearance, violation self-reporting"},
+    {"url": "https://www.law.cornell.edu/cfr/text/17/275.206(4)-1", "whatItSupported": "Marketing Rule text: general prohibitions, testimonial/endorsement conditions, disqualification provisions"},
+    {"url": "https://www.sec.gov/newsroom/press-releases/2020-334", "whatItSupported": "SEC adoption of the modernized Marketing Rule (Dec 2020) and standardized performance presentation requirements"},
+    {"url": "https://www.sec.gov/rules-regulations/staff-guidance/division-investment-management-frequently-asked-questions/marketing-compliance-frequently-asked-questions", "whatItSupported": "Current SEC staff FAQ guidance on Marketing Rule compliance"},
+    {"url": "https://www.smarsh.com/regulations/investment-advisers-act-of-1940-rule-204-2/", "whatItSupported": "Rule 204-2 books-and-records scope; five-year retention, first two years easily accessible; electronic storage conditions"},
+    {"url": "https://www.sec.gov/newsroom/press-releases/2025-6", "whatItSupported": "SEC January 2025 off-channel communications settlements ($63M+ across 12 firms); cumulative >$2B since 2021"},
+    {"url": "https://www.akingump.com/en/insights/alerts/sec-announces-first-off-channel-communications-enforcement-action-against-a-standalone-private-fund-manager", "whatItSupported": "April 2024 first off-channel enforcement against a standalone private fund manager — recordkeeping applies to hedge fund advisers, not just broker-dealers"},
+    {"url": "https://www.hflawreport.com/2542551/use-by-hedge-fund-managers-of-restricted-lists-watch-lists-and-ethical-walls-to-prevent-insider-trading-violations.thtml", "whatItSupported": "Hedge fund use of restricted lists, watch lists, and information barriers to control MNPI/insider trading risk; Section 204A basis"},
+    {"url": "https://www.fca.org.uk/publication/policy/guide-for-fca-solo-regulated-firms.pdf", "whatItSupported": "FCA SM&CR structure for solo-regulated firms (asset managers): senior management functions, certification regime"},
+    {"url": "https://handbook.fca.org.uk/handbook/sup10c/sup10cs6", "whatItSupported": "FCA required functions including SMF16 Compliance Oversight and SMF17 MLRO; SYSC 6 compliance function ownership"},
+    {"url": "https://www.aima.org/sound-practices/guides-to-sound-practices.html", "whatItSupported": "AIMA Guides to Sound Practices catalogue (operational risk, valuation, administrators) as the industry-body sound-practice baseline"},
+    {"url": "https://www.aima.org/static/uploaded/57e23b6e-632c-4ed7-8a7944045d7f58b8.pdf", "whatItSupported": "AIMA Guide to Sound Practices for Operational Risk Management: segregation of duties, cash/collateral controls, counterparty and cash management emphasis for hedge funds"},
+    {"url": "https://files.irishfunds.ie/1433105561-2009-9-guide-to-sound-practices-for-hedge-fund-administrators.pdf", "whatItSupported": "AIMA sound practices for hedge fund administrators: administrator role in official NAV, investor register, AML delegation"},
+    {"url": "https://www.aima.org/article/aima-publishes-updated-guide-to-sound-practices-for-hedge-fund-valuation.html", "whatItSupported": "AIMA valuation sound practices: independent valuation governance, segregation of valuation authority from portfolio management"},
+    {"url": "https://www.sec.gov/files/rules/final/2023/34-96930.pdf", "whatItSupported": "SEC T+1 final rule: Rule 15c6-1 amendment, new Rule 15c6-2 same-day allocation/confirmation/affirmation, adviser recordkeeping amendments; compliance date 28 May 2024"},
+    {"url": "https://www.sewkis.com/publications/t1-settlement-cycle-implications-for-investment-advisers/", "whatItSupported": "Operational implications of T+1 for investment advisers (affirmation deadlines, FX funding compression)"},
+    {"url": "https://www.finra.org/rules-guidance/notices/24-04", "whatItSupported": "FINRA T+1 implementation guidance for the sell-side interface"},
+    {"url": "https://www.limina.com/blog/middle-office-operations", "whatItSupported": "Middle-office function inventory: trade processing, confirmation, settlement monitoring, reconciliation, corporate actions, collateral"},
+    {"url": "https://www.akj.com/blog/hedge-fund-roles-explained", "whatItSupported": "Front/middle/back-office division of labor in hedge funds"},
+    {"url": "https://o-cfo.com/blog/inside-hedge-fund-accounting-shadow-books-nav-gaap-explained", "whatItSupported": "Shadow books vs administrator official NAV; segregation of duties within shadow teams"},
+    {"url": "https://www.trussedge.com/shadow-nav-fund-valuation/", "whatItSupported": "Shadow NAV as parallel independent calculation; daily update and reconciliation cadence recommendations"},
+    {"url": "https://carta.com/learn/private-funds/management/fund-administration/fund-accounting/shadow-accounting/", "whatItSupported": "Risk-based (partial) vs full shadow accounting trade-off"},
+    {"url": "https://www.ocorian.com/knowledge-hub/insights/9-faqs-about-role-responsibilities-depositary", "whatItSupported": "AIFMD depositary three functions: cash-flow monitoring, safekeeping, oversight"},
+    {"url": "https://www.esma.europa.eu/sites/default/files/1-ADEPO_1.pdf", "whatItSupported": "ESMA technical advice on depositary cash monitoring and ex-post verification duties"},
+    {"url": "https://www.ib.barclays/our-insights/next-era-of-hedge-fund-treasury-strategy.html", "whatItSupported": "Prime-broker view of hedge fund treasury strategy: margin as forward-looking metric, pre-trade margin modeling, financing-cost attribution to strategy ROI"},
+    {"url": "https://hazeltree.com/resource/treasury-management-at-hedge-funds-challenges-opportunities-and-the-path-to-roi/", "whatItSupported": "Treasury management practice: cash sweep, counterparty diversification, collateral optimization tooling"},
+    {"url": "https://www.bny.com/pershing/us/en/insights/prime-time-how-to-evaluate-your-counterparty-relationships.html", "whatItSupported": "Counterparty relationship evaluation and multi-prime diversification rationale (risk, financing, balance sheet, securities lending access)"},
+    {"url": "https://membership.isda.org/wp-content/uploads/2023/05/Hazeltree-Uncleared-Margin-Rules-Comprehensive-Guide.pdf", "whatItSupported": "UMR mechanics: VM since 2017, two-way segregated IM, $8B AANA threshold (March-May averaging), SIMM"},
+    {"url": "https://www.isda.org/a/D0DgE/20210526-ISDA_Initial-Margin-Documentation-Where_to_Begin_FINAL.pdf", "whatItSupported": "IM documentation and custodial segregation requirements under ISDA framework"},
+    {"url": "https://www.bis.org/fsi/fsisummaries/margin_reqs.htm", "whatItSupported": "BCBS-IOSCO margin requirements for non-centrally cleared derivatives (primary international standard behind UMR)"},
+    {"url": "https://www.bis.org/bcbs/publ/d588.pdf", "whatItSupported": "BCBS final Guidelines for Counterparty Credit Risk (post-Archegos): due diligence on leveraged counterparties, margining, PFE measurement, governance"},
+    {"url": "https://www.bis.org/publ/qtrpdf/r_qt2403y.htm", "whatItSupported": "BIS analysis of the prime broker-hedge fund nexus and concentration risks"},
+    {"url": "https://www.fsb.org/uploads/P090725-1.pdf", "whatItSupported": "FSB July 2025 final report on leverage in nonbank financial intermediation — policy direction on fund leverage/financing transparency"},
+    {"url": "https://www.capco.com/intelligence/capco-intelligence/counterparty-risk-after-archegos-how-banks-can-prepare", "whatItSupported": "Archegos post-mortem themes: concentration across primes, wrong-way risk, relationship teams overriding risk"},
+    {"url": "https://www.sec.gov/rules-regulations/2025/09/s7-22-22", "whatItSupported": "Form PF rulemaking status and reporting requirements for all filers and large hedge fund advisers"},
+    {"url": "https://www.daypitney.com/annual-and-periodic-reporting-and-compliance-requirements-applicable-to-investment-managers", "whatItSupported": "Compliance filing calendar: Form PF deadlines (quarterly 60 days for large hedge fund advisers; annual 120 days), custody rule 120-day audited financials, CPO-PQR/CTA-PR, NFA self-exam questionnaire"},
+    {"url": "https://www.federalreserve.gov/supervisionreg/srletters/SR2602.pdf", "whatItSupported": "Revised US interagency model risk management guidance (2026 successor to SR 11-7): development, independent validation, governance pillars"},
+    {"url": "https://corpgov.law.harvard.edu/2025/12/14/2026-sec-exam-priorities-and-implications-for-investment-advisers-and-investment-funds/", "whatItSupported": "SEC 2026 examination priorities: conflicts, valuation of alternatives, never-examined advisers, emerging technology"}
+  ],
+  "confidence": "high",
+  "confidenceNotes": "Regulatory requirements (SEC rules, T+1, UMR, FCA SM&CR, AIFMD depositary) are grounded in primary or near-primary sources and are high confidence. Institutional-practice statements (shadow accounting depth, treasury desk structure, internal audit presence by AUM) rest on industry-body and practitioner literature and are medium-high confidence with variation explicitly flagged in disagreementsAndVariation."
+}

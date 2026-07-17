@@ -1,0 +1,497 @@
+{
+  "provider": "Nansen",
+  "reviewDate": "2026-07-17",
+  "officialDocsUrl": "https://docs.nansen.ai/",
+  "apiVersion": {
+    "current": "v1 (path prefix /api/v1/)",
+    "beta": "v1beta1 (path prefix /api/v1beta1/) for the Backtesting/historical endpoint family, explicitly flagged 'Beta - subject to breaking changes'",
+    "openApiInfoVersion": "1.0.0 (embedded OpenAPI 3.1.0 specs state info.version 1.0.0)",
+    "versioningPolicy": "Path-based versioning. Legacy /api/beta/* endpoints were restructured to /api/v1/* in the '29-08-2025: Major API Restructuring' changelog (snake_case fields, no nested parameters wrapper, standardized data+pagination responses). No formal written deprecation timeline policy found; instead the docs mark parameters as deprecated in-schema (e.g. token-screener 'date' deprecated in favor of 'timeframe', 'only_smart_money' deprecated in favor of 'trader_type', prediction-market 'sort_by' deprecated in favor of 'order_by') and announce behavior changes in the API Changelog (e.g. 31-03-2026 entry: premium_labels default flips from true to false on April 1)."
+  },
+  "authentication": {
+    "mechanism": "API key in an HTTP request header",
+    "headerName": "apikey (authentication page shows lowercase 'apikey' and advises 'Ensure the header name is apikey (lowercase)'; the embedded OpenAPI securityScheme and the 'Make Your First API Call' page write it as 'apiKey' - HTTP header names are case-insensitive)",
+    "type": "OpenAPI securityScheme: type apiKey, in header, name apiKey",
+    "obtaining": "Generate in the Nansen Dashboard (app.nansen.ai, API tab -> Create API Key) or via the Agent Setup flow at https://app.nansen.ai/auth/agent-setup",
+    "alternativeKeylessAccess": {
+      "x402": "Pay-per-call in USDC on Base or Solana. Request without a key returns 402 Payment Required with payment instructions; client pays and retries with a payment receipt. Facilitators: Base = Coinbase CDP, Solana = Payai. If a valid API key is included it takes precedence and no x402 payment is required.",
+      "mppTempo": "Machine Payments Protocol on Tempo mainnet (chainId 4217). Send 'Authorization: Payment', receive 402 with a WWW-Authenticate: Payment challenge (~30s expiry), sign with a funded Tempo wallet, retry; success returns a Payment-Receipt header. Adds ~one Tempo block-time latency per call; no session reuse.",
+      "exclusions": "/api/v1/labels/* endpoints are excluded from pay-per-call (Pro subscription only, proprietary entity data); the x402 page also lists /api/v1/portfolio/defi-holdings under 'Excluded Endpoints'. Discovery endpoint: GET https://api.nansen.ai/.well-known/x402"
+    },
+    "mcpAuth": "Nansen MCP server at https://mcp.nansen.ai/ra/mcp authenticates with a NANSEN-API-KEY header (JSON-RPC 2.0 over Streamable HTTP/SSE; requires 'Accept: application/json, text/event-stream')"
+  },
+  "baseUrls": [
+    {
+      "url": "https://api.nansen.ai",
+      "purpose": "Main REST API host; production endpoints under /api/v1/, backtesting beta endpoints under /api/v1beta1/. No plan-specific hosts are documented - Free and Pro use the same host."
+    },
+    {
+      "url": "https://mcp.nansen.ai/ra/mcp",
+      "purpose": "Official Nansen MCP server (24 tools) for AI-agent access; same credits/API-key system as REST."
+    },
+    {
+      "url": "https://app.nansen.ai/api/points-leaderboard/",
+      "purpose": "Permissionless Nansen Points Rewards API (GET, no authentication required; separate from the main API)."
+    }
+  ],
+  "endpoints": [
+    {
+      "name": "Smart Money Netflow",
+      "method": "POST",
+      "path": "/api/v1/smart-money/netflow",
+      "credits": 5,
+      "requiredParams": ["chains (array; smart-money supported chains or 'all')"],
+      "optionalParams": ["filters.include_smart_money_labels / exclude_smart_money_labels (enum: Fund, Smart Trader, 30D/90D/180D Smart Trader, Smart HL Perps Trader)", "filters.token_address", "filters.include_stablecoins (default false)", "filters.include_native_tokens (default false)", "filters.token_sector", "filters.trader_count", "filters.token_age_days", "filters.market_cap_usd", "pagination {page, per_page (max 1000, default 10)}", "order_by [{field, direction ASC|DESC}]"],
+      "responseTopLevelFields": ["data[] {token_address, token_symbol, net_flow_1h_usd, net_flow_24h_usd, net_flow_7d_usd, net_flow_30d_usd, chain, token_sectors, trader_count, token_age_days, market_cap_usd}", "pagination {page, per_page, is_last_page}"],
+      "pagination": "page/per_page request; is_last_page in response",
+      "freshness": "Aggregated over rolling 1h/24h/7d/30d windows; includes DEX trades and CEX transfers. Not explicitly latency-quantified.",
+      "redistribution": "Restricted (approval + significant modification) per Data Redistribution Guidelines (listed as smart-money/inflows, the former name of this endpoint)"
+    },
+    {
+      "name": "Smart Money Holdings",
+      "method": "POST",
+      "path": "/api/v1/smart-money/holdings",
+      "credits": 5,
+      "requiredParams": ["chains (array or 'all')"],
+      "optionalParams": ["filters {include/exclude_smart_money_labels, include_stablecoins (default false), include_native_tokens (default false), value_usd, balance_24h_percent_change, holders_count, share_of_holdings_percent, token_age_days, market_cap_usd, token_address, token_symbol, token_sectors}", "pagination", "order_by"],
+      "responseTopLevelFields": ["data[] {chain, token_address, token_symbol, token_sectors, value_usd, balance_24h_percent_change, holders_count, share_of_holdings_percent, token_age_days, market_cap_usd}", "pagination"],
+      "pagination": "page/per_page; is_last_page",
+      "freshness": "Docs state '24-hour balance change tracking updated in realtime'; aggregated balances, not per-wallet.",
+      "redistribution": "PROHIBITED - internal use only per Data Redistribution Guidelines"
+    },
+    {
+      "name": "Smart Money Historical Holdings",
+      "method": "POST",
+      "path": "/api/v1/smart-money/historical-holdings",
+      "credits": 5,
+      "status": "beta ('data may be subject to changes, corrections, or improvements')",
+      "requiredParams": ["chains", "date range (per endpoint description: date range filtering, max 4 years lookback)"],
+      "optionalParams": ["same filtering options as current holdings endpoint", "pagination", "order_by"],
+      "responseTopLevelFields": ["daily snapshot records with point-in-time value_usd (median price of that day), market_cap_usd (historical snapshot), balance_24h_percent_change (day-over-day with each day's own price)", "pagination"],
+      "pagination": "page/per_page; is_last_page",
+      "freshness": "Daily end-of-day UTC snapshots. Processing begins 05:00 UTC; data typically available by 07:00 UTC; current (incomplete) day excluded. 4-year rolling window, earliest date advances daily. No look-ahead bias by design.",
+      "redistribution": "not explicitly listed in redistribution table"
+    },
+    {
+      "name": "Smart Money DEX Trades",
+      "method": "POST",
+      "path": "/api/v1/smart-money/dex-trades",
+      "credits": 5,
+      "requiredParams": ["chains"],
+      "optionalParams": ["smart money label filters", "pagination", "order_by (timestamp, value_usd, amount)"],
+      "responseTopLevelFields": ["data[] (transaction-level trades)", "pagination"],
+      "pagination": "page/per_page; is_last_page",
+      "freshness": "'Real-time DEX trading activity ... over the last 24 hours' - rolling 24h window only.",
+      "redistribution": "PROHIBITED per Data Redistribution Guidelines"
+    },
+    {
+      "name": "Profiler - Address Current Balance",
+      "method": "POST",
+      "path": "/api/v1/profiler/address/current-balance",
+      "credits": 1,
+      "requiredParams": ["chain (use 'all' for cross-chain; enum incl. all, arbitrum, avalanche, base, bitcoin, bnb, ethereum, hyperevm, injective, iotaevm, linea, mantle, mantra, monad, near, optimism, plasma, polygon, robinhood, ronin, scroll, sei, solana, sonic, starknet, sui, ton, tron)"],
+      "optionalParams": ["address OR entity_name (address field in response empty when entity_name used)", "hide_spam_token (boolean, default true)", "filters {value_usd, price_usd, token_amount, token_symbol, token_address, token_name}", "pagination {page, per_page}", "order_by [{field, direction}]"],
+      "responseTopLevelFields": ["data[] ProfilerBalance {chain, address, token_address, token_symbol, token_name, token_amount (decimal-adjusted number; no raw base-unit amount and no token decimals exposed), price_usd, value_usd}", "pagination"],
+      "pagination": "page/per_page; is_last_page",
+      "freshness": "Described as 'real-time token balance information'.",
+      "redistribution": "Allowed, no attribution required (listed as profiler/address/balances)"
+    },
+    {
+      "name": "Profiler - Address Transactions",
+      "method": "POST",
+      "path": "/api/v1/profiler/address/transactions",
+      "credits": 1,
+      "requiredParams": ["address", "chain", "date {from, to}"],
+      "optionalParams": ["hide_spam_token", "filters (transaction type, method, source type)", "pagination (max 100 records/page per schema; changelog notes max reduced from 100 to 20 in v1 migration)", "order_by"],
+      "responseTopLevelFields": ["data[] transactions incl. token transfers, native movements, contract interactions", "pagination"],
+      "pagination": "page/per_page; is_last_page",
+      "freshness": "Recent blockchain transactions; latency not quantified per endpoint (FAQ: 'often within seconds, depending on the chain').",
+      "redistribution": "Allowed with attribution"
+    },
+    {
+      "name": "Profiler - Address Counterparties",
+      "method": "POST",
+      "path": "/api/v1/profiler/address/counterparties",
+      "credits": 5,
+      "requiredParams": ["address or entity_name", "chain", "group_by ('address' or 'entity')"],
+      "optionalParams": ["source filtering (Combined, Tokens, ETH)", "label filters", "interaction count / volume filters", "pagination", "order_by"],
+      "responseTopLevelFields": ["data[] counterparties with volume, frequency, timing, net flows", "pagination"],
+      "pagination": "page/per_page; is_last_page",
+      "freshness": "Not documented per endpoint",
+      "redistribution": "Allowed with attribution"
+    },
+    {
+      "name": "Profiler - Address Labels / Premium Labels",
+      "method": "POST",
+      "path": "/api/v1/profiler/address/labels and /api/v1/profiler/address/premium-labels",
+      "credits": "100 (common labels) / 500 (premium labels)",
+      "requiredParams": ["address", "chain ('all' searches all chains compatible with the address format)"],
+      "optionalParams": ["pagination (default 100 per page)"],
+      "responseTopLevelFields": ["labels: ENS domains, behavioral, DeFi, CEX labels on /labels; premium adds smart money, alpha trader, public figure tags on /premium-labels"],
+      "pagination": "page-based (default 100 per page)",
+      "freshness": "Not documented",
+      "redistribution": "PROHIBITED (address/labels listed as prohibited)"
+    },
+    {
+      "name": "Profiler - Address PnL Summary",
+      "method": "POST",
+      "path": "/api/v1/profiler/address/pnl-summary",
+      "credits": 1,
+      "requiredParams": ["address (per docs pattern; exact schema not extracted)"],
+      "optionalParams": ["not documented in prose read"],
+      "responseTopLevelFields": ["aggregate PnL statistics: realized PnL, win rate, top 5 profitable tokens"],
+      "pagination": "not documented",
+      "freshness": "Not documented",
+      "redistribution": "Allowed, no attribution required (profiler/address/pnl & pnl-summary)"
+    },
+    {
+      "name": "Token Screener",
+      "method": "POST",
+      "path": "/api/v1/token-screener",
+      "credits": 1,
+      "requiredParams": ["chains (1-5 items; 27-chain enum incl. ethereum, solana, base, bnb, arbitrum, ton, tron, sui, starknet, near, monad, hyperevm...)", "timeframe (5m|10m|1h|6h|24h|7d|30d) - required unless deprecated 'date' is used"],
+      "optionalParams": ["date {from,to} (DEPRECATED, use timeframe)", "pagination", "filters {token_address, token_symbol, trader_type (all|sm|whale|public_figure|trending|consistent_perps_winner|high_winrate_hl_perps_trader|predicted_winner), only_smart_money (deprecated), sectors, exclude_sectors, token_age_days, market_cap_usd, liquidity, price_usd, price_change, fdv, fdv_mc_ratio, nof_buyers/sellers/traders/buys/sells, buy_volume, sell_volume, volume, netflow, inflow_fdv_ratio, outflow_fdv_ratio, include_stablecoins (default true), include/exclude_smart_money_labels}", "order_by (21 sortable fields)"],
+      "responseTopLevelFields": ["data[] {chain, token_address, token_symbol, token_age_days/hours, token_deployment_date, market_cap_usd, liquidity, price_usd, price_change, fdv, fdv_mc_ratio, nof_* trader counts (variant-dependent), buy_volume, sell_volume, volume, netflow, inflow/outflow_fdv_ratio}", "pagination"],
+      "pagination": "page/per_page (max 1000); is_last_page",
+      "freshness": "Real-time analytics with strict retention: minute granularity ~last 130 minutes (schema: 2-hour retention), hourly ~last 50 hours (schema: 2-day), daily ~last 50 days (schema: 2-month). to_date must be within 5 minutes of current time; historical snapshots NOT supported (use token-screener/historical for that).",
+      "redistribution": "Allowed with attribution"
+    },
+    {
+      "name": "TGM - Token Information",
+      "method": "POST",
+      "path": "/api/v1/tgm/token-information",
+      "credits": 1,
+      "requiredParams": ["chain", "token_address", "timeframe"],
+      "optionalParams": [],
+      "responseTopLevelFields": ["basic details (name, symbol, contract, logo), deployment date, social links, market cap, FDV, spot metrics (volume, buys/sells, unique traders, liquidity, holders); includes btc_drop_reflexivity quant-signal object {signal, avg_signal, volatility, signal_percentile, score, drops_in_window, is_stablecoin}"],
+      "pagination": "not documented",
+      "freshness": "Per requested date range/timeframe; btc_drop_reflexivity updates only when new BTC drop events occur (returns null with <4 qualifying drops in last 365 days)",
+      "redistribution": "not explicitly listed"
+    },
+    {
+      "name": "TGM - Holders",
+      "method": "POST",
+      "path": "/api/v1/tgm/holders",
+      "credits": "5, or 150 with premium labels",
+      "requiredParams": ["chain", "token_address"],
+      "optionalParams": ["aggregate_by_entity", "label_type (e.g. all_holders, smart_money, whale, exchange; must match labels filter)", "premium_labels (currently defaults true; default flips to false per changelog - Free plan gets 403 when true)", "filters", "pagination", "order_by"],
+      "responseTopLevelFields": ["data[] top holders with balances, historical activity, recent balance changes; sortable by balance_usd, balance_change_24h_usd, first/last_transfer_timestamp", "pagination"],
+      "pagination": "page/per_page; is_last_page",
+      "freshness": "Current state. Native-token all_holders queries use an optimized model with limited ordering (token_amount only) and limited filters.",
+      "redistribution": "Restricted when smart-money-filtered (approval + significant modification)"
+    },
+    {
+      "name": "TGM - Flow Intelligence",
+      "method": "POST",
+      "path": "/api/v1/tgm/flow-intelligence",
+      "credits": 1,
+      "requiredParams": ["chain", "token_address"],
+      "optionalParams": ["timeframe", "filters"],
+      "responseTopLevelFields": ["inflows/outflows/netflows per holder segment (Exchanges, Smart Money, Public Figures, Whales, Top PnL Traders, Fresh Wallets) with time-based stats"],
+      "pagination": "not documented",
+      "freshness": "Rolling timeframe window (default rolling; historical variant exists under v1beta1)",
+      "redistribution": "Allowed with attribution"
+    },
+    {
+      "name": "TGM - Token OHLCV",
+      "method": "POST",
+      "path": "/api/v1/tgm/token-ohlcv",
+      "credits": 1,
+      "requiredParams": ["chain", "timeframe (1m|5m|15m|30m|1h|4h low timeframes; 1d|1w|1M high timeframes)"],
+      "optionalParams": ["token_address OR token_addresses (batch, max 5, mutually exclusive)", "date (defaults to last 30 days)", "date_range (DEPRECATED, use 'date')"],
+      "responseTopLevelFields": ["OHLCV candles: open/high/low/close, volume in token units and USD, market cap at each time point"],
+      "pagination": "not documented",
+      "freshness": "Unified OHLCV; recommended by docs over search prices which 'may be delayed'. Maximum historical depth not documented.",
+      "redistribution": "Allowed (token_ohlcv listed 'Allowed - None' in MCP guidelines)"
+    },
+    {
+      "name": "TGM - Nansen Indicators",
+      "method": "POST",
+      "path": "/api/v1/tgm/indicators",
+      "credits": 5,
+      "requiredParams": ["chain", "token_address"],
+      "optionalParams": [],
+      "responseTopLevelFields": ["risk_indicators (btc-reflexivity, liquidity-risk, concentration-risk, token-supply-inflation) and reward_indicators (chain-tvl, trading-range, price-momentum, chain-fees, protocol-fees, cex-flows, funding-rate); each with score (low/medium/high or bearish/neutral/bullish), signal, signal_percentile (0-100 vs same market-cap group), last_trigger_on"],
+      "pagination": "not documented",
+      "freshness": "Current state; historical point-in-time variant at /api/v1beta1/tgm/historical-token-quant-scores",
+      "redistribution": "not explicitly listed"
+    },
+    {
+      "name": "Search - General",
+      "method": "POST",
+      "path": "/api/v1/search/general",
+      "credits": "0 per MCP tool table (general_search is free)",
+      "requiredParams": ["search_query (1-200 chars)"],
+      "optionalParams": ["result_type (token|entity|any, default any)", "chain", "limit (1-50, default 25)"],
+      "responseTopLevelFields": ["tokens[] {name, symbol, chain, address, price, volume_24h, market_cap, rank}", "entities[] {name, tags, rank}", "total_results"],
+      "pagination": "none (limit only)",
+      "freshness": "Docs warn: 'Prices may be delayed; use token OHLCV endpoints for real-time prices'",
+      "redistribution": "not explicitly listed"
+    },
+    {
+      "name": "Portfolio - DeFi Holdings",
+      "method": "POST",
+      "path": "/api/v1/portfolio/defi-holdings",
+      "credits": 1,
+      "requiredParams": ["wallet address (per docs usage; exact schema field not extracted)"],
+      "optionalParams": ["not documented in prose read"],
+      "responseTopLevelFields": ["protocolsUsed[]", "holdingsByProtocol (deposits/lendings, borrows, stakings, positions, locked, rewards, farms; each with type, summary, detail)", "success", "totalProtocols"],
+      "pagination": "not documented",
+      "freshness": "Active positions (current state); supported protocol list published at app.nansen.ai/portfolio/protocols",
+      "redistribution": "Allowed (address_portfolio 'Allowed - None'); note: excluded from x402 pay-per-call"
+    },
+    {
+      "name": "Prediction Market - Market Screener",
+      "method": "POST",
+      "path": "/api/v1/prediction-market/market-screener",
+      "credits": 1,
+      "requiredParams": [],
+      "optionalParams": ["order_by", "sort_by (deprecated)", "query", "status (active|closed|empty)", "tags", "min/max_liquidity", "max_unique_traders_24h", "min_volume_24hr", "neg_risk", "min/max_open_interest", "end_date_before/after", "min/max_price", "pagination"],
+      "responseTopLevelFields": ["Polymarket markets with volume, liquidity, price data", "pagination"],
+      "pagination": "page/per_page",
+      "freshness": "Polymarket only. Related endpoints document freshness: orderbook polled from Polymarket CLOB API every ~60 seconds (MD5 change detection); OHLCV = 1-hour candles computed from on-chain OrderFilled events on Polygon.",
+      "redistribution": "Allowed with attribution (all prediction-market endpoints)"
+    },
+    {
+      "name": "Backtesting - Historical Top Holders",
+      "method": "POST",
+      "path": "/api/v1beta1/tgm/historical-top-holders",
+      "credits": 25,
+      "status": "V1 Beta - subject to breaking changes",
+      "requiredParams": ["as_of_date (YYYY-MM-DD snapshot anchor)", "chain + token_address (per TGM pattern)"],
+      "optionalParams": ["label_type (top-level bucket switch)", "filters.include_sm_labels (sub-restricts smart_money bucket)", "pagination"],
+      "responseTopLevelFields": ["holders as of date with temporally-correct labels (resolved from label history to avoid forward-looking bias); value_usd priced at historical median price for as_of_date; no dust-filter default"],
+      "pagination": "page-based (per family conventions)",
+      "freshness": "Point-in-time historical reconstruction; can be slow for high-volume tokens (USDC, native ETH). Snapshot endpoints take as_of_date; window endpoints take date_from + as_of_date. Historical endpoints cost 5x their real-time counterparts.",
+      "redistribution": "not explicitly listed"
+    },
+    {
+      "name": "Agent - Fast / Expert",
+      "method": "POST",
+      "path": "/api/v1/agent/fast and /api/v1/agent/expert",
+      "credits": "200 (fast) / 750 (expert)",
+      "requiredParams": ["text (research question)"],
+      "optionalParams": ["conversation_id (multi-turn; returned in finish event)"],
+      "responseTopLevelFields": ["Server-Sent Events stream (text/event-stream): delta {text}, tool_call {name}, finish {conversation_id, tool_calls[]}, error {error, status_code}; terminates with data: [DONE]"],
+      "pagination": "n/a (streaming)",
+      "freshness": "Live agent answering over Nansen's on-chain data",
+      "redistribution": "not explicitly listed"
+    }
+  ],
+  "coverage": {
+    "assetClasses": [
+      "Crypto on-chain analytics only: spot tokens (DEX/CEX flow analytics, balances, transfers), perpetual futures (Hyperliquid only), DeFi protocol positions, prediction markets (Polymarket only)",
+      "No equities, FX, fixed income, commodities, or traditional market data"
+    ],
+    "chains": {
+      "totalDocumented": "37 blockchain networks ('The Nansen API supports 37 blockchain networks across EVM and non-EVM ecosystems. Chain support varies by endpoint.')",
+      "evm": ["ethereum", "arbitrum", "avalanche", "base", "bitlayer", "bnb", "celo", "chiliz", "gravity", "hyperevm", "iotaevm", "linea", "mantle", "monad", "optimism", "plasma", "polygon", "ronin", "scroll", "sei", "sonic", "unichain", "viction", "zksync"],
+      "nonEvm": ["algorand", "aptos", "bitcoin", "hyperliquid (perpetuals only)", "near", "solana", "stacks", "starknet", "stellar", "sui", "ton", "tron"],
+      "allKeyword": "Some endpoints accept chains: ['all'], expanding to all chains supported by that endpoint",
+      "perEndpointVariation": "Smart Money chain enum has 19 chains (e.g. ethereum, solana, base, bnb, arbitrum, polygon, avalanche, optimism, linea, scroll, sei, sonic, plasma, monad, hyperevm, iotaevm, mantle, ronin + all); Smart Money 'Historical' support matrix lists only ethereum/solana/base/bnb; Token Screener enum has 27 chains; Bitcoin is Profiler-only (no Smart Money/TGM); TON has no PnL endpoints; Solana has no transaction lookup"
+    },
+    "markets": "DEX trades across supported chains; CEX flows via labeled exchange wallets (not direct exchange market-data feeds); Hyperliquid for perps (token symbols, not addresses); Jupiter (Solana) for DCA data; Polymarket for prediction markets ('Nansen currently only supports data across Polymarket')",
+    "instrumentTypes": ["fungible tokens (native + contract tokens)", "perpetual contracts (Hyperliquid)", "prediction market YES/NO shares (Polymarket, price $0-$1)", "NFT transfers appear only in transaction-with-token-transfer-lookup"],
+    "geographies": "Not applicable / not documented (blockchain-native, no geographic segmentation)",
+    "labels": "Proprietary wallet labeling: 'hundreds of millions of blockchain addresses' labeled (exchanges, funds, market makers, public figures); Smart Money = curated top 5,000 highest-performing wallets ranked by realized profit, winrate, performance across cycles; label taxonomy includes Fund, Smart Trader, 30D/90D/180D Smart Trader, Smart HL Perps Trader, plus extended labels (Public Figure, Exchange, Whale, BananaGun/Maestro Bot User)"
+  },
+  "freshness": {
+    "general": "FAQ: 'Data is refreshed at varying intervals, with many endpoints updating in real-time depending on the data type'; 'Typical data latency is low, often within seconds, depending on the chain being queried'",
+    "smartMoneyHoldings": "24h balance change 'updated in realtime'",
+    "smartMoneyDexTrades": "real-time, but window limited to last 24 hours",
+    "smartMoneyHistoricalHoldings": "EOD UTC daily snapshots; processing starts 05:00 UTC, typically available 07:00 UTC; current day excluded",
+    "tokenScreener": "near-real-time (to_date must be within 5 minutes of now); minute/hourly/daily granularity auto-selected",
+    "searchPrices": "'Prices may be delayed; use token OHLCV endpoints for real-time prices'",
+    "profilerPerpPositions": "real-time (calls the Hyperliquid API directly)",
+    "predictionMarketOrderbook": "polled from Polymarket CLOB API every ~60 seconds with MD5 change detection",
+    "predictionMarketOhlcv": "1-hour candles from on-chain OrderFilled events on Polygon",
+    "pointsLeaderboard": "tier data refreshes daily at 11:00 UTC",
+    "backtestingEndpoints": "point-in-time historical reconstructions (not live); hash->timestamp resolution in historical transaction lookup can take 60-170 seconds without block_timestamp hint"
+  },
+  "historicalDepth": {
+    "smartMoneyHistoricalHoldings": "4-year rolling window; earliest available date moves forward daily; max 4 years lookback on date filtering",
+    "tokenScreener": "retention only: minute ~130 minutes, hourly ~50 hours, daily ~50 days (hint block); schema descriptions say 2-hour/2-day/2-month retention per granularity. Historical snapshots not supported on the live endpoint",
+    "backtestingFamily": "'Pass any past date' - point-in-time reconstruction with temporally-correct labels; label-history coverage limits: smart_trader labels available from 2020+; whale/public_figure/top_pnl/exchange segment coverage starts 2025-03-11; entity labels (historical transaction lookup) from 2025-03-11 onward; segment columns NULL where coverage doesn't reach date_to",
+    "historicalAddressBalances_v1beta1": "EVM (ethereum, base, bnb) and solana only; computed from on-chain transfer history up to as_of_date",
+    "historicalAddressTransactions_v1beta1": "capped at 20 most recent transfers as of snapshot date; ethereum, base, bnb, solana only",
+    "dateFilterValidation": "'Maximum range is typically 1 year' for date filters (Filter Types reference)",
+    "tokenOhlcv": "maximum depth not documented (defaults to last 30 days if no date range given)"
+  },
+  "pagination": {
+    "mechanism": "Request body 'pagination': {page (1-based, default 1), per_page (default 10, max 1000)}. Response 'pagination': {page, per_page, is_last_page (boolean)}. No cursor tokens and no total-count field documented.",
+    "exceptions": "profiler/address/transactions caps per_page at 100 (schema note; changelog mentions a 20/page performance cap in v1 migration); search/general uses 'limit' (max 50); search/entity-name has no pagination (capped 100 results); some endpoints return data only without pagination metadata; Points Leaderboard (GET) uses page + recordsPerPage (max 10,000)",
+    "bestPractice": "Docs: always sort (order_by) when paginating for consistent ordering; add secondary sort to break ties"
+  },
+  "rateLimits": {
+    "plans": {
+      "Free": "15 requests/second, 300 requests/minute",
+      "Pro (all paid plans)": "75 requests/second, 1,500 requests/minute"
+    },
+    "perEndpointOverrides": {
+      "GET /api/v1/search/token-sectors": "60 requests/minute",
+      "POST /api/v1/tgm/perp-trades": "60 requests/minute",
+      "POST /api/v1/profiler/perp-trades": "5 requests/minute",
+      "POST /api/v1/search/web-search": "15 requests/minute",
+      "POST /api/v1/search/web-fetch": "15 requests/minute"
+    },
+    "x402PerWallet": "5 requests/second, 60 requests/minute (separate from API-key limits); payments not charged for rate-limited requests",
+    "headers": "Two layers: (1) RateLimit-Limit / RateLimit-Remaining / RateLimit-Reset plus X-RateLimit-Limit-Second / X-RateLimit-Remaining-Second / X-RateLimit-Limit-Minute / X-RateLimit-Remaining-Minute for overall limits; (2) bare X-RateLimit-Limit / X-RateLimit-Remaining / X-RateLimit-Reset for the most constrained app-enforced window. Credits headers: X-Nansen-Credits-Used, X-Nansen-Credits-Remaining.",
+    "backoffGuidance": "'Self-throttle using the smaller of RateLimit-Remaining and X-RateLimit-Remaining. If the API returns a 429 Too Many Requests response, honor Retry-After before retrying.' 429 body includes retry_after (seconds). No exponential-backoff algorithm is prescribed.",
+    "creditsQuotas": "Credit-based metering on top of rate limits: Free = 100 one-time trial credits + 10/day refill; Pro = 2,000 starter credits/month grant (docs also say 'one time grant') + flexi-credit purchases; purchased credits expire 1 year from purchase. Per-call costs range 0 (search) to 750 (agent/expert); premium-label variants of tgm/holders, tgm/pnl-leaderboard, tgm/perp-pnl-leaderboard, tgm/perp-positions cost 150 vs 5; labels cost 100 (common) / 500 (premium); historical endpoints cost 5x real-time counterparts."
+  },
+  "errors": {
+    "statusCodes": {
+      "400": "Bad Request - malformed request, invalid parameters or format",
+      "401": "Unauthorized - authentication failed (missing, invalid, or expired token); body example {\"error\": {\"code\": \"UNAUTHORIZED\", \"message\": \"Invalid or missing API key\"}}",
+      "402": "Payment Required (x402/MPP pay-per-call challenges; Payment-Required and/or WWW-Authenticate: Payment headers)",
+      "403": "Forbidden - auth succeeded but no permission (wrong subscription tier, exceeded credit limit, or Free plan sending premium_labels=true)",
+      "404": "Not Found - resource or endpoint does not exist",
+      "422": "Unprocessable Content - validation error; body {detail: [{loc, msg, type}]} (FastAPI-style)",
+      "429": "Too Many Requests - rate limit exceeded; body {detail, retry_after}; headers Retry-After, X-RateLimit-*",
+      "500": "Internal Server Error - retry later, contact support if persistent",
+      "504": "Gateway Timeout - retry after a short wait; check for heavy queries"
+    },
+    "bodySchema": "OpenAPI error responses use {\"detail\": string} for 400/401/403/404/500; {\"detail\": [{loc[], msg, type}]} for 422; {\"detail\": string, \"retry_after\": integer} for 429. The Authentication page also shows an {\"error\": {code, message}} shape for 401/403 - two shapes appear in official docs.",
+    "cliErrorCodes": "Nansen CLI machine-readable codes: UNAUTHORIZED, CREDITS_EXHAUSTED, RATE_LIMITED, INVALID_ADDRESS, UNSUPPORTED_FILTER"
+  },
+  "entitlements": {
+    "planTiers": {
+      "Free": "100 one-time trial credits + 10 credits/day refill; can purchase credits; 'Access all API endpoints available in PRO'; lower rate limits (15 rps/300 rpm); CANNOT use premium_labels=true (403)",
+      "Pro": "$49/month (annual) or $69/month (monthly) per docs Credits & Pricing Guide; 2,000 starter credits; flexi-credit purchases (credits expire 1 year from purchase); 75 rps/1,500 rpm; premium labels allowed"
+    },
+    "creditPrice": "$0.001 per credit with bulk discounts (nansen.ai/api marketing page); the same page describes '100 Free credits' and '1,000 Pro credits' (differs from docs' 2,000 - see openQuestions)",
+    "payPerCall": "x402/MPP tiers: Basic $0.01/call (screeners, balances, transactions, PnL, DEX trades, flows), Premium $0.05/call (counterparties, holders, PnL leaderboards, perp leaderboard), Smart Money $0.05/call (all smart-money/*). Labels endpoints excluded - Pro subscription only. defi-holdings also listed as excluded from x402.",
+    "premiumLabelGating": "premium_labels=true on tgm/holders, tgm/pnl-leaderboard, tgm/perp-pnl-leaderboard, perp-leaderboard consumes 150 credits and returns dbt-sourced premium labels (Smart Money, Fund, etc.); false returns free-tier labels at 5 credits. Free plan users get 403 with premium_labels=true.",
+    "enterprise": "No enterprise/institutional API tier is documented on the pages reviewed; backtesting page says 'Reach out to your account contact for example notebooks, backtesting templates, and volume pricing.'"
+  },
+  "sdks": [
+    {
+      "name": "Official SDKs (language libraries)",
+      "status": "None. FAQ: 'Does Nansen offer SDKs, libraries, or tools for integrating analytics into third-party applications like DEXs or wallets?' -> 'No'. Docs examples use raw HTTP (curl, Python httpx)."
+    },
+    {
+      "name": "nansen-cli",
+      "status": "Official command-line interface (source: github.com/nansen-ai/nansen-cli); structured JSON output; self-documenting via free 'nansen schema' command; auth via env var or interactive login; --fields and --stream options."
+    },
+    {
+      "name": "Nansen MCP server",
+      "status": "Official hosted MCP server (https://mcp.nansen.ai/ra/mcp), 24 tools, JSON-RPC 2.0 over Streamable HTTP/SSE, NANSEN-API-KEY header; one-click Claude Desktop .dxt install; consumes the same API credits."
+    }
+  ],
+  "licensing": {
+    "source": "Data Redistribution Guidelines (docs.nansen.ai, 'Updated as of 18/11/2025') + MCP Data Redistribution Guidelines; both defer to Nansen Terms of Service (https://www.nansen.ai/legal/terms-of-services)",
+    "allowedNoAttribution": ["profiler/address/balances (current-balance)", "profiler/perp-positions", "profiler/perp-trades", "profiler/address/pnl & pnl-summary", "profiler/address/historical-balances", "token_ohlcv (per MCP table)", "address_portfolio (per MCP table)"],
+    "allowedWithAttribution": ["tgm/transfers", "profiler/address/transactions", "profiler/address/counterparty", "profiler/address/related-wallets", "tgm/token-screener", "tgm/perp-screener", "tgm/dex-trades", "tgm/perp-trades", "tgm/who-bought-sold", "tgm/flow-intelligence", "tgm/flows", "ALL prediction-market endpoints"],
+    "restrictedApprovalRequired": ["tgm/holders (with smart money filter)", "tgm/perp-positions (with smart money filter)", "smart-money/inflows (netflow)"],
+    "prohibitedRedistribution": ["address/labels", "smart-money/holdings", "tgm/pnl-leaderboard", "perp-leaderboard", "smart-money/dex-trades", "smart-money/dcas", "smart-money/perp-trades"],
+    "attributionRequirements": "Display 'Powered by Nansen API' visibly in product UI, OR clickable link to nansen.ai near the data display (text, logo, or footer form). Attribution NOT required for personal or internal-only use.",
+    "restrictedDataConditions": "Restricted endpoints require: (1) approval via Google form, (2) 'significant modification' - output not reverse-engineerable to Nansen classifications, meaningfully combined with >=1 other substantial independent data source, novel insights beyond Nansen's own product, (3) attribution. Explicitly prohibited: API endpoints serving Nansen smart money data with <7d delay, webhook/real-time smart-money alerts, smart-money trade-copying services, public smart-money leaderboards/rankings, competing smart-money products.",
+    "storageCaching": "No explicit storage/caching time limits are documented in the reviewed guidelines. The only caching note found is a recommendation to cache the Points API locally. Rules apply to 'API responses, MCP tools, and derived data'. Internal analysis of prohibited-tier data is allowed; external sharing is not.",
+    "otherRules": "Redistribution does not exempt from rate limits; don't misrepresent data / include appropriate disclaimers / don't make unwarranted guarantees; don't build competing products or repackage data to commoditize Nansen's insights."
+  },
+  "limitations": [
+    "Crypto-only provider: no coverage of traditional asset classes; cannot serve equities/FX/fixed-income functions of a multi-asset platform.",
+    "Chain support varies significantly by endpoint (37 chains overall, but Smart Money ~19-chain enum with historical support on only 4 per the support matrix; Bitcoin is Profiler-only; TON lacks PnL; Solana lacks transaction lookup; Hyperliquid is perps-only and keyed by token symbol, not address).",
+    "Token Screener is near-real-time only: to_date must be within 5 minutes of now; retention 130 min (minute) / 50 h (hourly) / 50 d (daily); historical screening requires the separate v1beta1 endpoint at 5x credits.",
+    "Smart Money DEX trades limited to a rolling last-24h window on the live endpoint.",
+    "The entire Backtesting family is V1 Beta: 'Request shapes, response fields, and pricing may change'; smart-money/historical-holdings is also flagged beta with possible data corrections/revisions.",
+    "Temporal label coverage gaps in historical data: whale/public_figure/top_pnl/exchange segments only from 2025-03-11; smart_trader from 2020+; segment columns NULL before coverage - a survivorship/coverage consideration for backtests.",
+    "Historical transaction lookup can take 60-170 seconds for unknown hashes unless block_timestamp is supplied; historical top holders 'can be slow for high-volume tokens'.",
+    "premium_labels default is changing (true -> false per changelog dated 31-03-2026 / hints saying 'From April 1'); clients must pin the parameter explicitly to avoid silent label-tier and credit-cost changes (5 vs 150 credits).",
+    "Deprecated parameters still in schemas ('date' vs 'timeframe', 'only_smart_money' vs 'trader_type', 'sort_by' vs 'order_by') - integration should target the recommended forms.",
+    "Search endpoint prices 'may be delayed' - docs direct real-time pricing to token-ohlcv.",
+    "Pagination has no total-count field; is_last_page only. Docs warn ordering may change between pages unless order_by is set explicitly.",
+    "Two different error-body shapes appear in official docs ({detail: ...} FastAPI style vs {error: {code, message}}); clients should handle both.",
+    "No official language SDKs (FAQ says 'No'); only CLI + MCP + raw REST.",
+    "Prediction markets = Polymarket only; perps = Hyperliquid only.",
+    "Per-endpoint rate-limit overrides can be severe (profiler/perp-trades: 5 requests/minute).",
+    "No documented SLA, uptime commitment, or formal deprecation-notice window on the reviewed pages.",
+    "Symbol mapping: primary keys are chain + token_address (contract), except Hyperliquid perps which use ticker symbols - cross-referencing spot and perp data requires a mapping layer.",
+    "Smart Money classification is proprietary and periodically re-derived (30D/90D/180D windows); labels change over time - live endpoints reflect current labels, only v1beta1 endpoints provide temporally-correct labels.",
+    "Docs marketing page (nansen.ai/api) and docs credit guide disagree on Pro starter credits (1,000 vs 2,000) - confirm at purchase."
+  ],
+  "institutionalFit": {
+    "primaryUseCases": [
+      "PRIMARY: On-chain smart-money flow intelligence (netflows, holdings, DEX trades of labeled funds/smart traders) - this is Nansen's differentiated, proprietary dataset; note strict redistribution limits (internal research use is safest).",
+      "PRIMARY: Wallet/entity due diligence and forensics (Profiler: balances, transactions, counterparties, related wallets, labels) across 30+ chains.",
+      "PRIMARY: Token holder-base and flow analytics (Token God Mode: holders by entity type, exchange flows, who-bought-sold, PnL leaderboards).",
+      "PRIMARY: Point-in-time on-chain backtesting datasets with temporally-correct labels (v1beta1 family) - rare capability, but beta and 5x credit cost.",
+      "PRIMARY: Hyperliquid perp positioning/copytrading analytics and Polymarket prediction-market analytics."
+    ],
+    "fallbackUseCases": [
+      "FALLBACK: Token OHLCV price/market-cap data (available and redistribution-friendly, but depth undocumented and crypto-only; a dedicated market-data provider is a more natural primary).",
+      "FALLBACK: DeFi portfolio positions (single endpoint, protocol list maintained on app site).",
+      "FALLBACK: General token/entity search and metadata resolution (search prices may be delayed)."
+    ],
+    "notSuitable": [
+      "Any non-crypto asset class.",
+      "Public-facing redistribution of smart-money holdings/dex-trades/labels/PnL-leaderboard data (prohibited) or lightly-transformed smart-money netflow displays (restricted; requires approval + significant modification).",
+      "Sub-minute exchange-grade market data feeds (screener granularity is minute-level; orderbook data exists only for Polymarket at ~60s polling)."
+    ],
+    "hardConstraints": [
+      "Never present search-endpoint prices as real-time (docs say they may be delayed; use token-ohlcv).",
+      "Never expose Prohibited-tier data (smart-money holdings/dex-trades/dcas/perp-trades, address labels, PnL leaderboards, perp leaderboard) in any customer-facing surface; internal analysis only.",
+      "Attribution ('Powered by Nansen API' or link to nansen.ai) is mandatory when displaying attribution-tier data in client-facing products.",
+      "Redistributing smart-money-derived data requires prior written approval, significant transformation, and >=7d delay for anything resembling raw redistribution.",
+      "Budget both rate limits (plan + per-endpoint overrides) AND credits; monitor X-Nansen-Credits-Remaining and honor Retry-After on 429.",
+      "Pin premium_labels explicitly on affected endpoints to avoid the documented default flip (and 5 -> 150 credit jump).",
+      "Treat all /api/v1beta1/ endpoints as unstable (breaking changes allowed) - isolate behind adapters and contract tests.",
+      "Historical smart-money holdings only reach back 4 years (rolling); temporal label coverage for non-smart-trader segments starts 2025-03-11 - flag backtests crossing these boundaries."
+    ]
+  },
+  "sourcesConsulted": [
+    {
+      "url": "https://docs.nansen.ai/",
+      "whatItVerified": "Official docs root; product positioning (proprietary labeling of 'hundreds of millions' of addresses, multi-chain coverage); section structure (Getting Started, API Reference, endpoint categories incl. Smart Money, Profiler, Token Screener, Portfolio, Points, Hyperliquid, Agent, Prediction Markets, MCP)."
+    },
+    {
+      "url": "https://docs.nansen.ai/getting-started",
+      "whatItVerified": "Authentication mechanism (apikey header), base URL https://api.nansen.ai/api/v1/, quick-start curl/Python examples, standard response envelope {data, pagination{page, per_page, is_last_page}}."
+    },
+    {
+      "url": "https://docs.nansen.ai/getting-started/rate-limits",
+      "whatItVerified": "Plan rate limits (Free 15 rps/300 rpm; Pro 75 rps/1,500 rpm), per-endpoint overrides (token-sectors 60/min, tgm/perp-trades 60/min, profiler/perp-trades 5/min, web-search & web-fetch 15/min), rate-limit response headers, 429 + Retry-After guidance."
+    },
+    {
+      "url": "https://docs.nansen.ai/getting-started/error-handling",
+      "whatItVerified": "Documented status codes 400/401/402/403/404/422/429/500/504 with meanings and recommended actions; JSON response format."
+    },
+    {
+      "url": "https://docs.nansen.ai/api/overview",
+      "whatItVerified": "Complete endpoint catalog with per-endpoint credit costs across Smart Money, Agent, Profiler, Token God Mode, Prediction Markets, Portfolio, and Backtesting categories; all endpoints POST with JSON bodies."
+    },
+    {
+      "url": "https://docs.nansen.ai/reference",
+      "whatItVerified": "37-chain claim, EVM/non-EVM examples, smart money label taxonomy, filter type quick reference, order_by sort structure."
+    },
+    {
+      "url": "https://docs.nansen.ai/llms-full.txt",
+      "whatItVerified": "Full official docs text export (page 1): authentication details and 401/403 error bodies; AI Agent access; rate limit header layering and self-throttle guidance; Credits & Pricing Guide (Pro $49/mo annual / $69/mo monthly, 2,000 starter credits, Free 100 credits + 10/day refill, 1-year credit expiry, full per-endpoint credit table); x402 and MPP(Tempo) pay-per-call rails, tiers ($0.01/$0.05), per-wallet x402 rate limits (5 rps/60 rpm), excluded labels endpoints, .well-known/x402 discovery; supported chains tables (24 EVM + 12 non-EVM + hyperliquid perps-only) and per-endpoint chain matrices; filter/sorting reference incl. 1-year max date range; embedded OpenAPI 3.1 specs (securityScheme apiKey-in-header; PaginationRequest max 1000/page; token-screener timeframes and retention; smart-money netflow/holdings request+response schemas; search/general schema; credits and rate-limit response headers; error response schemas incl. 422 detail array and 429 retry_after); endpoint prose (SM dex-trades last-24h real-time; historical-holdings beta, 4-year lookback, daily snapshots; TGM holders/pnl-leaderboard premium_labels notices; token screener retention hint; OHLCV timeframes; flow intelligence segments; portfolio defi-holdings response fields; Hyperliquid symbol-keyed endpoints; Backtesting v1beta1 family incl. as_of_date/date_from conventions, 5x pricing, label-history coverage dates, performance caveats; Prediction Market = Polymarket only, orderbook ~60s polling, 1h OHLCV from Polygon events; Points API on app.nansen.ai, daily 11:00 UTC refresh; Smart Alerts /api/v1/smart-alert CRUD with Telegram/Slack/Discord/webhook channels; API Changelog: 29-08-2025 beta->v1 restructuring and endpoint renames, 31-03-2026 premium_labels flag + Free-plan 403 enforcement; Nansen CLI (github.com/nansen-ai/nansen-cli) and CLI error codes; MCP server endpoint/auth and 24-tool table with credit costs)."
+    },
+    {
+      "url": "https://docs.nansen.ai/llms-full.txt/1",
+      "whatItVerified": "Full official docs text export (page 2): MCP Data Redistribution Guidelines and API Data Redistribution Guidelines (updated 18/11/2025) - per-endpoint Allowed/Attribution/Restricted/Prohibited matrix, attribution wording options, 'significant modification' definition, prohibited use cases incl. <7d-delay redistribution of smart money data, approval process, ToS link; Data Methodology & Technical Reference (inclusive [from,to] date ranges; historical holdings methodology with day-median prices and no look-ahead bias; EOD UTC snapshots; 05:00/07:00 UTC availability; 4-year rolling window); FAQ (no SDKs; real-time-ish freshness statements; latency 'often within seconds'); Quant Signals / BTC Drop Reflexivity methodology and response fields; Useful Links (pricing at app.nansen.ai/account/switch-plans)."
+    },
+    {
+      "url": "https://nansen.ai/api",
+      "whatItVerified": "Marketing/pricing page: $0.001 per API credit with bulk discounts; free tier described as '100 Free credits'; Pro described there as '1,000 Pro credits' (conflicts with docs' 2,000 starter credits); x402 pay-per-call tiers ($0.01 basic, $0.05 premium); REST/MCP/CLI access methods; no enterprise tier pricing published."
+    },
+    {
+      "url": "https://docs.nansen.ai/api/profiler/address-current-balances.md",
+      "whatItVerified": "Fetched 2026-07-17 during adapter implementation: exact ProfilerAddressBalancesRequest fields (address, entity_name, chain enum of 28 values incl. 'all', hide_spam_token default true, filters {value_usd, price_usd, token_amount, token_symbol, token_address, token_name}, pagination, order_by) and exact ProfilerBalance response item fields (chain, address, token_address, token_symbol, token_name, token_amount, price_usd, value_usd). Response 'address' is empty when entity_name is used. No raw base-unit amount and no token-decimals field are returned."
+    }
+  ],
+  "confidence": "high",
+  "openQuestions": [
+    "Pro plan starter credits discrepancy: docs Credits & Pricing Guide says 2,000 credits ('one time grant' yet labeled 'credits/month'), while nansen.ai/api marketing page says 1,000 Pro credits - and whether the grant is monthly or one-time is ambiguous in the docs table itself. Needs confirmation with sales/dashboard.",
+    "No formal deprecation-notice window, SLA, or uptime commitment documented - required for institutional procurement; needs contract-level confirmation.",
+    "Exact freshness/latency SLOs per dataset are not quantified (only qualitative 'real-time'/'within seconds' statements); confirm before labeling any Nansen-sourced data as real-time in client UIs.",
+    "Data storage/caching duration limits are not addressed in the redistribution guidelines - the Terms of Service (nansen.ai/legal/terms-of-services) must be reviewed by counsel for storage, retention, and derived-works terms.",
+    "'/api/v1/search/web-search' and '/api/v1/search/web-fetch' appear in the rate-limits page but not in the endpoints overview or reference - scope and availability unclear.",
+    "Token OHLCV maximum historical depth is undocumented.",
+    "The '37 blockchains' headline vs the enumerated 24 EVM + 12 non-EVM (+ hyperliquid) tables and smaller per-endpoint enums - the effective chain list for any given workload must be validated per endpoint (e.g. via the CLI 'nansen schema' or endpoint enums).",
+    "Whether prohibited-tier data (e.g. smart-money holdings) may be shown to a firm's own investment team inside an internal research platform is 'internal use only - allowed', but showing it to external fund clients of a research platform likely counts as redistribution - needs legal confirmation for this platform's user base.",
+    "Premium labels default-flip timing (changelog says 31-03-2026 / 'April 1') vs current live behavior should be verified empirically at integration time.",
+    "Free-plan endpoint access: docs say Free can 'access all API endpoints available in PRO', but x402 page says labels require Pro subscription - whether Free-plan API keys can call /labels (at 100/500 credits) is not fully unambiguous."
+  ]
+}

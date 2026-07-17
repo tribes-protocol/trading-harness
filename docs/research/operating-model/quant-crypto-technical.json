@@ -1,0 +1,306 @@
+{
+  "area": "Quantitative, crypto/on-chain, and technical/market-structure research",
+  "reviewDate": "undefined",
+  "departments": [
+    {
+      "name": "Quantitative Research",
+      "mandate": "Develop, test, document, and maintain systematic alpha signals, factor models, and portfolio-construction inputs under institutional-grade research standards (reproducibility, out-of-sample discipline, overfitting controls, model documentation), and operate the shared backtesting/research platform on which all systematic research at the firm runs.",
+      "responsibilities": [
+        "Own the full signal research lifecycle: hypothesis formation, point-in-time data preparation, in-sample development, out-of-sample and walk-forward validation, peer review, production approval, and decommissioning",
+        "Build and maintain factor models (risk and alpha factors) used for portfolio construction, hedging, and performance attribution",
+        "Set and enforce backtesting standards: point-in-time data (no look-ahead/survivorship bias), realistic transaction-cost and market-impact assumptions, capacity analysis, and regime/stress evaluation",
+        "Enforce overfitting controls: a research trial registry that counts the number of strategy variants tested, multiple-testing corrections (e.g., Deflated Sharpe Ratio, Probability of Backtest Overfitting), purged/embargoed cross-validation or walk-forward testing, and mandatory holdout data",
+        "Produce SR 11-7-style model documentation for every production model: purpose, theory, data, assumptions, limitations, alternative approaches considered, testing results, and known failure modes",
+        "Maintain the firm model inventory entries for investment models (owner, risk tier, validation status, approval date) and support independent validation",
+        "Monitor production models: live-vs-backtest outcomes analysis, alpha decay tracking, drawdown and turnover diagnostics, and trigger-based review/retirement",
+        "Curate research datasets (market, reference, alternative, and on-chain data) with versioned, immutable snapshots so results are reproducible",
+        "Support compliant presentation of any backtested/hypothetical performance that leaves the firm (SEC Marketing Rule requirements)"
+      ],
+      "workflows": [
+        {
+          "name": "Signal research lifecycle",
+          "cadence": "Continuous; per-signal stage gates",
+          "description": "Idea intake -> written hypothesis registered in trial registry -> point-in-time data prep -> in-sample development -> out-of-sample/walk-forward validation with multiple-testing-adjusted statistics (e.g., Deflated Sharpe Ratio) -> peer review / research committee challenge -> model documentation -> approval -> paper trading or limited-capital incubation -> production release.",
+          "inputs": ["Market and reference data (point-in-time)", "Alternative and on-chain datasets", "Execution/TCA data from trading", "Prior research library and trial registry"],
+          "outputs": ["Backtest report with in-sample/out-of-sample statistics and trial counts", "Model documentation pack", "Production-ready signal code under version control", "Model inventory entry"]
+        },
+        {
+          "name": "Production model monitoring and outcomes analysis",
+          "cadence": "Daily automated monitoring; formal monthly review; risk-tiered annual revalidation",
+          "description": "Compare live performance against backtest expectations (outcomes analysis per SR 11-7), track alpha decay, slippage vs assumed costs, factor exposure drift; escalate breaches to research committee and model risk; annual (or risk-tiered) revalidation of material models by an independent party.",
+          "inputs": ["Live P&L and positions", "Fills and TCA from execution", "Risk factor exposures"],
+          "outputs": ["Monitoring dashboards and exception reports", "Revalidation reports", "Retire/recalibrate decisions"]
+        },
+        {
+          "name": "Factor model refresh",
+          "cadence": "Monthly/quarterly estimation refresh; annual methodology review",
+          "description": "Re-estimate factor loadings and covariances, review factor definitions, test for factor crowding/decay, and publish updated models to risk and portfolio construction.",
+          "inputs": ["Security master and returns data", "Fundamental and market data", "Crowding/positioning data"],
+          "outputs": ["Updated factor model files consumed by risk and PM systems", "Methodology change memos"]
+        },
+        {
+          "name": "Research platform and data governance",
+          "cadence": "Quarterly platform review; continuous change management",
+          "description": "Govern the shared backtesting environment: dataset versioning, environment reproducibility (containerized/pinned dependencies), code review and CI for research libraries, separation of research and production environments, access controls on holdout data.",
+          "inputs": ["Vendor data feeds", "Data quality reports", "User change requests"],
+          "outputs": ["Versioned dataset releases", "Platform standards documentation", "Data quality exception logs"]
+        },
+        {
+          "name": "Research review committee",
+          "cadence": "Weekly or biweekly",
+          "description": "Cross-team forum providing effective challenge on new signals, methodology changes, and promotion decisions; maintains minutes as governance evidence.",
+          "inputs": ["Candidate research packs", "Monitoring exceptions"],
+          "outputs": ["Approval/rejection/rework decisions with documented rationale"]
+        }
+      ],
+      "controls": [
+        "Model risk management framework modeled on Fed SR 11-7 / OCC 2011-12 (voluntarily adopted buy-side): sound development, effective challenge via independent validation, and board/management-level governance",
+        "Independent validation of material models by staff not responsible for development or use (second line); validation frequency risk-tiered",
+        "Firm-wide model inventory with owners, risk tiers, and validation status",
+        "Trial registry / multiple-testing accounting so reported Sharpe ratios can be deflated for selection bias (Bailey & Lopez de Prado)",
+        "Mandatory out-of-sample/holdout discipline with access controls preventing repeated peeking at holdout data",
+        "Version control, code review, CI, and immutable point-in-time data snapshots for reproducibility",
+        "SEC Marketing Rule (Rule 206(4)-1) controls on any hypothetical/backtested performance shown to investors: policies and procedures, audience-appropriateness, disclosure of criteria/assumptions/risks, 5-year recordkeeping",
+        "If firm algorithms trade on EU venues: MiFID II RTS 6 obligations (pre-deployment testing, conformance testing, kill-switch functionality, annual self-assessment); FMSB Statement of Good Practice for applying MRM to electronic trading algorithms as proportionate good practice",
+        "Segregation of research and production environments with controlled promotion process"
+      ],
+      "independence": "Embedded in the investment function (first line), but material models require validation and effective challenge from a function independent of development and use (model risk / risk management, second line). Research standards-setting can be a shared central service across pods.",
+      "dependencies": ["Data engineering / research platform team", "Trading & execution (fills, TCA, market-impact data)", "Risk management (factor data, model validation)", "Compliance (marketing/performance disclosure review)", "Technology (production deployment, environment controls)"],
+      "handoffs": [
+        {"to": "Portfolio Management / pods", "direction": "outbound", "content": "Approved signals and models with documentation, stated limitations, capacity estimates, and expected behavior; usage constraints"},
+        {"to": "Trading / Execution", "direction": "outbound", "content": "Production algorithms and execution assumptions used in backtests; receives inbound fills, slippage, and TCA data to recalibrate cost models"},
+        {"to": "Risk Management / Model Risk", "direction": "outbound", "content": "Model inventory entries, documentation packs, and validation artifacts; factor models and exposure feeds; receives inbound validation findings and remediation requirements"},
+        {"to": "Compliance / Investor Relations", "direction": "outbound", "content": "Backtested/hypothetical performance with required assumptions, criteria, and risk disclosures for Marketing Rule review before external use"},
+        {"to": "Data Engineering", "direction": "outbound", "content": "Dataset requirements, point-in-time specifications, and quality SLAs; receives inbound versioned datasets and quality exception reports"},
+        {"to": "Crypto & On-Chain Research and Technical/Market-Structure teams", "direction": "inbound", "content": "Candidate features and datasets (on-chain flows, positioning, liquidity metrics) submitted with hypothesis documentation for systematic testing under quant governance"}
+      ],
+      "regulatoryBasis": [
+        "Fed SR 11-7 / OCC Bulletin 2011-12 (Supervisory Guidance on Model Risk Management) - formally applies to banking organizations; the de facto template voluntarily adopted by large asset managers",
+        "SEC Investment Adviser Marketing Rule, 17 CFR 275.206(4)-1 - binding on registered advisers for hypothetical/backtested performance in advertisements",
+        "MiFID II RTS 6 (Commission Delegated Regulation (EU) 2017/589) and ESMA supervisory briefing on algorithmic trading - binding where in-scope EU algorithmic trading occurs",
+        "FMSB Statement of Good Practice: model risk management framework for electronic trading algorithms - industry good practice, not law"
+      ],
+      "practiceNotes": [
+        "Widely accepted practice: walk-forward testing remains the dominant industry validation method; combinatorial purged cross-validation (Lopez de Prado) is increasingly used but adoption varies",
+        "Widely accepted practice: counting trials and deflating Sharpe ratios for selection bias distinguishes institutional-grade research from retail-grade backtesting; the Deflated Sharpe Ratio and PBO are the reference metrics",
+        "Judgment call: whether quant research is centralized (Citadel-style, with central research/risk infrastructure) or pod-local (Millennium-style autonomy) varies by firm; centralized standards with pod-level execution is a common hybrid",
+        "Judgment call: depth of formal SR 11-7-style validation at hedge funds scales with AUM and institutional-investor expectations; smaller funds substitute peer review plus documented approval"
+      ]
+    },
+    {
+      "name": "Crypto & On-Chain Research",
+      "mandate": "Produce investable research on digital assets spanning on-chain flow analytics, protocol fundamentals, DeFi risk assessment, token supply/unlock analysis, and counterparty/venue risk, and act as the firm's subject-matter authority for digital-asset market structure and its distinct operational risks.",
+      "responsibilities": [
+        "Build and maintain on-chain data pipelines and entity-tagged flow analytics (exchange inflows/outflows, whale/cohort behavior, stablecoin flows, miner/validator flows)",
+        "Protocol fundamental analysis: fee revenue, active users, TVL (with explicit methodology caveats - TVL computation varies across vendors per BIS research), token holder distribution, governance and treasury analysis",
+        "Tokenomics and supply-side analysis: emission schedules, vesting cliffs and unlock calendars, float vs fully-diluted valuation, staking/lock-up dynamics, and pre-event notes ahead of material unlocks",
+        "DeFi risk assessment: smart-contract risk (audit history, exploit record), oracle risk, composability/interconnectedness risk, liquidation-cascade and depeg scenarios (per FSB/BIS vulnerability taxonomy)",
+        "Counterparty and venue risk analysis: exchanges, custodians, OTC desks, lending counterparties - solvency indicators, proof-of-reserves limitations, segregation of client assets, jurisdiction and regulatory status (AIMA DDQ / SBAI ODD frameworks)",
+        "Stablecoin and market-plumbing monitoring (reserve composition, redemption mechanics, depeg early-warning)",
+        "Track the regulatory landscape (IOSCO recommendations, MiCA, SEC/CFTC developments) and translate implications for tradability, custody, and token classification",
+        "Supply curated on-chain datasets and features to Quantitative Research for systematic signal development"
+      ],
+      "workflows": [
+        {
+          "name": "Daily on-chain flows and market monitor",
+          "cadence": "Daily",
+          "description": "Automated dashboard plus analyst commentary on exchange flows, stablecoin issuance/redemption, funding rates, open interest, large-wallet movements, and anomalies; flags actionable items to PMs and risk.",
+          "inputs": ["On-chain analytics vendors and node infrastructure", "Exchange/derivatives data (funding, OI, basis)", "Stablecoin issuance data"],
+          "outputs": ["Daily flows monitor", "Anomaly alerts to PMs and Risk"]
+        },
+        {
+          "name": "Protocol/asset coverage notes",
+          "cadence": "Weekly publication cycle; full initiation notes event-driven",
+          "description": "Fundamental coverage of tokens/protocols under mandate: valuation frameworks, catalyst calendars, governance events, competitive dynamics; initiation notes before any new asset enters the approved trading universe.",
+          "inputs": ["Protocol documentation and governance forums", "On-chain fundamentals", "Vendor research"],
+          "outputs": ["Coverage notes and asset theses", "Approved-universe recommendations with risk classification"]
+        },
+        {
+          "name": "Token unlock and supply calendar",
+          "cadence": "Weekly refresh; pre-event deep-dives ahead of material unlocks",
+          "description": "Maintain a forward calendar of unlocks/vesting cliffs across covered assets, quantify unlock size vs float and average daily volume, assess recipient cohorts' likely behavior, and publish positioning-relevant alerts (vendor research suggests most unlock events create negative price pressure; treat magnitude estimates as vendor-grade, not peer-reviewed).",
+          "inputs": ["Tokenomics documentation", "Unlock tracking vendors (e.g., Tokenomist/CryptoRank-class data)", "Exchange volume/liquidity data"],
+          "outputs": ["Unlock calendar", "Pre-event notes with float/ADV impact estimates"]
+        },
+        {
+          "name": "Counterparty and venue review",
+          "cadence": "Quarterly formal review; continuous monitoring; ad hoc on stress events",
+          "description": "Joint workflow with Operations/Risk: score venues and counterparties on custody arrangements, asset segregation, proof-of-reserves quality, regulatory status, financial disclosures, and operational history; maintain approved venue list and per-venue exposure limits; research provides analysis, independent risk approves.",
+          "inputs": ["AIMA digital asset DDQ responses", "SBAI ODD toolbox criteria", "On-chain solvency indicators", "Legal/regulatory status checks"],
+          "outputs": ["Venue risk memos and scores", "Approved venue list changes (recommendation)", "Exposure limit recommendations"]
+        },
+        {
+          "name": "DeFi protocol risk assessment",
+          "cadence": "Event-driven, before capital deployment; re-review on protocol upgrades",
+          "description": "Pre-deployment assessment of smart-contract risk, audits, admin-key/upgradeability risk, oracle design, liquidity depth, and composability dependencies; defines maximum deployment size and monitoring triggers.",
+          "inputs": ["Audit reports", "Protocol code/docs", "TVL and liquidity data (methodology-checked)", "Exploit databases"],
+          "outputs": ["Protocol risk assessment with deployment limits", "Monitoring trigger definitions"]
+        },
+        {
+          "name": "Incident response and depeg/hack monitoring",
+          "cadence": "Ad hoc, 24/7 alerting",
+          "description": "Playbook-driven response to exchange failures, protocol exploits, stablecoin depegs: assess firm exposure, recommend de-risking, document for post-mortem.",
+          "inputs": ["Real-time alerts", "Position/exposure data from risk", "Public incident information"],
+          "outputs": ["Exposure assessments", "De-risking recommendations", "Post-mortems"]
+        }
+      ],
+      "controls": [
+        "Approved asset universe and approved venue list, with additions requiring documented research plus independent risk/ops sign-off (research recommends, risk approves)",
+        "Per-venue and per-protocol exposure limits monitored by risk, informed by research scoring",
+        "Custody arrangements following AIMA Digital Asset Custody guide sound practices (segregation, key management, third-party custodian due diligence)",
+        "Alignment with SEC examination focus areas for crypto: custody practices, wallet reviews, valuation procedures, BSA/AML compliance touchpoints",
+        "Data-vendor validation: reconcile on-chain metrics across sources; document TVL/metric methodology differences (BIS WP 1268 shows TVL is not consistently verifiable across aggregators)",
+        "Token legal-classification review handoff to Legal/Compliance before trading new assets (IOSCO 'same activity, same risk, same regulation' direction; MiCA in EU)",
+        "Conflict and market-abuse controls for token markets (IOSCO crypto recommendations cover market manipulation, insider trading, conflicts from vertical integration - relevant when dealing with vertically integrated venues)",
+        "On-chain research code/data pipelines under the same reproducibility standards as quant research when outputs feed systematic strategies"
+      ],
+      "independence": "Embedded research function within the investment organization; however, counterparty/venue approval and exposure limits must have independent second-line (risk/ODD) ownership - research input is advisory to that decision, not determinative. On-chain data engineering can be a shared service with the central data platform.",
+      "dependencies": ["Operations (custody, wallet ops, settlement)", "Risk management (venue limits, exposure data)", "Legal/Compliance (token classification, jurisdiction analysis)", "Quantitative Research (systematic testing of on-chain features)", "Data engineering (node infrastructure, vendor feeds)", "Trading (venue execution quality data)"],
+      "handoffs": [
+        {"to": "Portfolio Management / pods", "direction": "outbound", "content": "Asset theses, catalyst/unlock calendars, flow anomaly alerts, DeFi yield opportunity assessments with risk limits"},
+        {"to": "Risk Management & Operations", "direction": "outbound", "content": "Venue/counterparty risk memos, custody recommendations, protocol risk assessments with proposed exposure limits; receives inbound approved limits and current exposures"},
+        {"to": "Quantitative Research", "direction": "outbound", "content": "Curated, point-in-time on-chain datasets and candidate features with hypothesis documentation, entering quant governance for systematic use"},
+        {"to": "Legal / Compliance", "direction": "outbound", "content": "New-asset classification requests, regulatory-development impact notes; receives inbound tradability determinations"},
+        {"to": "Trading / Execution", "direction": "inbound", "content": "Venue execution quality, fill data, and operational incidents feeding venue scoring; outbound liquidity maps for large-order planning"}
+      ],
+      "regulatoryBasis": [
+        "IOSCO Policy Recommendations for Crypto and Digital Asset Markets (FR/11/2023, IOSCOPD747) - regulatory direction for CASPs: conflicts, market abuse, custody, cross-border, operational risk",
+        "IOSCO Final Report with Policy Recommendations for Decentralized Finance (IOSCOPD754) - DeFi risk identification and disclosure expectations",
+        "FSB report 'The Financial Stability Risks of Decentralised Finance' (Feb 2023) - vulnerability taxonomy: leverage, liquidity/maturity mismatch, interconnectedness, operational fragility",
+        "SEC Division of Examinations priorities - crypto custody, wallet reviews, valuation, standards of conduct (binding expectations for registered advisers in scope)",
+        "EU MiCA (for EU-facing activity) and evolving SEC/CFTC jurisdiction in the US - firm-specific applicability",
+        "AIMA digital asset DDQ and Digital Asset Custody guide; SBAI Operational Due Diligence of Digital Assets toolbox - industry standards, not law"
+      ],
+      "practiceNotes": [
+        "Widely accepted practice post-FTX: no trading on a venue without documented counterparty review, exposure caps, and preference for off-exchange settlement/third-party custody where available",
+        "Widely accepted practice: unlock calendars and float-adjusted supply analysis are table stakes for liquid token strategies; the magnitude of unlock price impact is contested and vendor-research-grade",
+        "Judgment call: standalone crypto research department vs embedding crypto coverage in existing asset-class teams - standalone is typical where digital assets are a core strategy; embedded where crypto is an opportunistic sleeve",
+        "Judgment call: how much weight to give proof-of-reserves attestations - practice varies; SBAI/AIMA material treats them as one input, not sufficient assurance",
+        "Sources disagree on TVL and several on-chain fundamentals: aggregator methodologies differ materially (BIS WP 1268), so institutional practice is to document metric definitions per source"
+      ]
+    },
+    {
+      "name": "Technical & Market-Structure Analysis",
+      "mandate": "Provide trend/momentum, positioning, liquidity, and market-microstructure intelligence that informs discretionary PM timing and sizing, feeds candidate systematic signals to Quantitative Research, and supports execution decisions - operated as a shared analytical capability rather than an autonomous forecasting desk.",
+      "responsibilities": [
+        "Maintain systematic trend/momentum and price-level monitors across the firm's traded universe (moving-average systems, breadth, relative strength, volatility regimes)",
+        "Positioning analysis: weekly CFTC Commitments of Traders processing, dealer gamma estimates, ETF and fund-flow data, futures basis and funding rates, crowding indicators",
+        "Liquidity condition monitoring: order-book depth, spreads, volume profiles, intraday liquidity patterns, and stress indicators by market",
+        "Market-microstructure research in partnership with the execution/trading function: venue analysis, order-type behavior, transaction-cost model inputs",
+        "Regime identification and event-window analysis (e.g., behavior around macro releases, rebalances, expiries) for discretionary PMs",
+        "Package durable price-based hypotheses into formal research proposals for Quantitative Research to test under quant governance",
+        "Clear labeling of outputs as judgmental commentary vs systematic signal - only the latter enters model governance"
+      ],
+      "workflows": [
+        {
+          "name": "Daily technical dashboard and commentary",
+          "cadence": "Daily, pre-open",
+          "description": "Automated dashboard of trend state, momentum scores, key levels, volatility regime, and overnight flow observations across covered markets, with brief analyst commentary; distributed to PMs and trading.",
+          "inputs": ["Price/volume data", "Derivatives data (OI, funding, skew)", "Overnight flow/news"],
+          "outputs": ["Daily dashboard", "Regime-change flags"]
+        },
+        {
+          "name": "Weekly positioning report",
+          "cadence": "Weekly (aligned to CFTC COT release, Fridays 3:30 pm ET covering Tuesday data)",
+          "description": "Process COT futures-and-options positioning, combine with ETF flows, prime-brokerage crowding data, and dealer-gamma estimates to flag stretched positioning and crowding risk.",
+          "inputs": ["CFTC COT reports", "ETF flow data", "PB/crowding datasets", "Options open interest"],
+          "outputs": ["Positioning and crowding report", "Alerts to risk on concentration/crowding"]
+        },
+        {
+          "name": "Liquidity and market-structure review",
+          "cadence": "Monthly formal review; continuous monitoring",
+          "description": "Assess liquidity conditions by market (depth, spread, turnover trends), review venue/market-structure changes (tick sizes, auction mechanics, new venues), and update execution assumptions with the trading desk.",
+          "inputs": ["Order-book/microstructure data", "TCA output from execution", "Venue notices and market-structure changes"],
+          "outputs": ["Liquidity scorecards", "Updated cost-model inputs", "Market-structure change memos"]
+        },
+        {
+          "name": "Signal candidate handoff to Quantitative Research",
+          "cadence": "Ad hoc; batched quarterly review",
+          "description": "Technical hypotheses that appear durable (e.g., a positioning-conditioned momentum filter) are written up with an explicit testable hypothesis and handed to quant research for out-of-sample testing under the trial registry - the technical team does not self-certify signals into production.",
+          "inputs": ["Analyst hypotheses", "Historical indicator libraries"],
+          "outputs": ["Formal research proposals with hypothesis documentation"]
+        },
+        {
+          "name": "Event and regime notes",
+          "cadence": "Event-driven",
+          "description": "Short notes around index rebalances, option expiries, seasonal patterns, and stress episodes describing expected flow/liquidity effects for PMs and trading.",
+          "inputs": ["Event calendars", "Historical event studies"],
+          "outputs": ["Event notes", "Trading-window recommendations"]
+        }
+      ],
+      "controls": [
+        "Documented methodology for every published indicator (definition, data source, lookback, known limitations) - prevents 'chart lore' from circulating as research",
+        "Governance boundary: any technical output used systematically in production must pass through quant research's model governance (trial registry, out-of-sample testing, model documentation) - commentary alone never trades",
+        "Positioning/crowding alerts routed to risk management with defined thresholds",
+        "Marketing Rule discipline: technical projections/targets are not used in investor-facing materials without compliance review (projected performance is 'hypothetical performance' under Rule 206(4)-1)",
+        "Data licensing compliance for exchange/order-book data",
+        "Clear separation between market commentary (judgmental) and signals (governed) in all distribution channels"
+      ],
+      "independence": "Embedded / shared service. Institutional consensus practice at multi-strategy funds is NOT to run technical analysis as a standalone forecasting desk: trend/momentum is industrialized inside quantitative/systematic strategies (the CTA/managed-futures literature treats it as a factor), microstructure research sits with or alongside execution/trading, and positioning/liquidity intelligence works best as a central shared capability serving PMs and risk. Standalone 'technical strategist' roles persist mainly on the sell side (research product) and at some macro funds - a firm-level judgment call, not a standard.",
+      "dependencies": ["Market data infrastructure (price, order book, derivatives)", "Trading/execution (TCA, venue data)", "Quantitative Research (testing and governance of candidate signals)", "Risk management (positions for crowding overlap analysis)"],
+      "handoffs": [
+        {"to": "Portfolio Management / pods", "direction": "outbound", "content": "Daily technical dashboards, positioning/crowding reports, event notes - explicitly labeled as context/commentary, not governed signals"},
+        {"to": "Quantitative Research", "direction": "outbound", "content": "Formally written candidate hypotheses (indicator definition, economic rationale, expected behavior) entering the trial registry for out-of-sample testing"},
+        {"to": "Trading / Execution", "direction": "outbound", "content": "Liquidity assessments, execution-window recommendations, market-structure change alerts; receives inbound TCA and order-book analytics"},
+        {"to": "Risk Management", "direction": "outbound", "content": "Crowding and stretched-positioning alerts against defined thresholds; regime-change flags relevant to scenario selection"}
+      ],
+      "regulatoryBasis": [
+        "No regulation mandates or governs technical analysis itself; applicable rules are indirect: SEC Marketing Rule for any projected/backtested performance shown externally; market-abuse regimes constrain trading on certain flow information; data licensing terms for exchange data",
+        "CFTC Commitments of Traders reports - official public positioning data source (weekly, Friday 3:30 pm ET, Tuesday's open interest)",
+        "MiFID II RTS 6 applies if technical rules are automated into EU algorithmic trading"
+      ],
+      "practiceNotes": [
+        "Widely accepted: trend and momentum are documented return factors (CTA/managed-futures literature, CFA Institute publications decompose CTA returns into trend horizons); their institutional home is systematic strategies, not chart-reading desks",
+        "Widely accepted: positioning data (COT, PB crowding, dealer gamma) is consumed firm-wide; many multi-strats centralize it in a 'market intelligence' or central risk function",
+        "Judgment call: discretionary macro funds sometimes retain a dedicated technician (CMT-credentialed); equity multi-strats almost never do - varies by strategy mix",
+        "Judgment call: whether microstructure research reports into trading (execution focus) or quant research (alpha focus); larger firms often split it - execution research under trading, microstructure alpha under quant"
+      ]
+    }
+  ],
+  "structuralRecommendations": [
+    "Keep Quantitative Research as a distinct first-line department, but stand up independent model validation in risk (second line) with effective-challenge authority - the SR 11-7 separation of development from validation is the defining institutional-grade control",
+    "Create a shared Research Data & Platform function (point-in-time data, backtest infrastructure, trial registry) serving all three research areas rather than letting each build its own - reproducibility is a platform property, not a team habit",
+    "Run Crypto & On-Chain Research as a standalone department only if digital assets are a core strategy; either way, move venue/counterparty APPROVAL out of research into independent risk/ODD - research recommends, risk approves",
+    "Do not create a standalone Technical Analysis desk; constitute Technical & Market-Structure Analysis as a shared 'market intelligence' capability, with durable price-based hypotheses funneled into quant research governance and microstructure work partnered with execution",
+    "Establish a single firm-wide research review committee and model inventory spanning all three areas, so crypto/on-chain and technical signals face the same overfitting and documentation gates as traditional quant signals",
+    "Route all externally shared backtested/hypothetical performance from any of the three teams through one compliance workflow implementing SEC Marketing Rule requirements"
+  ],
+  "disagreementsAndVariation": [
+    "SR 11-7 formally binds banking organizations only; buy-side firms adopt it voluntarily and the depth of formal validation varies strongly with AUM and allocator pressure - smaller funds substitute documented peer review",
+    "Validation methodology: walk-forward testing remains the practical industry standard, while the academic literature (Lopez de Prado et al.) argues combinatorial purged cross-validation better controls overfitting; firms genuinely differ here",
+    "Technical analysis org placement: sell-side institutions still publish standalone technical strategy; buy-side multi-strats overwhelmingly embed it (systematic momentum or PM-level toolkit); some macro funds keep dedicated technicians - no single consensus",
+    "Centralization vs pod autonomy in research: Citadel-style centralized research/risk infrastructure vs Millennium-style independent pods are both successful operating models; the choice drives how much of quant research is a shared service",
+    "Crypto data quality: on-chain metrics (notably TVL) are computed inconsistently across aggregators (BIS WP 1268); entity-tagging accuracy of flow analytics differs by vendor - conclusions built on one vendor's labels are contestable",
+    "Token unlock impact: the claim that ~90% of unlock events create negative price pressure comes from vendor/industry research, not peer-reviewed literature; direction is widely believed, magnitude is disputed",
+    "Proof-of-reserves: treated as useful but insufficient evidence of venue solvency in industry ODD material; some firms weight it more heavily than others",
+    "Crypto regulatory perimeter remains unsettled between SEC and CFTC in the US; IOSCO's 2025 thematic review shows uneven jurisdictional implementation of its 2023 recommendations"
+  ],
+  "sourcesConsulted": [
+    {"url": "https://www.federalreserve.gov/boarddocs/srletters/2011/sr1107.pdf", "whatItSupported": "Primary source (fetched): SR 11-7 model definition, development standards, independent validation and effective challenge, outcomes analysis, documentation, model inventory, governance roles"},
+    {"url": "https://papers.ssrn.com/sol3/papers.cfm?abstract_id=2460551", "whatItSupported": "Bailey & Lopez de Prado, Deflated Sharpe Ratio - correcting for selection bias under multiple testing and non-normality; basis for trial-registry overfitting controls"},
+    {"url": "https://www.davidhbailey.com/dhbpapers/deflated-sharpe.pdf", "whatItSupported": "Full text of the Deflated Sharpe Ratio paper (author-hosted)"},
+    {"url": "https://www.iosco.org/library/pubdocs/pdf/IOSCOPD747.pdf", "whatItSupported": "IOSCO Policy Recommendations for Crypto and Digital Asset Markets (2023): conflicts, market abuse, custody/client asset protection, operational risk - regulatory direction for venue/counterparty controls"},
+    {"url": "https://www.iosco.org/library/pubdocs/pdf/ioscopd754.pdf", "whatItSupported": "IOSCO Final Report with Policy Recommendations for DeFi (2023): DeFi risk identification, disclosures, cross-border cooperation"},
+    {"url": "https://www.iosco.org/library/pubdocs/pdf/IOSCOPD801.pdf", "whatItSupported": "IOSCO 2025 thematic review - uneven implementation of crypto recommendations across jurisdictions (supports 'regulatory perimeter unsettled' variation note)"},
+    {"url": "https://www.aima.org/article/press-release-aima-publishes-due-diligence-questionnaire-for-digital-asset-funds.html", "whatItSupported": "AIMA digital asset DDQs covering strategy, trading, risk, custody, valuation - industry standard for crypto fund/counterparty due diligence"},
+    {"url": "https://www.aima.org/sound-practices/industry-guides/digital-asset-custody-guide.html", "whatItSupported": "AIMA Digital Asset Custody guide - sound practices for institutional custody due diligence"},
+    {"url": "https://www.sbai.org/static/5e928706-402a-43da-a036b82c6a7fd8c6/Operational-Due-Dilligence-on-Digital-Assets.pdf", "whatItSupported": "SBAI toolbox on operational due diligence of digital assets (URL as indexed; found via search as sbai.org static PDF) - ODD criteria for venues/custody"},
+    {"url": "https://www.fsb.org/uploads/P160223.pdf", "whatItSupported": "FSB 'Financial Stability Risks of Decentralised Finance' (2023) - DeFi vulnerability taxonomy: leverage, liquidity mismatch, interconnectedness, operational fragility"},
+    {"url": "https://www.bis.org/publ/qtrpdf/r_qt2112b.pdf", "whatItSupported": "BIS Quarterly Review 'DeFi risks and the decentralisation illusion' - governance concentration and DeFi risk framing"},
+    {"url": "https://www.bis.org/publ/work1268.pdf", "whatItSupported": "BIS Working Paper 1268 on verifiability of TVL - basis for treating TVL/on-chain metrics as methodology-dependent"},
+    {"url": "https://www.law.cornell.edu/cfr/text/17/275.206(4)-1", "whatItSupported": "Text of SEC Marketing Rule 206(4)-1 - definition and conditions for hypothetical (incl. backtested and projected) performance"},
+    {"url": "https://www.troutman.com/insights/the-secs-new-marketing-rule-practically-speaking-hypothetical-performance/", "whatItSupported": "Law-firm analysis of hypothetical performance requirements: policies/procedures, audience relevance, disclosure of criteria/assumptions/risks"},
+    {"url": "https://fmsb.com/fmsb-issues-final-statement-of-good-practice-for-the-application-of-a-model-risk-management-framework-to-electronic-trading-algorithms/", "whatItSupported": "FMSB Statement of Good Practice - proportionate application of model risk management to electronic trading algorithms, model risk tiering"},
+    {"url": "https://ec.europa.eu/finance/securities/docs/isd/mifid/rts/160719-rts-6_en.pdf", "whatItSupported": "MiFID II RTS 6 text - algorithm testing, kill-switch, annual self-assessment obligations for in-scope algorithmic trading"},
+    {"url": "https://www.esma.europa.eu/sites/default/files/2026-02/ESMA74-1505669079-10311_Supervisory_Briefing_on_Algorithmic_Trading_in_the_EU.pdf", "whatItSupported": "ESMA supervisory briefing on algorithmic trading (incl. AI/ML in algos) - current EU supervisory expectations"},
+    {"url": "https://www.cftc.gov/MarketReports/CommitmentsofTraders/index.htm", "whatItSupported": "Official CFTC Commitments of Traders reports - weekly positioning data, Friday 3:30 pm ET release covering Tuesday open interest"},
+    {"url": "https://rpc.cfainstitute.org/sites/default/files/-/media/documents/book/rf-lit-review/2016/rflrv11n11.pdf", "whatItSupported": "CFA Institute Research Foundation literature review 'Technical Analysis: Modern Perspectives' (Hill, Nadig, Hougan) - located as evidence of institutional-grade TA literature; PDF content could not be machine-extracted, so no detailed claims are attributed to it"},
+    {"url": "https://rpc.cfainstitute.org/blogs/enterprising-investor/2026/decoding-cta-allocations-by-trend-horizon", "whatItSupported": "CFA Institute Enterprising Investor - decomposition of CTA returns into trend horizons; supports treating trend/momentum as an industrialized systematic factor"},
+    {"url": "https://www.clearyenforcementwatch.com/2024/10/sec-2025-exam-priorities-private-funds-cyber-crypto-and-new-rule-compliance/", "whatItSupported": "SEC Division of Examinations priorities - crypto custody practices, wallet reviews, valuation procedures, standards of conduct for advisers"},
+    {"url": "https://www.caisgroup.com/articles/an-introduction-to-multi-strategy-hedge-funds", "whatItSupported": "Multi-strategy fund operating model: decentralized pods within centralized risk controls"},
+    {"url": "https://hedgeco.net/news/03/2026/the-dominance-of-multi-strategy-pod-shop-hedge-funds.html", "whatItSupported": "Practice literature on pod-shop structures and centralized vs decentralized research/risk (Citadel vs Millennium contrast)"},
+    {"url": "https://portfoliooptimizationbook.com/book/8.3-dangers-backtesting.html", "whatItSupported": "Backtesting pitfalls and out-of-sample discipline (look-ahead, survivorship, data snooping) - textbook treatment corroborating standards list"},
+    {"url": "https://www.sciencedirect.com/science/article/abs/pii/S0950705124011110", "whatItSupported": "Comparison of out-of-sample testing methods: combinatorial purged CV vs walk-forward; supports the 'validation methodology varies' disagreement note"}
+  ],
+  "confidence": "medium-high: quant research standards and model-risk governance rest on primary regulatory texts (SR 11-7, Marketing Rule, RTS 6) - high confidence; crypto research controls rest on strong industry-body material (IOSCO, FSB, BIS, AIMA, SBAI) - medium-high; organizational placement of technical analysis is a well-signposted judgment call with thinner primary sourcing - medium"
+}

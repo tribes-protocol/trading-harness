@@ -1,0 +1,466 @@
+{
+  "provider": "Moralis",
+  "reviewDate": "undefined",
+  "reviewDateNote": "Environment clock at time of documentation fetch: 2026-07-17. All pages fetched live from official Moralis properties on that date.",
+  "officialDocsUrl": "https://docs.moralis.com",
+  "apiVersion": "EVM Web3 Data API: v2.2 (base path /api/v2.2). Multichain DeFi API: v1 (api.moralis.com/v1). Solana Data API: no version segment in documented paths (solana-gateway.moralis.io).",
+  "versioningPolicy": {
+    "documentedPolicyPage": "not documented (no formal versioning/deprecation policy page found in the current docs index at https://docs.moralis.com/llms.txt)",
+    "practice": "Deprecations and removals are announced via the changelog (https://docs.moralis.com/changelog.md). Recent examples: Cortex API and legacy Data API endpoints (/discovery/*, /volume/*, /market-data/*, legacy ERC20/sniper endpoints) removed 2026-06-04; Fantom mainnet removed 2026-05-29; five testnets removed 2026-06-15; Solana token-holders and discovery endpoints and Solana Token Score support sunset 2026-07-31.",
+    "versionCheckEndpoint": "GET /web3-api-version (documented at https://docs.moralis.com/web3-data-api/evm/reference/web3-api-version)"
+  },
+  "authentication": {
+    "mechanism": "API key",
+    "headerName": "X-API-Key",
+    "location": "HTTP request header on every call",
+    "keyProvisioning": "Sign up for a free Moralis account at admin.moralis.com/register; copy the key from the Data APIs section of the dashboard (https://docs.moralis.com/web3-data-api/evm/get-your-api-key)",
+    "oauth": "not documented for the Data API (a separate Auth API product exists for end-user wallet sign-in via EIP-4361, unrelated to API-key auth)",
+    "notes": "Header confirmed verbatim on multiple endpoint reference pages (EVM token price, wallet net worth, token swaps, Solana portfolio). Docs also confirm 'API Keys ... provided as an X-API-Key header'."
+  },
+  "baseUrls": [
+    {
+      "url": "https://deep-index.moralis.io/api/v2.2",
+      "scope": "EVM Web3 Data API (wallet, token, price, NFT, blockchain, universal token search/analytics/trending endpoints)"
+    },
+    {
+      "url": "https://solana-gateway.moralis.io",
+      "scope": "Solana Data API (token price, wallet portfolio/balances, NFTs)"
+    },
+    {
+      "url": "https://api.moralis.com",
+      "scope": "Multichain DeFi API (v1 paths, e.g. /v1/wallets/{walletAddress}/defi/positions)"
+    }
+  ],
+  "planSpecificHosts": "none documented; all plan tiers use the same hosts",
+  "endpoints": [
+    {
+      "name": "Get Wallet History",
+      "method": "GET",
+      "path": "/wallets/{address}/history",
+      "baseUrl": "https://deep-index.moralis.io/api/v2.2",
+      "requiredParams": ["address (path)"],
+      "optionalParams": ["chain (default eth)", "from_block", "to_block", "from_date", "to_date", "include_internal_transactions", "nft_metadata", "order (ASC|DESC, default DESC)", "limit", "cursor"],
+      "responseTopLevel": ["page", "page_size", "cursor", "result (array of decoded, categorized transactions)"],
+      "resultItemFields": ["hash", "nonce", "transaction_index", "from_address", "to_address", "value", "gas", "gas_price", "input", "block_timestamp", "block_number", "block_hash", "receipt_cumulative_gas_used", "receipt_gas_used", "receipt_status", "receipt_contract_address", "category", "summary", "method_label", "possible_spam", "transaction_fee", "from_address_entity", "from_address_entity_logo", "from_address_label", "to_address_entity", "to_address_entity_logo", "to_address_label", "internal_transactions", "contract_interactions", "nft_transfers", "erc20_transfers", "native_transfers", "logs"],
+      "erc20TransferItemFields": ["token_name", "token_symbol", "token_logo", "token_decimals", "address", "from_address", "to_address", "value", "value_formatted", "log_index", "possible_spam", "verified_contract", "block_timestamp"],
+      "nativeTransferItemFields": ["from_address", "to_address", "value", "value_formatted", "direction", "internal_transaction", "token_symbol", "token_logo"],
+      "pagination": "cursor",
+      "cuCost": "150 CU per request",
+      "freshness": "near real-time indexed onchain data (platform p50 < 4s block freshness); mainnet only",
+      "sourceUrl": "https://docs.moralis.com/data-api/evm/wallet/wallet-history.md"
+    },
+    {
+      "name": "Get Token Balances with Prices by Wallet",
+      "method": "GET",
+      "path": "/wallets/{address}/tokens",
+      "baseUrl": "https://deep-index.moralis.io/api/v2.2",
+      "requiredParams": ["address (path)"],
+      "optionalParams": ["chain (default eth)", "to_block (historical balances)", "token_addresses (max 10)", "exclude_spam", "exclude_unverified_contracts", "exclude_native", "max_token_inactivity", "min_pair_side_liquidity_usd", "limit", "cursor"],
+      "responseTopLevel": ["page", "page_size", "block_number", "cursor", "result"],
+      "resultItemFields": ["token_address", "name", "symbol", "logo", "thumbnail", "decimals", "balance", "possible_spam", "verified_contract", "usd_price", "usd_price_24hr_percent_change", "usd_price_24hr_usd_change", "usd_value_24hr_usd_change", "usd_value", "portfolio_percentage", "balance_formatted", "native_token", "total_supply", "total_supply_formatted", "percentage_relative_to_total_supply"],
+      "pagination": "cursor",
+      "cuCost": "100 CU per request",
+      "freshness": "near real-time; historical point-in-time via to_block; includes 24h price change metrics; mainnet only",
+      "sourceUrl": "https://docs.moralis.com/data-api/evm/wallet/token-balances.md"
+    },
+    {
+      "name": "Get Wallet Net Worth",
+      "method": "GET",
+      "path": "/wallets/{address}/net-worth",
+      "baseUrl": "https://deep-index.moralis.io/api/v2.2",
+      "requiredParams": ["address (path)"],
+      "optionalParams": ["chains (array, default eth)", "exclude_spam", "exclude_unverified_contracts", "max_token_inactivity", "min_pair_side_liquidity_usd"],
+      "responseTopLevel": ["total_networth_usd", "chains (per-chain breakdown)", "unsupported_chain_ids", "unavailable_chains"],
+      "pagination": "none",
+      "cuCost": "250 CU per chain queried",
+      "freshness": "near real-time snapshot valuation; mainnet only",
+      "sourceUrl": "https://docs.moralis.com/data-api/evm/wallet/net-worth.md"
+    },
+    {
+      "name": "Get Wallet PnL Summary",
+      "method": "GET",
+      "path": "/wallets/{address}/profitability/summary",
+      "baseUrl": "https://deep-index.moralis.io/api/v2.2",
+      "requiredParams": ["address (path)"],
+      "optionalParams": ["days ('all'|'7'|'30'|'60'|'90', default 'all')", "chain"],
+      "responseTopLevel": ["total_count_of_trades", "total_trade_volume", "total_realized_profit_usd", "total_realized_profit_percentage", "total_buys", "total_sells", "total_sold_volume_usd", "total_bought_volume_usd"],
+      "pagination": "none",
+      "cuCost": "30 CU",
+      "freshness": "derived metric; docs state derived metrics (holders, analytics, PnL) 'may lag slightly during periods of high activity'; mainnet only, ~22 chains supported",
+      "sourceUrl": "https://docs.moralis.com/data-api/evm/wallet/wallet-pnl-summary.md"
+    },
+    {
+      "name": "Get ERC20 Token Price",
+      "method": "GET",
+      "path": "/erc20/{address}/price",
+      "baseUrl": "https://deep-index.moralis.io/api/v2.2",
+      "requiredParams": ["address (path, token contract)"],
+      "optionalParams": ["chain (default eth)", "exchange (DEX factory name/address)", "to_block (historical price)", "max_token_inactivity", "min_pair_side_liquidity_usd", "include (deprecated)"],
+      "responseTopLevel": ["tokenName", "tokenSymbol", "tokenLogo", "tokenDecimals", "nativePrice", "usdPrice", "usdPriceFormatted", "24hrPercentChange", "usdPrice24h", "usdPrice24hrUsdChange", "usdPrice24hrPercentChange", "exchangeAddress", "exchangeName", "tokenAddress", "pairAddress", "toBlock", "possibleSpam", "verifiedContract", "pairTotalLiquidityUsd", "securityScore"],
+      "pagination": "none",
+      "cuCost": "50 CU",
+      "freshness": "DEX-derived onchain price, near real-time; historical via to_block; mainnet only",
+      "sourceUrl": "https://docs.moralis.com/web3-data-api/evm/reference/get-token-price"
+    },
+    {
+      "name": "Get Multiple ERC20 Token Prices (Batch)",
+      "method": "POST",
+      "path": "/erc20/prices",
+      "baseUrl": "https://deep-index.moralis.io/api/v2.2",
+      "requiredParams": ["body: { tokens: [ { token_address, exchange?, to_block? } ] }"],
+      "optionalParams": ["chain (query, default eth)", "max_token_inactivity", "min_pair_side_liquidity_usd"],
+      "responseTopLevel": ["array of token price objects (same shape as single-token price endpoint)"],
+      "pagination": "none",
+      "cuCost": "100 CU",
+      "batchLimit": "schema limits body to 30 tokens per request; prose description says 'up to 100' — documented inconsistency",
+      "freshness": "DEX-derived onchain prices, near real-time; historical via to_block; mainnet only",
+      "sourceUrl": "https://docs.moralis.com/data-api/evm/token/prices/token-prices-batch.md"
+    },
+    {
+      "name": "Get OHLCV by Pair Address",
+      "method": "GET",
+      "path": "/pairs/{address}/ohlcv",
+      "baseUrl": "https://deep-index.moralis.io/api/v2.2",
+      "requiredParams": ["address (path, DEX pair address)", "timeframe (1s|10s|30s|1min|5min|10min|30min|1h|4h|12h|1d|1w|1M)", "currency (usd|native)", "fromDate", "toDate"],
+      "optionalParams": ["chain (default eth)", "limit", "cursor"],
+      "responseTopLevel": ["page", "cursor", "pairAddress", "timeframe", "currency", "result (timestamp, open, high, low, close, volume, trades)"],
+      "pagination": "cursor",
+      "cuCost": "150 CU per request",
+      "freshness": "DEX pair candles down to 1-second granularity; historical depth not specified in docs; mainnet only",
+      "sourceUrl": "https://docs.moralis.com/data-api/evm/token/prices/ohlc.md"
+    },
+    {
+      "name": "Get ERC20 Token Metadata",
+      "method": "GET",
+      "path": "/erc20/metadata",
+      "baseUrl": "https://deep-index.moralis.io/api/v2.2",
+      "requiredParams": ["addresses (array, max 10)"],
+      "optionalParams": ["chain (default eth)"],
+      "responseTopLevel": ["address", "name", "symbol", "decimals", "logo", "total_supply", "total_supply_formatted", "possible_spam", "verified_contract", "created_at", "categories", "market_cap", "circulating_supply"],
+      "pagination": "none",
+      "cuCost": "10 CU per request",
+      "freshness": "reference data; mainnet only",
+      "sourceUrl": "https://docs.moralis.com/data-api/evm/token/metadata/token-metadata.md"
+    },
+    {
+      "name": "Get ERC20 Token Owners (Holders)",
+      "method": "GET",
+      "path": "/erc20/{token_address}/owners",
+      "baseUrl": "https://deep-index.moralis.io/api/v2.2",
+      "requiredParams": ["token_address (path)"],
+      "optionalParams": ["chain (default eth)", "limit", "cursor", "order (ASC|DESC, default DESC)"],
+      "responseTopLevel": ["page", "page_size", "cursor", "total_supply", "result (owner_address, owner_address_label, balance, balance_formatted, usd_value, is_contract, percentage_relative_to_total_supply, entity, entity_logo)"],
+      "pagination": "cursor",
+      "cuCost": "50 CU per request",
+      "freshness": "derived holder data; docs note derived metrics may lag during high activity; mainnet only",
+      "sourceUrl": "https://docs.moralis.com/data-api/evm/token/holders/token-holders.md"
+    },
+    {
+      "name": "Get Swaps by Token Address",
+      "method": "GET",
+      "path": "/erc20/{address}/swaps",
+      "baseUrl": "https://deep-index.moralis.io/api/v2.2",
+      "requiredParams": ["address (path, token)"],
+      "optionalParams": ["chain (default eth)", "cursor", "limit", "order (default DESC)", "fromBlock", "toBlock", "fromDate", "toDate", "transactionTypes (buy|sell)"],
+      "responseTopLevel": ["page", "page_size", "cursor", "result (transactionHash, transactionType, blockTimestamp, walletAddress, entity, pairAddress, exchangeName, bought, sold, baseQuotePrice, totalValueUsd, ...)"],
+      "pagination": "cursor",
+      "cuCost": "50 CU per request",
+      "freshness": "near real-time DEX trade tape; mainnet only",
+      "sourceUrl": "https://docs.moralis.com/data-api/evm/token/swaps/token-swaps.md"
+    },
+    {
+      "name": "Get Token Pairs by Address",
+      "method": "GET",
+      "path": "/erc20/{token_address}/pairs",
+      "baseUrl": "https://deep-index.moralis.io/api/v2.2",
+      "requiredParams": ["token_address (path)", "chain (query; eth, polygon, bsc, avalanche, arbitrum, base, optimism, etc.)"],
+      "optionalParams": ["limit", "cursor"],
+      "responseTopLevel": ["pairs (array)", "cursor", "page_size", "page"],
+      "pairItemFields": ["exchange_address", "exchange_name", "exchange_logo", "pair_label", "pair_address", "usd_price (number)", "usd_price_24hr", "usd_price_24hr_percent_change", "usd_price_24hr_usd_change", "liquidity_usd (number)", "inactive_pair (boolean; pairs without 24h volume are set inactive)", "base_token (string)", "quote_token (string)", "volume_24h_native", "volume_24h_usd", "pair (array of token objects: token_address, token_name, token_symbol, token_logo, token_decimals, pair_token_type, liquidity_usd)"],
+      "pagination": "cursor",
+      "cuCost": "50 CU per request",
+      "freshness": "DEX pair state, near real-time; mainnet only (testnets unsupported)",
+      "sourceUrl": "https://docs.moralis.com/data-api/evm/token/swaps/token-pairs.md"
+    },
+    {
+      "name": "Get Token Analytics",
+      "method": "GET",
+      "path": "/tokens/{tokenAddress}/analytics",
+      "baseUrl": "https://deep-index.moralis.io/api/v2.2",
+      "requiredParams": ["tokenAddress (path)"],
+      "optionalParams": ["chain (default eth; supports EVM chains plus Solana)"],
+      "responseTopLevel": ["chainId", "categoryId", "totalBuyVolume", "totalSellVolume", "totalBuyers", "totalSellers", "totalBuys", "totalSells", "uniqueWallets", "pricePercentChange", "usdPrice", "totalLiquidity", "totalFullyDilutedValuation"],
+      "pagination": "none",
+      "cuCost": "80 CU per call",
+      "planRestriction": "Pro plan or above (premium endpoint)",
+      "freshness": "volume metrics broken down at 5m/1h/6h/24h intervals; derived metrics may lag under load; mainnet only",
+      "sourceUrl": "https://docs.moralis.com/data-api/universal/token/analytics/token-analytics.md"
+    },
+    {
+      "name": "Search Tokens",
+      "method": "GET",
+      "path": "/tokens/search",
+      "baseUrl": "https://deep-index.moralis.io/api/v2.2",
+      "requiredParams": ["query"],
+      "optionalParams": ["chains", "limit", "isVerifiedContract (default false)", "sortBy (volume1hDesc|volume24hDesc|liquidityDesc|marketCapDesc)", "boostVerifiedContracts (default true)"],
+      "responseTopLevel": ["total", "result (tokenAddress, chainId, name, symbol, usdPrice, marketCap, volumeUsd, securityScore, totalHolders, totalLiquidityUsd, ...)"],
+      "pagination": "limit-based page size documented; cursor not documented for this endpoint",
+      "cuCost": "150 CU",
+      "planRestriction": "Pro plan or above (premium endpoint)",
+      "freshness": "cross-chain search over near real-time indexed token data; mainnet only",
+      "sourceUrl": "https://docs.moralis.com/data-api/universal/token/search/token-search.md"
+    },
+    {
+      "name": "Get Trending Tokens",
+      "method": "GET",
+      "path": "/tokens/trending",
+      "baseUrl": "https://deep-index.moralis.io/api/v2.2",
+      "requiredParams": [],
+      "optionalParams": ["chain (default eth)", "limit"],
+      "responseTopLevel": ["array of token objects: chainId, tokenAddress, name, symbol, uniqueName, decimals, logo, usdPrice, createdAt, marketCap, liquidityUsd, holders, pricePercentChange (1h/4h/12h/24h), totalVolume, transactions, buyTransactions, sellTransactions, buyers, sellers"],
+      "pagination": "limit only",
+      "cuCost": "150 CU per request",
+      "planRestriction": "Pro plan or above (premium endpoint)",
+      "freshness": "windowed momentum metrics (1h/4h/12h/24h); mainnet focus",
+      "sourceUrl": "https://docs.moralis.com/data-api/universal/token/trending-tokens.md"
+    },
+    {
+      "name": "Get DeFi Positions by Wallet (multichain)",
+      "method": "GET",
+      "path": "/v1/wallets/{walletAddress}/defi/positions",
+      "baseUrl": "https://api.moralis.com",
+      "requiredParams": ["walletAddress (path)"],
+      "optionalParams": ["chains (array)", "limit (default 25, max 100)", "cursor"],
+      "responseTopLevel": ["meta (MultiChainResponseMetaDto)", "result (array of UniversalDefiPositionDto; position labels: lending, liquidity, staking, farming, perps, vault, yield, vesting, other)", "cursor (nullable)"],
+      "pagination": "cursor",
+      "cuCost": "5000 CU per request",
+      "planRestriction": "Premium endpoint. Endpoint page states 'Pro plan or above'; the premium-endpoints index page lists DeFi API under 'Starter Plan Required'; the pricing page says DeFi API is available starting at Starter tier — documented inconsistency, verify with vendor.",
+      "freshness": "DeFi position state across 5,000+ protocols (per 2026-04-22 changelog: '96% of EVM DeFi'); mainnet only",
+      "sourceUrl": "https://docs.moralis.com/data-api/evm/wallet/wallet-positions.md"
+    },
+    {
+      "name": "Get NFTs by Wallet",
+      "method": "GET",
+      "path": "not captured — the current docs page rendered incompletely via fetch; older docs used /{address}/nft but that path was not verifiable on the current page",
+      "baseUrl": "https://deep-index.moralis.io/api/v2.2",
+      "requiredParams": ["unknown (page rendered incompletely)"],
+      "optionalParams": ["unknown (page rendered incompletely)"],
+      "responseTopLevel": ["unknown (page rendered incompletely)"],
+      "pagination": "unknown for this page; platform standard is cursor",
+      "cuCost": "50 CU (static cost, confirmed on page)",
+      "freshness": "mainnet only (confirmed on page)",
+      "sourceUrl": "https://docs.moralis.com/data-api/evm/nft/collections/nfts-by-wallet.md"
+    },
+    {
+      "name": "Get Token Price (Solana)",
+      "method": "GET",
+      "path": "/token/{network}/{address}/price",
+      "baseUrl": "https://solana-gateway.moralis.io",
+      "requiredParams": ["network (mainnet|devnet)", "address (token mint)"],
+      "optionalParams": [],
+      "responseTopLevel": ["tokenAddress", "pairAddress", "nativePrice", "usdPrice", "exchangeAddress", "exchangeName", "logo", "name", "symbol", "score (deprecated)", "usdPrice24h", "usdPrice24hrUsdChange", "usdPrice24hrPercentChange", "isVerifiedContract"],
+      "pagination": "none",
+      "cuCost": "10 CU",
+      "freshness": "DEX-derived onchain price, near real-time",
+      "sourceUrl": "https://docs.moralis.com/data-api/solana/price/token-price.md"
+    },
+    {
+      "name": "Get Wallet Portfolio (Solana)",
+      "method": "GET",
+      "path": "/account/{network}/{address}/portfolio",
+      "baseUrl": "https://solana-gateway.moralis.io",
+      "requiredParams": ["network (mainnet|devnet)", "address"],
+      "optionalParams": ["nftMetadata (default false)", "mediaItems (default false)", "excludeSpam (default false)"],
+      "responseTopLevel": ["nativeBalance (solana/lamports)", "nfts (SPL NFTs)", "tokens (SPL token balances)"],
+      "nativeBalanceFields": ["solana", "lamports"],
+      "tokenItemFields": ["associatedTokenAddress", "mint", "name", "symbol", "tokenStandard", "score (deprecated)", "amount", "amountRaw", "decimals", "logo", "isVerifiedContract", "possibleSpam"],
+      "pagination": "none documented",
+      "cuCost": "10 CU per request",
+      "freshness": "near real-time account state",
+      "sourceUrl": "https://docs.moralis.com/data-api/solana/wallet/portfolio.md"
+    }
+  ],
+  "coverage": {
+    "assetClasses": ["crypto only: onchain tokens (ERC20/SPL), NFTs, native coins, DeFi positions, DEX market data. NO equities, fixed income, FX, commodities, funds, or macro data."],
+    "chains": {
+      "count": "27 networks listed on the supported-chains page (docs root markets '30+')",
+      "evmMainnets": ["Ethereum (0x1)", "Polygon (0x89)", "BSC (0x38)", "Arbitrum (0xa4b1)", "Base (0x2105)", "Optimism (0xa)", "Linea (0xe708)", "Avalanche (0xa86a)", "Cronos (0x19)", "Gnosis (0x64)", "Chiliz (0x15b38)", "Moonbeam (0x504)", "Flow (0x2eb)", "Ronin (0x7e4)", "Lisk (0x46f)", "Pulsechain (0x171)", "Sei (0x531)", "Monad (0x8f)"],
+      "nonEvm": ["Solana (mainnet + devnet, via solana-gateway.moralis.io)", "Bitcoin (mainnet; Bitcoin Data API launched 2026-05-27 per changelog)"],
+      "testnets": ["Ethereum Sepolia", "Polygon Amoy", "BSC Testnet", "Base Sepolia", "Moonriver", "Flow Testnet", "Ronin Saigon", "Sei Testnet"],
+      "caveat": "Docs: 'chain support may vary by feature.' Full-featured chains (Ethereum, Polygon, Base, Sei, Monad) support all APIs; testnets and specialized chains exclude DeFi, PnL and NFT trade data. Most data endpoints are mainnet-only."
+    },
+    "marketsExchanges": "DEXes only (prices/OHLCV/swaps are derived from onchain DEX pairs; 'exchange' parameter = DEX factory). NFT marketplace data (OpenSea, Blur, etc.) per docs index. No centralized-exchange or traditional-market coverage.",
+    "instrumentTypes": ["ERC20/SPL fungible tokens", "NFTs (ERC721/1155, SPL)", "DEX pairs", "DeFi positions (lending, liquidity, staking, farming, perps, vault, yield, vesting)"],
+    "geographies": "not applicable (global public blockchains)",
+    "otherProducts": ["Streams (real-time webhooks for EVM/Solana/Bitcoin)", "Data Feeds (managed indexing pipelines to ClickHouse/Postgres/MySQL, early access)", "RPC Nodes (JSON-RPC for 16+ networks)"]
+  },
+  "freshness": {
+    "documentedClaims": "Performance & Reliability page: 'Blocks, transactions, and transfers are indexed near real time'; block-data freshness p50 < 4s, p90 < 8s; API latency p50 < 50ms, p90 < 500ms, p95 < 1s; 'Derived metrics (holders, analytics, PnL) may lag slightly during periods of high activity.'",
+    "classification": "near real-time (seconds-level) for raw onchain data; derived/analytic datasets may lag; no hard real-time guarantee or SLA below Enterprise tier",
+    "streams": "Streams product delivers real-time webhooks for onchain events (separate product from the request/response Data API)"
+  },
+  "historicalDepth": {
+    "walletHistory": "Marketed as the 'entire history of a wallet' (full decoded transaction history); no explicit genesis-depth statement per chain found in reference docs",
+    "prices": "historical token prices via to_block parameter (block-level granularity)",
+    "ohlcv": "timeframes from 1s to 1M documented; maximum historical lookback NOT specified in documentation",
+    "balances": "historical point-in-time balances via to_block on /wallets/{address}/tokens",
+    "overall": "per-dataset maximum historical depth is not documented — treat as unknown"
+  },
+  "pagination": {
+    "mechanism": "cursor-based, exclusively, for list endpoints: first request returns result + cursor; pass cursor back until it is null",
+    "constraints": "'limit can only be set on the initial request. You can't change the limit mid-pagination'; each pagination run is a stable point-in-time snapshot (no reshuffling/duplicates from new data)",
+    "notDocumented": ["default/max limit values (vary per endpoint)", "cursor expiration timeframes", "max total results per session"],
+    "sourceUrl": "https://docs.moralis.com/data-api/resources/pagination.md"
+  },
+  "rateLimits": {
+    "billingModel": "Compute Units (CU): each request costs a per-endpoint CU amount (e.g. token metadata 10 CU, token price 50 CU, wallet history 150 CU, DeFi positions 5000 CU); some endpoints charge per chain queried (e.g. net worth 250 CU/chain). CUs deducted from plan quota; overage billed on paid plans.",
+    "throughputPerPlan": {
+      "Free": "40 requests/s; 40,000 CU per day quota",
+      "Starter ($49/mo)": "40 requests/s; 2,000,000 CU per month; overage $11.25 per million CU",
+      "Pro ($199/mo)": "80 requests/s; 100,000,000 CU per month; overage $5 per million CU",
+      "Business ($490/mo)": "200 requests/s; 500,000,000 CU per month; overage $4 per million CU",
+      "Enterprise": "custom throughput and quota"
+    },
+    "window": "limits evaluated over a rolling 4-second window, not per exact second (brief bursts allowed within overall throughput)",
+    "exceeded": "429 Too Many Requests",
+    "backoffGuidance": "not documented (docs only advise staying within plan limits or upgrading)",
+    "cuPerSecondNote": "the Compute Units concept page also describes rate limits 'measured in CUs per second (CU/s)', while the rate-limits page states requests/s figures; per-plan CU/s numbers are not published — documented ambiguity"
+  },
+  "errors": {
+    "statusCodes": {
+      "200": "Everything worked as expected.",
+      "201": "Resource has been successfully created or added to a queue.",
+      "202": "Resource has been successfully created or added to a queue.",
+      "400": "Bad request, often due to missing or malformed parameter(s).",
+      "401": "Missing or invalid API key.",
+      "404": "Resource not found (for example pair or token not found for a specific chain).",
+      "429": "Too many requests. Consider upgrading your plan.",
+      "500": "Something went wrong on Moralis' end."
+    },
+    "errorBodySchema": "not documented (response-codes page does not specify error body field names)",
+    "retryBackoffGuidance": "not documented",
+    "sourceUrl": "https://docs.moralis.com/data-api/resources/response-codes.md"
+  },
+  "entitlements": {
+    "freeTier": "Core Data API access with 40k CU/day and 40 rps; DeFi API excluded; premium endpoints excluded; attribution required",
+    "starterRequired": ["DeFi API: GET /v1/wallets/{walletAddress}/defi/summary (5000 CU), GET /v1/wallets/{walletAddress}/defi/positions (5000 CU), GET /v1/wallets/{walletAddress}/defi/{protocol}/positions (5000 CU) — per premium-endpoints page; note the wallet-positions endpoint page itself says 'Pro plan or above' (inconsistency)"],
+    "proRequired": ["Wallet Insights: GET /wallets/{address}/insight (100 CU)", "Token Score: GET /tokens/{tokenAddress}/score (100 CU)", "Token Score Timeseries: GET /tokens/{tokenAddress}/score/historical (150 CU)", "Token Analytics: GET /tokens/{tokenAddress}/analytics (80 CU)", "Token Analytics Batch: POST /tokens/analytics (150 CU)", "Token Analytics Timeseries: POST /tokens/analytics/timeseries (200 CU)", "Token Search: GET /tokens/search (150 CU)", "Token Categories: GET /tokens/categories (10 CU)", "Trending Tokens: GET /tokens/trending (150 CU)"],
+    "tierPerks": ["NFT metadata refresh: Pro standard queue / Business priority / Enterprise first priority", "Crypto price widget: Pro with branding / Business+ without branding", "Slack/Telegram support channel: Pro and above", "Attribution: required on Free/Starter/Pro; not required on Business/Enterprise"]
+  },
+  "sdks": [
+    {
+      "language": "JavaScript/TypeScript (Node.js)",
+      "package": "moralis (npm)",
+      "version": "2.27.2 (latest on npm at review time)",
+      "maintainer": "MoralisWeb3 (official)",
+      "maintenanceStatus": "published by vendor; current release cadence not verified from docs",
+      "notes": "legacy package moralis-v1 also exists on npm; the restructured docs index (llms.txt) no longer features a central SDK page — SDK setup pages live under legacy docs paths (docs.moralis.com/web3-data-api/evm/moralis-sdk)"
+    },
+    {
+      "language": "Python",
+      "package": "moralis (PyPI)",
+      "maintainer": "MoralisWeb3 (official, github.com/MoralisWeb3/Moralis-Python-SDK)",
+      "maintenanceStatus": "published by vendor; current release cadence not verified from docs"
+    }
+  ],
+  "licensing": {
+    "termsUrl": "https://moralis.com/terms/",
+    "storageCaching": "not explicitly addressed in the General Terms & Conditions — no clause found on caching or storing API responses",
+    "redistribution": "Terms s.1.1: 'The Client may not transfer, sub-licence or in any other way provide, permit or utilise the Services for use by a third party.' No explicit clause on redistributing retrieved data itself; treat redistribution/resale as restricted pending vendor clarification",
+    "attribution": "Pricing page: attribution required on Free, Starter and Pro tiers; not required on Business and Enterprise. Exact attribution format not documented on the pages reviewed",
+    "ip": "Moralis retains all IP in the Services; access is licensed, not sold; client retains ownership of data it uploads",
+    "sla": "Best-efforts availability only (s.1.3, 'in its sole discretion ... reasonable measures'); no outage compensation; Enterprise customers get a 24/7/365 SLA per the Performance & Reliability page",
+    "termination": "either party on 90 days' notice (s.13.2); immediate termination for material breach (s.14.1)",
+    "dpa": "Data Processing Agreement published at https://moralis.com/dpa/"
+  },
+  "limitations": [
+    "Crypto/onchain data only — cannot serve equities, fixed income, FX, commodities, funds or macro datasets for a multi-asset platform",
+    "Prices, OHLCV and swaps are DEX-derived onchain data, not consolidated CEX/exchange tape; thin-liquidity pairs can produce unrepresentative prices (docs expose min_pair_side_liquidity_usd, max_token_inactivity, possibleSpam, verifiedContract, securityScore as mitigations)",
+    "Most data endpoints are mainnet-only; chain support varies by feature (DeFi, PnL, NFT-trade data absent on testnets and some chains)",
+    "Derived metrics (holders, analytics, PnL) 'may lag slightly during periods of high activity' per official docs",
+    "Maximum historical depth for OHLCV and other datasets is not documented",
+    "No documented error response body schema and no documented retry/backoff guidance",
+    "Documented inconsistencies: batch price limit (30 in schema vs 'up to 100' in prose); DeFi endpoint plan gating (Starter per premium-endpoints/pricing pages vs 'Pro plan or above' on the endpoint page); rate limits described both as requests/s and as CU/s",
+    "Active endpoint churn: Cortex API and legacy discovery/volume/market-data endpoints removed 2026-06-04; Fantom removed 2026-05-29; Solana token-holders/discovery endpoints and Solana Token Score sunset 2026-07-31 (2 weeks after review date); no formal deprecation-policy page — changelog monitoring is mandatory",
+    "Spam token contamination is a first-class problem (spam filters are opt-in flags, not defaults)",
+    "DeFi endpoints cost 5,000 CU per call — at Starter's 2M CU/month that is only ~400 calls/month; CU budgeting is essential",
+    "Attribution required on all tiers below Business",
+    "No compensation for outages below Enterprise; best-efforts availability only",
+    "Free tier quota is daily (40k CU/day), not monthly, and excludes DeFi API and premium endpoints"
+  ],
+  "institutionalFit": {
+    "primary": [
+      "Onchain/crypto wallet intelligence: full decoded wallet history, multi-chain balances, net worth, PnL (research on fund/whale wallets, flow analysis)",
+      "Token due diligence: metadata, holder concentration with entity labels, security/spam scores, analytics",
+      "DEX market microstructure: swap tape, pair OHLCV down to 1s bars, liquidity",
+      "DeFi position monitoring across 5,000+ EVM protocols (Starter/Pro gating applies)",
+      "Cross-chain token screening/discovery (search, trending) on Pro+"
+    ],
+    "fallback": [
+      "Crypto asset pricing for display/valuation — DEX-derived; for benchmark or consolidated pricing of major assets, prefer a market-data aggregator as primary and use Moralis as fallback/onchain cross-check",
+      "NFT market data (floor prices, trades) — usable but page-level verification of NFT endpoints was incomplete in this review"
+    ],
+    "notSuitable": [
+      "Any non-crypto asset class (equities, FI, FX, commodities, funds, macro)",
+      "Regulated/consolidated market data use cases requiring exchange-licensed feeds"
+    ],
+    "hardConstraints": [
+      "Never label Moralis data as exchange real-time consolidated tape; classify as near real-time onchain (p50 <4s indexing) with derived metrics potentially lagging",
+      "Attribution must be displayed on Free/Starter/Pro plans",
+      "Premium endpoints (search, trending, analytics, insights, score) require Pro+; DeFi API requires Starter+ (endpoint page says Pro+ — resolve before contracting)",
+      "Do not redistribute or sublicense the service/data to third parties per Terms s.1.1 without an Enterprise agreement",
+      "Budget CU consumption (esp. 5,000 CU DeFi calls, 250 CU/chain net worth) and respect the rolling 4s window at plan RPS",
+      "Subscribe to the changelog: endpoints are actively sunset with short lead times (e.g. Solana holders/discovery sunset 2026-07-31)"
+    ]
+  },
+  "sourcesConsulted": [
+    { "url": "https://docs.moralis.com/", "whatItVerified": "Docs root; product suite (Data API, Streams, Data Feeds); 30+ chains claim; docs index at /llms.txt" },
+    { "url": "https://docs.moralis.com/llms.txt", "whatItVerified": "Full documentation structure and exact URLs for endpoint reference, resources, Solana, premium endpoints, changelog; absence of SDK/licensing pages in the current index" },
+    { "url": "https://docs.moralis.com/web3-data-api/evm/api-reference", "whatItVerified": "EVM API categories: Wallet, Token, NFT, Price, DeFi, Blockchain" },
+    { "url": "https://docs.moralis.com/web3-data-api/evm/get-your-api-key", "whatItVerified": "API key provisioning flow via admin.moralis.com dashboard" },
+    { "url": "https://docs.moralis.com/web3-data-api/evm/reference/compute-units-cu", "whatItVerified": "CU billing model definition, per-chain dynamic CU pricing, CU/s rate-limit concept, overage concept" },
+    { "url": "https://docs.moralis.com/web3-data-api/evm/reference/rate-limits", "whatItVerified": "Throughput per plan (Free/Starter 40, Pro 80, Business 200 rps, Enterprise custom); rolling 4-second window; 429 behavior; absence of backoff guidance" },
+    { "url": "https://moralis.com/pricing", "whatItVerified": "Plan names/prices, CU quotas (Free 40k/day, Starter 2M/mo, Pro 100M/mo, Business 500M/mo), overage rates, attribution requirements per tier, tier feature gating (DeFi API from Starter, premium endpoints from Pro)" },
+    { "url": "https://docs.moralis.com/web3-data-api/evm/reference/get-token-price", "whatItVerified": "Base URL https://deep-index.moralis.io/api/v2.2; X-API-Key header; token price endpoint spec, params, response fields, 50 CU, to_block historical" },
+    { "url": "https://docs.moralis.com/data-api/evm/wallet/wallet-history.md", "whatItVerified": "Wallet history endpoint spec, cursor pagination, 150 CU, mainnet-only. Re-fetched 2026-07-17: per-item transaction fields plus nested erc20_transfers/native_transfers/nft_transfers item fields; chain param accepts names or hex ids (eth, 0x1, polygon, ...)" },
+    { "url": "https://docs.moralis.com/data-api/evm/wallet/net-worth.md", "whatItVerified": "Net worth endpoint spec, 250 CU per chain, response fields" },
+    { "url": "https://docs.moralis.com/data-api/evm/wallet/token-balances.md", "whatItVerified": "Token balances with prices endpoint spec, 100 CU, to_block historical balances, cursor pagination. Re-fetched 2026-07-17: per-item result fields (token_address, balance, balance_formatted, usd_price, usd_value, native_token, possible_spam, verified_contract, ...)" },
+    { "url": "https://docs.moralis.com/data-api/evm/wallet/wallet-pnl-summary.md", "whatItVerified": "PnL summary endpoint spec, 30 CU, days windows, ~22 supported chains" },
+    { "url": "https://docs.moralis.com/data-api/evm/token/prices/token-prices-batch.md", "whatItVerified": "Batch price endpoint spec, POST body shape, 30-token schema limit vs 'up to 100' prose, 100 CU" },
+    { "url": "https://docs.moralis.com/data-api/evm/token/prices/ohlc.md", "whatItVerified": "OHLCV endpoint spec, timeframes 1s-1M, 150 CU, cursor pagination, historical depth unspecified" },
+    { "url": "https://docs.moralis.com/data-api/evm/token/holders/token-holders.md", "whatItVerified": "Token owners endpoint spec, 50 CU, entity labels, percentage of supply" },
+    { "url": "https://docs.moralis.com/data-api/evm/wallet/wallet-positions.md", "whatItVerified": "DeFi positions endpoint on api.moralis.com/v1, 5000 CU, 'Pro plan or above' premium designation, position type labels" },
+    { "url": "https://docs.moralis.com/data-api/evm/token/metadata/token-metadata.md", "whatItVerified": "Token metadata endpoint spec, 10 CU, max 10 addresses, market_cap/circulating_supply fields" },
+    { "url": "https://docs.moralis.com/data-api/evm/token/swaps/token-swaps.md", "whatItVerified": "Token swaps endpoint spec, 50 CU, buy/sell filter, cursor pagination" },
+    { "url": "https://docs.moralis.com/data-api/evm/token/swaps/token-pairs.md", "whatItVerified": "Get Token Pairs endpoint (GET /erc20/{token_address}/pairs): params, cursor pagination, 50 CU, mainnet-only, pair item fields incl. base_token/quote_token (strings), usd_price/liquidity_usd (numbers), nested pair token objects with pair_token_type (values not enumerated in schema, no example response published). Re-fetched 2026-07-17 for adapter implementation." },
+    { "url": "https://docs.moralis.com/data-api/universal/token/analytics/token-analytics.md", "whatItVerified": "Token analytics endpoint spec, 80 CU, Pro+ gating, 5m/1h/6h/24h windows, EVM+Solana chain param" },
+    { "url": "https://docs.moralis.com/data-api/universal/token/search/token-search.md", "whatItVerified": "Token search endpoint spec, 150 CU, Pro+ gating, sort options" },
+    { "url": "https://docs.moralis.com/data-api/universal/token/trending-tokens.md", "whatItVerified": "Trending tokens endpoint spec, 150 CU, Pro+ gating, response fields" },
+    { "url": "https://docs.moralis.com/data-api/evm/nft/collections/nfts-by-wallet.md", "whatItVerified": "NFTs-by-wallet CU cost (50 CU) and mainnet-only note; page rendered incompletely so path/params not captured" },
+    { "url": "https://docs.moralis.com/data-api/supported-chains.md", "whatItVerified": "27 supported networks with chain IDs, testnet list, 'chain support may vary by feature' caveat" },
+    { "url": "https://docs.moralis.com/data-api/resources/response-codes.md", "whatItVerified": "Status codes 200/201/202/400/401/404/429/500 with exact meanings; absence of error body schema and backoff guidance" },
+    { "url": "https://docs.moralis.com/data-api/resources/pagination.md", "whatItVerified": "Cursor-only pagination, limit fixed at first request, snapshot semantics" },
+    { "url": "https://docs.moralis.com/data-api/solana/overview.md", "whatItVerified": "Solana Data API positioning (Solana-native models) and relation to Universal API" },
+    { "url": "https://docs.moralis.com/data-api/solana/price/token-price.md", "whatItVerified": "Solana base URL https://solana-gateway.moralis.io; token price endpoint spec, mainnet/devnet networks, 10 CU" },
+    { "url": "https://docs.moralis.com/data-api/solana/wallet/portfolio.md", "whatItVerified": "Solana wallet portfolio endpoint spec, 10 CU, X-Api-Key header. Re-fetched 2026-07-17: nativeBalance fields (solana, lamports) and SPL token item fields (associatedTokenAddress, mint, amount, amountRaw, decimals, ...)" },
+    { "url": "https://docs.moralis.com/data-api/introduction/resources/premium-endpoints.md", "whatItVerified": "Full premium endpoint list with paths, CU costs, and Starter vs Pro plan requirements" },
+    { "url": "https://docs.moralis.com/data-api/pricing", "whatItVerified": "Per-endpoint CU cost catalogue across Universal/Bitcoin/EVM/Solana APIs (e.g. searchTokens 150 CU, getDefiSummary 5000 CU)" },
+    { "url": "https://docs.moralis.com/data-api/introduction/resources/performance-and-reliability.md", "whatItVerified": "Freshness p50 <4s / p90 <8s; API latency p50 <50ms / p90 <500ms / p95 <1s; derived-metrics lag caveat; Enterprise 24/7/365 SLA; status.moralis.io" },
+    { "url": "https://docs.moralis.com/changelog.md", "whatItVerified": "Deprecation practice and dates: Cortex/legacy endpoint removals (2026-06-04), Fantom removal (2026-05-29), testnet removals (2026-06-15), Solana holders/discovery + Solana Token Score sunset (2026-07-31), Bitcoin API launch (2026-05-27), DeFi API expansion to 5,000+ protocols (2026-04-22)" },
+    { "url": "https://moralis.com/terms/", "whatItVerified": "General T&C: no sublicensing/third-party provisioning (s.1.1), IP retention, best-efforts availability (s.1.3), termination terms (s.13.2, s.14.1), absence of explicit caching/redistribution/attribution clauses" },
+    { "url": "https://www.npmjs.com/package/moralis", "whatItVerified": "Official npm SDK package 'moralis', latest 2.27.2 (located via search; vendor-published package)" },
+    { "url": "https://pypi.org/project/moralis", "whatItVerified": "Official Python SDK package 'moralis' on PyPI, maintained under MoralisWeb3 GitHub org (located via search)" }
+  ],
+  "confidence": "high",
+  "openQuestions": [
+    "DeFi API plan gating: Starter (premium-endpoints page, pricing page) or Pro+ (wallet-positions endpoint page)? Needs vendor confirmation before contracting.",
+    "Batch token prices: is the effective limit 30 tokens (schema) or 100 (prose)?",
+    "Maximum historical lookback for OHLCV and for per-chain wallet history (is genesis-depth guaranteed on all 27 chains?)",
+    "Exact attribution format/wording required on Free/Starter/Pro tiers (not specified on pricing page)",
+    "Per-plan CU/s figures implied by the compute-units page vs the requests/s figures on the rate-limits page",
+    "Error response body schema (undocumented) — verify field names empirically before building error handling",
+    "Cursor expiration window for paginated snapshots (undocumented)",
+    "Explicit contractual position on caching/storing API responses and redistributing derived analytics (Terms are silent; only sublicensing of 'Services' is prohibited)",
+    "SDK maintenance cadence and whether the current 'moralis' npm/PyPI packages fully cover the restructured /data-api endpoints (Universal API, api.moralis.com DeFi v1)"
+  ]
+}

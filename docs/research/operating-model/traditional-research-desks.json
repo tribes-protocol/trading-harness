@@ -1,0 +1,403 @@
+{
+  "area": "Traditional asset-class research desks",
+  "reviewDate": "undefined",
+  "researchDate": "2026-07-17",
+  "scopeNote": "Buy-side research desks inside a multi-strategy hedge fund / institutional asset manager. IMPORTANT REGULATORY FRAMING: the detailed research-analyst rulebooks (FINRA 2241/2242, SEC Regulation AC, IOSCO sell-side analyst principles) bind BROKER-DEALER (sell-side) research, not buy-side desks. Buy-side research is governed indirectly: Advisers Act antifraud and compliance provisions (Sections 204A, 206, Rules 204A-1, 204-2, 206(4)-7), insider-trading law (Exchange Act 10(b)/Rule 10b-5, misappropriation theory), EU/UK MAR and research-payment rules (MiFID II, FCA COBS 2.3B / PS24/9), and voluntary standards (CFA Institute Code & Standards, Asset Manager Code; AIMA sound-practice guides). Fed/OCC/FDIC model-risk guidance (SR 11-7, superseded April 2026 by interagency SR 26-2) is bank guidance adopted by asset managers as best practice by analogy, not obligation. Each department entry distinguishes regulatory requirement vs. accepted practice vs. firm-specific judgment.",
+  "departments": [
+    {
+      "name": "Global Macro Research",
+      "mandate": "Form differentiated, falsifiable views on macroeconomic variables — growth, inflation, monetary and fiscal policy, external balances, politics/geopolitics — across G10 and EM, and translate them into tradeable theses in rates, FX, sovereign credit, equity indices and commodities. Provide the firm's top-down regime and scenario context to PMs, risk, and the other research desks.",
+      "responsibilities": [
+        "Maintain country/regional economic dossiers and forecast tables (growth, inflation, policy rate paths, fiscal balances)",
+        "Cover the economic-data calendar: previews, nowcasts, real-time reaction, post-print revision of views",
+        "Cover central bank meeting cycles (Fed/ECB/BoJ/BoE and relevant EM banks): pre-meeting analysis of market-implied pricing vs. house view, post-meeting review",
+        "Produce trade theses with explicit thesis, mispricing rationale, expression, entry/exit/invalidation levels and catalysts",
+        "Run cross-market relative value, curve, and carry screening (carry-to-vol rankings, curve steepeners/flatteners, cross-sovereign spreads)",
+        "Scenario and regime analysis feeding risk management stress narratives",
+        "Monitor elections, geopolitical events, and policy processes with defined market transmission channels"
+      ],
+      "workflows": [
+        {
+          "name": "Economic data-release cycle",
+          "cadence": "Daily/weekly, keyed to the data calendar",
+          "description": "Preview key releases with a house estimate and market-implied expectation; nowcast tracking; same-day reaction note assessing surprise vs. positioning; update forecast tables.",
+          "inputs": ["Official statistics (BLS, BEA, Eurostat, national statistics offices)", "Nowcast models", "Market pricing (futures, OIS)", "Sell-side previews", "Positioning data"],
+          "outputs": ["Data preview/react notes", "Updated forecast tables", "Surprise-index dashboards"]
+        },
+        {
+          "name": "Central bank meeting coverage",
+          "cadence": "Per meeting cycle (~8x/year per major bank) plus intermeeting speeches/minutes",
+          "description": "Compare OIS/futures-implied policy path against house view; parse statements, minutes, speeches, dot plots; publish pre- and post-meeting notes with trade implications.",
+          "inputs": ["Central bank communications", "STIR/OIS market pricing", "Sell-side rates strategy", "House inflation/growth forecasts"],
+          "outputs": ["CB preview/review notes", "Policy-path scenario trees", "Rates trade ideas"]
+        },
+        {
+          "name": "Trade thesis construction and maintenance",
+          "cadence": "Continuous / ad hoc; each live thesis reviewed at least weekly and on catalyst events",
+          "description": "Full thesis document: (1) falsifiable macro view, (2) why the market misprices it, (3) cleanest expression (cash, futures, swaps, options), (4) entry level, target, stop/invalidation, expected holding period, catalyst map, and risk/reward including carry and convexity. Widely accepted practice per macro practitioner literature (e.g., Graham Capital primer); exact template is a firm-level judgment call.",
+          "inputs": ["Macro dossiers", "Market pricing and vol surfaces", "Positioning (CFTC COT, PB flow color)", "Risk desk feedback on sizing"],
+          "outputs": ["Trade thesis memos with entry/exit/risk", "Thesis tracker / kill-criteria log"]
+        },
+        {
+          "name": "Curve, carry and relative-value screening",
+          "cadence": "Daily screens; weekly published RV pack",
+          "description": "Systematic screens across sovereign curves (2s10s, butterflies), cross-market spreads, FX carry-to-risk rankings, basis and inflation breakevens; anomalies routed to analysts for fundamental vetting before becoming theses.",
+          "inputs": ["Curve/swap/vol data", "Repo and financing rates", "Quant desk screen infrastructure"],
+          "outputs": ["RV screen packs", "Vetted candidate trades"]
+        },
+        {
+          "name": "Scenario and regime analysis",
+          "cadence": "Quarterly, plus event-driven (elections, crises)",
+          "description": "Define discrete macro scenarios with probabilities and asset-price mappings; hand scenario definitions to risk for portfolio-wide stress testing; maintain regime indicators (inflation/growth quadrants, liquidity conditions).",
+          "inputs": ["House forecasts", "Historical analog studies", "Risk team stress infrastructure"],
+          "outputs": ["Scenario matrices with P&L mappings", "Regime dashboards", "Stress narratives for risk"]
+        },
+        {
+          "name": "Thematic deep dives",
+          "cadence": "Monthly/quarterly",
+          "description": "Structural work (e.g., fiscal sustainability, demographics, energy transition, reserve currency flows) that seeds longer-horizon positioning and informs other desks' top-down assumptions.",
+          "inputs": ["IMF/BIS/OECD/World Bank research", "Academic literature", "Primary policy sources (legislation, budget documents)", "Political-risk consultancies"],
+          "outputs": ["Thematic reports", "Long-horizon watchlist"]
+        }
+      ],
+      "controls": [
+        "Reasonable-basis and source-documentation standard for every published view (voluntary standard: CFA Standard V(A) Diligence and Reasonable Basis; firm policy makes it binding internally)",
+        "Model governance for nowcast/forecast/fair-value models: inventory, documentation, independent validation, ongoing performance monitoring — adopted by analogy to Fed/OCC/FDIC model risk guidance (SR 11-7, now SR 26-2, April 2026), which is not legally binding on fund managers",
+        "MNPI controls around political intelligence and government contacts (regulatory requirement: Advisers Act Section 204A written policies; STOCK Act makes certain government-sourced information actionable under insider-trading law)",
+        "Expert-network and consultant procedures: pre-approval, logging, chaperoning/sampling of calls, trade surveillance linkage (expected controls per SEC Division of Examinations April 2022 MNPI Risk Alert)",
+        "Books-and-records retention of research notes and recommendation records (regulatory requirement for registered advisers: Rule 204-2)",
+        "Peer challenge: pre-mortem or devil's-advocate review of major theses before capital commitment (accepted practice at centralized funds; largely absent inside multi-manager pods — firm judgment call)"
+      ],
+      "independence": "Embedded or shared-service, never required to be independent by regulation. Two dominant patterns: (a) multi-manager platforms embed macro analysts inside PM pods with no central research authority; (b) macro-specialist and traditional firms run a central macro research team as a shared service to several books. A hybrid — central 'chief economist' function plus embedded pod analysts — is common at the largest platforms.",
+      "dependencies": ["Market data and curve infrastructure (front-office data team)", "Quant/analytics for screens and nowcast models", "Risk management for scenario calibration and sizing feedback", "Compliance for expert-network/political-intelligence approvals", "Sell-side macro research relationships (paid under applicable research-payment regime)"],
+      "handoffs": [
+        {"to": "Portfolio Managers", "direction": "outbound", "content": "Trade theses with entry/exit/invalidation, conviction level, catalyst calendar; ongoing thesis-health updates and kill signals"},
+        {"to": "Risk Management", "direction": "outbound", "content": "Scenario definitions, stress narratives, regime indicators; inbound: factor exposures and crowding metrics that constrain expression choice"},
+        {"to": "Quant Research", "direction": "bidirectional", "content": "Outbound: signal hypotheses and economic priors for systematic strategies; inbound: screen output, nowcast estimates, backtests of proposed rules"},
+        {"to": "Equity / Credit / Commodities desks", "direction": "outbound", "content": "Top-down regime context, rate-path and FX assumptions used as common inputs in their models"},
+        {"to": "Trading/Execution", "direction": "bidirectional", "content": "Outbound: expression and timing preferences around events; inbound: liquidity conditions, flow color, financing costs"}
+      ],
+      "regulatoryBasis": [
+        "Advisers Act Section 204A + Rule 204A-1 (MNPI policies, code of ethics) — binding on registered advisers",
+        "Advisers Act Rule 204-2 (books and records), Rule 206(4)-7 (compliance program) — binding",
+        "Exchange Act 10(b)/Rule 10b-5 misappropriation theory; STOCK Act (political intelligence) — binding",
+        "SR 11-7 / SR 26-2 interagency model risk management guidance — bank guidance, adopted by analogy (accepted practice, not requirement)",
+        "CFA Institute Standards I(B), V(A), V(B); Asset Manager Code — voluntary standards widely referenced in policies"
+      ],
+      "practiceNotes": [
+        "Macro trade construction canon (thesis / mispricing / expression; carry, RV, basis, trend, policy pillars) is practitioner convention, not regulation; documented in manager primers such as Graham Capital's Global Macro Primer",
+        "Positioning analysis via CFTC Commitments of Traders is standard input; COT is public data published weekly by the CFTC",
+        "Whether macro research 'owns' FX is a firm structure choice — many firms treat FX as a macro sub-desk rather than pairing it with commodities (see structuralRecommendations)"
+      ]
+    },
+    {
+      "name": "Equity Research",
+      "mandate": "Generate and maintain fundamental long/short views on covered companies and sectors: build and own earnings models, identify catalysts and mispricings, and deliver actionable theses (with price targets, entry/exit and risk parameters) to PMs, while monitoring live positions through earnings cycles and events.",
+      "responsibilities": [
+        "Maintain coverage universes by sector/geography with tiered depth (active ideas, maintenance coverage, watchlist)",
+        "Screen for candidates (valuation, quality, revisions, event-driven setups)",
+        "Perform deep fundamental analysis: 3-statement models, unit economics, competitive dynamics, management quality, earnings-quality/footnote work",
+        "Run the earnings-season cycle: preview models vs. consensus, live coverage, post-print model updates and thesis reassessment",
+        "Conduct primary research: expert-network calls, channel checks, surveys, alternative-data analysis, management meetings/conferences",
+        "Develop short theses with explicit borrow, crowding, and squeeze-risk assessment",
+        "Maintain catalyst calendars and position-monitoring dashboards for PM books"
+      ],
+      "workflows": [
+        {
+          "name": "Idea screening and triage",
+          "cadence": "Weekly systematic screens; continuous ad hoc",
+          "description": "Quantitative screens (valuation vs. history/peers, estimate revisions, factor exposures) plus event pipelines (spin-offs, management changes, guidance resets) produce a triage list; analysts do 1-2 day 'quick looks' before committing to full workups.",
+          "inputs": ["Fundamental databases (Compustat/FactSet/Bloomberg)", "Screening infrastructure (often shared with quant)", "Event calendars"],
+          "outputs": ["Ranked candidate list", "Quick-look memos"]
+        },
+        {
+          "name": "Initiation / full workup",
+          "cadence": "2-6 weeks per name; a handful per analyst per quarter",
+          "description": "Full model build from filings; industry map; variant perception vs. consensus explicitly stated; valuation via multiple methods (DCF, multiples, SOTP); risk section with downside case. CFA Institute research-report guidance (business description, industry/competitive analysis, multi-method valuation, explicit risks, earnings-quality footnote review) is the widely used content benchmark.",
+          "inputs": ["SEC filings (10-K/10-Q, proxies, 8-K)", "Earnings call transcripts", "Sell-side initiations and industry data", "Expert calls, channel checks", "Alternative data (card panels, web/app data, satellite)"],
+          "outputs": ["Initiation memo with rating/price target", "Full earnings model under version control", "Catalyst map with entry/exit/stop framework"]
+        },
+        {
+          "name": "Earnings-season cycle",
+          "cadence": "Quarterly, compressed into ~6-week windows",
+          "description": "Pre-print: update model, quantify buy-side vs. sell-side expectations, define what would change the thesis; print day: rapid variance analysis and PM communication; post-print: model refresh and thesis reaffirm/upgrade/kill decision.",
+          "inputs": ["Company releases and calls", "Consensus data", "Alt-data nowcasts of KPIs", "Options-implied move"],
+          "outputs": ["Earnings previews/reviews", "Model updates", "Position action recommendations"]
+        },
+        {
+          "name": "Primary research program",
+          "cadence": "Continuous; expert calls typically several per week per analyst",
+          "description": "Expert-network consultations (pre-approved and logged per compliance policy), proprietary surveys, channel checks, and management access (conferences, NDRs). All subject to MNPI controls; in EU/UK, corporate access and research consumption must be handled under research-payment rules.",
+          "inputs": ["Expert networks", "Survey vendors", "Management meetings", "Industry conferences"],
+          "outputs": ["Call notes in research repository (auditable)", "Primary-evidence appendix to theses"]
+        },
+        {
+          "name": "Alternative-data workflow",
+          "cadence": "Continuous ingestion; per-name signals refreshed weekly/daily",
+          "description": "KPI nowcasting from card, web, geolocation and satellite data. Requires vendor due diligence covering data provenance, MNPI risk, PII/privacy and legal collection rights before use (per SEC April 2022 MNPI Risk Alert expected controls and AIMA alt-data DDQ practice).",
+          "inputs": ["Approved alt-data vendors", "Data engineering pipelines", "Compliance-approved vendor list"],
+          "outputs": ["KPI trackers vs. consensus", "Signal dashboards feeding earnings previews"]
+        },
+        {
+          "name": "Portfolio review with PM",
+          "cadence": "Weekly formal; daily informal",
+          "description": "Position-by-position review: thesis health, catalyst proximity, crowding, what's changed. Analyst states whether original entry rationale and invalidation levels still hold.",
+          "inputs": ["Position data", "Risk reports (factor exposure, crowding)", "Thesis tracker"],
+          "outputs": ["Add/trim/exit recommendations", "Updated stop/target levels"]
+        }
+      ],
+      "controls": [
+        "MNPI/insider-trading framework (regulatory requirement: Advisers Act 204A): restricted/watch lists, information barriers, wall-crossing procedures for market soundings (EU/UK: MAR Art. 11), pre-clearance for private placements",
+        "Expert-network controls (expected controls per SEC April 2022 Risk Alert): due diligence on the network, pre-approval of consultations, prohibition/extra scrutiny on public-company employees, call logging, periodic chaperoning or sampling, and surveillance linking call topics to subsequent trading",
+        "Alternative-data governance: documented vendor due diligence (provenance, MNPI, privacy/PII, web-scraping legality), contract review, periodic re-assessment (SEC Risk Alert; AIMA 'Casting the Net' DDQ practice)",
+        "Personal trading: code of ethics, access-person reporting, pre-clearance of IPOs/limited offerings (regulatory requirement: Rule 204A-1)",
+        "Evidence standard: every recommendation must have documented reasonable basis with sources retained (Rule 204-2 records; CFA Standard V(A) as the articulated bar)",
+        "Model hygiene: earnings models under version control with assumption logs; formal validation usually applied only to systematic/valuation models, not per-name spreadsheets (firm judgment call; SR 26-2 materiality-based approach is the emerging analogy)",
+        "Peer review: centralized firms use investment-committee or sector-team challenge before position initiation; multi-manager pods substitute PM accountability plus central risk limits (explicit firm-level variation)"
+      ],
+      "independence": "Embedded. Buy-side equity analysts work for the PM/CIO who owns the capital; no regulation requires separation from portfolio management (the FINRA 2241 separation regime applies to broker-dealers, where research must be insulated from investment banking/trading pressure). The relevant buy-side independence concern is intellectual honesty against position bias — managed through culture, thesis-kill criteria, and (at some firms) devil's-advocate review, all judgment calls.",
+      "dependencies": ["Sell-side research and corporate access (paid via commissions/CSAs under Section 28(e) in the US; under COBS 2.3B options including PS24/9 joint payments in the UK; MiFID II regime in the EU)", "Data engineering / alt-data platform", "Compliance (expert networks, restricted list, alt-data vendor approval)", "Quant (screens, factor/crowding analytics)", "Trading (borrow availability, execution color)"],
+      "handoffs": [
+        {"to": "Portfolio Managers", "direction": "outbound", "content": "Initiation memos, earnings previews/reviews, catalyst calendars, explicit entry/exit/stop and sizing recommendations; thesis-kill notifications"},
+        {"to": "Risk Management", "direction": "bidirectional", "content": "Outbound: fundamental context on concentrated positions, event risk (earnings dates, binary catalysts); inbound: factor exposure, crowding and liquidity metrics that shape sizing"},
+        {"to": "Quant Research", "direction": "bidirectional", "content": "Outbound: labeled fundamental judgments and KPI definitions usable as features; inbound: screening output, signal decay/crowding analytics, backtest support"},
+        {"to": "Compliance", "direction": "bidirectional", "content": "Outbound: expert-call requests, alt-data vendor requests, wall-cross notifications; inbound: approvals, restricted-list updates, surveillance queries"},
+        {"to": "Trading/Execution", "direction": "outbound", "content": "Execution timing constraints around catalysts, borrow requirements for shorts, limit levels tied to thesis entry bands"}
+      ],
+      "regulatoryBasis": [
+        "Advisers Act Section 204A, Rules 204A-1, 204-2, 206(4)-7 — binding on registered advisers",
+        "Exchange Act Section 10(b)/Rule 10b-5; EU/UK Market Abuse Regulation (incl. Art. 11 market soundings) — binding",
+        "SEC Division of Examinations Risk Alert, 'Investment Adviser MNPI Compliance Issues' (Apr 26, 2022) — supervisory expectations, not rules, but examination benchmarks",
+        "MiFID II research unbundling (Delegated Directive Art. 13) as amended; FCA COBS 2.3B incl. PS24/9 joint-payment option (effective Aug 1, 2024) and PS25/4 extension to fund managers — binding on EU/UK managers for how research inputs are paid",
+        "Section 28(e) safe harbor (US) for paying for research with client commissions — binding conditions if relied upon",
+        "FINRA 2241 and SEC Regulation AC — bind the sell-side producers of research consumed by the desk (analyst certification, conflict disclosures); relevant to input quality assessment, not to the desk's own conduct"
+      ],
+      "practiceNotes": [
+        "CFA Institute 'Equity Research Report Essentials' and Standard V(A) are the de facto content/diligence benchmarks for internal research notes even though internal notes are not 'research reports' in the regulatory sense",
+        "Multi-manager platforms emphasize catalyst-centric, expectations-vs-consensus work with days-to-months horizons; single-manager funds tolerate longer-duration intrinsic-value work — same toolkit, different weighting (practice variation, not disagreement)",
+        "Position-bias control (kill criteria, forced re-underwriting after drawdown) is entirely a firm design choice; no external standard mandates it"
+      ]
+    },
+    {
+      "name": "Fixed-Income & Credit Research",
+      "mandate": "Assess issuer creditworthiness and security-level value across sovereign, investment-grade, high-yield, leveraged-loan and structured-credit markets: form default/downgrade/recovery views, find relative value across curves and capital structures, and deliver credit theses with spread targets and downside protection analysis to PMs.",
+      "responsibilities": [
+        "Issuer coverage and continuous surveillance (financials, guidance, rating actions, news) across the covered universe",
+        "New-issue and refinancing analysis with pricing/allocation recommendations under primary-market time pressure",
+        "Covenant and documentation analysis (indentures, credit agreements): protections, leakage risk, liability-management vulnerability",
+        "Capital-structure and cross-issuer relative value (bonds vs. loans vs. CDS; seniority arbitrage)",
+        "Downside/stress work: covenant-breach probability, refinancing walls, recovery waterfalls under liquidation/restructuring",
+        "Internal rating/tiering of the book and watchlist governance",
+        "Distressed and special-situations analysis where mandated (bankruptcy process, committee dynamics)"
+      ],
+      "workflows": [
+        {
+          "name": "Issuer surveillance",
+          "cadence": "Continuous; formal refresh each reporting period (quarterly) and on rating/news events",
+          "description": "Update operating model (revenue, EBITDA, FCF), leverage/coverage ratios, liquidity runway and covenant headroom; publish surveillance note when thesis-relevant metrics move; maintain internal rating and watchlist tier.",
+          "inputs": ["Issuer financials and calls", "Rating agency reports (Moody's/S&P/Fitch)", "TRACE prints, dealer runs/axes", "CDS pricing", "Third-party credit research (e.g., CreditSights, Covenant Review)"],
+          "outputs": ["Surveillance notes", "Updated credit models and internal ratings", "Watchlist changes"]
+        },
+        {
+          "name": "New-issue analysis",
+          "cadence": "Deal-driven; hours-to-days turnaround",
+          "description": "Rapid credit workup from the offering memorandum/prospectus: leverage pro forma, covenant package quality vs. market standard, fair-value spread vs. comparables, recommendation on participation and limit price.",
+          "inputs": ["OM/prospectus, lender presentations", "Syndicate price talk", "Comparable issue spreads", "Covenant benchmarking services"],
+          "outputs": ["New-issue memo with participate/pass and limit", "Covenant scorecard"]
+        },
+        {
+          "name": "Covenant and documentation review",
+          "cadence": "Per deal at underwriting; re-reviewed on amendment, LME rumor, or distress",
+          "description": "Clause-level review of indentures/credit agreements: restricted payments, liens, asset-transfer (e.g., unrestricted-subsidiary) capacity, change-of-control; quantifies value-leakage and priming risk.",
+          "inputs": ["Indentures/credit agreements", "Legal counsel input", "Covenant analysis vendors"],
+          "outputs": ["Covenant memos", "Documentation risk flags attached to positions"]
+        },
+        {
+          "name": "Relative value and curve screening",
+          "cadence": "Daily screens; weekly RV pack",
+          "description": "Spread-per-turn-of-leverage, rating-bucket and sector curves, bond-vs-CDS basis, cap-structure arbitrage screens; anomalies vetted fundamentally before recommendation.",
+          "inputs": ["TRACE/quote data", "Index analytics", "Internal ratings", "Quant screen infrastructure"],
+          "outputs": ["RV packs", "Switch/basis trade ideas with entry/exit spread levels"]
+        },
+        {
+          "name": "Stress and downside scenarios",
+          "cadence": "Quarterly portfolio-wide; ad hoc on macro shifts",
+          "description": "Recession/rates/sector-shock scenarios applied to issuer models: covenant breaches, downgrade candidates (fallen-angel risk), refinancing-wall exposure, recovery-given-default; results shared with risk for portfolio stress aggregation.",
+          "inputs": ["Issuer models", "Macro desk scenario definitions", "Historical default/recovery data"],
+          "outputs": ["Downside matrices", "Downgrade/default watchlists", "Recovery estimates for risk"]
+        },
+        {
+          "name": "Distressed / restructuring situations",
+          "cadence": "Ad hoc, situation-driven",
+          "description": "Process analysis (bankruptcy timeline, committee dynamics, valuation fights), fulcrum-security identification, participation decisions — with heightened MNPI controls if joining creditor committees or receiving private information (wall-crossing, restricted list).",
+          "inputs": ["Court dockets", "Financial/legal advisors", "Private lender information (behind the wall)"],
+          "outputs": ["Situation memos", "Restricted-list notifications", "Recovery waterfalls"]
+        }
+      ],
+      "controls": [
+        "Public/private information barrier — the defining control of credit research: loan-market private-side information (lender presentations, projections), creditor-committee material and market soundings must be walled; analysts electing 'private' status are restricted from advising public-side traders on that name (regulatory basis: 10b-5 misappropriation, MAR; operational design is firm judgment but universally expected)",
+        "Restricted/watch list discipline tied to wall-crossings, big-boy letters, and NDA-gated processes (accepted practice with regulatory teeth via 204A policies)",
+        "Expert-network and consultant controls identical to equity (SEC April 2022 Risk Alert expected controls); leveraged-loan expert calls flagged as high-risk in practice literature (Hedge Fund Law Report)",
+        "Internal-rating methodology consistency: documented criteria, periodic back-review of rating accuracy vs. outcomes (accepted practice; analogous to SR 26-2 ongoing-monitoring principles)",
+        "No mechanical reliance on external ratings — document independent analysis (accepted practice; echoes post-2008 supervisory direction to reduce ratings reliance)",
+        "Reasonable-basis documentation and record retention (Rule 204-2; CFA V(A))",
+        "Peer review of large/illiquid credit commitments via credit committee at centralized funds; pod-level PM accountability at multi-managers (firm variation)"
+      ],
+      "independence": "Embedded or centralized shared service; not regulatorily separated. Credit funds and traditional FI managers most often run a centralized credit research team serving multiple PMs (closer to a bank-style research department); multi-strategy platforms embed credit analysts in pods. Note FINRA 2242's institutional-debt-research exemption applies to sell-side distribution to sophisticated institutions — it means the debt research the desk consumes carries fewer mandated protections/disclosures than retail research, raising the desk's own burden to assess input conflicts.",
+      "dependencies": ["Legal counsel (documentation, restructuring)", "Compliance (wall management, restricted list)", "Rating agency subscriptions and covenant-analysis vendors", "Trading for dealer axes/liquidity color", "Macro desk for rates and cycle inputs", "Quant for spread analytics"],
+      "handoffs": [
+        {"to": "Portfolio Managers", "direction": "outbound", "content": "Credit theses with spread entry/exit targets, internal rating and watchlist tier changes, new-issue participate/pass calls, downgrade/default early warnings"},
+        {"to": "Risk Management", "direction": "outbound", "content": "Issuer-level stress results, recovery estimates, refinancing-wall and fallen-angel exposure lists; inbound: concentration and liquidity constraints"},
+        {"to": "Legal & Compliance", "direction": "bidirectional", "content": "Outbound: wall-crossing elections, committee participation requests; inbound: restricted-list updates, trading halts on names, information-handling instructions"},
+        {"to": "Quant Research", "direction": "bidirectional", "content": "Outbound: internal ratings history and covenant scores as model features; inbound: RV screens, spread-curve analytics, default-model output"},
+        {"to": "Trading/Execution", "direction": "bidirectional", "content": "Outbound: limit levels and size appetite by CUSIP; inbound: axes, market depth, TRACE color feeding RV work"}
+      ],
+      "regulatoryBasis": [
+        "Advisers Act 204A / 204A-1 / 204-2 / 206(4)-7 — binding",
+        "Exchange Act 10(b)/Rule 10b-5 (misappropriation — central to loan/distressed information handling); EU/UK MAR incl. market soundings — binding",
+        "FINRA Rule 2242 (debt research) — binds sell-side producers; its institutional-investor exemption (Rule 2242(j)) shapes the (lower) disclosure standard of research the desk consumes",
+        "Bankruptcy-process information rules (e.g., committee confidentiality, trading orders/ethical walls approved by courts) — binding when in restructurings",
+        "CFA Standards V(A)/V(B); Asset Manager Code — voluntary"
+      ],
+      "practiceNotes": [
+        "Credit research is downside-first by convention: covenant breach, default, recovery and liquidity questions precede upside modeling (practitioner consensus across sources reviewed)",
+        "Spread-per-turn-of-leverage and rating-bucket RV are standard idioms; exact internal rating scales (e.g., 1-10 vs. agency-mapped) are firm-specific",
+        "The private-side election in loans (take projections and go behind the wall vs. stay public-side) is a strategic firm choice with real workflow consequences — firms differ deliberately"
+      ]
+    },
+    {
+      "name": "Commodities & FX Research",
+      "mandate": "Model physical supply/demand balances and term structure for energy, metals and agriculture, and fair value, carry and flows for currencies; convert inventory, positioning, weather/geopolitical and policy information into futures, options, spread and FX theses with defined entry/exit/risk; provide inflation-relevant and terms-of-trade inputs to the macro desk.",
+      "responsibilities": [
+        "Build and maintain supply/demand (S&D) balance sheets per commodity with explicit revision on each official data release",
+        "Monitor and interpret inventory data (EIA weekly petroleum, USDA WASDE, exchange warehouse stocks) and physical-market signals (freight, refinery margins, crack/crush spreads)",
+        "Term-structure analysis: contango/backwardation, storage economics, roll yield, calendar-spread opportunities",
+        "Positioning analysis from CFTC Commitments of Traders and exchange open-interest data",
+        "FX fair-value and carry framework: rate differentials, PPP/BEER-style models, flow and reserve dynamics, intervention risk",
+        "Weather, geopolitical and policy monitoring (OPEC+ decisions, sanctions, export bans, tariffs) with quantified balance impact",
+        "Seasonality studies and event playbooks (e.g., hurricane season, planting/harvest, year-end liquidity)"
+      ],
+      "workflows": [
+        {
+          "name": "Balance-sheet update cycle",
+          "cadence": "Keyed to release calendar: EIA weekly; USDA WASDE, OPEC MOMR, IEA OMR monthly; ad hoc on shocks",
+          "description": "Update S&D balances after each relevant release; the tradable signal is the delta — tightening vs. loosening relative to market expectation — not the absolute level; publish a same-day read with price implications.",
+          "inputs": ["EIA/USDA/IEA/OPEC official data", "Exchange inventories (CME/ICE/LME)", "Satellite and ship-tracking (AIS) data", "Physical trader/broker color"],
+          "outputs": ["Updated balance models", "Release reaction notes", "Tightening/loosening dashboard"]
+        },
+        {
+          "name": "Positioning analysis",
+          "cadence": "Weekly (CFTC COT publication) plus daily open-interest reads",
+          "description": "Track managed-money vs. commercial positioning; flag crowding and stop-run risk; combine positioning extremes with balance-sheet direction to time entries (positioning aligned with fundamentals = confirmation; opposed = contrarian setup).",
+          "inputs": ["CFTC Commitments of Traders reports", "Exchange open interest", "PB/flow color"],
+          "outputs": ["Positioning dashboards", "Crowding alerts to PMs and risk"]
+        },
+        {
+          "name": "Term-structure, carry and spread monitoring",
+          "cadence": "Daily",
+          "description": "Monitor curve shape vs. storage economics and inventory cover; screen calendar spreads, inter-commodity spreads (cracks, crushes, spark spreads), and FX carry-to-vol rankings; route anomalies to fundamental vetting.",
+          "inputs": ["Futures curves", "Storage/freight costs", "FX forwards and vol surfaces", "Rate differentials"],
+          "outputs": ["Curve/carry packs", "Spread trade candidates with entry/exit/roll plan"]
+        },
+        {
+          "name": "FX valuation and flow framework",
+          "cadence": "Monthly model refresh; continuous event-driven",
+          "description": "Maintain fair-value models (PPP/BEER-style, rate-differential regressions), balance-of-payments and reserve-flow tracking, intervention-risk assessment; align policy-path inputs with the macro desk to avoid inconsistent house views.",
+          "inputs": ["Macro desk policy-path forecasts", "BIS/IMF flow data", "Central bank reserve data", "Options market pricing (risk reversals)"],
+          "outputs": ["FX fair-value dashboards", "Currency theses with entry/exit/stop", "Intervention-risk watchlist"]
+        },
+        {
+          "name": "Event and weather monitoring",
+          "cadence": "Continuous with defined escalation",
+          "description": "Weather-model tracking for ags/natgas, OPEC+ meeting coverage, sanctions/export-policy watch; each event mapped ex ante to balance-sheet and price scenarios; escalation protocol to PMs when thresholds hit.",
+          "inputs": ["Commercial weather services", "Political-risk feeds", "OPEC/government communications"],
+          "outputs": ["Event playbooks", "Scenario-impact notes", "Escalation alerts"]
+        },
+        {
+          "name": "Trade thesis construction",
+          "cadence": "Continuous; formal review weekly",
+          "description": "Same discipline as macro: falsifiable view, why mispriced, cleanest expression (outright, calendar/inter-commodity spread, options), entry/target/stop, carry/roll cost, catalyst map; explicit attention to position-limit and deliverability constraints on expression.",
+          "inputs": ["Balance models", "Positioning and curve data", "Risk/compliance limit guidance"],
+          "outputs": ["Trade theses with entry/exit/risk", "Thesis tracker"]
+        }
+      ],
+      "controls": [
+        "Anti-manipulation awareness: research and trading conduct subject to CEA Section 6(c)(1)/CFTC Rule 180.1 (fraud-based manipulation) and Rule 180.2; theses must not rely on or coordinate with attempts to move physical/derivative benchmarks (binding law)",
+        "Position-limit and large-trader awareness: federal position limits (CFTC Part 150) and exchange limits constrain expression size; research desks flag limit-sensitive expressions to compliance (limits are binding; the research-desk flagging step is accepted practice)",
+        "Information handling for physical-market intelligence: no misappropriated confidential data (e.g., non-public government reports pre-release — binding; USDA/EIA lockup rules), documented provenance for broker/physical color (accepted practice)",
+        "Alt-data licensing and provenance for satellite/AIS/weather data (contractual/legal requirement plus SEC alt-data due-diligence expectations by analogy)",
+        "Model governance for balance-sheet and fair-value models: documentation, assumption logs, back-testing forecast accuracy per release cycle (accepted practice; SR 26-2 analogy)",
+        "Reasonable-basis documentation and retention (Rule 204-2 for advisers; CFA V(A))"
+      ],
+      "independence": "Embedded. Commodities analysts typically sit inside commodity pods or alongside macro; FX research is frequently a macro sub-function rather than paired with commodities. No regulatory independence requirement; the operative separation is between research/trading and any physical-assets or benchmark-submission activity, where conflicts and manipulation risk are managed by compliance (binding in benchmark contexts, e.g., IOSCO PRA principles context).",
+      "dependencies": ["Official data pipelines (EIA, USDA, IEA, OPEC, CFTC COT)", "Alt-data vendors (satellite, AIS, weather)", "Macro desk (policy paths, USD view, inflation linkage)", "Compliance (position limits, benchmark conduct)", "Quant (curve analytics, seasonality stats)", "Execution (roll management, block liquidity)"],
+      "handoffs": [
+        {"to": "Portfolio Managers", "direction": "outbound", "content": "Commodity/FX theses with entry/exit/stop and roll plans, balance-sheet revision alerts, positioning/crowding warnings"},
+        {"to": "Global Macro Research", "direction": "bidirectional", "content": "Outbound: commodity-price and terms-of-trade inputs to inflation/growth forecasts; inbound: policy-rate paths and USD framework used in FX and dollar-denominated commodity views"},
+        {"to": "Risk Management", "direction": "outbound", "content": "Supply-shock scenario definitions, curve-shift stress inputs, concentration/deliverability flags near expiry; inbound: limit utilization and stress results"},
+        {"to": "Compliance", "direction": "bidirectional", "content": "Outbound: expression proposals near position limits, new data-source requests; inbound: limit guidance, benchmark-conduct restrictions"},
+        {"to": "Trading/Execution", "direction": "bidirectional", "content": "Outbound: roll schedules, spread-leg sequencing, event-window execution constraints; inbound: physical/paper market color, basis and freight intel"}
+      ],
+      "regulatoryBasis": [
+        "Commodity Exchange Act + CFTC Rules 180.1/180.2 (anti-manipulation, anti-fraud) — binding",
+        "CFTC Part 150 federal position limits, exchange-set limits, large-trader reporting (Form 40 / ownership & control reports) — binding on positions; research must design expressions within them",
+        "CFTC Commitments of Traders program — public data input (not an obligation)",
+        "Advisers Act 204A/204-2 etc. for the manager entity — binding",
+        "EU/UK: MAR covers commodity derivatives and related spot; REMIT for EU energy — binding in scope",
+        "CFA Standards / Asset Manager Code — voluntary"
+      ],
+      "practiceNotes": [
+        "The 'trade the delta, not the level' convention for balance-sheet revisions is practitioner consensus in commodity research literature",
+        "Pairing of Commodities with FX in one desk is common in bank research but less so on the buy side, where FX usually lives with macro; treat the pairing as an org-design choice (see structuralRecommendations)",
+        "Physical-market color is high-value but provenance-sensitive; firms differ on how formally they log verbal intel — a genuine judgment call with compliance trade-offs"
+      ]
+    }
+  ],
+  "structuralRecommendations": [
+    "Keep four desks but move FX coverage into Global Macro Research and let 'Commodities Research' stand alone (or explicitly dual-report): on the buy side FX is priced off the same policy-path/flow analysis macro already owns, while commodities is physical-data-driven; the bank-style 'Commodities & FX' pairing creates a seam through the middle of the macro process",
+    "Add a shared Research Operations/Data function across all four desks: sell-side entitlement and broker-vote management, research-payment administration (Section 28(e)/CSA, FCA PS24/9 joint-payment guardrails, MiFID II), expert-network logging, alt-data vendor due-diligence workflow, and the research repository/CRM — these are identical across desks and regulator-visible, so centralizing them is both cheaper and safer",
+    "Stand up a light model-governance layer shared with Quant rather than per-desk: inventory + materiality tiering per the SR 26-2 approach (rigorous validation only for high-materiality models such as nowcasts, balance sheets, and fair-value models; lighter control for per-name spreadsheets)",
+    "Decide explicitly between pod-embedded and centralized research per strategy rather than by default: multi-manager-style embedding maximizes speed/accountability for equities and commodities pods, while credit (public/private wall management) and macro scenario work benefit from centralized shared-service teams — a hybrid is the modal large-platform answer",
+    "Create a formal cross-desk 'house view' interlock (macro policy paths, USD, inflation) consumed by equity/credit/commodity models, with documented override rights for pods — prevents silent inconsistency across desks without imposing groupthink",
+    "Route all primary research (expert networks, physical-market intel, political intelligence) through one compliance-owned intake and logging pipeline serving all four desks — the SEC's MNPI examination expectations are the same regardless of asset class"
+  ],
+  "disagreementsAndVariation": [
+    "Pod vs. centralized research: multi-manager platforms (Millennium/Citadel-style) embed analysts in PM pods with no central research review and enforce quality via hard drawdown limits (e.g., publicized 5%/7.5% capital-cut/termination thresholds at Millennium per practice literature); traditional and single-manager funds use centralized teams with investment committees and formal peer review. Sources describe both as successful; there is no industry consensus on which is 'sound practice' — it is a strategy-dependent design choice",
+    "Peer review/evidence standards: CFA-style diligence standards are universally cited, but the enforcement mechanism (IC memo + committee challenge vs. PM discretion) varies sharply by firm size and strategy; fast-turn pod strategies explicitly trade formal review for speed",
+    "Research payments: US (Section 28(e) soft-dollar safe harbor), UK (FCA PS24/9 joint payments with guardrails since Aug 2024, extended by PS25/4), and EU (MiFID II as amended by the Listing Act) now diverge materially; global firms disagree on whether to run one global P&L-funded model or jurisdiction-specific payment arrangements",
+    "Sell-side research rule relevance: some compliance teams treat FINRA 2241/2242 and Reg AC concepts (certification, conflict disclosure) as internal best-practice templates for buy-side notes; others deliberately do not, to avoid implying their internal notes are regulated 'research reports.' Both positions are defensible",
+    "Model-risk formality: some managers formally adopt SR 11-7/SR 26-2-style validation for research models; many treat analyst spreadsheets as judgment tools outside model governance. SR 26-2's narrower model definition and materiality tiering (April 2026) is pulling practice toward the lighter-touch position, but bank-affiliated and larger institutional managers remain stricter",
+    "Loan-market information handling: firms consciously differ on public-side vs. private-side elections in leveraged loans (access to projections vs. trading freedom); no single accepted answer exists",
+    "GIPS: sometimes proposed as a research-relevant standard, but it governs firm-level performance presentation, not research desks; including it in research-desk controls would be scope inflation (flagged here because source lists often conflate it)"
+  ],
+  "sourcesConsulted": [
+    {"url": "https://www.finra.org/rules-guidance/rulebooks/finra-rules/2241", "whatItSupported": "FINRA Rule 2241 equity research analyst conflict-management, insulation, disclosure and personal-trading requirements (sell-side; consumed-input standard and analogy for buy-side)"},
+    {"url": "https://www.finra.org/rules-guidance/rulebooks/finra-rules/2242", "whatItSupported": "FINRA Rule 2242 debt research rules and the Rule 2242(j) institutional-investor exemption shaping the disclosure standard of consumed sell-side debt research"},
+    {"url": "https://www.finra.org/rules-guidance/notices/15-31", "whatItSupported": "Regulatory Notice adopting the debt research rule; tiered retail/institutional approach rationale"},
+    {"url": "https://www.sec.gov/rules-regulations/2003/02/regulation-analyst-certification", "whatItSupported": "SEC Regulation AC analyst certification requirements for research reports and public appearances (binds covered broker-dealer persons)"},
+    {"url": "https://www.sec.gov/files/code-ethics-risk-alert.pdf", "whatItSupported": "SEC Division of Examinations Risk Alert (Apr 26, 2022) 'Investment Adviser MNPI Compliance Issues' — Section 204A deficiencies and expected controls for alternative data, expert networks, value-add investors, code of ethics (direct fetch returned 403; content confirmed via search excerpts and the K&L Gates summary below)"},
+    {"url": "https://www.klgates.com/SECs-Division-of-Examinations-Issues-Risk-Alert-on-Investment-Adviser-MNPI-Compliance-Issues-5-4-2022", "whatItSupported": "Detailed summary of the April 2022 SEC MNPI risk alert: expected controls per deficiency category (alt-data due diligence, expert-network logging/surveillance, value-add investor inventories, access-person controls)"},
+    {"url": "https://www.federalreserve.gov/supervisionreg/srletters/SR2602.htm", "whatItSupported": "SR 26-2 (Apr 17, 2026) interagency Revised Guidance on Model Risk Management superseding SR 11-7 and SR 21-8; narrower model definition, materiality-tiered governance, genAI/agentic AI out of scope (confirmed via search results incl. Fed page title/date and Baker Tilly/OCC Bulletin 2026-13 summaries)"},
+    {"url": "https://www.occ.gov/news-issuances/bulletins/2026/bulletin-2026-13.html", "whatItSupported": "OCC adoption of the revised interagency model risk management guidance (2026)"},
+    {"url": "https://www.cfainstitute.org/standards/professionals/code-ethics-standards/standards-of-practice-v-a", "whatItSupported": "CFA Standard V(A) Diligence and Reasonable Basis — evidence standard for research recommendations; reasonable inquiry into data sources"},
+    {"url": "https://www.cfainstitute.org/standards/professionals/code-ethics-standards/standards-of-practice-i-b", "whatItSupported": "CFA Standard I(B) Independence and Objectivity — reasonable and adequate basis supported by appropriate research"},
+    {"url": "https://rpc.cfainstitute.org/codes-and-standards/asset-manager-code", "whatItSupported": "CFA Institute Asset Manager Code — manager-level diligence, third-party research evaluation (assumptions, thoroughness, timeliness, objectivity of source), documentation (PDF fetch was binary; provisions confirmed via search excerpts of the Code and exposure draft)"},
+    {"url": "https://www.cfainstitute.org/sites/default/files/-/media/documents/support/research-challenge/challenge/rc-equity-research-report-essentials.pdf", "whatItSupported": "CFA Institute equity research report content benchmark: investment summary, business/industry analysis, multi-method valuation, financial analysis, risk section, earnings-quality footnote review"},
+    {"url": "https://www.iosco.org/library/pubdocs/pdf/ioscopd150.pdf", "whatItSupported": "IOSCO Statement of Principles for Addressing Sell-side Securities Analyst Conflicts of Interest — eliminate/manage/disclose framework (direct fetch 403; principles confirmed via search excerpts); cited as sell-side context, not buy-side obligation"},
+    {"url": "https://www.fca.org.uk/publications/policy-statements/ps24-9-payment-for-optionality-investment-research", "whatItSupported": "FCA PS24/9 (effective Aug 1, 2024): joint-payment (CSA-like) option for research + execution with guardrails (written policy, identifiable research charge, budgets, provider range); PS25/4 extension to fund managers"},
+    {"url": "https://www.fca.org.uk/publications/multi-firm-reviews/implementing-mifid-ii-multi-firm-review-research-unbundling-reforms", "whatItSupported": "FCA multi-firm review of MiFID II research unbundling implementation — buy-side research valuation, budgeting, and payment governance practice"},
+    {"url": "https://www.esma.europa.eu/sites/default/files/trv_2020_2-mifid_ii_research_unbundling_first_evidence.pdf", "whatItSupported": "ESMA evidence on MiFID II research unbundling effects — EU regime context for research procurement"},
+    {"url": "https://www.morganlewis.com/pubs/2024/08/uk-fca-adopts-joint-payment-option-allowing-bundling-of-payments-for-research-and-trade-execution", "whatItSupported": "Law-firm confirmation of PS24/9 mechanics and guardrails for UK asset managers"},
+    {"url": "https://www.cftc.gov/MarketReports/CommitmentsofTraders/index.htm", "whatItSupported": "CFTC Commitments of Traders program: weekly positioning breakdowns by trader category based on Form 40 classifications — core commodities/FX positioning input"},
+    {"url": "https://www.aima.org/sound-practices/guides-to-sound-practices.html", "whatItSupported": "AIMA Guides to Sound Practices as the industry-body sound-practice corpus for hedge fund operations"},
+    {"url": "https://www.aima.org/static/8778b1e4-75c3-44e4-b35dc38e1495001e/Casting-The-Net-v10.pdf", "whatItSupported": "AIMA 'Casting the Net' — alternative-data usage and vendor due-diligence practice (DDQ, MNPI/privacy screening, compliance interview) for hedge funds"},
+    {"url": "https://www.kroll.com/en/publications/financial-compliance-regulation/expert-networks-a-risky-business", "whatItSupported": "Expert-network compliance controls in practice: pre-approval, chaperoned/recorded calls, restrictions on public-company employees"},
+    {"url": "https://www.hflawreport.com/2541356/how-can-hedge-fund-managers-avoid-insider-trading-violations-when-using-expert-networks--part-one-of-two.thtml", "whatItSupported": "Hedge fund expert-network insider-trading risk controls, including elevated risk in leveraged-loan contexts"},
+    {"url": "https://www.grahamcapital.com/blog/global-macro-primer/", "whatItSupported": "Manager-published primer on global macro strategy pillars (carry, RV, basis, trend, policy) and trade-construction discipline"},
+    {"url": "https://mergersandinquisitions.com/multi-manager-hedge-funds/", "whatItSupported": "Practice literature on multi-manager pod structure: PM-owned books, embedded analysts, catalyst-centric research, layered risk limits (lower-authority practitioner source, used for practice color only)"},
+    {"url": "https://mergersandinquisitions.com/fixed-income-research/", "whatItSupported": "Practice literature on buy-side credit research: downside-first analysis, covenant/refinancing focus, credit ratio modeling, sector relative value (practitioner source, practice color only)"},
+    {"url": "https://www.alphaexcapital.com/commodities/commodity-market-analysis-and-tools/fundamental-analysis-for-commodities/building-a-fundamental-model-commodities", "whatItSupported": "Commodity balance-sheet modeling workflow: update on EIA/USDA/CFTC releases, trade the revision delta, combine positioning with balance direction (practitioner source, practice color only)"}
+  ],
+  "confidence": "medium-high",
+  "confidenceNotes": "High confidence on the regulatory layer (Advisers Act provisions, SEC 2022 MNPI risk alert expectations, FINRA 2241/2242 scope, Reg AC, FCA PS24/9, SR 11-7→SR 26-2 succession, CFTC COT/anti-manipulation) — all verified against primary or top-tier legal sources. Medium confidence on desk-level workflow detail: internal buy-side workflows are not publicly documented by regulators, so cadence and artifact specifics rest on practitioner literature and manager primers; these are labeled as accepted practice or judgment calls rather than requirements throughout."
+}

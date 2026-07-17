@@ -1,0 +1,966 @@
+{
+  "provider": "CoinGecko Pro API",
+  "reviewDate": "2026-07-17",
+  "officialDocsUrl": "https://docs.coingecko.com",
+  "apiVersion": "v3 (docs site versioned as v3.0.1; REST paths under /api/v3)",
+  "versioningPolicy": {
+    "current": "All REST endpoints served under /api/v3. Docs site exposes a version selector (v3.0.1) and a public changelog at https://docs.coingecko.com/changelog.",
+    "deprecationPolicy": "not documented (no formal versioning/deprecation policy page found on the official docs site; changes are announced via the changelog)"
+  },
+  "authentication": {
+    "mechanism": "API key",
+    "header": "x-cg-pro-api-key",
+    "queryParameter": "x_cg_pro_api_key",
+    "recommended": "Header method. Docs: 'Store your API key in your backend and use a proxy to inject it into requests.' and 'Avoid query string parameters in production — they risk exposing your key in logs and browser history.'",
+    "demoApiDifference": "Demo API uses a different key parameter (docs error code 10002: 'Pro API requires x_cg_pro_api_key, Demo API requires x_cg_demo_api_key') and a different root URL (error codes 10010/10011 fire on invalid key-type/root-URL combinations).",
+    "source": "https://docs.coingecko.com/reference/authentication"
+  },
+  "baseUrls": [
+    {
+      "url": "https://pro-api.coingecko.com/api/v3/",
+      "use": "Pro API (all paid plans)",
+      "source": "https://docs.coingecko.com/reference/authentication"
+    },
+    {
+      "url": "https://pro-api.coingecko.com/api/v3/onchain/",
+      "use": "On-chain DEX (GeckoTerminal) endpoints — same auth, '/onchain' appended to path",
+      "source": "https://docs.coingecko.com/reference/authentication"
+    }
+  ],
+  "endpoints": [
+    {
+      "name": "Simple Price",
+      "method": "GET",
+      "path": "/simple/price",
+      "requiredParams": [
+        "vs_currencies"
+      ],
+      "optionalParams": [
+        "ids",
+        "names",
+        "symbols",
+        "include_tokens (top|all)",
+        "include_market_cap",
+        "include_24hr_vol",
+        "include_24hr_change",
+        "include_last_updated_at",
+        "precision (full|0-18)"
+      ],
+      "responseFields": [
+        "{coin_id}.{vs_currency} price",
+        "market_cap",
+        "24hr vol",
+        "24hr change",
+        "last_updated_at (UNIX)"
+      ],
+      "pagination": "none (max 515 ids per request; include_tokens=all limited to 50 symbols per request)",
+      "freshness": "cached/near-real-time: updated every 20 seconds (paid); every 60 seconds (Demo/keyless)",
+      "source": "https://docs.coingecko.com/reference/simple-price"
+    },
+    {
+      "name": "Simple Token Price by Contract Addresses",
+      "method": "GET",
+      "path": "/simple/token_price/{id}",
+      "requiredParams": [
+        "id (path — asset platform id, refers to /asset_platforms, e.g. 'ethereum')",
+        "contract_addresses (comma-separated)",
+        "vs_currencies"
+      ],
+      "optionalParams": [
+        "include_market_cap",
+        "include_24hr_vol",
+        "include_24hr_change",
+        "include_last_updated_at",
+        "precision (full|0-18)"
+      ],
+      "responseFields": [
+        "object keyed by contract address: {vs_currency} price",
+        "{vs_currency}_market_cap",
+        "{vs_currency}_24h_vol",
+        "{vs_currency}_24h_change",
+        "last_updated_at (UNIX)"
+      ],
+      "pagination": "none (maximum of 515 contract addresses per request)",
+      "freshness": "cached every 20 seconds (paid); every 60 seconds (Demo/keyless)",
+      "source": "https://docs.coingecko.com/reference/simple-token-price"
+    },
+    {
+      "name": "Asset Platforms List",
+      "method": "GET",
+      "path": "/asset_platforms",
+      "requiredParams": [],
+      "optionalParams": [
+        "filter (enum: nft)"
+      ],
+      "responseFields": [
+        "id (asset platform id)",
+        "chain_identifier (nullable chainlist chain id)",
+        "name",
+        "shortname",
+        "native_coin_id (nullable)",
+        "image {thumb,small,large}"
+      ],
+      "pagination": "none documented",
+      "freshness": "cached every 60 seconds (paid); every 5 minutes (Demo/keyless)",
+      "source": "https://docs.coingecko.com/reference/asset-platforms-list"
+    },
+    {
+      "name": "Coins List with Market Data",
+      "method": "GET",
+      "path": "/coins/markets",
+      "requiredParams": [
+        "vs_currency"
+      ],
+      "optionalParams": [
+        "ids (max 250)",
+        "names",
+        "symbols",
+        "include_tokens",
+        "category",
+        "order (market_cap_desc default; market_cap_asc, volume_asc/desc, id_asc/desc)",
+        "per_page (1-250, default 100)",
+        "page (default 1)",
+        "sparkline",
+        "price_change_percentage (1h,24h,7d,14d,30d,200d,1y)",
+        "locale",
+        "precision",
+        "include_rehypothecated"
+      ],
+      "responseFields": [
+        "id",
+        "symbol",
+        "name",
+        "image",
+        "current_price",
+        "market_cap",
+        "market_cap_rank",
+        "fully_diluted_valuation",
+        "total_volume",
+        "high_24h",
+        "low_24h",
+        "price_change_24h",
+        "price_change_percentage_24h",
+        "market_cap_change_24h",
+        "circulating_supply",
+        "total_supply",
+        "max_supply",
+        "ath",
+        "ath_date",
+        "atl",
+        "atl_date",
+        "roi",
+        "last_updated",
+        "sparkline_in_7d"
+      ],
+      "pagination": "page + per_page query parameters",
+      "freshness": "cached/near-real-time: every 30 seconds (paid); every 60 seconds (Demo/keyless). Filter priority when combined: category > ids > names > symbols; wildcard searches not supported",
+      "source": "https://docs.coingecko.com/reference/coins-markets"
+    },
+    {
+      "name": "Coin Historical Chart Data",
+      "method": "GET",
+      "path": "/coins/{id}/market_chart",
+      "requiredParams": [
+        "id (path)",
+        "vs_currency",
+        "days (integer or 'max')"
+      ],
+      "optionalParams": [
+        "interval (5m|hourly|daily; omit for auto-granularity)",
+        "precision"
+      ],
+      "responseFields": [
+        "prices [[ts,value]]",
+        "market_caps [[ts,value]]",
+        "total_volumes [[ts,value]]"
+      ],
+      "pagination": "none (range controlled by days/interval)",
+      "freshness": "cached every 30 seconds; last completed daily point available 10 minutes after midnight (00:10 UTC). Auto-granularity: 1 day = 5-minutely; 2-90 days = hourly; >90 days = daily (00:00 UTC). interval=hourly limited to past 100 days; interval=5m past 10 days and Enterprise only",
+      "source": "https://docs.coingecko.com/reference/coins-id-market-chart"
+    },
+    {
+      "name": "Coin Historical Chart Data within Time Range",
+      "method": "GET",
+      "path": "/coins/{id}/market_chart/range",
+      "requiredParams": [
+        "id (path)",
+        "vs_currency",
+        "from (UNIX/ISO)",
+        "to (UNIX/ISO)"
+      ],
+      "optionalParams": [
+        "interval (5m|hourly|daily)",
+        "precision"
+      ],
+      "responseFields": [
+        "prices",
+        "market_caps",
+        "total_volumes"
+      ],
+      "pagination": "none (bounded by from/to; hourly max any 100 days per request; 5m max any 10 days per request, Enterprise only)",
+      "freshness": "cache: 30 seconds (1-day ranges), 30 minutes (2-90 day ranges), 12 hours (>90 day ranges). Historical availability: hourly from 30 Jan 2018; 5m from 9 Feb 2018; daily unlimited range",
+      "source": "https://docs.coingecko.com/reference/coins-id-market-chart-range"
+    },
+    {
+      "name": "Coin Historical Data by Date (snapshot)",
+      "method": "GET",
+      "path": "/coins/{id}/history",
+      "requiredParams": [
+        "id (path)",
+        "date (YYYY-MM-DD)"
+      ],
+      "optionalParams": [
+        "localization (default true)"
+      ],
+      "responseFields": [
+        "id",
+        "symbol",
+        "name",
+        "localization",
+        "image",
+        "market_data (current_price/market_cap/total_volume in multiple currencies)",
+        "community_data",
+        "developer_data",
+        "public_interest_stats"
+      ],
+      "pagination": "none",
+      "freshness": "EOD snapshot at 00:00:00 UTC for the given date; last completed UTC day available 35 minutes after midnight (00:35 UTC); cache every 30 minutes",
+      "source": "https://docs.coingecko.com/reference/coins-id-history"
+    },
+    {
+      "name": "Coin OHLC Chart",
+      "method": "GET",
+      "path": "/coins/{id}/ohlc",
+      "requiredParams": [
+        "id (path)",
+        "vs_currency",
+        "days ('1','7','14','30','90','180','365','max')"
+      ],
+      "optionalParams": [
+        "interval ('daily'|'hourly' — paid plans only; empty = auto)",
+        "precision"
+      ],
+      "responseFields": [
+        "array of [timestamp, open, high, low, close]"
+      ],
+      "pagination": "none",
+      "freshness": "cache every 15 minutes. Auto-granularity candle body: 1-2 days = 30 min; 3-30 days = 4 hours; 31+ days = 4 days. OHLC within arbitrary time range requires /coins/{id}/ohlc/range (Analyst+)",
+      "source": "https://docs.coingecko.com/reference/coins-id-ohlc"
+    },
+    {
+      "name": "Coin Tickers (CEX + DEX)",
+      "method": "GET",
+      "path": "/coins/{id}/tickers",
+      "requiredParams": [
+        "id (path)"
+      ],
+      "optionalParams": [
+        "exchange_ids",
+        "include_exchange_logo (default false)",
+        "page",
+        "order (trust_score_desc default; trust_score_asc, volume_desc, volume_asc)",
+        "depth (adds cost_to_move_up_usd / cost_to_move_down_usd 2% orderbook depth)",
+        "dex_pair_format ('symbol')"
+      ],
+      "responseFields": [
+        "base",
+        "target",
+        "market",
+        "last",
+        "volume",
+        "converted_last/converted_volume (BTC/ETH/USD)",
+        "trust_score (nullable)",
+        "is_anomaly",
+        "is_stale",
+        "timestamps"
+      ],
+      "pagination": "page parameter; 'Tickers are paginated to 100 items per page.'",
+      "freshness": "cached every 60 seconds",
+      "source": "https://docs.coingecko.com/reference/coins-id-tickers"
+    },
+    {
+      "name": "Coins List (ID map)",
+      "method": "GET",
+      "path": "/coins/list",
+      "requiredParams": [],
+      "optionalParams": [
+        "not verified in detail (listed on endpoint overview as the canonical id/name/symbol map)"
+      ],
+      "responseFields": [
+        "id",
+        "name",
+        "symbol (per endpoint overview description)"
+      ],
+      "pagination": "not verified",
+      "freshness": "not verified for this endpoint",
+      "source": "https://docs.coingecko.com/reference/endpoint-overview"
+    },
+    {
+      "name": "Coin Categories with Market Data",
+      "method": "GET",
+      "path": "/coins/categories",
+      "requiredParams": [],
+      "optionalParams": [
+        "order (default market_cap_desc; market_cap_asc, name_asc/desc, market_cap_change_24h_asc/desc)"
+      ],
+      "responseFields": [
+        "id",
+        "name",
+        "market_cap",
+        "market_cap_change_24h",
+        "content",
+        "top_3_coins_id",
+        "top_3_coins",
+        "volume_24h",
+        "updated_at"
+      ],
+      "pagination": "none documented",
+      "freshness": "cached every 5 minutes",
+      "source": "https://docs.coingecko.com/reference/coins-categories"
+    },
+    {
+      "name": "Top Gainers & Losers",
+      "method": "GET",
+      "path": "/coins/top_gainers_losers",
+      "requiredParams": [
+        "not verified in detail"
+      ],
+      "optionalParams": [
+        "not verified in detail"
+      ],
+      "responseFields": [
+        "top 30 gainers/losers (per endpoint overview)"
+      ],
+      "pagination": "not verified",
+      "freshness": "not verified",
+      "planRestriction": "Analyst plan and above",
+      "source": "https://docs.coingecko.com/reference/endpoint-overview"
+    },
+    {
+      "name": "Exchanges with Data",
+      "method": "GET",
+      "path": "/exchanges",
+      "requiredParams": [],
+      "optionalParams": [
+        "per_page (1-250, default 100)",
+        "page (default 1)"
+      ],
+      "responseFields": [
+        "id",
+        "name",
+        "year_established",
+        "country",
+        "description",
+        "url",
+        "image",
+        "has_trading_incentive",
+        "trust_score (nullable)",
+        "trust_score_rank (nullable)",
+        "trade_volume_24h_btc"
+      ],
+      "pagination": "page + per_page",
+      "freshness": "cached every 60 seconds. 'Only exchanges with active trading volume on CoinGecko are included. Inactive or deactivated exchanges are removed from the list.'",
+      "source": "https://docs.coingecko.com/reference/exchanges"
+    },
+    {
+      "name": "Derivatives Tickers",
+      "method": "GET",
+      "path": "/derivatives",
+      "requiredParams": [],
+      "optionalParams": [],
+      "responseFields": [
+        "market",
+        "symbol",
+        "index_id",
+        "price",
+        "price_percentage_change_24h",
+        "contract_type (perpetual|futures)",
+        "index",
+        "basis",
+        "spread",
+        "funding_rate",
+        "open_interest (USD)",
+        "volume_24h (USD)",
+        "last_traded_at",
+        "expired_at (nullable)"
+      ],
+      "pagination": "none documented",
+      "freshness": "cached every 30 seconds; 'all the tickers from derivatives exchanges on CoinGecko'",
+      "source": "https://docs.coingecko.com/reference/derivatives-tickers"
+    },
+    {
+      "name": "Global Crypto Market Data",
+      "method": "GET",
+      "path": "/global",
+      "requiredParams": [],
+      "optionalParams": [],
+      "responseFields": [
+        "active_cryptocurrencies",
+        "upcoming_icos",
+        "ongoing_icos",
+        "ended_icos",
+        "markets",
+        "total_market_cap (by currency)",
+        "total_volume (by currency)",
+        "market_cap_percentage (by coin)",
+        "market_cap_change_percentage_24h_usd",
+        "volume_change_percentage_24h_usd",
+        "updated_at"
+      ],
+      "pagination": "none",
+      "freshness": "cached every 10 minutes",
+      "source": "https://docs.coingecko.com/reference/crypto-global"
+    },
+    {
+      "name": "On-chain Networks List (GeckoTerminal)",
+      "method": "GET",
+      "path": "/onchain/networks",
+      "requiredParams": [],
+      "optionalParams": [
+        "page (default 1)"
+      ],
+      "responseFields": [
+        "data[].id (network id, e.g. 'eth', 'bsc')",
+        "data[].type",
+        "data[].attributes.name",
+        "data[].attributes.coingecko_asset_platform_id"
+      ],
+      "pagination": "page parameter",
+      "freshness": "cached every 60 seconds",
+      "source": "https://docs.coingecko.com/reference/networks-list"
+    },
+    {
+      "name": "On-chain Top Pools by Token Address (GeckoTerminal)",
+      "method": "GET",
+      "path": "/onchain/networks/{network}/tokens/{token_address}/pools",
+      "requiredParams": [
+        "network (path, e.g. 'eth' — refers to /onchain/networks)",
+        "token_address (path)"
+      ],
+      "optionalParams": [
+        "include (comma-separated: base_token, quote_token, dex)",
+        "include_inactive_source (default false)",
+        "page (default 1; pagination beyond 10 pages requires Analyst plan or above)",
+        "sort (default h24_volume_usd_liquidity_desc; h24_tx_count_desc, h24_volume_usd_desc)",
+        "include_gt_community_data (default false)"
+      ],
+      "responseFields": [
+        "data[].attributes: address, name, pool_created_at, base_token_price_usd, quote_token_price_usd, base_token_price_native_currency, quote_token_price_native_currency, base_token_price_quote_token, quote_token_price_base_token, token_price_usd, fdv_usd, market_cap_usd, price_change_percentage (m5/m15/m30/h1/h6/h24), transactions (buys/sells/buyers/sellers), volume_usd (m5..h24), reserve_in_usd — numeric values are JSON strings",
+        "data[].relationships: base_token/quote_token (data.id like 'eth_0x…', type 'token'), dex (data.id like 'uniswap-v4-ethereum'), network",
+        "included[] (when include= used): token {address, name, symbol, decimals, image_url, coingecko_coin_id}, dex {name}",
+        "top-level keys: data, included"
+      ],
+      "pagination": "page parameter; 20 pools per page; beyond 10 pages requires Analyst plan or above",
+      "freshness": "cached every 30 seconds (paid); every 60 seconds (Demo/keyless)",
+      "source": "https://docs.coingecko.com/reference/top-pools-contract-address"
+    },
+    {
+      "name": "On-chain Pool OHLCV (GeckoTerminal)",
+      "method": "GET",
+      "path": "/onchain/networks/{network}/pools/{pool_address}/ohlcv/{timeframe}",
+      "requiredParams": [
+        "network (path)",
+        "pool_address (path)",
+        "timeframe (day|hour|minute|second)"
+      ],
+      "optionalParams": [
+        "aggregate (e.g. 15 for 15-minute candles)",
+        "before_timestamp (epoch seconds)",
+        "limit (default 100, max 1000)",
+        "currency (usd|token, default usd)",
+        "token (base|quote|address, default base)",
+        "include_empty_intervals"
+      ],
+      "responseFields": [
+        "ohlcv_list as [timestamp, open, high, low, close, volume]",
+        "base/quote token metadata"
+      ],
+      "pagination": "cursor-style via before_timestamp + limit; max 6-month range per call",
+      "freshness": "cached every 10 seconds (paid); every 60 seconds (Demo/keyless). Historical: 'Analyst plan and above can access data from September 2021 to present'",
+      "source": "https://docs.coingecko.com/reference/pool-ohlcv-contract-address"
+    },
+    {
+      "name": "On-chain Pool Trades (GeckoTerminal)",
+      "method": "GET",
+      "path": "/onchain/networks/{network}/pools/{pool_address}/trades",
+      "requiredParams": [
+        "network (path)",
+        "pool_address (path)"
+      ],
+      "optionalParams": [
+        "not verified in detail"
+      ],
+      "responseFields": [
+        "last 300 trades of a pool (per endpoint overview)"
+      ],
+      "pagination": "not verified (returns last 300 trades)",
+      "freshness": "not verified for REST; WebSocket OnchainTrade channel documented as 'as fast as 0.1s for actively traded pools' (Analyst+ beta)",
+      "source": "https://docs.coingecko.com/reference/endpoint-overview"
+    },
+    {
+      "name": "API Usage / Key Status",
+      "method": "GET",
+      "path": "/key",
+      "requiredParams": [],
+      "optionalParams": [],
+      "responseFields": [
+        "plan",
+        "rate_limit_request_per_minute",
+        "monthly_call_credit",
+        "current_total_monthly_calls",
+        "current_remaining_monthly_calls",
+        "api_key_rate_limit_request_per_minute",
+        "api_key_monthly_call_credit",
+        "api_key_current_total_monthly_calls"
+      ],
+      "pagination": "none",
+      "freshness": "not documented",
+      "planRestriction": "Available to 'Basic, Analyst, Lite, Pro, and Enterprise' plan subscribers",
+      "source": "https://docs.coingecko.com/reference/api-usage"
+    }
+  ],
+  "coverage": {
+    "assetClasses": [
+      "crypto spot (coins/tokens)",
+      "crypto derivatives (perpetuals and futures tickers: price, funding rate, open interest, basis, spread)",
+      "NFT collections (floor price, market data)",
+      "on-chain DEX pools/tokens (GeckoTerminal)",
+      "public treasury holdings of companies/governments",
+      "crypto categories/sectors",
+      "global market aggregates"
+    ],
+    "traditionalAssetClasses": "none — no equities, FX, fixed income, or commodities datasets are documented",
+    "coins": "18,000+ coins (docs homepage figure per search results); marketing page claims '41M+' tokens tracked across networks (includes on-chain tokens)",
+    "exchanges": "1,500+ exchanges; 'more than 36,000,000 trading pairs on CEXs and DEXs' (marketing page). Only exchanges with active trading volume are included in /exchanges",
+    "chains": "200+ blockchain networks and 1,000+ DEXes via GeckoTerminal on-chain endpoints (marketing page); docs homepage cites '200+ blockchain networks, 1,800+ DEXes, 39M+ tokens' for onchain DEX data",
+    "nfts": "NFT collections listed on CoinGecko; docs search results cite 3,000+ NFT collections",
+    "geographies": "global aggregation across exchanges; exchange objects carry a country field; no geography-specific market entitlements documented",
+    "instrumentTypes": [
+      "spot pairs (CEX + DEX)",
+      "perpetuals",
+      "futures",
+      "NFT collections",
+      "DEX liquidity pools"
+    ],
+    "sources": [
+      "https://www.coingecko.com/en/api",
+      "https://docs.coingecko.com/",
+      "https://docs.coingecko.com/reference/exchanges",
+      "https://docs.coingecko.com/reference/derivatives-tickers"
+    ]
+  },
+  "freshness": {
+    "model": "REST responses are cached aggregates, not exchange-direct real-time feeds. Update cadence varies per endpoint and plan.",
+    "simplePrice": "every 20 s (paid) / 60 s (Demo/keyless)",
+    "coinsMarkets": "every 30 s (paid) / 60 s (Demo/keyless)",
+    "marketChart": "every 30 s; daily point finalized 00:10 UTC",
+    "marketChartRange": "30 s (1-day range) / 30 min (2-90 days) / 12 h (>90 days)",
+    "historySnapshot": "EOD snapshot at 00:00 UTC, available 00:35 UTC; cache 30 min",
+    "ohlc": "every 15 min",
+    "tickers": "every 60 s",
+    "exchanges": "every 60 s",
+    "derivatives": "every 30 s",
+    "global": "every 10 min",
+    "categories": "every 5 min",
+    "onchainPoolOhlcv": "every 10 s (paid) / 60 s (Demo/keyless)",
+    "websocket": "push streaming (Beta, Analyst+): OnchainSimpleTokenPrice 'as fast as 1s'; OnchainTrade 'as fast as 0.1s'; OnchainOHLCV intervals 1s/1m/5m/15m/1h/2h/4h/8h/12h/1d; CGSimplePrice for coin prices",
+    "sources": [
+      "https://docs.coingecko.com/reference/simple-price",
+      "https://docs.coingecko.com/reference/coins-markets",
+      "https://docs.coingecko.com/reference/coins-id-market-chart",
+      "https://docs.coingecko.com/reference/coins-id-market-chart-range",
+      "https://docs.coingecko.com/reference/coins-id-history",
+      "https://docs.coingecko.com/reference/coins-id-ohlc",
+      "https://docs.coingecko.com/reference/coins-id-tickers",
+      "https://docs.coingecko.com/reference/exchanges",
+      "https://docs.coingecko.com/reference/derivatives-tickers",
+      "https://docs.coingecko.com/reference/crypto-global",
+      "https://docs.coingecko.com/reference/coins-categories",
+      "https://docs.coingecko.com/reference/pool-ohlcv-contract-address",
+      "https://docs.coingecko.com/websocket"
+    ]
+  },
+  "historicalDepth": {
+    "dailyMarketData": "Marketing page: '12+ years of historical data' 'starting from 2014'. Pricing page gates depth by plan: Demo/Basic '2 years historical data'; Analyst/Lite/Enterprise '10 years historical data'. (Apparent tension between '12+ years' marketing claim and '10 years' plan entitlement is unresolved in the docs.)",
+    "hourlyMarketData": "available 'from 30 Jan 2018'; max 'any 100 days' per request",
+    "fiveMinuteMarketData": "available 'from 9 Feb 2018'; max 'any 10 days' per request; Enterprise only",
+    "onchainOhlcv": "'Analyst plan and above can access data from September 2021 to present' with 'max 6-month range' per call",
+    "eodSnapshots": "/coins/{id}/history returns 00:00 UTC snapshots per date (depth subject to plan historical-data entitlement)",
+    "sources": [
+      "https://www.coingecko.com/en/api",
+      "https://www.coingecko.com/en/api/pricing",
+      "https://docs.coingecko.com/reference/coins-id-market-chart-range",
+      "https://docs.coingecko.com/reference/pool-ohlcv-contract-address"
+    ]
+  },
+  "pagination": {
+    "primaryMechanism": "page + per_page query parameters on list endpoints (per_page typically 1-250, default 100)",
+    "tickers": "page parameter, fixed 100 items per page",
+    "onchainOhlcv": "before_timestamp cursor + limit (max 1000)",
+    "sources": [
+      "https://docs.coingecko.com/reference/coins-markets",
+      "https://docs.coingecko.com/reference/exchanges",
+      "https://docs.coingecko.com/reference/coins-id-tickers",
+      "https://docs.coingecko.com/reference/pool-ohlcv-contract-address"
+    ]
+  },
+  "platformMappings": {
+    "note": "Platform Chain enum -> CoinGecko asset platform id (for /simple/token_price/{id}) and -> GeckoTerminal onchain network id (for /onchain/networks/{network}/...). Verified against the official GeckoTerminal /networks response (network id + coingecko_asset_platform_id pairs), the official /asset_platforms response, and official docs examples. Chains not listed here are unmapped — adapters must refuse them.",
+    "assetPlatformIdByChain": {
+      "ethereum": "ethereum",
+      "solana": "solana",
+      "polygon": "polygon-pos",
+      "arbitrum": "arbitrum-one",
+      "optimism": "optimistic-ethereum",
+      "base": "base",
+      "bsc": "binance-smart-chain",
+      "avalanche": "avalanche"
+    },
+    "onchainNetworkIdByChain": {
+      "ethereum": "eth",
+      "solana": "solana",
+      "polygon": "polygon_pos",
+      "arbitrum": "arbitrum",
+      "optimism": "optimism",
+      "base": "base",
+      "bsc": "bsc",
+      "avalanche": "avax"
+    },
+    "unmapped": [
+      "bitcoin (no token-contract asset platform)",
+      "other"
+    ],
+    "sources": [
+      "https://docs.coingecko.com/reference/networks-list",
+      "https://api.geckoterminal.com/api/v2/networks?page=1",
+      "https://api.coingecko.com/api/v3/asset_platforms",
+      "https://docs.coingecko.com/reference/simple-token-price"
+    ]
+  },
+  "rateLimits": {
+    "model": "Per-minute rate limit plus monthly call-credit quota. 'Each successful request (HTTP 200) deducts 1 credit from your monthly quota, while failed requests (4xx, 5xx) do not consume credits but still count toward your per-minute rate limit.' WebSocket: '0.1 credit per response returned.'",
+    "plans": {
+      "Demo": {
+        "price": "$0/month",
+        "monthlyCredits": "10,000",
+        "rateLimitPerMin": 100
+      },
+      "Basic": {
+        "price": "$35/mo monthly or $29/mo billed yearly",
+        "monthlyCredits": "100,000",
+        "rateLimitPerMin": 300
+      },
+      "Analyst": {
+        "price": "$129/mo monthly or $103.20/mo billed yearly",
+        "monthlyCredits": "500,000",
+        "rateLimitPerMin": 500
+      },
+      "Lite": {
+        "price": "$499/mo monthly or $399.20/mo billed yearly",
+        "monthlyCredits": "2M (tiered options 2m/5m/8m/10m/15m)",
+        "rateLimitPerMin": 500
+      },
+      "Enterprise": {
+        "price": "Inquire for pricing",
+        "monthlyCredits": "Custom",
+        "rateLimitPerMin": "Custom"
+      }
+    },
+    "monitoring": "GET /key returns plan, rate_limit_request_per_minute, monthly_call_credit, current_remaining_monthly_calls",
+    "backoffGuidance": "REST: none documented beyond 429 message 'Rate limit exceeded. Reduce call frequency or upgrade your plan'. No Retry-After header documented. WebSocket: 'Clients should implement automatic reconnection with exponential backoff.'",
+    "sources": [
+      "https://www.coingecko.com/en/api/pricing",
+      "https://docs.coingecko.com/docs/errors-and-rate-limits",
+      "https://docs.coingecko.com/reference/api-usage",
+      "https://docs.coingecko.com/websocket"
+    ]
+  },
+  "errors": {
+    "httpStatusCodes": {
+      "400": "Invalid request — check your parameters",
+      "401": "Missing or invalid API key",
+      "403": "Access blocked by the server",
+      "408": "Request took too long — usually caused by slow network on your end",
+      "429": "Rate limit exceeded. Reduce call frequency or upgrade your plan",
+      "500": "Unexpected server error",
+      "503": "Check status.coingecko.com for outages",
+      "1020": "Blocked by CDN firewall rule"
+    },
+    "vendorErrorCodes": {
+      "10002": "No API key provided. Pro API requires x_cg_pro_api_key, Demo API requires x_cg_demo_api_key",
+      "10005": "Endpoint not available on your plan",
+      "10010/10011": "Invalid key type used with incorrect root URL"
+    },
+    "corsNote": "CORS errors: 'Server didn't return CORS headers. Proxy requests through your backend instead'",
+    "responseBodySchema": "not documented — the errors page lists codes and messages but no formal JSON error-body schema",
+    "creditImpact": "Failed requests (4xx/5xx) do not consume monthly credits but do count toward the per-minute rate limit",
+    "sources": [
+      "https://docs.coingecko.com/docs/errors-and-rate-limits"
+    ]
+  },
+  "entitlements": {
+    "endpointCountsByTier": {
+      "Demo/Basic": "50+ market data endpoints",
+      "Analyst/Lite": "70+ market data endpoints",
+      "Enterprise": "80+ market data endpoints"
+    },
+    "historicalDepthByTier": {
+      "Demo/Basic": "2 years",
+      "Analyst/Lite/Enterprise": "10 years"
+    },
+    "deliveryByTier": {
+      "Demo/Basic": "REST only",
+      "Analyst/Lite/Enterprise": "REST, WebSocket (Beta), Webhook"
+    },
+    "analystPlusExclusiveEndpoints": [
+      "/coins/list/new",
+      "/coins/top_gainers_losers",
+      "/coins/{id}/supply_breakdown",
+      "/coins/{id}/ohlc/range",
+      "/exchanges/{id}/volume_chart/range",
+      "/nfts/markets",
+      "/nfts/{id}/market_chart",
+      "/nfts/{asset_platform_id}/contract/{contract_address}/market_chart",
+      "/nfts/{id}/tickers",
+      "/news",
+      "/global/market_cap_chart",
+      "/key",
+      "/onchain/pools/megafilter",
+      "/onchain/pools/trending_search",
+      "/onchain/.../tokens/{token_address}/ohlcv/{timeframe}",
+      "/onchain/.../tokens/{token_address}/trades",
+      "/onchain/.../top_traders",
+      "/onchain/.../top_holders",
+      "/onchain/.../holders_chart",
+      "/onchain/categories",
+      "/onchain/categories/{category_id}/pools"
+    ],
+    "enterpriseExclusive": [
+      "/coins/{id}/circulating_supply_chart (+/range)",
+      "/coins/{id}/total_supply_chart (+/range)",
+      "/insights",
+      "5-minutely interval data on market_chart endpoints",
+      "custom licensing (redistribution/white-label)",
+      "99.9% uptime SLA",
+      "dedicated CSM, integration consultation, Slack support"
+    ],
+    "paidPlanFeatures": [
+      "interval=daily / interval=hourly on /coins/{id}/ohlc",
+      "faster cache cadence (e.g. 20s simple/price, 30s coins/markets, 10s onchain OHLCV)"
+    ],
+    "websocket": "'CoinGecko WebSocket (Beta) is available for paid plan customers (Analyst plan & above)'; self-serve limits: 10 concurrent connections, 100 subscriptions per channel per socket; Enterprise gets higher limits; excluded from standard SLA while in beta",
+    "sources": [
+      "https://www.coingecko.com/en/api/pricing",
+      "https://docs.coingecko.com/reference/endpoint-overview",
+      "https://docs.coingecko.com/reference/coins-id-market-chart",
+      "https://docs.coingecko.com/reference/coins-id-ohlc",
+      "https://docs.coingecko.com/websocket",
+      "https://docs.coingecko.com/reference/api-usage"
+    ]
+  },
+  "sdks": [
+    {
+      "language": "TypeScript",
+      "package": "@coingecko/coingecko-typescript (npm)",
+      "official": true,
+      "status": "'Maintained by the CoinGecko team, compatible with both Pro and Demo APIs'; docs reference section labels the SDK 'CoinGecko SDK (Beta)'",
+      "source": "https://docs.coingecko.com/docs/sdk (also https://docs.coingecko.com/docs/sdk-typescript)"
+    },
+    {
+      "language": "Python",
+      "package": "coingecko_sdk (import; initialized via Coingecko(pro_api_key=..., environment=\"pro\"))",
+      "official": true,
+      "status": "'Maintained by the CoinGecko team, compatible with both Pro and Demo APIs'; docs reference section labels the SDK 'CoinGecko SDK (Beta)'",
+      "source": "https://docs.coingecko.com/docs/sdk (also https://docs.coingecko.com/docs/sdk-python)"
+    }
+  ],
+  "licensing": {
+    "licenseGrant": "Limited, non-exclusive, non-assignable, non-transferable license to use the API to develop/test/support applications and integrate the API with your Application (API Terms of Service).",
+    "redistribution": "TOS s4.1.6: 'You are not permitted to sell, rent, lease, sub-license, re-distribute or syndicate access to the CoinGecko API' except under an Executed Agreement. Pricing page: Enterprise custom license covers 'redistribution of data and white labeling'.",
+    "storageCaching": "TOS s6.1 permits limited caching with conditions including 'You should refresh the cache at least every 24 hours' and strong encryption/security measures. TOS s6.2: 'you are not allowed to duplicate, reproduce, copy, store, derive from or translate any Data' (outside the permitted caching scope) — long-term historical storage or derived-data products likely require an Enterprise/custom agreement.",
+    "attribution": "Commercial plans must 'prominently display the message: Data provided by CoinGecko' with a hyperlink to https://www.coingecko.com/en/api (pricing page). TOS s4.4 requires displaying 'Powered by CoinGecko' 'in a legible font... no smaller than font size 10' and compliance with CoinGecko Brand Guidelines (brand.coingecko.com).",
+    "termination": "TOS s10.4.3: on termination 'you undertake to promptly and permanently delete all Data and other information procured from... the CoinGecko API', with written certification if requested.",
+    "abuseClauses": "TOS s4.2: usage exceeding 'reasonable request volume' or constituting 'excessive or abusive usage' permits immediate termination.",
+    "sources": [
+      "https://www.coingecko.com/en/api_terms",
+      "https://www.coingecko.com/en/api/pricing"
+    ]
+  },
+  "limitations": [
+    "Aggregated, cached data — not exchange-direct feeds. REST cache cadence ranges from 10-20 seconds (best endpoints, paid) to 12 hours (long-range chart queries); must not be presented as tick-level real-time.",
+    "No traditional asset classes: crypto/NFT/DEX only — cannot serve equities, FX, fixed income, or commodities functions.",
+    "5-minutely historical granularity is Enterprise-only; hourly data exists only from 30 Jan 2018 and is capped at 100 days per request; 5m from 9 Feb 2018 capped at 10 days per request.",
+    "Historical depth is plan-gated: 2 years (Demo/Basic) vs 10 years (Analyst+) per the pricing page, while marketing claims '12+ years since 2014' — the exact interaction is not clarified in docs.",
+    "Symbol mapping: the API is keyed on CoinGecko-specific coin IDs (via /coins/list); symbols are not unique (symbols filter limited to 50 with include_tokens=all; 'Wildcard searches are not supported').",
+    "Ticker quality varies by venue: responses carry is_anomaly and is_stale flags and a nullable trust_score — consumers must filter these for institutional use.",
+    "Survivorship consideration: 'Inactive or deactivated exchanges are removed from the list' on /exchanges, so current listings do not reflect delisted/defunct venues.",
+    "Daily historical points finalize at 00:00 UTC and become available 10-35 minutes after midnight depending on endpoint (00:10 for market_chart, 00:35 for /history).",
+    "Failed requests (4xx/5xx) still count toward the per-minute rate limit.",
+    "No documented REST backoff guidance or Retry-After semantics; error response body schema not formally documented.",
+    "WebSocket is Beta, Analyst+ only, 'excluded from standard SLA protections', with 10-connection / 100-subscription self-serve limits.",
+    "On-chain DEX OHLCV history begins September 2021, max 6-month window per call, Analyst+ for historical access.",
+    "TOS restricts storage/derivation of Data (s6.1/6.2, 24-hour cache refresh) and requires deletion on termination — a compliance constraint for research platforms that persist historical data without an Enterprise agreement.",
+    "Plan naming inconsistency in docs: /key page and WebSocket page reference 'Pro' and 'Pro+' plans that do not appear on the current pricing page (Demo/Basic/Analyst/Lite/Enterprise) — likely legacy tiers.",
+    "OHLC endpoint auto-granularity produces coarse candles (4-day candles beyond 31 days) unless paid interval parameters are used."
+  ],
+  "institutionalFit": {
+    "primary": [
+      "Crypto spot reference/market data: prices, market caps, volumes, supply, ATH/ATL across 18,000+ coins (coins/markets, simple/price)",
+      "Crypto historical research series: daily since 2014 (plan-gated depth), hourly since 2018, EOD UTC snapshots (/coins/{id}/history)",
+      "Crypto sector/category analytics (/coins/categories) and global market aggregates (/global)",
+      "Exchange metadata and venue quality screening (trust_score, 2%-depth cost metrics via tickers?depth=true)",
+      "Crypto derivatives overview: funding rates, open interest, basis, spread across derivatives exchanges (/derivatives)",
+      "NFT collection market data (Analyst+ for market lists/charts)",
+      "On-chain DEX analytics via GeckoTerminal: 200+ networks, pools, token OHLCV since Sep 2021, trades, holders (mostly Analyst+)",
+      "Public treasury holdings of companies/governments (entities/public_treasury endpoints)"
+    ],
+    "fallback": [
+      "Near-real-time crypto price display where 20-60 s cached aggregates are acceptable and clearly labeled (WebSocket Beta can improve latency for Analyst+ but is SLA-excluded)",
+      "DEX trade-level data (REST last-300-trades window; WebSocket OnchainTrade for streaming)"
+    ],
+    "notSuitable": [
+      "Any non-crypto asset class (equities, FX, rates, commodities) — no coverage",
+      "Tick-level or exchange-direct market data for execution/surveillance use",
+      "Full order-book data (only 2% depth cost metrics documented)",
+      "Redistribution/white-label data products without an Enterprise custom license"
+    ],
+    "hardConstraints": [
+      "Cached/delayed data must never be presented as real-time; per-endpoint cache cadence must be surfaced in the platform (20 s to 12 h depending on endpoint/range)",
+      "Attribution 'Data provided by CoinGecko' + hyperlink required on commercial plans; brand guidelines apply",
+      "No resale/redistribution/syndication without an Executed (Enterprise) Agreement; TOS caching limited to 24-hour refresh cycles and prohibits deriving/storing Data beyond that scope",
+      "5-minutely intraday history and supply charts require Enterprise; many research endpoints require Analyst+",
+      "All Data must be deleted (with written certification on request) upon contract termination",
+      "Failed calls count toward rate limits — client must implement its own throttling/backoff since none is documented for REST"
+    ]
+  },
+  "sourcesConsulted": [
+    {
+      "url": "https://docs.coingecko.com",
+      "whatItVerified": "Docs root: Pro vs Demo API structure, onchain DEX coverage claim (200+ networks, 1,800+ DEXes, 39M+ tokens), delivery methods (REST, WebSocket, Webhooks), docs navigation"
+    },
+    {
+      "url": "https://docs.coingecko.com/reference/authentication",
+      "whatItVerified": "Pro API auth: x-cg-pro-api-key header, x_cg_pro_api_key query param, base URL https://pro-api.coingecko.com/api/v3/, /onchain path convention, key-handling guidance"
+    },
+    {
+      "url": "https://docs.coingecko.com/docs/errors-and-rate-limits",
+      "whatItVerified": "HTTP status codes (400/401/403/408/429/500/503/1020), vendor error codes (10002/10005/10010/10011), CORS note, credit vs rate-limit accounting, Demo 100 calls/min"
+    },
+    {
+      "url": "https://docs.coingecko.com/reference/endpoint-overview",
+      "whatItVerified": "Complete endpoint catalog with exact paths and Analyst+ / Enterprise exclusivity markers, including onchain (GeckoTerminal) endpoints"
+    },
+    {
+      "url": "https://www.coingecko.com/en/api/pricing",
+      "whatItVerified": "Plan tiers, prices, monthly credits, per-minute rate limits, endpoint counts per tier, 2y vs 10y historical depth, REST/WebSocket/Webhook access per tier, commercial attribution requirement, Enterprise custom licensing and SLA"
+    },
+    {
+      "url": "https://docs.coingecko.com/reference/coins-markets",
+      "whatItVerified": "/coins/markets method, params, defaults, per_page limits, response fields, pagination, 30s/60s cache cadence, filter priority"
+    },
+    {
+      "url": "https://docs.coingecko.com/reference/coins-id-market-chart",
+      "whatItVerified": "market_chart params, auto-granularity rules, interval plan restrictions (5m Enterprise), response arrays, 30s cache, 00:10 UTC daily availability"
+    },
+    {
+      "url": "https://docs.coingecko.com/reference/coins-id-market-chart-range",
+      "whatItVerified": "range params, granularity limits (hourly 100 days, 5m 10 days Enterprise), historical availability dates (hourly 30 Jan 2018, 5m 9 Feb 2018), tiered cache cadence"
+    },
+    {
+      "url": "https://docs.coingecko.com/reference/simple-price",
+      "whatItVerified": "/simple/price params, 515-id limit, response fields, 20s/60s cache cadence"
+    },
+    {
+      "url": "https://docs.coingecko.com/reference/coins-id-history",
+      "whatItVerified": "/coins/{id}/history params, 00:00 UTC snapshot semantics, 00:35 UTC availability, response fields, 30-min cache"
+    },
+    {
+      "url": "https://docs.coingecko.com/reference/coins-id-ohlc",
+      "whatItVerified": "/coins/{id}/ohlc params, allowed days values, auto-granularity candle bodies, paid-plan interval access, [ts,o,h,l,c] format, 15-min cache"
+    },
+    {
+      "url": "https://docs.coingecko.com/reference/coins-id-tickers",
+      "whatItVerified": "tickers params (depth, order, dex_pair_format), 100-per-page pagination, is_anomaly/is_stale/trust_score fields, 60s cache"
+    },
+    {
+      "url": "https://docs.coingecko.com/reference/derivatives-tickers",
+      "whatItVerified": "/derivatives response fields (funding_rate, open_interest, basis, contract_type), 30s cache"
+    },
+    {
+      "url": "https://docs.coingecko.com/reference/exchanges",
+      "whatItVerified": "/exchanges params, response fields (trust_score, trade_volume_24h_btc), active-exchanges-only inclusion rule, 60s cache"
+    },
+    {
+      "url": "https://docs.coingecko.com/reference/crypto-global",
+      "whatItVerified": "/global response schema and 10-minute cache"
+    },
+    {
+      "url": "https://docs.coingecko.com/reference/coins-categories",
+      "whatItVerified": "/coins/categories params, response fields, 5-minute cache"
+    },
+    {
+      "url": "https://docs.coingecko.com/reference/pool-ohlcv-contract-address",
+      "whatItVerified": "onchain pool OHLCV path, timeframes, aggregate/before_timestamp/limit params, Sep-2021 history start, 6-month range cap, 10s/60s cache, Analyst+ restriction"
+    },
+    {
+      "url": "https://docs.coingecko.com/reference/api-usage",
+      "whatItVerified": "GET /key response fields for quota monitoring and plan availability list (Basic, Analyst, Lite, Pro, Enterprise)"
+    },
+    {
+      "url": "https://docs.coingecko.com/docs/sdk",
+      "whatItVerified": "Official TypeScript and Python SDKs, 'Maintained by the CoinGecko team, compatible with both Pro and Demo APIs'"
+    },
+    {
+      "url": "https://www.coingecko.com/en/api_terms",
+      "whatItVerified": "TOS clauses: caching (s6.1, 24h refresh), derivation/storage prohibition (s6.2), redistribution prohibition (s4.1.6), attribution (s4.4), deletion on termination (s10.4.3), abuse clauses (s4.2)"
+    },
+    {
+      "url": "https://www.coingecko.com/en/api",
+      "whatItVerified": "Marketing coverage claims: 41M+ tokens, 1,500+ exchanges, 36M+ pairs, 200+ networks, 1,000+ DEXes, 12+ years history since 2014, 99.9% uptime, named clients"
+    },
+    {
+      "url": "https://docs.coingecko.com/websocket",
+      "whatItVerified": "WebSocket Beta availability (Analyst+), channels (CGSimplePrice, OnchainSimpleTokenPrice, OnchainTrade, OnchainOHLCV), connection/subscription limits, 0.1 credit per response, exponential-backoff reconnection guidance, SLA exclusion"
+    },
+    {
+      "url": "https://docs.coingecko.com/changelog",
+      "whatItVerified": "Existence of public changelog (via search results); no formal deprecation policy page located"
+    },
+    {
+      "url": "https://docs.coingecko.com/reference/simple-token-price",
+      "whatItVerified": "GET /simple/token_price/{id}: path/params (contract_addresses, vs_currencies, include_* flags, precision), response keyed by contract address, 515-address cap, 20s/60s cache cadence, example asset platform id 'ethereum'"
+    },
+    {
+      "url": "https://docs.coingecko.com/reference/top-pools-contract-address",
+      "whatItVerified": "GET /onchain/networks/{network}/tokens/{token_address}/pools: params (include, include_inactive_source, page, sort, include_gt_community_data), 20 pools/page, >10 pages Analyst+, attribute fields carry numeric values as JSON strings, relationships token ids formatted '{network}_{address}', included token attributes (address, name, symbol, decimals, image_url, coingecko_coin_id) and dex attributes (name), 30s/60s cache, example network id 'eth'"
+    },
+    {
+      "url": "https://docs.coingecko.com/reference/asset-platforms-list",
+      "whatItVerified": "GET /asset_platforms: params (filter=nft), response fields (id, chain_identifier, name, shortname, native_coin_id, image), example ids 'solana' and 'flow-evm', 60s/5min cache"
+    },
+    {
+      "url": "https://docs.coingecko.com/reference/networks-list",
+      "whatItVerified": "GET /onchain/networks: response fields (data[].id, attributes.name, attributes.coingecko_asset_platform_id), example pairs eth->ethereum and bsc->binance-smart-chain, 60s cache"
+    },
+    {
+      "url": "https://api.geckoterminal.com/api/v2/networks?page=1",
+      "whatItVerified": "Official GeckoTerminal networks list (live, keyless): confirmed network ids eth/solana/polygon_pos/arbitrum/optimism/base/bsc/avax with coingecko_asset_platform_id values ethereum/solana/polygon-pos/arbitrum-one/optimistic-ethereum/base/binance-smart-chain/avalanche"
+    },
+    {
+      "url": "https://api.coingecko.com/api/v3/asset_platforms",
+      "whatItVerified": "Official asset platforms list (live, keyless): cross-checked 'polygon-pos' asset platform id"
+    }
+  ],
+  "confidence": "high",
+  "openQuestions": [
+    "No formal API versioning/deprecation policy document was found — how much notice does CoinGecko give before breaking changes? (Changelog exists but policy is not stated.)",
+    "Exact Enterprise rate limits, credits, and pricing are 'custom/inquire' — must be obtained from sales.",
+    "How the pricing page's '2 years / 10 years historical data' entitlement interacts with the '12+ years since 2014' marketing claim and per-endpoint availability dates is not documented precisely.",
+    "Error response body JSON schema is not formally documented (only codes/messages).",
+    "WebSocket endpoint URL and its authentication handshake were not captured from the docs excerpt reviewed.",
+    "Docs reference legacy plan names ('Pro', 'Pro+') on /key and WebSocket pages that are absent from the current pricing page — current mapping unconfirmed.",
+    "Webhooks capability is listed for Analyst+ but its documentation was not reviewed in this pass.",
+    "Whether TOS s6.1/6.2 storage limits (24h cache refresh, no derived storage) can be waived below Enterprise tier for internal research persistence requires legal/sales confirmation.",
+    "Verifier finding 2026-07-17: /coins/{id}/ohlc documents interval=daily only for days 1/7/14/30/90/180 and interval=hourly only for days 1/7/14/30 (and 90); other days/interval combinations are undocumented — adapter now restricts accordingly."
+  ]
+}

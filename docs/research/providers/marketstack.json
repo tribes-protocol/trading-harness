@@ -1,0 +1,389 @@
+{
+  "provider": "Marketstack (an APILayer product; APILayer legal entity is Idera, Inc. per terms redirect)",
+  "reviewDate": "undefined",
+  "reviewDateNote": "Environment clock reported 2026-07-17 at time of review; task specified reviewDate 'undefined'.",
+  "officialDocsUrl": "https://docs.apilayer.com/marketstack/docs/api-documentation (marketstack.com/documentation_v2 301-redirects here; marketstack.com/documentation redirects to the v1 page on the same portal)",
+  "apiVersion": {
+    "current": "v2 (OpenAPI document title 'Marketstack API v2', info.version 2.0.0, OpenAPI 3.0.3)",
+    "legacy": "v1 (still documented at docs.apilayer.com/marketstack/docs/api-endpoints-v1)",
+    "versioningPolicy": "Version is in the URL path (/v1, /v2). Official v1 page states: 'All the new functionalities and new endpoints listed in the pricing plans are designed for use with the new API endpoints in Version V2... Please be aware that Version V1 of the API endpoints will be deprecated for use after June 30th, 2025.' No further deprecation/versioning policy is documented."
+  },
+  "authentication": {
+    "mechanism": "API key passed as an HTTPS GET query parameter",
+    "parameterName": "access_key",
+    "location": "query",
+    "documentedAs": "OpenAPI securityScheme ApiKeyQuery: {type: apiKey, in: query, name: access_key} applied globally; Getting Started: 'you will need to make sure to be authenticated with the API by passing your API access key to the API's access_key parameter'",
+    "headerOrBearerOption": "not documented (no header or bearer-token auth is documented)",
+    "https": "256-bit HTTPS documented as available on all plans, free and paid",
+    "keyManagement": "Key available and resettable in the account dashboard; docs warn not to expose the key publicly"
+  },
+  "baseUrls": [
+    {
+      "url": "https://api.marketstack.com/v2",
+      "notes": "Current v2 base URL; the only server listed in the official OpenAPI spec (servers[0].url)."
+    },
+    {
+      "url": "https://api.marketstack.com/v1",
+      "notes": "Legacy v1 base URL used throughout v1 docs and the Quickstart Guide (Quickstart shows http://api.marketstack.com/v1/; HTTPS is documented as available on all plans). v1 documented as deprecated for use after 2025-06-30."
+    }
+  ],
+  "planSpecificHosts": "none documented; a single host serves all plans",
+  "endpoints": [
+    {
+      "name": "End-of-Day Data",
+      "method": "GET",
+      "path": "/eod",
+      "requiredParams": ["access_key", "symbols (comma-separated tickers; each symbol consumes one API request; max 100 symbols per v1 docs)"],
+      "optionalParams": ["exchange (MIC)", "date_from", "date_to", "sort (ASC|DESC, default DESC)", "limit (default 100, max 1000)", "offset (default 0)"],
+      "responseTopLevel": ["pagination {limit, offset, count, total}", "data[] {open, high, low, close, volume, adj_high, adj_low, adj_close, adj_open, adj_volume, split_factor, dividend, name, exchange_code, asset_type, price_currency, symbol, exchange, date}"],
+      "pagination": "limit/offset",
+      "freshness": "EOD (daily). Adjusted prices follow CRSP methodology. Variants: /eod/latest, /eod/{date} (YYYY-MM-DD or ISO-8601).",
+      "notes": "v2 docs: 'EOD data has access to over 500,000 tickers'; 'The V2 EOD endpoint supports data from 30+ stock exchanges, including NASDAQ, PINK, SHG, NYSE, NYSE ARCA, OTCQB, and BATS'. Ticker symbols containing a period must be queried with a hyphen (BRK.B -> BRK-B). LSE/XLON prices may be quoted in pence (GBX); convert GBP = GBX/100."
+    },
+    {
+      "name": "EOD Latest / EOD by Date",
+      "method": "GET",
+      "path": "/eod/latest and /eod/{date}",
+      "requiredParams": ["access_key", "symbols", "date (path, for /eod/{date}, YYYY-MM-DD or ISO-8601)"],
+      "optionalParams": ["exchange", "sort", "limit", "offset"],
+      "responseTopLevel": ["pagination", "data[] (EOD bar fields as /eod)"],
+      "pagination": "limit/offset",
+      "freshness": "EOD"
+    },
+    {
+      "name": "Intraday Data",
+      "method": "GET",
+      "path": "/intraday (variants: /intraday/latest, /intraday/{date})",
+      "requiredParams": ["access_key", "symbols"],
+      "optionalParams": ["interval (v2 spec enum: 1min, 5min, 10min, 15min, 30min, 1hour; v1 docs additionally list 3hour, 6hour, 12hour, 24hour with default 1hour)", "exchange", "date_from", "date_to", "sort", "limit", "offset", "after_hours (true includes pre/post market data if available; default false)"],
+      "responseTopLevel": ["pagination", "data[] (IntradayBar; item properties not enumerated in the v2 OpenAPI schema; v2 /tickers/{symbol}/intraday/latest documents: open, high, low, mid, last_size, bid_size, bid_price, ask_price, ask_size, last, close, volume, marketstack_last, date, symbol, exchange)"],
+      "pagination": "limit/offset",
+      "freshness": "Intraday, US/IEX only: 'Intraday prices are available for all US stock tickers included in the IEX (Investors Exchange) stock exchange.' Intervals below 15min require Professional plan or higher. v1 docs: with Professional plan, intraday provides 'real-time market data, updated every minute, every 5 minutes or every 10 minutes.'",
+      "notes": "IMPORTANT documented caveat: since IEX's 2025-02-01 market-data policy change, bidPrice, bidSize, askPrice, askSize, lastPrice, lastSize, mid and last return NULL unless the customer signs a market data agreement directly with IEX; Marketstack instead supplies a derived real-time reference price (marketstack_last). Historical intraday retains only the last 10,000 entries per interval."
+    },
+    {
+      "name": "Real-time Stock Market Prices",
+      "method": "GET",
+      "path": "/stockprice",
+      "requiredParams": ["access_key", "ticker (comma-separated allowed)"],
+      "optionalParams": ["exchange"],
+      "responseTopLevel": ["data[] {exchange_code, exchange_name, country, ticker, price, currency, trade_last}"],
+      "pagination": "none documented (no pagination object in response schema)",
+      "freshness": "Documented as real-time/'live market data' across major exchanges worldwide (NYSE, NASDAQ, LON, WSE, EPA, SHE, NSE, ...). Entitlement: 'Real-time Stock Market Prices' listed from Professional plan upward on pricing page."
+    },
+    {
+      "name": "Splits Data",
+      "method": "GET",
+      "path": "/splits (also /tickers/{symbol}/splits)",
+      "requiredParams": ["access_key", "symbols"],
+      "optionalParams": ["date_from", "date_to", "sort", "limit", "offset"],
+      "responseTopLevel": ["pagination", "data[] {symbol, date, split_factor}"],
+      "pagination": "limit/offset",
+      "freshness": "corporate-actions dataset; update cadence not documented",
+      "notes": "V2 Splits endpoint covers symbols listed on NASDAQ, PINK, SHG, NYSE, NYSE ARCA, OTCQB, and BATS."
+    },
+    {
+      "name": "Dividends Data",
+      "method": "GET",
+      "path": "/dividends (also /tickers/{symbol}/dividends)",
+      "requiredParams": ["access_key", "symbols"],
+      "optionalParams": ["date_from", "date_to", "sort", "limit", "offset"],
+      "responseTopLevel": ["pagination", "data[] {symbol, date, dividend}"],
+      "pagination": "limit/offset",
+      "freshness": "corporate-actions dataset; update cadence not documented",
+      "notes": "V2 Dividends endpoint covers symbols listed on NASDAQ, PINK, SHG, NYSE, NYSE ARCA, OTCQB, and BATS."
+    },
+    {
+      "name": "Ticker Information",
+      "method": "GET",
+      "path": "/tickers/{symbol} (related: /tickers/{symbol}/eod, /eod/latest, /eod/{date}, /intraday, /intraday/latest, /splits, /dividends)",
+      "requiredParams": ["access_key", "symbol (path)"],
+      "optionalParams": ["exchange", "limit", "offset"],
+      "responseTopLevel": ["name", "symbol", "cik", "isin", "cusip", "ein_employer_id", "lei", "series_id", "item_type", "sector", "industry", "sic_code", "sic_name", "stock_exchange"],
+      "pagination": "limit/offset on sub-resources",
+      "freshness": "reference data; update cadence not documented",
+      "notes": "Rich identifier set (CIK/ISIN/CUSIP/LEI/SIC) useful for institutional symbology mapping."
+    },
+    {
+      "name": "Tickers List / Ticker Info",
+      "method": "GET",
+      "path": "/tickerslist and /tickerinfo",
+      "requiredParams": ["access_key", "ticker (for /tickerinfo)"],
+      "optionalParams": ["search", "exchange", "limit", "offset (for /tickerslist)"],
+      "responseTopLevel": ["/tickerslist: pagination, data[] {name, symbol, has_intraday, has_eod, country, stock_exchanges}; /tickerinfo: data"],
+      "pagination": "limit/offset (/tickerslist)",
+      "freshness": "reference data; a daily-updated downloadable ticker list is documented (supported_tickers_2.csv)"
+    },
+    {
+      "name": "Exchanges",
+      "method": "GET",
+      "path": "/exchanges (variants: /exchanges/{mic}, /exchanges/{mic}/tickers, /exchanges/{mic}/eod[/latest|/{date}], /exchanges/{mic}/intraday[/latest|/{date}])",
+      "requiredParams": ["access_key", "mic (path, for variants)", "symbols (for the eod/intraday variants)"],
+      "optionalParams": ["search", "limit", "offset", "interval/date_from/date_to/sort on data variants"],
+      "responseTopLevel": ["pagination", "data[] {name, acronym, mic, country, country_code, city, website, operating_mic, oprt_sgmt, legal_entity_name, exchange_lei, market_category_code, exchange_status, date_creation, date_last_update, date_last_validation, date_expiry, comments}"],
+      "pagination": "limit/offset",
+      "freshness": "reference data; '2700+ Stock Exchanges Info' claimed; docs note 'Not all stock exchanges are supported' for market data itself"
+    },
+    {
+      "name": "Stock Market Index Listing / Info",
+      "method": "GET",
+      "path": "/indexlist and /indexinfo",
+      "requiredParams": ["access_key", "index (for /indexinfo, e.g. australia_all_ordinaries)"],
+      "optionalParams": ["limit", "offset (for /indexlist)"],
+      "responseTopLevel": ["/indexlist: pagination, data[] {benchmark}; /indexinfo: response properties not enumerated in the spec"],
+      "pagination": "limit/offset (/indexlist)",
+      "freshness": "described as 'real-time and historical stock market index data'; 750+ indexes claimed. In v1, index EOD is retrieved via exchange=INDX pseudo-exchange (e.g. symbols=DJI.INDX) and adjusted fields return null.",
+      "notes": "Entitlement: 'Stock Market Index' listed from Basic plan upward."
+    },
+    {
+      "name": "Commodity Prices / Commodities History",
+      "method": "GET",
+      "path": "/commodities and /commoditieshistory",
+      "requiredParams": ["access_key", "commodity_name (e.g. aluminum)"],
+      "optionalParams": ["date_from", "date_to", "frequency (daily|weekly|monthly|quarterly|yearly, default daily) for history"],
+      "responseTopLevel": ["/commodities: data; /commoditieshistory: result"],
+      "pagination": "none documented",
+      "freshness": "current prices + history; commodities EOD history documented 'up to 15 years back'; intraday-style history capped at last 10,000 entries per interval",
+      "notes": "Documented rate limit of 1 API call per minute on this endpoint. 70+ commodities across energy, metals, industrial, agricultural, livestock. Entitlement: Professional plan and above."
+    },
+    {
+      "name": "Company Ratings",
+      "method": "GET",
+      "path": "/companyratings",
+      "requiredParams": ["access_key", "ticker"],
+      "optionalParams": ["date_from", "date_to", "rated (buy|sell|hold filter)"],
+      "responseTopLevel": ["status", "result"],
+      "pagination": "none documented",
+      "freshness": "'real-time buy/sell/hold analyst ratings, updated as new reports are published' plus 15+ years of historical ratings and price targets",
+      "notes": "Documented rate limit of 1 API call per minute. Entitlement: Business plan and above ('Company Ratings')."
+    },
+    {
+      "name": "Bonds",
+      "method": "GET",
+      "path": "/bondlist and /bond",
+      "requiredParams": ["access_key", "country (for /bond, e.g. kenya, united%20states)"],
+      "optionalParams": ["limit", "offset (for /bondlist)"],
+      "responseTopLevel": ["pagination", "data[] {region, country, type, yield, price_change_day, percentage_week, percentage_month, percentage_year, date} (/bond)"],
+      "pagination": "limit/offset",
+      "freshness": "described as 'real-time government bond data'; focuses on 10-year treasury notes of leading countries",
+      "notes": "Entitlement: 'Bonds' listed from Basic plan upward."
+    },
+    {
+      "name": "ETF Holdings",
+      "method": "GET",
+      "path": "/etflist and /etfholdings",
+      "requiredParams": ["access_key", "list=ticker (for /etflist)", "ticker (for /etfholdings)"],
+      "optionalParams": ["limit", "offset (/etflist)", "date_from", "date_to (/etfholdings)"],
+      "responseTopLevel": ["/etflist: pagination, data; /etfholdings: basics, output"],
+      "pagination": "limit/offset (/etflist)",
+      "freshness": "holdings within a specified date range; update cadence not documented",
+      "notes": "Documented: 'The ETF API endpoints use a call count multiplier of 20' (one call consumes 20 requests). Entitlement: 'ETF Holding' listed from Basic plan upward."
+    },
+    {
+      "name": "EDGAR (SEC filings) endpoints",
+      "method": "GET",
+      "path": "/cik_code, /company_name, /submissions, /company_facts, /concept/accounts_payable, /frames/accounts_payable/{unit}",
+      "requiredParams": ["access_key; per endpoint: company_name (min 3 letters) for /cik_code; cik_code (10 digits with leading zeros) for /company_name, /company_facts, /concept/*; frame + unit for /frames/*; /submissions requires at least one of cik_code or cik_code_name"],
+      "optionalParams": ["limit/offset (/cik_code)", "report_from, report_to, filing_from, filing_to, accession_number (/submissions)"],
+      "responseTopLevel": ["mostly data (plus pagination on /cik_code and /frames/*; /company_name returns data + addresses)"],
+      "pagination": "limit/offset where present",
+      "freshness": "SEC EDGAR-derived filings/facts; cadence not documented. Frames period format CY####, CY####Q#, CY####Q#I; concept/frames endpoints currently scoped to US-GAAP Accounts Payable taxonomy tag.",
+      "notes": "Entitlement: Company Statements/Details/Concepts/Facts listed from Business plan upward on pricing page."
+    },
+    {
+      "name": "Currencies / Timezones",
+      "method": "GET",
+      "path": "/currencies and /timezones",
+      "requiredParams": ["access_key"],
+      "optionalParams": ["limit", "offset"],
+      "responseTopLevel": ["pagination", "data[]"],
+      "pagination": "limit/offset",
+      "freshness": "static reference data",
+      "notes": "These list currencies/timezones used by the API's market data; this is NOT an FX-rates dataset."
+    }
+  ],
+  "coverage": {
+    "assetClasses": [
+      "Global equities (EOD; intraday limited to US/IEX tickers)",
+      "Stock market indexes (750+ benchmarks)",
+      "Commodities (70+ across energy, metals, industrial, agricultural, livestock)",
+      "Government bonds (10-year treasury notes for leading countries)",
+      "ETFs (holdings and listings)",
+      "US fundamentals/filings via EDGAR endpoints (CIK, submissions, company facts/concepts, frames)",
+      "Analyst ratings (buy/sell/hold, price targets)"
+    ],
+    "notCovered": "No cryptocurrency, FX-rate, options, or futures price datasets are documented in the v2 endpoint list. /currencies and /timezones are reference metadata only. REST-only: FAQ states no WebSocket/streaming API exists.",
+    "geographies": "50+ countries claimed; exchanges named in docs include NYSE, NASDAQ, IEX, LSE (XLON), Warsaw (WSE), Euronext Paris (EPA), Shenzhen (SHE), NSE India, Shanghai (SHG), OTC venues (PINK, OTCQB), BATS, NYSE ARCA",
+    "scaleClaims": "Vendor figures are inconsistent across official pages and should be validated per use case: docs v2 intro says '125,000+ tickers across 72+ exchanges' and '30000+ Stock tickers... 2700+ Stock Exchanges Info... 750+ Stock Market indexes'; the v2 /eod endpoint doc says 'over 500,000 tickers' (EOD) but only '30+ stock exchanges' supported by the V2 EOD endpoint; FAQ says '170,000+ stock tickers from 70 global stock exchanges'; pricing page banner says '30,000+ Stock Tickers, 70 Stock Exchanges'. The 2700+ figure refers to exchange reference info, not priced coverage.",
+    "chains": "not applicable (no crypto datasets documented)"
+  },
+  "freshness": {
+    "eod": "End-of-day, updated daily; adjusted prices per CRSP methodology; note that intraday closing prices differ from official EOD closes (set via exchange auction)",
+    "intraday": "US/IEX tickers only; intervals from 1min; sub-15min intervals require Professional plan or higher; v1 docs describe Professional-plan intraday as 'real-time market data, updated every minute, every 5 minutes or every 10 minutes'; FAQ: 'real-time market data is updated as frequently as every 60 seconds' (polled REST, no push/streaming)",
+    "intradayCaveat": "Since IEX policy change effective 2025-02-01, bid/ask/last/mid/size fields return NULL without a direct IEX market data agreement; Marketstack supplies a derived reference price instead (marketstack_last)",
+    "stockprice": "documented as live/real-time for major world exchanges (Professional+)",
+    "commodities": "current prices endpoint plus daily/weekly/monthly/quarterly/yearly history",
+    "bonds": "documented as 'real-time government bond data'",
+    "companyRatings": "'real-time' ratings updated as new reports are published",
+    "indexes": "'real-time and historical' per endpoint description",
+    "edgar": "filing-driven; cadence not documented",
+    "referenceData": "supported-tickers download updated daily; exchanges/currencies/timezones cadence not documented"
+  },
+  "historicalDepth": {
+    "eod": "Up to 30 years (v1 docs and FAQ: 'historical market data for the last 30 years' / '30+ years of historical data on premium plans'), but plan-gated: Free 1 year, Basic 10 years, Professional/Business/Enterprise '15+ Years History' per current pricing grid. The '30 years' (FAQ) vs '15+ years' (pricing) discrepancy is unresolved in official sources.",
+    "intraday": "Rolling window of the last 10,000 bars per interval (e.g. 10,000 minutes for 1min interval)",
+    "commodities": "EOD history up to 15 years back; intraday-style history last 10,000 entries per interval",
+    "companyRatings": "15+ years of historical ratings and price targets",
+    "splitsDividends": "depth not documented",
+    "edgar": "depth not documented (EDGAR-derived)"
+  },
+  "pagination": {
+    "mechanism": "offset pagination via query params",
+    "params": "limit (default 100, max 1000, min 1), offset (default 0)",
+    "responseObject": "pagination {limit, offset, count, total} on list endpoints; absent on /stockprice, /commodities, /commoditieshistory, /companyratings, /tickerinfo, /etfholdings, /submissions, /company_facts, /concept/*"
+  },
+  "rateLimits": {
+    "perSecond": "'The API is limited to 5 requests per second.' (Getting Started page; not stated whether it varies by plan)",
+    "endpointSpecific": "1 API call per minute on /commodities and /companyratings (documented in endpoint descriptions)",
+    "monthlyQuotas": {
+      "Free": "100 requests/mo",
+      "Basic": "10,000 requests/mo + $0.003996 per extra request",
+      "Professional": "100,000 requests/mo + $0.0019996 per extra request",
+      "Business": "500,000 requests/mo + $0.00119992 per extra request",
+      "Enterprise": "custom volume"
+    },
+    "requestCounting": "Each symbol looked up consumes one API request (a call with 5 symbols consumes 5 requests). API errors are not counted toward the monthly quota. ETF endpoints have a call count multiplier of 20.",
+    "overagePolicy": "Email/dashboard notifications at 75%, 90%, 100% of allowance; after 100%, overage fees apply automatically rather than requests being cut off (per FAQ)",
+    "backoffGuidance": "not documented (no Retry-After or backoff guidance found in official docs)"
+  },
+  "errors": {
+    "schema": "JSON object: {\"error\": {\"code\": \"<string code>\", \"message\": \"<string>\", \"context\": {\"<param>\": [{\"key\": \"<string>\", \"message\": \"<string>\"}]}}} — context appears for validation errors; 200 returned on success",
+    "documentedCodes": [
+      {"http": 401, "code": "unauthorized", "description": "Authentication failed. Please verify your access key or account status."},
+      {"http": 403, "code": "function_access_restricted", "description": "This API endpoint is not available under your current subscription plan."},
+      {"http": 404, "code": "invalid_api_function", "description": "The specified API endpoint does not exist."},
+      {"http": 404, "code": "404_not_found", "description": "The requested resource could not be found."},
+      {"http": 406, "code": "data_not_available", "description": "The requested data is currently unavailable."},
+      {"http": 429, "code": "too_many_requests", "description": "The account has exceeded the allowed monthly request quota."},
+      {"http": 429, "code": "rate_limit_reached", "description": "The given user account has reached the rate limit."},
+      {"http": 500, "code": "internal_error", "description": "An internal server error has occurred."}
+    ],
+    "exampleValidationError": "{\"error\": {\"code\": \"validation_error\", \"message\": \"Request failed with validation error\", \"context\": {\"symbols\": [{\"key\": \"missing_symbols\", \"message\": \"You did not specify any symbols.\"}]}}}",
+    "openApiNote": "The official v2 OpenAPI spec documents only 200 responses; error shapes come from the Getting Started page."
+  },
+  "entitlements": {
+    "Free ($0/mo)": "100 req/mo; EOD data; 1 year history; splits & dividends; stock tickers info; 2700+ exchanges info; currencies & timezones; HTTPS. No support. 'Commercial Use' NOT listed on the Free tier.",
+    "Basic ($9.99/mo, $8.99/mo annual)": "10,000 req/mo; adds IEX Intraday Data (US), Stock Market Index, Bonds, ETF Holding, 10 years history, Standard Support, Commercial Use.",
+    "Professional ($49.99/mo, $43.99/mo annual)": "100,000 req/mo; adds Real-Time Updates (intraday intervals below 15min: 1min/5min/10min), Real-time Stock Market Prices (/stockprice), Commodity Prices, Commodities History; 15+ years history.",
+    "Business ($149.99/mo, $127.99/mo annual)": "500,000 req/mo; adds Company Ratings, Company Statements, Company Details, Company Concepts, Company Facts (EDGAR family); 15+ years history.",
+    "Enterprise (custom)": "Volume requests, custom solutions, everything in Business; Platinum Support option.",
+    "platinumSupport": "Optional paid add-on on paid tiers (e.g. $599.88/yr with Professional): dedicated account team, priority email support, priority bug review, quarterly PM briefing option.",
+    "keyGates": "Sub-15min intraday = Professional+; /stockprice = Professional+; commodities = Professional+; EDGAR/company data + ratings = Business+; intraday at all (>=15min) = Basic+; commercial use = paid plans only (per pricing feature grid)."
+  },
+  "sdks": [
+    {
+      "official": "None documented. Marketstack documents a plain REST/JSON interface ('can be integrated with any programming language that can handle HTTP requests') with inline code examples (JavaScript fetch/axios, Python requests/http.client; FAQ also mentions PHP and Node.js examples) and an official Postman collection ('fork the official Marketstack API Postman Collection')."
+    }
+  ],
+  "licensing": {
+    "upstreamSources": "FAQ: 'Stock market data provided by the marketstack API is licensed and sourced from multiple high-authority market data providers around the world. Stock market data from United States exchanges is licensed and sourced from Tiingo, Inc. out of New York City, USA.' The v2 EOD ticker list file name references 'finnworlds' and 'tiingo' (v2_eod_tickers_finnworlds_tiingo.xlsx).",
+    "iexPassthrough": "Documented: to receive the full IEX TOPS feed fields (bid/ask/last/mid/sizes) a market data agreement signed directly with IEX Exchange is required as of 2025-02-01; without it those fields are NULL and Marketstack serves its own derived reference price at no additional IEX cost.",
+    "commercialUse": "'Commercial Use' is a listed feature of paid tiers (Basic and above) and is absent from the Free tier feature list; the docs do not further define commercial-use scope.",
+    "storageCachingRedistribution": "Not documented in the developer docs, FAQ, or pricing pages. No caching, storage, redistribution, resale, or display/attribution rules were found on marketstack.com or docs.apilayer.com. FAQ affirmatively markets bulk download: 'This extensive historical dataset can be downloaded in large volumes and is ideal for backtesting trading strategies' and integration with BI tools (Power BI, Tableau).",
+    "attribution": "No attribution or display requirements documented.",
+    "governingTerms": "marketstack.com/terms 301-redirects to the Idera, Inc. legal portal (https://www.ideracorp.com/legal/APILayer), which indexes a 'Master Software as a Service Subscription Agreement' and APILayer Data Processing Terms; the substantive contract text is not part of the developer documentation and was not reviewable as API-specific licensing terms. Institutional buyers should obtain and review the Master SaaS Agreement (and any Tiingo/IEX passthrough obligations) before storing or redistributing data."
+  },
+  "limitations": [
+    "v1 is officially deprecated for use after 2025-06-30; all new capability is v2-only — any legacy /v1 integration must be migrated.",
+    "Intraday coverage is US-only (IEX universe), not consolidated tape; intraday closing prices differ from official auction-based EOD closes.",
+    "Since IEX's 2025-02-01 policy change, bid/ask/last/mid/size fields in intraday responses are NULL without a direct IEX market data agreement; Marketstack's 'real-time' price is a derived reference price (marketstack_last), not a direct exchange feed.",
+    "'Real-time' throughout the docs means polled REST updates as frequent as every 60 seconds on Professional+; there is no WebSocket/streaming API, and no documented latency/SLA per dataset.",
+    "Intraday history is a rolling window of only the last 10,000 bars per interval — unsuitable as a primary store for deep intraday backtests.",
+    "V2 splits and dividends are documented only for US-listed venues (NASDAQ, PINK, SHG, NYSE, NYSE ARCA, OTCQB, BATS); global corporate-action coverage is not documented.",
+    "Vendor coverage figures conflict across official pages (125k+ vs 170k+ vs 30k+ vs 500k+ tickers; 30+ vs 70 vs 72+ vs 2700+ exchanges; Free plan 100 vs 1,000 req/mo in different FAQ answers; 30-year vs 15+-year history) — treat all counts as marketing-grade until validated against the downloadable ticker lists.",
+    "The official v2 OpenAPI spec documents only 200 responses (no error schemas) and leaves some response item schemas empty (e.g. IntradayBar, IndexInfo) — client code must tolerate undocumented fields.",
+    "Symbol conventions require care: periods become hyphens for intraday (BRK.B -> BRK-B); v1 index data uses the .INDX suffix / INDX pseudo-exchange; LSE prices may be quoted in GBX pence, requiring /100 conversion to GBP.",
+    "Per-symbol request counting (5 symbols = 5 requests) plus the 20x ETF call multiplier make effective quotas much smaller than nominal request counts; /commodities and /companyratings are hard-capped at 1 call/minute.",
+    "Global 5 requests/second cap; 429s are documented for both burst and monthly-quota exhaustion, with no documented backoff/Retry-After guidance.",
+    "No documented survivorship-bias policy, restatement/revision policy, or delisted-ticker history guarantees; adjusted prices follow CRSP methodology but revision handling is not described.",
+    "No crypto, FX-rate, options, or futures datasets; EDGAR concept/frames endpoints currently cover only the US-GAAP Accounts Payable tag.",
+    "Detailed legal terms (caching/redistribution/attribution) are not published in the developer docs; they live in the Idera/APILayer Master SaaS Agreement, an institutional diligence gap."
+  ],
+  "institutionalFit": {
+    "primaryFor": [
+      "Global equity EOD price history with CRSP-methodology adjusted prices, splits and dividends (US-listed venues) for research, screening, and daily analytics",
+      "Equity reference data / symbology enrichment (ticker -> CIK, ISIN, CUSIP, LEI, SIC, sector/industry) and exchange metadata (MIC, operating MIC, LEI)",
+      "Index constituents-agnostic benchmark EOD levels (750+ indexes) and supported-universe discovery via downloadable ticker lists",
+      "Low-cost supplementary datasets on higher tiers: commodities EOD history, 10Y government bond yields, ETF holdings snapshots, analyst ratings, EDGAR filings lookups"
+    ],
+    "fallbackFor": [
+      "US intraday/near-real-time equity pricing (IEX-derived reference price, polling only, sub-15min gated to Professional+) — acceptable as a fallback quote source, not as a primary real-time feed",
+      "Global 'live' prices via /stockprice where a delayed/reference-grade quote is acceptable"
+    ],
+    "notSuitableFor": [
+      "Consolidated-tape or exchange-licensed real-time market data display (bid/ask/last are NULL without a direct IEX agreement)",
+      "Streaming/push architectures (REST polling only)",
+      "Options, futures, FX rates, or crypto data",
+      "Deep intraday history (10,000-bar rolling window)"
+    ],
+    "hardConstraints": [
+      "Derived/polled intraday prices and marketstack_last must never be presented to end users as consolidated real-time or exchange-official prices; label as 'derived reference price (IEX universe)'",
+      "Free-tier data carries no documented commercial-use right — production use requires a paid plan",
+      "Respect 5 req/s global cap, 1 req/min on /commodities and /companyratings, per-symbol quota accounting, and the 20x ETF multiplier in the request scheduler",
+      "Redistribution/storage rights must be confirmed against the Idera/APILayer Master SaaS Agreement and Tiingo/IEX passthrough terms before persisting or re-serving data",
+      "Plan for v2-only integration; treat any /v1 usage as end-of-life"
+    ]
+  },
+  "sourcesConsulted": [
+    {
+      "url": "https://marketstack.com/documentation_v2",
+      "whatItVerified": "301-redirects to docs.apilayer.com/marketstack/docs/api-documentation — establishes current official docs location"
+    },
+    {
+      "url": "https://docs.apilayer.com/marketstack/docs/api-documentation",
+      "whatItVerified": "v2 docs root: RESTful JSON API, HTTPS GET params, coverage claims (125,000+ tickers / 72+ exchanges; 2700+ exchange info; 30000+ tickers; 750+ indexes; 50+ countries), docs table of contents including 'API Endpoints v2' and 'API Endpoints v1'"
+    },
+    {
+      "url": "https://docs.apilayer.com/marketstack/docs/getting-started",
+      "whatItVerified": "Authentication via access_key query parameter; HTTPS on all plans; full error schema with example; error code table (401 unauthorized, 403 function_access_restricted, 404 invalid_api_function/404_not_found, 406 data_not_available, 429 too_many_requests/rate_limit_reached, 500 internal_error); 'The API is limited to 5 requests per second.'"
+    },
+    {
+      "url": "https://docs.apilayer.com/marketstack/docs/quickstart-guide",
+      "whatItVerified": "Signup/dashboard key flow; v1 base URL http://api.marketstack.com/v1/; core endpoint list and common optional params; official Postman collection"
+    },
+    {
+      "url": "https://api.swaggerhub.com/apis/apilayer-863/MarketstackAPIv2/2.0.0/swagger.json",
+      "whatItVerified": "Official v2 OpenAPI 3.0.3 spec (rendered at docs.apilayer.com/marketstack/docs/marketstack-api-v2-v-2-0-0): server https://api.marketstack.com/v2; ApiKeyQuery access_key security scheme; all 45 GET endpoints with required/optional params; interval/sort/frequency enums; limit default 100 max 1000; pagination schema {limit, offset, count, total}; response field lists (EODBar, StockPriceItem, Ticker identifiers incl. cik/isin/cusip/lei, Exchange incl. mic/operating_mic/exchange_lei, BondInfoItem, SplitItem, DividendItem); endpoint descriptions covering EOD 500k+ tickers & 30+ exchanges, CRSP adjustments, IEX derived-data/TOPS NULL policy, sub-15min Professional gate, commodities 15y history & 1/min limit, company ratings 15+y & 1/min limit, ETF 20x call multiplier, EDGAR endpoint semantics, BRK.B->BRK-B and GBX/GBP notes"
+    },
+    {
+      "url": "https://docs.apilayer.com/marketstack/docs/api-endpoints-v1",
+      "whatItVerified": "v1 deprecation notice ('deprecated for use after June 30th, 2025'); v1 parameter tables (symbols required, max 100 symbols, each symbol consumes one request); EOD response objects; 30-years EOD / 10,000-bar intraday depth note; intraday intervals 1min-24hour; Professional-plan real-time updates at 1/5/10min; INDX pseudo-exchange for indexes; 170,000+ tickers / 70 exchanges claim"
+    },
+    {
+      "url": "https://marketstack.com/pricing",
+      "whatItVerified": "Plan grid: Free $0 (100 req/mo, EOD, 1y history, no Commercial Use listed), Basic $9.99 (10k req + $0.003996/extra, IEX intraday US, indexes, bonds, ETF holdings, 10y, Commercial Use), Professional $49.99 (100k + $0.0019996/extra, Real-Time Updates sub-15min, /stockprice, commodities, 15+y), Business $149.99 (500k + $0.00119992/extra, company ratings/statements/details/concepts/facts), Enterprise custom; Platinum Support add-on; 'Real-Time Updates' definition; uptime FAQ and Tiingo sourcing"
+    },
+    {
+      "url": "https://marketstack.com/faq",
+      "whatItVerified": "US data licensed from Tiingo, Inc.; request counting (5 symbols = 5 requests; errors not counted); overage notifications at 75/90/100% and automatic overage billing; no WebSocket/streaming; 256-bit HTTPS all plans; 'real-time... updated as frequently as every 60 seconds' on Professional+; 30+ years historical claim on premium plans; bulk download for backtesting permitted per FAQ marketing; Power BI/Tableau integration; uptime ~100% (365-day basis), status.marketstack.com"
+    },
+    {
+      "url": "https://marketstack.com/terms (redirects to https://www.ideracorp.com/legal/APILayer)",
+      "whatItVerified": "Legal terms are governed by Idera, Inc.'s APILayer legal portal (Master SaaS Subscription Agreement index); no API-specific caching/redistribution/attribution terms published in the developer docs"
+    }
+  ],
+  "confidence": "high",
+  "confidenceNotes": "Endpoints, auth, params, schemas, plans, quotas and error model were read directly from the vendor's official OpenAPI spec, docs portal, pricing and FAQ pages. Licensing detail is the weakest area (contract text lives behind Idera's legal portal), and the vendor's own coverage/history figures conflict across pages.",
+  "openQuestions": [
+    "What do the Idera/APILayer Master SaaS Agreement and any Tiingo/IEX passthrough terms say about storage, caching, redistribution, display, and derived-works rights? (Not published in developer docs.)",
+    "Authoritative equity coverage: which figure is real — 125k+/170k+/500k+ tickers, and 30+ vs 70 vs 72+ priced exchanges? Validate against the downloadable ticker lists (supported_tickers_2.csv, v2_eod_tickers_finnworlds_tiingo.xlsx).",
+    "EOD history depth on paid plans: pricing says '15+ Years History' while FAQ/v1 docs say 30 years — which applies to v2 per plan?",
+    "Free plan quota: pricing grid says 100 req/mo but one FAQ answer says 'up to 1.000' — confirm current entitlement.",
+    "Is the 5 req/s cap uniform across plans, and does the API return Retry-After headers on 429? (No backoff guidance documented.)",
+    "Exact update time for EOD bars after market close (not documented), and revision/restatement policy for corrected prices.",
+    "Does /stockprice carry exchange-delayed data for non-US venues, and what are its plan-independent latency characteristics?",
+    "Are the EDGAR concept/frames endpoints being extended beyond the US-GAAP Accounts Payable tag?",
+    "Delisted-ticker/survivorship coverage in EOD history (not documented).",
+    "Whether the v1 API is still operational post-deprecation date or hard-shut (docs still publish v1 reference)."
+  ]
+}

@@ -1,0 +1,20 @@
+{
+  "_fixture": {
+    "note": "constructed from official docs field definitions (see docs/research/providers/nansen.json), not captured live data",
+    "docsUrl": "https://docs.nansen.ai/"
+  },
+  "tokens": [
+    {
+      "name": "Wrapped Ether",
+      "symbol": "WETH",
+      "chain": "ethereum",
+      "address": "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2",
+      "price": 3050.42,
+      "volume_24h": 1850000000,
+      "market_cap": 9800000000,
+      "rank": 1
+    }
+  ],
+  "entities": [],
+  "total_results": 1
+}

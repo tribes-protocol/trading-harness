@@ -1,0 +1,11 @@
+{
+  "_fixture": {
+    "note": "constructed from official docs field definitions (see docs/research/providers/marketstack.json), not captured live data",
+    "docsUrl": "https://docs.apilayer.com/marketstack/docs/api-documentation"
+  },
+  "pagination": { "limit": 1000, "offset": 0, "count": 2, "total": 2 },
+  "data": [
+    { "symbol": "AAPL", "date": "2026-02-10T00:00:00+0000", "dividend": 0.25 },
+    { "symbol": "AAPL", "date": "2026-05-12", "dividend": 0.26 }
+  ]
+}

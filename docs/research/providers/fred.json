@@ -1,0 +1,738 @@
+{
+  "provider": "FRED (Federal Reserve Bank of St. Louis)",
+  "reviewDate": "2026-07-17",
+  "officialDocsUrl": "https://fred.stlouisfed.org/docs/api/fred/",
+  "apiVersion": "v1 (series-level, FRED + ALFRED) and v2 (bulk release observations; currently only fred/v2/release/observations)",
+  "accessNote": "The live fred.stlouisfed.org docs site returned HTTP 403 / connection timeouts to this review environment (Akamai edge blocking). All pages were therefore read from Internet Archive Wayback Machine captures of the official St. Louis Fed documentation pages, most dated May-July 2026 (some late 2025). Every claim below traces to the archived official page listed in sourcesConsulted. No live API calls were made.",
+  "versioningPolicy": {
+    "documented": "Docs root presents 'API Version 1' (incremental, series-level, customizable by source/release/category/series; serves FRED and ALFRED) and 'API Version 2' ('ideal for anyone who is interested to retrieve observations for all series on a release in bulk and obtain the entire history'). No formal deprecation policy is published.",
+    "termsOfUseLanguage": "Terms of Use: 'The Federal Reserve Bank of St. Louis may change, suspend, or discontinue any aspect of the FRED API at any time, including the availability of the FRED API. The Federal Reserve Bank of St. Louis may release subsequent versions of the FRED API and to require you to obtain and use the most recent version.'"
+  },
+  "authentication": {
+    "v1": {
+      "mechanism": "API key as query parameter",
+      "parameterName": "api_key",
+      "format": "32 character lower-cased alpha-numeric string",
+      "required": "All web service requests require an API key to identify requests.",
+      "keyIssuance": "Request/view keys after logging into a fredaccount.stlouisfed.org user account. 'Developers should request a distinct API key for each application they build. All users of an application shall use their own API key.'",
+      "exampleShape": "https://api.stlouisfed.org/fred/series/search?api_key=<32charkey>&search_text=canada"
+    },
+    "v2": {
+      "mechanism": "API key in HTTP request header (Bearer token)",
+      "headerName": "Authorization",
+      "headerFormat": "Authorization: Bearer <32charkey>",
+      "documentedText": "'An API key must be specified in the request header in the following way: Authorization: Bearer abcdefghijklmnopqrstuvwxyz123456' (demo key shown in docs; real keys issued via fredaccount.stlouisfed.org)"
+    },
+    "pricing": "No pricing or plan pages exist. API key registration is via a free FRED user account; no paid tiers, quotas-by-plan, or commercial plans are documented anywhere on the docs site."
+  },
+  "baseUrls": [
+    {
+      "url": "https://api.stlouisfed.org/fred/",
+      "scope": "FRED/ALFRED API v1 (all fred/* endpoints), HTTPS GET"
+    },
+    {
+      "url": "https://api.stlouisfed.org/fred/v2/",
+      "scope": "FRED API v2 (fred/v2/release/observations)"
+    },
+    {
+      "url": "https://api.stlouisfed.org/geofred/",
+      "scope": "FRED Maps API (shape files, series group meta, series/regional data), e.g. api.stlouisfed.org/geofred/series/data?series_id=WIPCPI"
+    }
+  ],
+  "endpoints": [
+    {
+      "name": "fred/series/observations",
+      "method": "GET",
+      "path": "/fred/series/observations",
+      "purpose": "Get the observations or data values for an economic data series (the core time-series data endpoint; also the ALFRED vintage endpoint via realtime/vintage params).",
+      "requiredParams": [
+        "api_key",
+        "series_id"
+      ],
+      "optionalParams": [
+        "file_type (xml|json|xlsx|csv; default xml; csv returned as zip)",
+        "realtime_start (default today)",
+        "realtime_end (default today)",
+        "limit (1-100000, default 100000)",
+        "offset (default 0)",
+        "sort_order (asc|desc, default asc)",
+        "observation_start (default 1776-07-04 = earliest)",
+        "observation_end (default 9999-12-31 = latest)",
+        "units (lin|chg|ch1|pch|pc1|pca|cch|cca|log; server-side transformations)",
+        "frequency (d,w,bw,m,q,sa,a + weekly/biweekly period variants; downward aggregation only)",
+        "aggregation_method (avg|sum|eop, default avg)",
+        "output_type (1=obs by real-time period, 2=obs by vintage date all, 3=vintage new/revised only, 4=initial release only)",
+        "vintage_dates (comma-separated YYYY-MM-DD list; capped per series/file_type/output_type: e.g. 1000 csv/xlsx, 2000 json/xml; daily-series output_type=2: 450 csv/225 xlsx)"
+      ],
+      "topLevelResponseFields": [
+        "realtime_start",
+        "realtime_end",
+        "observation_start",
+        "observation_end",
+        "units",
+        "output_type",
+        "file_type",
+        "order_by",
+        "sort_order",
+        "count",
+        "offset",
+        "limit",
+        "observations[] {realtime_start, realtime_end, date, value}"
+      ],
+      "pagination": "limit + offset (count returned)",
+      "freshness": "Updated as source agencies release/revise data (daily to annual series); default real-time period = today (latest revised values). Not a real-time market feed."
+    },
+    {
+      "name": "fred/series",
+      "method": "GET",
+      "path": "/fred/series",
+      "purpose": "Get metadata for an economic data series.",
+      "requiredParams": [
+        "api_key",
+        "series_id"
+      ],
+      "optionalParams": [
+        "file_type (xml|json)",
+        "realtime_start",
+        "realtime_end"
+      ],
+      "topLevelResponseFields": [
+        "realtime_start",
+        "realtime_end",
+        "seriess[] {id, realtime_start, realtime_end, title, observation_start, observation_end, frequency, frequency_short, units, units_short, seasonal_adjustment, seasonal_adjustment_short, last_updated, popularity, notes(optional)}"
+      ],
+      "pagination": "n/a (single series)",
+      "freshness": "last_updated timestamp returned per series"
+    },
+    {
+      "name": "fred/series/search",
+      "method": "GET",
+      "path": "/fred/series/search",
+      "purpose": "Get economic data series that match keywords (full-text or series-ID substring/wildcard search).",
+      "requiredParams": [
+        "api_key",
+        "search_text"
+      ],
+      "optionalParams": [
+        "search_type (full_text|series_id, default full_text)",
+        "file_type",
+        "realtime_start",
+        "realtime_end",
+        "limit (1-1000, default 1000)",
+        "offset",
+        "order_by (search_rank|series_id|title|units|frequency|seasonal_adjustment|realtime_start|realtime_end|last_updated|observation_start|observation_end|popularity|group_popularity)",
+        "sort_order",
+        "filter_variable (frequency|units|seasonal_adjustment)",
+        "filter_value",
+        "tag_names (semicolon-delimited AND filter)",
+        "exclude_tag_names"
+      ],
+      "topLevelResponseFields": [
+        "realtime_start",
+        "realtime_end",
+        "order_by",
+        "sort_order",
+        "count",
+        "offset",
+        "limit",
+        "seriess[] (same series metadata shape as fred/series)"
+      ],
+      "pagination": "limit + offset (max 1000 per page)",
+      "freshness": "metadata current as of request (default realtime = today)"
+    },
+    {
+      "name": "fred/series/updates",
+      "method": "GET",
+      "path": "/fred/series/updates",
+      "purpose": "Get series sorted by when observations were last updated on the FRED server - the documented change-detection/polling endpoint.",
+      "requiredParams": [
+        "api_key"
+      ],
+      "optionalParams": [
+        "file_type",
+        "realtime_start",
+        "realtime_end",
+        "limit (1-1000, default 1000)",
+        "offset",
+        "filter_value (macro|regional|all; 'regional' = US states, counties, MSAs)",
+        "start_time (YYYYMMDDHhmm, minute granularity; requires end_time)",
+        "end_time (YYYYMMDDHhmm; requires start_time)"
+      ],
+      "topLevelResponseFields": [
+        "realtime_start",
+        "realtime_end",
+        "filter_variable",
+        "filter_value",
+        "order_by",
+        "sort_order",
+        "count",
+        "offset",
+        "limit",
+        "seriess[]"
+      ],
+      "pagination": "limit + offset",
+      "freshness": "reflects server-side update times; supports minute-window filtering for incremental sync"
+    },
+    {
+      "name": "fred/series/vintagedates",
+      "method": "GET",
+      "path": "/fred/series/vintagedates",
+      "purpose": "Get the dates in history when a series' data values were revised or new data values were released (ALFRED vintage discovery).",
+      "requiredParams": [
+        "api_key",
+        "series_id"
+      ],
+      "optionalParams": [
+        "file_type",
+        "realtime_start (default 1776-07-04)",
+        "realtime_end (default 9999-12-31)",
+        "limit (1-10000, default 10000)",
+        "offset",
+        "sort_order"
+      ],
+      "topLevelResponseFields": [
+        "realtime_start",
+        "realtime_end",
+        "order_by",
+        "sort_order",
+        "count",
+        "offset",
+        "limit",
+        "vintage_dates[]"
+      ],
+      "pagination": "limit + offset",
+      "freshness": "historical revision dates; grows as new vintages are published"
+    },
+    {
+      "name": "fred/series/categories",
+      "method": "GET",
+      "path": "/fred/series/categories",
+      "purpose": "Get the categories for an economic data series.",
+      "requiredParams": [
+        "api_key",
+        "series_id"
+      ],
+      "optionalParams": [
+        "file_type",
+        "realtime_start",
+        "realtime_end"
+      ],
+      "topLevelResponseFields": [
+        "categories[] {id, name, parent_id}"
+      ],
+      "pagination": "n/a",
+      "freshness": "taxonomy metadata"
+    },
+    {
+      "name": "fred/series/release",
+      "method": "GET",
+      "path": "/fred/series/release",
+      "purpose": "Get the release for an economic data series (maps a series to its statistical release).",
+      "requiredParams": [
+        "api_key",
+        "series_id"
+      ],
+      "optionalParams": [
+        "file_type",
+        "realtime_start",
+        "realtime_end"
+      ],
+      "topLevelResponseFields": [
+        "releases[] (release metadata)"
+      ],
+      "pagination": "n/a",
+      "freshness": "metadata"
+    },
+    {
+      "name": "fred/releases",
+      "method": "GET",
+      "path": "/fred/releases",
+      "purpose": "Get all releases of economic data.",
+      "requiredParams": [
+        "api_key"
+      ],
+      "optionalParams": [
+        "file_type",
+        "realtime_start",
+        "realtime_end",
+        "limit (1-1000, default 1000)",
+        "offset",
+        "order_by (release_id|name|press_release|realtime_start|realtime_end)",
+        "sort_order"
+      ],
+      "topLevelResponseFields": [
+        "realtime_start",
+        "realtime_end",
+        "order_by",
+        "sort_order",
+        "count",
+        "offset",
+        "limit",
+        "releases[]"
+      ],
+      "pagination": "limit + offset",
+      "freshness": "metadata"
+    },
+    {
+      "name": "fred/releases/dates",
+      "method": "GET",
+      "path": "/fred/releases/dates",
+      "purpose": "Get release dates for all releases of economic data - basis for an economic release calendar.",
+      "requiredParams": [
+        "api_key"
+      ],
+      "optionalParams": [
+        "file_type",
+        "realtime_start (default: first day of current year)",
+        "realtime_end (default 9999-12-31)",
+        "limit (1-1000)",
+        "offset",
+        "order_by (release_date|release_id|release_name)",
+        "sort_order (default desc)",
+        "include_release_dates_with_no_data (true|false, default false; true includes future scheduled release dates from the FRED/ALFRED release calendars and adds release_last_updated attribute)"
+      ],
+      "topLevelResponseFields": [
+        "realtime_start",
+        "realtime_end",
+        "order_by",
+        "sort_order",
+        "count",
+        "offset",
+        "limit",
+        "release_dates[]"
+      ],
+      "pagination": "limit + offset",
+      "freshness": "includes forward-looking scheduled release dates when include_release_dates_with_no_data=true"
+    },
+    {
+      "name": "fred/release/series",
+      "method": "GET",
+      "path": "/fred/release/series",
+      "purpose": "Get the series on a release of economic data.",
+      "requiredParams": [
+        "api_key",
+        "release_id (integer)"
+      ],
+      "optionalParams": [
+        "file_type",
+        "realtime_start",
+        "realtime_end",
+        "limit (1-1000)",
+        "offset",
+        "order_by (series_id|title|units|frequency|seasonal_adjustment|realtime_start|realtime_end|last_updated|observation_start|observation_end|popularity|group_popularity)",
+        "sort_order",
+        "filter_variable (frequency|units|seasonal_adjustment)",
+        "filter_value",
+        "tag_names",
+        "exclude_tag_names"
+      ],
+      "topLevelResponseFields": [
+        "realtime_start",
+        "realtime_end",
+        "order_by",
+        "sort_order",
+        "count",
+        "offset",
+        "limit",
+        "seriess[]"
+      ],
+      "pagination": "limit + offset",
+      "freshness": "metadata"
+    },
+    {
+      "name": "fred/category/series",
+      "method": "GET",
+      "path": "/fred/category/series",
+      "purpose": "Get the series in a category (taxonomy-driven discovery).",
+      "requiredParams": [
+        "api_key",
+        "category_id (integer)"
+      ],
+      "optionalParams": [
+        "file_type",
+        "realtime_start",
+        "realtime_end",
+        "limit (1-1000)",
+        "offset",
+        "order_by",
+        "sort_order",
+        "filter_variable",
+        "filter_value",
+        "tag_names",
+        "exclude_tag_names"
+      ],
+      "topLevelResponseFields": [
+        "realtime_start",
+        "realtime_end",
+        "order_by",
+        "sort_order",
+        "count",
+        "offset",
+        "limit",
+        "seriess[]"
+      ],
+      "pagination": "limit + offset",
+      "freshness": "metadata"
+    },
+    {
+      "name": "fred/category",
+      "method": "GET",
+      "path": "/fred/category",
+      "purpose": "Get a category (category_id 0 = root; category tree navigable via fred/category/children and fred/category/related).",
+      "requiredParams": [
+        "api_key"
+      ],
+      "optionalParams": [
+        "file_type",
+        "category_id (integer, default 0 = root category)"
+      ],
+      "topLevelResponseFields": [
+        "categories[] {id, name, parent_id, notes(optional)}"
+      ],
+      "pagination": "n/a",
+      "freshness": "metadata"
+    },
+    {
+      "name": "fred/sources",
+      "method": "GET",
+      "path": "/fred/sources",
+      "purpose": "Get all sources of economic data (source registry: Fed Board, BEA, BLS, Census, foreign central banks, private providers, etc.).",
+      "requiredParams": [
+        "api_key"
+      ],
+      "optionalParams": [
+        "file_type",
+        "realtime_start",
+        "realtime_end",
+        "limit (1-1000)",
+        "offset",
+        "order_by",
+        "sort_order"
+      ],
+      "topLevelResponseFields": [
+        "realtime_start",
+        "realtime_end",
+        "order_by",
+        "sort_order",
+        "count",
+        "offset",
+        "limit",
+        "sources[] {id, realtime_start, realtime_end, name, link}"
+      ],
+      "pagination": "limit + offset",
+      "freshness": "metadata"
+    },
+    {
+      "name": "fred/tags",
+      "method": "GET",
+      "path": "/fred/tags",
+      "purpose": "Get all tags, search for tags, or get tags by name; tag groups include geography, frequency, source, seasonality, and citation/copyright.",
+      "requiredParams": [
+        "api_key"
+      ],
+      "optionalParams": [
+        "file_type",
+        "realtime_start",
+        "realtime_end",
+        "tag_names (semicolon-delimited)",
+        "tag_group_id (freq|gen|geo|geot|rls|seas|src|cc; cc = Citation & Copyright)",
+        "search_text",
+        "limit (1-1000)",
+        "offset",
+        "order_by (series_count|popularity|created|name|group_id)",
+        "sort_order"
+      ],
+      "topLevelResponseFields": [
+        "realtime_start",
+        "realtime_end",
+        "order_by",
+        "sort_order",
+        "count",
+        "offset",
+        "limit",
+        "tags[]"
+      ],
+      "pagination": "limit + offset",
+      "freshness": "metadata"
+    },
+    {
+      "name": "fred/tags/series",
+      "method": "GET",
+      "path": "/fred/tags/series",
+      "purpose": "Get the series matching tags (tag-driven discovery, e.g. all series tagged 'usa;quarterly').",
+      "requiredParams": [
+        "api_key",
+        "tag_names"
+      ],
+      "optionalParams": [
+        "file_type",
+        "exclude_tag_names",
+        "realtime_start",
+        "realtime_end",
+        "limit (1-1000)",
+        "offset",
+        "order_by",
+        "sort_order"
+      ],
+      "topLevelResponseFields": [
+        "count",
+        "offset",
+        "limit",
+        "seriess[]"
+      ],
+      "pagination": "limit + offset",
+      "freshness": "metadata"
+    },
+    {
+      "name": "fred/v2/release/observations",
+      "method": "GET",
+      "path": "/fred/v2/release/observations",
+      "purpose": "v2 bulk endpoint: get the observations for ALL series on a release of economic data with full history, cursor-paginated. Auth via 'Authorization: Bearer <key>' header.",
+      "requiredParams": [
+        "release_id (integer)",
+        "API key in Authorization header"
+      ],
+      "optionalParams": [
+        "format (json|xml, default json)",
+        "limit (1-500000 observations, default 500000)",
+        "next_cursor (do not set on first request; on subsequent requests set to the value returned by the previous response)"
+      ],
+      "topLevelResponseFields": [
+        "has_more (true|false)",
+        "next_cursor (last series_id + observation date, only when has_more=true)",
+        "release {release_id, name, url, sources[] {name, url, notes?}}",
+        "series[] {series_id, title, frequency, units, seasonal_adjustment, last_updated (UTC ISO), copyright_id, notes, observations[] {date, value}}"
+      ],
+      "pagination": "cursor-based (next_cursor + has_more); limit caps observations per page at 500,000",
+      "freshness": "Docs warn: during release update windows a single paginated pull can mix updated and non-updated series; compare per-series last_updated and 'we recommend reprocessing all requests for the release to obtain the most recent information.'"
+    }
+  ],
+  "coverage": {
+    "assetClasses": "Macroeconomic and financial time series only: national accounts, prices/inflation, employment, money and banking, interest rates, exchange rates, trade, regional US data, plus selected financial market series published by its sources. NOT an equities/derivatives/crypto market-data feed: no quotes, order books, corporate fundamentals, tickers, or chains.",
+    "geographies": "US (national + regional: states, counties, Metropolitan Statistical Areas per fred/series/updates 'regional' filter) and international series. Sources shown in official docs include the Federal Reserve Board, regional Feds, FFIEC, BEA, Census, BLS, HUD, Treasury, CBO, OMB, plus foreign/central-bank and private sources (e.g. Reserve Bank of Australia, Deutsche Bundesbank, Dow Jones & Company, ISM, Thomson Reuters/University of Michigan, Haver Analytics).",
+    "scale": "Official 'What is FRED?' page: 'an online database consisting of hundreds of thousands of economic data time series from scores of national, international, public, and private sources.' Exact current series/source counts are not stated on the reviewed official docs pages.",
+    "instrumentTypes": "Time series (observations keyed by date), release tables, categories, sources, tags; ALFRED adds real-time-period/vintage views of the same series; Maps API adds shape files and regional series data.",
+    "chains": "n/a (no crypto coverage)",
+    "datasets": {
+      "FRED": "current best-known values of each series (default real-time period = today)",
+      "ALFRED": "archival vintages - 'what information was known on some past date in history' - via realtime_start/realtime_end, vintage_dates, and output_type on the same v1 URLs",
+      "MapsAPI": "geographical/regional data and shape files for series available on FRED maps ('Not all series that are in FRED have geographical data.')"
+    }
+  },
+  "freshness": {
+    "model": "Updated when source agencies publish or revise data; series frequencies range daily ('In FRED, the highest frequency data is daily') through weekly/monthly/quarterly to annual. No intraday or real-time market data is documented.",
+    "changeDetection": "fred/series/updates (minute-granularity start_time/end_time window) and per-series last_updated timestamps; fred/releases/dates with include_release_dates_with_no_data=true exposes future scheduled release dates (release calendar).",
+    "pointInTime": "ALFRED real-time periods: default realtime_start=realtime_end=today (FRED mode). Setting realtime bounds or vintage_dates reconstructs data exactly as known on historical dates - the documented mechanism for revision-safe backtesting.",
+    "v2Caveat": "v2 docs: during FRED update processing, one paginated release pull may mix updated and non-updated series; detect via last_updated and reprocess the whole release."
+  },
+  "historicalDepth": {
+    "general": "Varies per series; each series carries observation_start/observation_end metadata. Docs example: GNPCA (Real GNP) observations from 1929. API date sentinels span 1776-07-04 (earliest) to 9999-12-31 (latest).",
+    "vintages": "Vintage (revision) history availability varies by series; fred/series/vintagedates enumerates all revision dates; vintage_dates queries are capped (1000 csv/xlsx, 2000 json/xml; special lower caps for daily series with output_type=2).",
+    "perDatasetNumbers": "Not documented as a single table; depth must be read per series from its metadata."
+  },
+  "pagination": {
+    "v1": "limit + offset with per-endpoint caps: observations 100,000 (default 100,000); series/release/tag/source lists 1,000 (default 1,000); vintagedates 10,000. Responses include count, offset, limit for iteration.",
+    "v2": "Cursor: pass no next_cursor on first request; response returns has_more and next_cursor ('<last series_id>,<last observation date>'); repeat until has_more=false. limit = max observations per page (1-500,000, default 500,000)."
+  },
+  "rateLimits": {
+    "documented": "No numeric rate limit is published in the official documentation. Errors page: 'Our API has rate limiting which returns a status code if exceeded. If you have a reason that you need to exceed our limit, please contact us.' HTTP 429 Too Many Requests is a documented status code.",
+    "termsOfUse": "'The Federal Reserve Bank of St. Louis may impose or adjust the limit on the amount of bandwidth you may use or the number of transactions you may send or receive through the FRED API; such fixed upper limits may be set ... at any time, at the Federal Reserve Bank of St. Louis's discretion.' Also prohibited: using 'an unreasonable amount of bandwidth' or adversely impacting server stability.",
+    "perPlan": "n/a - single (free) tier only; no plan-differentiated limits exist.",
+    "backoffGuidance": "None documented (no Retry-After or backoff algorithm specified)."
+  },
+  "errors": {
+    "schemaXml": "<error code=\"400\" message=\"Bad Request. Variable api_key has not been set.\"/> - 'The message attribute of the error tag contains a description of the error.'",
+    "schemaJson": "{ \"error_code\": 400, \"error_message\": \"Bad Request. The value for variable api_key is not registered. ...\" }",
+    "statusCodes": [
+      "400 Bad Request",
+      "404 Not Found",
+      "423 Locked",
+      "429 Too Many Requests",
+      "500 Internal Server Error"
+    ],
+    "notes": "All errors use standard HTTP status codes. The meaning of 423 Locked is listed but not further explained in the docs."
+  },
+  "entitlements": {
+    "planTiers": "Single tier. A free registered API key (fredaccount.stlouisfed.org) unlocks the entire v1, v2, and Maps API surface. No documented paid plans, premium datasets, or capability gating.",
+    "keyPolicy": "Distinct API key per application; every end user of an application must use their own API key (documented on both v1 and v2 API-key pages)."
+  },
+  "sdks": [
+    {
+      "note": "No official SDKs are documented. The official docs describe a plain REST/HTTPS interface only: 'Our API accommodates any programming language that can parse XML or JSON and communicate with our servers using HTTPS.' Community wrappers exist but are third-party and out of scope for this review."
+    }
+  ],
+  "licensing": {
+    "attributionRequirements": [
+      "API TOU requirement (verbatim): 'Place the following notice prominently on your application: \"This product uses the FRED API but is not endorsed or certified by the Federal Reserve Bank of St. Louis.\"'",
+      "FRED Legal: cite the original data source AND acknowledge FRED when displaying/publishing (example given: 'Source: BLS via FRED'); keep all copyright notices intact.",
+      "Prohibited: using 'FRED', 'ALFRED', or 'Federal Reserve Bank' in your application's hostname; using the Bank's logo/marks; implying endorsement by the Bank."
+    ],
+    "copyrightTiers": [
+      "'Copyrighted: Pre-approval required' - third-party-owned; without the copyright holder's express written permission these series may only be used for non-commercial educational or personal use. Neither the Bank nor FRED can grant permission.",
+      "'Copyrighted: Citation required' - usable with proper attribution of the source and acknowledgment that data was obtained via FRED.",
+      "'Public Domain: Citation requested' - usable without permission; citation requested.",
+      "FRED Legal: series in the latter two tiers 'may be used for internal commercial uses and may be displayed in textbooks, newsletters, or reports to clients provided that appropriate attribution is given to FRED as well as the original source of the data.'",
+      "Copyright status is discoverable programmatically: copyrighted series contain 'Copyright' in their notes (searchable via fred/series/search), the 'cc' tag group is 'Citation & Copyright', and v2 responses carry a per-series copyright_id field (e.g. 'public domain: citation requested')."
+    ],
+    "storageCachingRedistribution": [
+      "CRITICAL - FRED Legal page prohibited-uses list (applies to FRED Services/Content, restated in the API-specific terms): 'Store, cache, or archive any portion of the FRED Services or FRED Content; provide any stored, cached, or archived portion of the FRED Services or FRED Content to any third party; or incorporate any FRED Content in any database, compilation, archive, cache, or other medium.' As literally documented, persistent storage/caching of API responses is prohibited without written permission - this must go to counsel before building any FRED-backed data lake or cache.",
+      "'Redistribute any third party's proprietary content, including any graphs, maps, images, logos, data, or datasets, for commercial use without first obtaining express written permission from the data provider' is prohibited.",
+      "General content clause: FRED Content may not be duplicated, distributed, republished, scraped, 'incorporated in any other database or compilation or sold' without the Bank's prior written permission.",
+      "API TOU: applications must not 'replicate or attempt to replace the essential user experience' of FRED/ALFRED; applications for other users must display a link to the FRED API Terms of Use and bind their users to them.",
+      "Terms may be updated at any time without notice; the Bank may terminate the license at any time for any reason, after which all copies must be destroyed."
+    ],
+    "warranty": "Provided 'AS IS'; 'SOME OF THE FRED API MAY BE EXPERIMENTAL AND NOT TESTED IN ANY MANNER'; no warranty of accuracy/completeness; no entitlement to support; Missouri law; liability fully disclaimed."
+  },
+  "limitations": [
+    "No numeric published rate limit - only 'rate limiting exists, 429 on breach, contact us to exceed' - so capacity planning requires empirical throttling and defensive 429 handling.",
+    "Documented prohibition on storing/caching/archiving FRED content and on incorporating it into any database conflicts with typical institutional data-platform architecture; requires legal review / written permission before persisting data.",
+    "Macro data is heavily revised: default queries return today's real-time period (latest revised values). Any backtest or point-in-time analytics MUST use ALFRED mechanics (realtime_start/realtime_end, vintage_dates, output_type 2/3/4) or it will suffer look-ahead bias.",
+    "No real-time or intraday market data; highest native frequency is daily; publication follows source-agency release schedules (macro release lag).",
+    "Third-party copyrighted series ('Copyrighted: Pre-approval required') cannot be used commercially without the owner's permission; per-series compliance checks are required (notes/'cc' tags/copyright_id).",
+    "Observation values are returned as numeric strings; missing observations are the string '.' - parsers must handle both.",
+    "Frequency aggregation is only supported for file_type xml or json ('due to time constraints'), and only downward (higher to lower frequency).",
+    "vintage_dates queries are capped (1000 csv/xlsx, 2000 json/xml; 450 csv/225 xlsx for daily series with output_type=2), so large vintage reconstructions need chunking.",
+    "Discontinued series remain in the database (title suffix '(DISCONTINUED)', 'discontinued' tag) - discovery queries should filter them explicitly via exclude_tag_names.",
+    "v2 bulk pulls during a release update window can return a mix of updated and stale series; docs recommend re-pulling the whole release when last_updated changes mid-pagination.",
+    "HTTP 423 Locked is a documented possible status with no documented explanation.",
+    "TOU disclaims reliability entirely (no SLA, experimental features possible, service can change or be discontinued at any time).",
+    "Exact current series/source counts are not stated in the reviewed docs ('hundreds of thousands of series' from 'scores' of sources per the official What is FRED page).",
+    "This review was performed against Internet Archive captures of the official docs (May-July 2026 vintage for key pages) because the live site blocked this environment; re-verify against live pages before implementation sign-off."
+  ],
+  "institutionalFit": {
+    "primaryFor": [
+      "US and international macroeconomic time series (GDP, CPI/inflation, employment, money/banking aggregates, interest rates, exchange rates, trade) - FRED is the de facto institutional reference aggregator for official macro data.",
+      "Point-in-time / vintage macro data for revision-safe backtesting via ALFRED real-time periods, vintage_dates, and output_type 2/3/4 - a capability few providers offer at all.",
+      "Economic release calendar and release-change monitoring (fred/releases/dates with future dates; fred/series/updates minute-window polling).",
+      "US regional economic data (states, counties, MSAs) and mapped/regional data via the Maps API.",
+      "Macro series discovery/metadata service (search, categories, tags, sources, release structure)."
+    ],
+    "fallbackFor": [
+      "Selected daily financial series (e.g. rates and indices published by its sources) when a licensed market-data provider is unavailable - subject to per-series copyright checks.",
+      "Nothing else: it has no equities/options/futures/FX tick/crypto market data, no fundamentals, no corporate reference data."
+    ],
+    "hardConstraints": [
+      "Macro data is EOD-at-best and revision-prone: never present FRED values as real-time market data, and always disclose vintage semantics (as-of-today vs as-of-date).",
+      "Mandatory app notice: 'This product uses the FRED API but is not endorsed or certified by the Federal Reserve Bank of St. Louis.' plus source-and-FRED citation on displayed data.",
+      "Per-series copyright gating must be enforced in the platform ('Copyrighted: Pre-approval required' series blocked from client-facing/commercial surfaces without owner permission).",
+      "Documented no-store/no-cache/no-archive and no-redistribution clauses must be resolved with counsel (or written permission obtained) before any persistence layer, derived database, or client redistribution is built on FRED content.",
+      "One API key per application, one key per end user of that application; keys must not be shared.",
+      "No SLA and no published rate limit: build conservative client-side throttling, 429 backoff, and graceful degradation; the Bank may change or terminate access at any time.",
+      "Every end-user-facing use must avoid replicating the FRED/ALFRED user experience and must not use FRED/ALFRED/Federal Reserve Bank in hostnames."
+    ]
+  },
+  "sourcesConsulted": [
+    {
+      "url": "https://fred.stlouisfed.org/docs/api/fred/ (read via https://web.archive.org/web/2026id_/, 2026 capture)",
+      "whatItVerified": "Official docs root; complete v1 endpoint list (categories/releases/series/sources/tags), Maps API section, 'API Version 1' vs 'API Version 2' descriptions, links to api_key/errors/terms/realtime docs"
+    },
+    {
+      "url": "https://fred.stlouisfed.org/docs/api/api_key.html (Wayback 20260614)",
+      "whatItVerified": "v1 authentication: required api_key query parameter, 32-char lowercase alphanumeric format, key issuance via fredaccount.stlouisfed.org, one key per application / per user policy"
+    },
+    {
+      "url": "https://fred.stlouisfed.org/docs/api/fred/v2/api_key.html (Wayback 20260513)",
+      "whatItVerified": "v2 authentication: 'Authorization: Bearer <key>' request header"
+    },
+    {
+      "url": "https://fred.stlouisfed.org/docs/api/fred/v2/index.html (Wayback 20260530)",
+      "whatItVerified": "v2 scope: bulk release observations; v2 endpoint list (fred/v2/release/observations only)"
+    },
+    {
+      "url": "https://fred.stlouisfed.org/docs/api/fred/v2/release_observations.html (Wayback 20260513)",
+      "whatItVerified": "v2 endpoint detail: params (release_id, format, limit 1-500000, next_cursor), cursor pagination (has_more/next_cursor), full response schema incl. copyright_id and last_updated, mixed-update caveat and reprocessing recommendation"
+    },
+    {
+      "url": "https://fred.stlouisfed.org/docs/api/fred/errors.html (Wayback 20260530)",
+      "whatItVerified": "Error schema (XML error tag with code/message; JSON error_code/error_message), status codes 400/404/423/429/500, rate-limiting statement and 'contact us to exceed' guidance"
+    },
+    {
+      "url": "https://fred.stlouisfed.org/docs/api/terms_of_use.html (Wayback 20260530)",
+      "whatItVerified": "FRED API Terms of Use: attribution notice requirement, prohibitions (UX replication, hostname use, bandwidth abuse), third-party copyright responsibility, discretionary bandwidth/transaction limits, versioning/change clause, AS-IS disclaimer, termination"
+    },
+    {
+      "url": "https://fred.stlouisfed.org/legal/ (Wayback 20260710)",
+      "whatItVerified": "FRED Legal Notices: three copyright tiers, internal-commercial-use allowance for citation-tier series, 'Source: BLS via FRED' citation format, prohibition on store/cache/archive and database incorporation, redistribution prohibition, scraping restrictions, graph/map license"
+    },
+    {
+      "url": "https://fred.stlouisfed.org/docs/api/fred/series_observations.html (Wayback 20260530)",
+      "whatItVerified": "Core observations endpoint: all params (file_type xml/json/xlsx/csv, limit 1-100000, units transformations, frequency aggregation values and rules, aggregation_method, output_type 1-4, vintage_dates caps), full XML/JSON response shape, base URL https://api.stlouisfed.org/fred/"
+    },
+    {
+      "url": "https://fred.stlouisfed.org/docs/api/fred/series.html (Wayback 20251212)",
+      "whatItVerified": "Series metadata endpoint: params and response fields (title, observation_start/end, frequency, units, seasonal_adjustment, last_updated, popularity, notes)"
+    },
+    {
+      "url": "https://fred.stlouisfed.org/docs/api/fred/series_search.html (Wayback 20260421)",
+      "whatItVerified": "Search endpoint: search_text/search_type (full_text vs series_id wildcards), limit 1-1000, order_by/sort_order options, filter_variable/filter_value, tag filters"
+    },
+    {
+      "url": "https://fred.stlouisfed.org/docs/api/fred/series_updates.html (Wayback 20260308)",
+      "whatItVerified": "Updates endpoint: filter_value macro|regional|all (regional = US states/counties/MSAs), start_time/end_time minute-granularity window, limit 1-1000"
+    },
+    {
+      "url": "https://fred.stlouisfed.org/docs/api/fred/series_vintagedates.html (Wayback 20260110)",
+      "whatItVerified": "Vintage dates endpoint: series_id required, realtime defaults 1776-07-04..9999-12-31, limit 1-10000"
+    },
+    {
+      "url": "https://fred.stlouisfed.org/docs/api/fred/releases.html (Wayback 20260527)",
+      "whatItVerified": "Releases endpoint: params, limit 1-1000, order_by values"
+    },
+    {
+      "url": "https://fred.stlouisfed.org/docs/api/fred/releases_dates.html (Wayback 20260418)",
+      "whatItVerified": "All-releases dates endpoint: realtime_start default = first day of current year, include_release_dates_with_no_data behavior (future calendar dates, release_last_updated attribute), default sort desc"
+    },
+    {
+      "url": "https://fred.stlouisfed.org/docs/api/fred/release_series.html (Wayback 20251129)",
+      "whatItVerified": "Release series endpoint: release_id required, filters, order_by, tag filtering"
+    },
+    {
+      "url": "https://fred.stlouisfed.org/docs/api/fred/category_series.html (Wayback 20260212)",
+      "whatItVerified": "Category series endpoint: category_id required, filters and pagination"
+    },
+    {
+      "url": "https://fred.stlouisfed.org/docs/api/fred/category.html (Wayback 20260217)",
+      "whatItVerified": "Category endpoint: category_id default 0 (root), response {id, name, parent_id}"
+    },
+    {
+      "url": "https://fred.stlouisfed.org/docs/api/fred/sources.html (Wayback 20251212)",
+      "whatItVerified": "Sources endpoint: response fields {id, name, link, realtime_*}; example source list showing Fed Board, BEA, BLS, Census, RBA, Deutsche Bundesbank, Dow Jones, ISM, Haver Analytics etc."
+    },
+    {
+      "url": "https://fred.stlouisfed.org/docs/api/fred/tags.html (Wayback 20251205)",
+      "whatItVerified": "Tags endpoint: tag_group_id values (freq/gen/geo/geot/rls/seas/src/cc), search_text, order_by values"
+    },
+    {
+      "url": "https://fred.stlouisfed.org/docs/api/fred/realtime_period.html (Wayback 20260530)",
+      "whatItVerified": "Real-time period semantics: default = today (FRED mode), closed/closed interval, 1776-07-04 and 9999-12-31 sentinels, ALFRED as-of-history usage"
+    },
+    {
+      "url": "https://fred.stlouisfed.org/docs/api/fred/fred_vs_alfred.html (Wayback 20260506)",
+      "whatItVerified": "FRED vs ALFRED: same URLs, different realtime options; defaults chosen for FRED (today) semantics"
+    },
+    {
+      "url": "https://fred.stlouisfed.org/docs/api/fred/overview.html (Wayback 20260510)",
+      "whatItVerified": "REST/HTTPS architecture, XML or JSON output, FRED + ALFRED databases queryable, language-agnostic (no official SDKs mentioned)"
+    },
+    {
+      "url": "https://fredhelp.stlouisfed.org/fred/about/about-fred/what-is-fred/ (Wayback 20260515)",
+      "whatItVerified": "Official coverage statement: 'hundreds of thousands of economic data time series from scores of national, international, public, and private sources'"
+    },
+    {
+      "url": "https://fred.stlouisfed.org/docs/api/geofred/series_data.html (Wayback 20251217)",
+      "whatItVerified": "Maps API base path https://api.stlouisfed.org/geofred/... (example: /geofred/series/data?series_id=WIPCPI)"
+    }
+  ],
+  "confidence": "medium",
+  "openQuestions": [
+    "Live-site verification pending: fred.stlouisfed.org blocked this review environment (Akamai 403/timeouts), so all pages were read from Wayback captures of the official docs (key pages May-July 2026). Confirm no doc changes on the live site before implementation sign-off.",
+    "Numeric rate limit (requests/minute) is not published anywhere in official docs - must be established empirically or by contacting the St. Louis Fed as the errors page invites.",
+    "Scope of the 'no store/cache/archive' clause in FRED Legal versus practical API usage (the API exists to let applications retrieve data): obtain counsel review or written clarification from the Bank before persisting FRED data in the platform.",
+    "Meaning/triggers of documented HTTP 423 Locked are unexplained in the docs.",
+    "Whether v1 also accepts the Authorization: Bearer header (only the api_key query parameter is documented for v1; only the header is documented for v2).",
+    "Current exact series count and source count (docs say 'hundreds of thousands of series' from 'scores' of sources; marketing counts were not verifiable on reviewed official pages).",
+    "Maps API endpoint details (params/response schemas for shapes, series group meta, regional data) were confirmed to exist but not reviewed in depth.",
+    "Whether any Retry-After header accompanies 429 responses (not documented)."
+  ],
+  "reviewDateNote": "Set at synthesis; research performed 2026-07-17 against Internet Archive captures of official docs (live site blocked research environment). Re-verify against live docs before first production use."
+}

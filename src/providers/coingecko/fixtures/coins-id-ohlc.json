@@ -1,0 +1,13 @@
+{
+  "_fixture": {
+    "note": "constructed from official docs field definitions (see docs/research/providers/coingecko-pro.json), not captured live data. The raw GET /coins/{id}/ohlc response is a JSON array of [timestamp(ms), open, high, low, close]; it is wrapped here under 'body' so this metadata key can exist — tests serve 'body' as the response. Five daily candles, 2026-07-12 .. 2026-07-16 UTC.",
+    "docsUrl": "https://docs.coingecko.com/reference/coins-id-ohlc"
+  },
+  "body": [
+    [1783814400000, 108000.5, 111000.75, 107500.25, 110800.1],
+    [1783900800000, 110800.1, 112400.0, 109900.6, 111950.35],
+    [1783987200000, 111950.35, 114100.2, 111200.8, 113750.9],
+    [1784073600000, 113750.9, 117600.45, 113400.15, 116996.44],
+    [1784160000000, 116996.44, 119448.0, 116645.0, 118211.42]
+  ]
+}

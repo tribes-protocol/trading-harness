@@ -1,0 +1,49 @@
+{
+  "_fixture": {
+    "note": "constructed from official docs field definitions (see docs/research/providers/marketstack.json), not captured live data",
+    "docsUrl": "https://docs.apilayer.com/marketstack/docs/api-documentation"
+  },
+  "pagination": { "limit": 2, "offset": 0, "count": 2, "total": 2 },
+  "data": [
+    {
+      "name": "NASDAQ Stock Exchange",
+      "acronym": "NASDAQ",
+      "mic": "XNAS",
+      "country": "USA",
+      "country_code": "US",
+      "city": "New York",
+      "website": "https://www.nasdaq.com",
+      "operating_mic": "XNAS",
+      "oprt_sgmt": "OPRT",
+      "legal_entity_name": "NASDAQ - ALL MARKETS",
+      "exchange_lei": null,
+      "market_category_code": "NSPD",
+      "exchange_status": "ACTIVE",
+      "date_creation": null,
+      "date_last_update": null,
+      "date_last_validation": null,
+      "date_expiry": null,
+      "comments": null
+    },
+    {
+      "name": "London Stock Exchange",
+      "acronym": "LSE",
+      "mic": "XLON",
+      "country": "United Kingdom",
+      "country_code": "GB",
+      "city": "London",
+      "website": "https://www.londonstockexchange.com",
+      "operating_mic": "XLON",
+      "oprt_sgmt": "OPRT",
+      "legal_entity_name": "LONDON STOCK EXCHANGE",
+      "exchange_lei": null,
+      "market_category_code": "NSPD",
+      "exchange_status": "ACTIVE",
+      "date_creation": null,
+      "date_last_update": null,
+      "date_last_validation": null,
+      "date_expiry": null,
+      "comments": null
+    }
+  ]
+}

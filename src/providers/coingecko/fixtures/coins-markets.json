@@ -1,0 +1,33 @@
+{
+  "_fixture": {
+    "note": "constructed from official docs field definitions (see docs/research/providers/coingecko-pro.json), not captured live data. The raw GET /coins/markets response is a JSON array; it is wrapped here under 'body' so this metadata key can exist — tests serve 'body' as the response.",
+    "docsUrl": "https://docs.coingecko.com/reference/coins-markets"
+  },
+  "body": [
+    {
+      "id": "bitcoin",
+      "symbol": "btc",
+      "name": "Bitcoin",
+      "image": "https://coin-images.coingecko.com/coins/images/1/large/bitcoin.png",
+      "current_price": 118211.42,
+      "market_cap": 2351650203845,
+      "market_cap_rank": 1,
+      "fully_diluted_valuation": 2481950203845,
+      "total_volume": 46953265807,
+      "high_24h": 119448.0,
+      "low_24h": 116645.0,
+      "price_change_24h": 1214.96,
+      "price_change_percentage_24h": 1.03853,
+      "market_cap_change_24h": 24187920115,
+      "circulating_supply": 19893443.0,
+      "total_supply": 21000000.0,
+      "max_supply": 21000000.0,
+      "ath": 122838.0,
+      "ath_date": "2026-01-14T07:20:01.815Z",
+      "atl": 67.81,
+      "atl_date": "2013-07-06T00:00:00.000Z",
+      "roi": null,
+      "last_updated": "2026-07-16T10:10:02.481Z"
+    }
+  ]
+}

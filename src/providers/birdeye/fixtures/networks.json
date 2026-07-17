@@ -1,0 +1,19 @@
+{
+  "_fixture": {
+    "note": "constructed from official docs field definitions (see docs/research/providers/birdeye.json), not captured live data",
+    "docsUrl": "https://docs.birdeye.so/reference/get-defi-networks"
+  },
+  "success": true,
+  "data": [
+    "solana",
+    "ethereum",
+    "arbitrum",
+    "avalanche",
+    "bsc",
+    "optimism",
+    "polygon",
+    "base",
+    "zksync",
+    "sui"
+  ]
+}

@@ -1,0 +1,48 @@
+{
+  "_fixture": {
+    "note": "constructed from official docs field definitions (see docs/research/providers/fred.json), not captured live data",
+    "docsUrl": "https://fred.stlouisfed.org/docs/api/fred/series_search.html"
+  },
+  "realtime_start": "2026-07-17",
+  "realtime_end": "2026-07-17",
+  "order_by": "search_rank",
+  "sort_order": "desc",
+  "count": 2,
+  "offset": 0,
+  "limit": 1000,
+  "seriess": [
+    {
+      "id": "CPIAUCSL",
+      "realtime_start": "2026-07-17",
+      "realtime_end": "2026-07-17",
+      "title": "Consumer Price Index for All Urban Consumers: All Items in U.S. City Average",
+      "observation_start": "1947-01-01",
+      "observation_end": "2026-06-01",
+      "frequency": "Monthly",
+      "frequency_short": "M",
+      "units": "Index 1982-1984=100",
+      "units_short": "Index 1982-1984=100",
+      "seasonal_adjustment": "Seasonally Adjusted",
+      "seasonal_adjustment_short": "SA",
+      "last_updated": "2026-07-15 07:44:03-05",
+      "popularity": 94,
+      "notes": "The Consumer Price Index for All Urban Consumers: All Items (CPIAUCSL) is a price index of a basket of goods and services paid by urban consumers."
+    },
+    {
+      "id": "CPILFESL",
+      "realtime_start": "2026-07-17",
+      "realtime_end": "2026-07-17",
+      "title": "Consumer Price Index for All Urban Consumers: All Items Less Food and Energy in U.S. City Average",
+      "observation_start": "1957-01-01",
+      "observation_end": "2026-06-01",
+      "frequency": "Monthly",
+      "frequency_short": "M",
+      "units": "Index 1982-1984=100",
+      "units_short": "Index 1982-1984=100",
+      "seasonal_adjustment": "Seasonally Adjusted",
+      "seasonal_adjustment_short": "SA",
+      "last_updated": "2026-07-15 07:44:05-05",
+      "popularity": 80
+    }
+  ]
+}

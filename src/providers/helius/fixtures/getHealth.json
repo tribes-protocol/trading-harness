@@ -1,0 +1,9 @@
+{
+  "_fixture": {
+    "note": "constructed from official docs field definitions (see docs/research/providers/helius.json), not captured live data",
+    "docsUrl": "https://www.helius.dev/docs/api-reference/rpc/http/llms.txt"
+  },
+  "jsonrpc": "2.0",
+  "id": "pi-getHealth",
+  "result": "ok"
+}

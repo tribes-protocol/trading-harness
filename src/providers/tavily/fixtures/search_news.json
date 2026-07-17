@@ -1,0 +1,35 @@
+{
+  "_fixture": {
+    "note": "constructed from official docs field definitions (see docs/research/providers/tavily.json), not captured live data. published_date appears with topic=news per the official best-practices doc; its format is undocumented, so plausible variants are exercised here (one RFC-1123, one ISO, one absent).",
+    "docsUrl": "https://docs.tavily.com/documentation/api-reference/endpoint/search.md"
+  },
+  "query": "semiconductor export controls",
+  "images": [],
+  "results": [
+    {
+      "title": "New export controls hit chipmakers",
+      "url": "https://news.example.org/articles/chip-export-controls",
+      "content": "Regulators announced expanded semiconductor export controls affecting advanced node equipment.",
+      "score": 0.98123,
+      "favicon": "https://news.example.org/favicon.ico",
+      "published_date": "Wed, 15 Jul 2026 08:30:00 GMT"
+    },
+    {
+      "title": "Chip stocks react to trade policy shift",
+      "url": "https://markets.example.com/stories/chip-stocks-trade-policy",
+      "content": "Shares of major semiconductor firms moved after the policy announcement.",
+      "score": 0.9345,
+      "favicon": "https://markets.example.com/favicon.ico",
+      "published_date": "2026-07-16T14:05:00Z"
+    },
+    {
+      "title": "Analysis: what the controls mean for supply chains",
+      "url": "https://analysis.example.net/supply-chain-impact",
+      "content": "A look at second-order effects on global chip supply chains.",
+      "score": 0.87001,
+      "favicon": "https://analysis.example.net/favicon.ico"
+    }
+  ],
+  "response_time": 2.04,
+  "request_id": "req-fixture-news-0001"
+}

@@ -1,0 +1,14 @@
+{
+  "_fixture": {
+    "note": "constructed from official docs field definitions (see docs/research/providers/birdeye.json), not captured live data",
+    "docsUrl": "https://docs.birdeye.so/reference/get-defi-price"
+  },
+  "success": true,
+  "data": {
+    "value": 161.2384951,
+    "updateUnixTime": 1784275200,
+    "updateHumanTime": "2026-07-17T08:00:00",
+    "priceChange24h": -2.1379,
+    "liquidity": 24816093.55
+  }
+}

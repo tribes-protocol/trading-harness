@@ -1,0 +1,411 @@
+{
+  "area": "Independent risk, market surveillance, and model validation",
+  "reviewDate": "2026-07-17",
+  "departments": [
+    {
+      "name": "Independent Risk Management",
+      "mandate": "Second-line-of-defense function that independently identifies, measures, monitors, and challenges the investment risks of the firm (market, liquidity, counterparty/credit, concentration, leverage) against a board/management-approved risk appetite and limit framework, with authority to escalate and force de-risking. Independence from portfolio management is a regulatory requirement in the EU/UK (AIFMD Art. 15 'functionally and hierarchically separated' permanent risk management function) and a strong institutional-investor expectation in the US (PWG Asset Managers' Committee, AIMA/MFA sound practices), where no direct SEC rule mandates the function.",
+      "responsibilities": [
+        "Design and maintain the risk appetite statement and cascading limit framework (firm -> strategy/pod -> book), per FSB Risk Appetite Framework principles adapted to a fund context",
+        "Daily independent measurement of market risk: VaR (and back-testing), stress/scenario exposure, factor decomposition, Greeks, gross/net leverage, crowding and factor-overlap analysis across pods",
+        "Stress testing and scenario analysis: historical scenarios, hypothetical/forward-looking scenarios, reverse stress tests, correlated liquidation scenarios",
+        "Liquidity risk management: asset liquidation horizon vs financing terms and investor redemption terms; liquidity bucketing; use and governance of liquidity management tools (IOSCO 2018/2025 recommendations); liquidity stress testing",
+        "Concentration risk monitoring: issuer, sector, geography, strategy, single-position, and cross-pod overlap/crowding limits",
+        "Counterparty credit risk: exposure measurement to prime brokers, ISDA/derivatives counterparties and financing providers; margin and rehypothecation monitoring; wrong-way risk; counterparty credit triggers (e.g., CDS-spread 'amber terms', asset migration to segregated accounts); counterparty diversification policy",
+        "Limit monitoring, breach identification, escalation, and enforcement, including drawdown-based capital reduction rules at multi-strategy platforms",
+        "New product / new strategy / new market risk review and sign-off before trading begins",
+        "Input to capital allocation across PMs/pods based on risk-adjusted performance and limit utilization",
+        "Independent risk reporting to CIO, executive/risk committee, board, and investors (e.g., Open Protocol style risk reports)",
+        "Production of risk data for regulatory reporting: SEC/CFTC Form PF (large hedge fund adviser sections incl. exposures, VaR-type metrics, counterparty and financing data), AIFMD Annex IV",
+        "Maintain risk policies and procedures; annual review of the risk management framework (AIFMD Level 2 requires periodic review of risk systems)"
+      ],
+      "workflows": [
+        {
+          "name": "Daily risk run and limit check",
+          "cadence": "Daily (T+0 overnight batch; intraday for high-velocity books)",
+          "description": "Independent recomputation of exposures, VaR, stress metrics, leverage, and liquidity metrics from golden-source positions; compare against limit framework; publish dashboards and exception reports.",
+          "inputs": ["Start-of-day/intraday positions from OMS/PMS and fund accounting", "Market data and factor models", "Limit framework and risk appetite parameters", "Financing/margin data from treasury and prime brokers"],
+          "outputs": ["Daily risk report/dashboard per pod and firmwide", "Limit utilization and breach exceptions", "Escalation notices to PMs/CIO"]
+        },
+        {
+          "name": "Limit breach escalation and enforcement",
+          "cadence": "Event-driven",
+          "description": "Documented escalation ladder: notify PM -> require remediation plan within defined window -> escalate to CRO/CIO/risk committee -> forced de-risking or capital cut. At large multi-strategy platforms drawdown triggers are frequently automatic (reported practice: ~5% drawdown triggers ~50% capital cut, ~7.5% triggers pod termination at some platforms; thresholds negotiated per-PM at others).",
+          "inputs": ["Breach exceptions from daily run", "PM remediation plans", "Risk committee decisions"],
+          "outputs": ["Breach log and audit trail", "De-risk/capital-cut instructions to front office and allocation team", "Committee escalation memos"]
+        },
+        {
+          "name": "Stress and scenario testing",
+          "cadence": "Weekly to monthly, plus ad hoc around market events",
+          "description": "Run historical, hypothetical, and reverse stress scenarios across the portfolio; assess correlated deleveraging and margin-spiral scenarios; feed results to risk committee and to liquidity/financing planning.",
+          "inputs": ["Position and factor data", "Scenario library (maintained with model validation)", "Margin methodologies of counterparties"],
+          "outputs": ["Stress test pack", "Scenario limit checks", "Recommended hedges or exposure reductions"]
+        },
+        {
+          "name": "Liquidity risk and redemption stress",
+          "cadence": "Monthly (weekly or daily for less liquid or levered books); design review annually",
+          "description": "Liquidity bucketing of assets vs liability profile (investor terms, gates, financing tenor); redemption and margin-call stress scenarios; assessment of liquidity management tool adequacy per IOSCO recommendations.",
+          "inputs": ["Position liquidity metrics (ADV, market depth)", "Investor terms and known redemption pipeline from IR/fund admin", "Financing terms and margin requirements from treasury"],
+          "outputs": ["Liquidity coverage report", "Liquidity stress results", "Escalations on liquidity mismatch"]
+        },
+        {
+          "name": "Counterparty risk review",
+          "cadence": "Daily exposure monitoring; monthly/quarterly counterparty review committee",
+          "description": "Monitor exposures, excess margin, unencumbered cash placement, and rehypothecation at each prime broker/counterparty; review counterparty credit quality (ratings, CDS spreads, equity); set/adjust counterparty limits; test contingency plans for moving balances.",
+          "inputs": ["PB/ISDA exposure and collateral data", "Counterparty market indicators (CDS, ratings)", "Legal terms (ISDA/CSA, prime brokerage agreements, amber-term triggers)"],
+          "outputs": ["Counterparty exposure report and limit set", "Watchlist and trigger actions", "Diversification recommendations to treasury"]
+        },
+        {
+          "name": "Risk committee",
+          "cadence": "Monthly or quarterly (firm-size dependent); minutes retained",
+          "description": "CRO-chaired or CEO-chaired committee reviewing risk profile vs appetite, limit changes, breaches, stress results, counterparty and liquidity posture, model risk summary, and emerging risks; approves methodology and limit changes independent of day-to-day portfolio decisions.",
+          "inputs": ["Risk MI pack", "Breach and escalation log", "Model validation summary", "Proposed limit/methodology changes"],
+          "outputs": ["Approved limit and methodology changes", "Action items and directives to front office", "Board risk reporting"]
+        },
+        {
+          "name": "Risk appetite framework annual review",
+          "cadence": "Annual (event-driven refresh on strategy change)",
+          "description": "Review and re-approve risk appetite statement, limit architecture, and delegation of authority per FSB RAF principles; align with investor mandates and side letters.",
+          "inputs": ["Board/management strategy", "Investor guidelines", "Prior-year breach and utilization statistics"],
+          "outputs": ["Updated risk appetite statement and limit framework", "Board approval record"]
+        },
+        {
+          "name": "New strategy / new instrument review",
+          "cadence": "Event-driven",
+          "description": "Pre-trading review of proposed strategies, instruments, or markets: risk measurability, model coverage, operational/settlement readiness, financing, and limit assignment; CRO sign-off commonly required before onboarding (a widely used form of veto right).",
+          "inputs": ["PM proposal and strategy documentation", "Model validation status for required models", "Operations/legal/compliance readiness assessments"],
+          "outputs": ["Approval/rejection with conditions", "Assigned limits and monitoring plan"]
+        },
+        {
+          "name": "Regulatory risk reporting production",
+          "cadence": "Quarterly (Form PF large hedge fund adviser sections; AIFMD Annex IV quarterly/semi-annual by size); event reports within 72 hours for triggering stress events under the 2024 Form PF amendments (compliance date Oct 1, 2026; 2026 SEC/CFTC proposal would raise the large-adviser threshold to $10bn and streamline items)",
+          "description": "Assemble exposure, leverage, liquidity, counterparty, and performance data; reconcile to fund accounting; CCO/CRO sign-off; file via PFRD/regulator portals.",
+          "inputs": ["Golden-source risk and position data", "Fund accounting NAV data", "Counterparty and financing data"],
+          "outputs": ["Form PF filing", "AIFMD Annex IV filing", "Internal sign-off and reconciliation evidence"]
+        }
+      ],
+      "controls": [
+        "Documented risk management policy and permanent risk function (AIFMD Art. 15 / Level 2 Reg. 231/2013; FCA FUND 3.7 for UK AIFMs)",
+        "Functional and hierarchical separation from portfolio management, with proportionality safeguards where full separation is impracticable (explicit in AIFMD; sound practice per PWG AMC 2009 report)",
+        "Board/management-approved risk appetite statement and limit framework with defined escalation and consequence management (FSB RAF principles)",
+        "Independent data sourcing: risk numbers computed from independently controlled position/market data, not PM spreadsheets",
+        "VaR model back-testing and periodic methodology review (CESR/10-788 style expectations where UCITS are managed; sound practice otherwise)",
+        "Documented breach log with time-stamped escalation and resolution audit trail",
+        "Annual review of risk framework effectiveness; internal audit (third line) periodic testing",
+        "Committee governance with minutes: risk committee, counterparty committee, valuation committee interlock"
+      ],
+      "independence": "Fully independent second line. CRO reports to CEO/COO/board (not to the CIO); EU/UK AIFMs must demonstrate functional and hierarchical separation from portfolio management (proportionality permitted for smaller AIFMs with documented conflict-of-interest safeguards). Independence should not mean isolation: daily engagement with PMs is expected. Veto rights vary by firm: near-universal for new products/strategies and instrument onboarding; automatic hard drawdown limits at large multi-strategy platforms; trade-level veto is rare and usually replaced by escalation with authority to force de-risking.",
+      "dependencies": [
+        "Golden-source position and P&L data (operations/fund accounting)",
+        "Market data and factor model infrastructure (technology/quant)",
+        "Validated risk models (model validation function)",
+        "Treasury/financing data (margin, collateral, counterparty terms)",
+        "Investor terms and redemption pipeline (IR/fund admin)",
+        "Legal documentation terms (ISDA/CSA/PB agreements)"
+      ],
+      "handoffs": [
+        {"to": "Portfolio Management / Front Office", "direction": "outbound", "content": "Approved limits, daily risk reports, breach notifications, remediation deadlines, de-risk or capital-cut instructions, new-strategy approval conditions"},
+        {"to": "Portfolio Management / Front Office", "direction": "inbound", "content": "Positions and intended strategy changes, new instrument/market requests, remediation plans, risk representations for new pods"},
+        {"to": "Compliance / Regulatory Reporting", "direction": "outbound", "content": "Risk data for Form PF and AIFMD Annex IV, breach information relevant to regulatory or investor-mandate limits"},
+        {"to": "Model Validation & Governance", "direction": "bidirectional", "content": "Outbound: risk models (VaR, stress, liquidity) submitted for validation with documentation; inbound: validation findings, approved-use conditions, model limitations that must be reflected in risk reporting"},
+        {"to": "Treasury / Financing", "direction": "bidirectional", "content": "Outbound: counterparty limits, diversification requirements, trigger actions; inbound: margin, collateral, rehypothecation and financing-term data"},
+        {"to": "Investor Relations", "direction": "outbound", "content": "Standardized investor risk reports (e.g., Open Protocol), commentary on exposures and stress results"},
+        {"to": "Board / Executive Committee", "direction": "outbound", "content": "Risk appetite proposals, quarterly risk profile reports, material breach escalations"}
+      ],
+      "regulatoryBasis": [
+        "AIFMD Directive 2011/61/EU Art. 15 and Commission Delegated Regulation (EU) 231/2013: permanent risk management function, functionally and hierarchically separated from operating units including portfolio management; risk limits for each AIF; periodic review (EU/UK AIFMs; FCA FUND 3.7 mirrors in UK)",
+        "SEC Form PF (Advisers Act/Investment Company Act rules): periodic risk/exposure reporting for private fund advisers; 2024 amendments add 72-hour current event reports for large hedge fund advisers (compliance Oct 2026); 2026 SEC/CFTC joint proposal would raise the large hedge fund adviser threshold from $1.5bn to $10bn and streamline items",
+        "IOSCO Recommendations for Liquidity Risk Management for Collective Investment Schemes (2018, PD590; revised 2025, PD770) - primarily open-ended funds, used as the LRM benchmark",
+        "CESR/ESMA Guidelines 10-788 on Risk Measurement and Calculation of Global Exposure and Counterparty Risk (binding practice where UCITS are managed; commitment vs VaR approaches, back-testing)",
+        "FSB Principles for an Effective Risk Appetite Framework (Nov 2013) - supervisory expectations written for SIFIs, widely adopted as good practice by large asset managers (not binding on funds)",
+        "Best practice (non-regulatory): PWG Asset Managers' Committee 'Best Practices for the Hedge Fund Industry' (2009); AIMA Guides to Sound Practices; MFA Sound Practices for Hedge Fund Managers"
+      ],
+      "practiceNotes": [
+        "US-registered advisers face no rule mandating an independent risk function; the driver is investor due diligence (ODD) and AIFMD if marketing/managing in the EU/UK - firms with any EU nexus build to the AIFMD standard",
+        "Multi-strategy platforms centralize risk: a central risk/portfolio-construction team monitors every pod in near-real-time; capital allocation is explicitly risk-driven and drawdown rules can be automatic and non-negotiable (reported for Millennium) or individually negotiated (reported for Citadel/Point72) - treat exact thresholds as practice folklore, not verified disclosure",
+        "Smaller funds: CRO may double as COO or head of quant; AIFMD proportionality allows this with documented safeguards, but institutional allocators increasingly require a named independent risk officer",
+        "Counterparty risk practice post-Lehman/Archegos: multi-prime diversification (typically 2-4 PBs), excess-margin sweeps, segregated custody of unencumbered assets, and CDS-spread-triggered 'amber terms' in PB agreements",
+        "Risk-function veto is strongest at the boundaries (new products, onboarding, leverage extensions) and weakest at trade level; documentation of escalation authority matters more to allocators and regulators than nominal veto language"
+      ]
+    },
+    {
+      "name": "Market Surveillance (within Compliance)",
+      "mandate": "Detect, deter, and report potential market abuse (insider dealing, unlawful disclosure, market manipulation) and other suspicious or unusual trading activity arising from the firm's order flow and employee conduct; discharge the firm's UK/EU MAR Article 16(2) detection-and-reporting obligation (STORs) where applicable, and support US obligations under Advisers Act Section 204A / Rule 206(4)-7 to prevent MNPI misuse. At buy-side firms this is a function within Compliance (second line), not a separate desk.",
+      "responsibilities": [
+        "Periodic market abuse risk assessment covering all strategies, asset classes, and abuse typologies (FCA expectation; drives surveillance coverage)",
+        "Automated post-trade (and where relevant order-level) surveillance with calibrated alert scenarios: insider dealing ahead of announcements, front running, wash/matched trades, marking the close, layering/spoofing where the firm has DMA, cross-fund abusive allocation patterns",
+        "Human review layer over automated alerts - ESMA MAR Q&A states automated surveillance becomes necessary above a certain activity level but must be combined with human analysis",
+        "Suspicious Transaction and Order Report (STOR) preparation and submission to the FCA/relevant NCA without delay when reasonable suspicion arises (UK/EU MAR Art. 16(2), RTS 2016/957)",
+        "MNPI controls: insider lists, wall-crossing procedures, restricted/watch lists, expert-network call chaperoning and approval, PIPE/private-deal information barriers (Advisers Act s.204A; SEC enforcement stresses policies must be tailored to the firm's actual business)",
+        "Communications surveillance: e-comms lexicon/AI screening, voice where applicable, off-channel communications controls (major SEC/CFTC enforcement theme)",
+        "Personal account dealing / code of ethics monitoring (SEC Rule 204A-1; FCA equivalents)",
+        "Alert triage, case management, investigation documentation, and disposition with audit trail",
+        "Surveillance model governance: documented scenario logic, parameter calibration, data completeness checks, risk-based testing of surveillance models (FCA Market Watch 79 expectations)",
+        "Management information to CCO/compliance committee: alert volumes, dispositions, STOR statistics, calibration changes",
+        "Annual compliance program review incorporating surveillance effectiveness (SEC Rule 206(4)-7)"
+      ],
+      "workflows": [
+        {
+          "name": "Alert triage and case review",
+          "cadence": "Daily (typically T+1 review of prior-day alerts)",
+          "description": "Review automated surveillance alerts, close false positives with rationale, escalate genuine suspicions to investigation; document every disposition.",
+          "inputs": ["Order and execution data from OMS/EMS", "News/announcement and price-move data", "Restricted and insider lists", "Alert output from surveillance platform"],
+          "outputs": ["Dispositioned alerts with rationale", "Escalated cases", "Trend metrics"]
+        },
+        {
+          "name": "STOR submission",
+          "cadence": "Event-driven (without delay upon reasonable suspicion)",
+          "description": "Investigate escalated cases; where reasonable suspicion of (attempted) market abuse remains, file a STOR with the FCA/NCA; maintain confidentiality (no tipping-off of the subject).",
+          "inputs": ["Investigation file", "Trade/order records and comms", "Legal review where needed"],
+          "outputs": ["Filed STOR", "Internal record segregated on need-to-know basis"]
+        },
+        {
+          "name": "Market abuse risk assessment refresh",
+          "cadence": "Annual, plus on new strategy/asset-class launch",
+          "description": "Map abuse typologies to each desk/strategy/asset class; assess inherent risk, control coverage, and surveillance-scenario gaps; drives calibration and build roadmap (FCA TR15/1 and Market Watch practice).",
+          "inputs": ["Strategy inventory", "Trading venue/asset-class footprint", "Prior alerts/STOR history", "FCA Market Watch and enforcement themes"],
+          "outputs": ["Documented risk assessment", "Surveillance coverage matrix and remediation plan"]
+        },
+        {
+          "name": "Surveillance model calibration and testing",
+          "cadence": "Quarterly tuning; at least annual formal testing; event-driven after data or system changes",
+          "description": "Test scenario logic and thresholds, verify data completeness (all venues, all instruments, cancels/amends included), document parameter changes through formal governance - FCA Market Watch 79 highlights failures from untested models and missing data.",
+          "inputs": ["Alert performance statistics", "Data reconciliation reports", "Model documentation"],
+          "outputs": ["Calibration change records", "Testing evidence for regulators/internal audit"]
+        },
+        {
+          "name": "Restricted list and insider list maintenance",
+          "cadence": "Daily / event-driven",
+          "description": "Add/remove names on wall-crossings, private placements, expert-network interactions; block orders against restricted names in OMS pre-trade controls.",
+          "inputs": ["Wall-crossing notifications from PMs/analysts", "Deal team information", "Expert network logs"],
+          "outputs": ["Updated restricted/insider lists", "OMS pre-trade block rules", "Access logs"]
+        },
+        {
+          "name": "Communications surveillance review",
+          "cadence": "Daily automated screening; periodic sampling; monthly lexicon review",
+          "description": "Screen captured e-comms (and voice where in scope) against lexicons/ML models; investigate hits alongside trade data; monitor for off-channel communication indicators.",
+          "inputs": ["Archived e-comms/voice", "Lexicons and ML models", "Trade context data"],
+          "outputs": ["Comms alerts and dispositions", "Conduct escalations to CCO/HR"]
+        },
+        {
+          "name": "Training and attestations",
+          "cadence": "Annual (onboarding for new joiners)",
+          "description": "Market abuse, MNPI, and personal-dealing training; annual attestations to code of ethics and comms policies.",
+          "inputs": ["Regulatory updates, enforcement cases", "Firm policies"],
+          "outputs": ["Training completion records", "Signed attestations"]
+        }
+      ],
+      "controls": [
+        "Documented arrangements, systems and procedures proportionate to the scale, size and nature of the business (UK/EU MAR Art. 16(2); Delegated Regulation 2016/957)",
+        "Combination of automated surveillance and human analysis (ESMA MAR Q&A)",
+        "Data completeness and accuracy controls over surveillance feeds; reconciliation of surveillance universe to actual trading (FCA Market Watch 79)",
+        "Formal governance over surveillance model implementation, testing, and change (FCA Market Watch 79; second-line/internal-audit oversight)",
+        "Written MNPI policies tailored to the adviser's actual business activities (Advisers Act s.204A; 2024 SEC enforcement actions penalized untailored policies)",
+        "Annual review of compliance policies/procedures effectiveness (SEC Rule 206(4)-7)",
+        "Case management audit trail; STOR confidentiality controls; no business-side veto over regulatory filings",
+        "Independence of compliance/surveillance staff compensation from trading P&L"
+      ],
+      "independence": "Embedded within Compliance as second line - independent of the front office but not a standalone department at buy-side firms. Large managers and multi-strategy platforms build dedicated surveillance teams (trade surveillance analysts + comms surveillance) inside compliance; mid-size firms assign it to generalist compliance staff on vendor platforms (e.g., market-standard surveillance systems); small firms frequently outsource operation of surveillance tooling or use outsourced compliance support, retaining accountability. Sell-side-style separate surveillance departments are uncommon on the buy-side; some large firms are shifting elements of conduct monitoring to front-office (1LOD) ownership with 2LOD oversight.",
+      "dependencies": [
+        "Complete order/execution data feeds from OMS/EMS across all venues and asset classes",
+        "Communications archiving infrastructure (e-comms, approved messaging channels, voice where applicable)",
+        "Market/news/announcement data for contextualizing alerts",
+        "Surveillance vendor platform and its model documentation",
+        "Front-office cooperation on wall-crossings and expert-network logging",
+        "Legal counsel for STOR judgment calls and investigations"
+      ],
+      "handoffs": [
+        {"to": "Trading / Front Office", "direction": "inbound", "content": "Order and execution records, cancels/amends, wall-crossing and expert-network notifications, DMA activity"},
+        {"to": "Trading / Front Office", "direction": "outbound", "content": "Pre-trade restricted-list blocks, trading halts on specific names, conduct inquiries, training"},
+        {"to": "Regulators (FCA/NCA; SEC on request)", "direction": "outbound", "content": "STORs, responses to market-abuse inquiries, exam materials on surveillance program"},
+        {"to": "Legal / General Counsel", "direction": "bidirectional", "content": "Outbound: escalated investigations; inbound: privilege guidance, disciplinary and disclosure decisions"},
+        {"to": "Technology / Data", "direction": "bidirectional", "content": "Outbound: data completeness requirements and reconciliation breaks; inbound: feed changes, new venue/instrument coverage"},
+        {"to": "Model Validation & Governance", "direction": "outbound", "content": "Surveillance models submitted for independent testing/validation at firms that put surveillance analytics in the model inventory (FCA MW79 points to second-line and internal-audit oversight of surveillance models)"},
+        {"to": "HR", "direction": "outbound", "content": "Employee conduct findings from comms/PA-dealing surveillance for disciplinary process"},
+        {"to": "Independent Risk Management", "direction": "bidirectional", "content": "Limited but real: crowding/position information relevant to manipulation risk; shared MI to executive committees"}
+      ],
+      "regulatoryBasis": [
+        "UK MAR / EU MAR Article 16(2) + Commission Delegated Regulation (EU) 2016/957: 'persons professionally arranging or executing transactions' - explicitly including buy-side AIFMs, UCITS managers, and prop traders - must maintain effective detection arrangements and file STORs",
+        "ESMA MAR Q&A (ESMA70-145-111), Q6.1: buy-side firms in scope; automated surveillance expected above a certain activity level, combined with human analysis",
+        "FCA TR15/1 (2015) 'Asset management firms and the risk of market abuse': expectations on inside-information controls and post-trade surveillance; follow-up supervisory visits",
+        "FCA Market Watch newsletters (esp. 69 and 79): surveillance data completeness, model testing/governance, STOR quality",
+        "US Advisers Act Section 204A: written policies to prevent MNPI misuse, tailored to the business (2024 SEC enforcement on untailored policies); Rule 204A-1 code of ethics; Rule 206(4)-7 compliance program with annual review",
+        "No US rule imposes a MAR-style affirmative trade-surveillance/STOR duty on advisers; anti-fraud provisions (Exchange Act 10b-5, Advisers Act 206) plus 204A drive US buy-side surveillance as risk mitigation rather than a filing obligation"
+      ],
+      "practiceNotes": [
+        "Answer to the scoping question: at buy-side firms market surveillance is part of compliance, not a separate desk. Dedicated surveillance sub-teams appear only at scale (large multi-strategy platforms, global asset managers). US-only managers often run lighter programs than UK/EU-touching managers because the MAR Art. 16 duty does not apply to them",
+        "Buy-side surveillance emphasizes insider dealing/MNPI typologies over manipulation typologies (order-book manipulation scenarios matter mainly where the firm has DMA or systematic execution)",
+        "Vendor platforms dominate; the differentiator regulators probe is governance: risk assessments, calibration rationale, testing evidence, and data completeness, not tool choice (FCA MW79)",
+        "Off-channel communications enforcement (SEC/CFTC) has pushed comms surveillance and channel-control ownership firmly into compliance",
+        "Multi-strategy specific: cross-pod information barriers and centralized restricted lists are a distinctive control need, since one pod's private information (e.g., a PIPE) can restrict the whole platform"
+      ]
+    },
+    {
+      "name": "Model Validation & Model Risk Governance",
+      "mandate": "Provide independent 'effective challenge' over models used in valuation/pricing, risk measurement, regulatory reporting, surveillance analytics, and (to a firm-specific degree) portfolio construction and alpha generation; own the model risk management framework - definition, inventory, tiering, validation standards, ongoing monitoring, change control - adapted from banking supervisory guidance (SR 11-7, superseded for banks by SR 26-2 in April 2026) to a fund context where it is voluntary but institutionally expected.",
+      "responsibilities": [
+        "Maintain the firmwide model definition and complete model inventory, including vendor models and material end-user-computing tools (spreadsheets) that meet the model definition",
+        "Tier models by materiality, complexity, and usage (e.g., Tier 1: firmwide VaR, NAV-affecting pricing models; Tier 2: desk risk tools; Tier 3: low-impact analytics) to drive validation depth and frequency",
+        "Independent validation of new models before production use: conceptual soundness, data quality, implementation testing, benchmarking against alternatives, sensitivity analysis, outcomes analysis (the SR 11-7 three-element structure: conceptual soundness, ongoing monitoring, outcomes analysis)",
+        "Periodic revalidation on a risk-based cycle (commonly annual for Tier 1, 2-3 years for lower tiers) plus event-driven revalidation on material change",
+        "Ongoing performance monitoring: VaR back-testing exceptions, pricing model vs market/broker-quote deviations, model drift metrics for ML models",
+        "Findings management: severity-rated findings, conditions/limitations of use, remediation tracking to closure",
+        "Model change control: versioning, approval workflow, parallel-run requirements for material changes",
+        "Vendor model governance: due diligence on vendor documentation, compensating validation where vendor code is opaque",
+        "Governance of AI/ML and generative-AI models entering research and operations workflows (emerging area flagged by consulting literature for investment managers)",
+        "Annual model risk report to the risk committee/board: inventory health, validation coverage, open findings, top model risks"
+      ],
+      "workflows": [
+        {
+          "name": "New model validation",
+          "cadence": "Event-driven, pre-production (SLA typically 4-12 weeks by tier)",
+          "description": "Owner submits model documentation (purpose, theory, data, assumptions, limitations, testing); validator independently tests conceptual soundness, implementation, benchmarks, and sensitivity; issues validation report with approval status and use conditions.",
+          "inputs": ["Model documentation and code/access", "Development testing evidence", "Data lineage information"],
+          "outputs": ["Validation report", "Approval/conditional approval/rejection", "Findings with remediation deadlines", "Inventory record update"]
+        },
+        {
+          "name": "Periodic revalidation",
+          "cadence": "Risk-based: annual (Tier 1) to every 2-3 years (lower tiers)",
+          "description": "Re-examine continued fit-for-purpose: assumption validity under current market conditions, performance history, change log review; lighter 'annual review' possible for stable low-tier models with clean monitoring.",
+          "inputs": ["Monitoring history", "Change log", "Prior validation report and findings status"],
+          "outputs": ["Revalidation report", "Updated tier/approval status"]
+        },
+        {
+          "name": "Ongoing performance monitoring",
+          "cadence": "Daily/monthly metric production; quarterly formal review",
+          "description": "Owners run agreed monitoring metrics (e.g., VaR back-testing exceptions, pricing deviations vs independent marks, ML drift stats); validation reviews results and triggers revalidation on threshold breach.",
+          "inputs": ["Model outputs vs realized outcomes", "Independent price verification results from valuation/fund accounting", "Threshold framework"],
+          "outputs": ["Monitoring dashboards", "Breach escalations", "Revalidation triggers"]
+        },
+        {
+          "name": "Model inventory attestation",
+          "cadence": "Annual or semi-annual",
+          "description": "Business heads attest completeness of the inventory for their area; sweep for unregistered models/EUCs; reconcile decommissioned models.",
+          "inputs": ["Current inventory", "System/application registers", "EUC register"],
+          "outputs": ["Attested inventory", "Newly identified models routed to validation"]
+        },
+        {
+          "name": "Model change control",
+          "cadence": "Event-driven",
+          "description": "Classify changes (material vs minor) against documented criteria; material changes require validation sign-off and, where relevant, parallel run before release; all changes logged with versioning.",
+          "inputs": ["Change request and impact analysis", "Regression/parallel-run test results"],
+          "outputs": ["Change approval record", "Updated model version in inventory"]
+        },
+        {
+          "name": "Findings remediation tracking",
+          "cadence": "Quarterly review; monthly for high-severity",
+          "description": "Track open validation findings to closure; escalate overdue high-severity items to risk committee; enforce use restrictions until remediation.",
+          "inputs": ["Findings register", "Owner remediation evidence"],
+          "outputs": ["Updated findings register", "Escalation memos", "Lifted/imposed use restrictions"]
+        },
+        {
+          "name": "Annual model risk report",
+          "cadence": "Annual",
+          "description": "Aggregate view of model risk for risk committee/board: coverage statistics, aging validations, concentration of model risk (e.g., single pricing library), AI/ML adoption risks.",
+          "inputs": ["Inventory and validation status data", "Findings register", "Monitoring exception history"],
+          "outputs": ["Board/committee model risk report", "Framework enhancement plan"]
+        }
+      ],
+      "controls": [
+        "Written model risk management policy defining 'model', roles (owner/developer/validator/approver), tiering criteria, and validation standards (structure borrowed from SR 11-7; for banks superseded by SR 26-2, Apr 17, 2026, which is more explicitly risk-based and applies to banking organizations >$30bn - funds adopt either as a voluntary reference)",
+        "Effective challenge: validators with expertise, independence from development/use, and organizational standing to force change (SR 11-7 core concept)",
+        "Complete model inventory with owner, tier, validation status, and next review date; KPMG benchmarking shows the SR 11-7 model definition is the near-universal baseline (94% of surveyed banks)",
+        "Separation of duties between model development and validation; where headcount prevents this, qualified peer review plus external third-party validation for material models",
+        "Documentation standards sufficient for a qualified third party to understand and re-implement the model",
+        "Version control and access management on model code; controls over EUC/spreadsheet models",
+        "VaR model back-testing regime consistent with CESR/10-788 where UCITS are in scope",
+        "Internal audit (third line) periodic review of the MRM framework itself"
+      ],
+      "independence": "Independent within the second line: typically a model validation/model risk team reporting to the CRO but organizationally separate from risk-model developers, quant research, and pricing model owners. Judgment call by firm size: large multi-strategy firms run dedicated MRM teams; mid-size firms combine an internal validation lead with external validation providers for material models; small firms rely on structured peer review plus vendor/third-party validation. Alpha/signal models are the contested zone - many funds exempt them from full validation (proprietary sensitivity, iteration speed) and cover them instead through risk limits, performance monitoring, and pre-deployment review; pricing, risk, regulatory-reporting, and surveillance models get the fullest treatment.",
+      "dependencies": [
+        "Model documentation and code access from quant research, risk, and pricing teams",
+        "Independent price verification data from valuation/fund accounting for outcomes analysis",
+        "Technology support for versioning, access control, and test environments",
+        "Vendor documentation and support for third-party models",
+        "Risk committee authority to enforce use restrictions"
+      ],
+      "handoffs": [
+        {"to": "Quant Research / Front Office model owners", "direction": "inbound", "content": "Model submissions, documentation, development test evidence, change requests"},
+        {"to": "Quant Research / Front Office model owners", "direction": "outbound", "content": "Validation reports, findings, conditions/limitations of use, revalidation triggers, use restrictions"},
+        {"to": "Independent Risk Management", "direction": "bidirectional", "content": "Inbound: risk models (VaR, stress, liquidity) for validation; outbound: validated-model status and known limitations that must accompany risk reporting; back-testing exception analysis"},
+        {"to": "Valuation Committee / Fund Accounting", "direction": "bidirectional", "content": "Inbound: independent price verification results; outbound: pricing model approvals and fair-value model findings feeding NAV governance"},
+        {"to": "Compliance / Market Surveillance", "direction": "bidirectional", "content": "Inbound: surveillance models/scenarios for independent testing; outbound: testing evidence supporting FCA MW79-style governance expectations"},
+        {"to": "Technology", "direction": "bidirectional", "content": "Implementation testing coordination, version control and access requirements, decommissioning of retired models"},
+        {"to": "Internal Audit", "direction": "inbound", "content": "Third-line reviews of the MRM framework; validation must respond to audit findings on its own processes"},
+        {"to": "Board / Risk Committee", "direction": "outbound", "content": "Annual model risk report, high-severity finding escalations, framework/policy change proposals"}
+      ],
+      "regulatoryBasis": [
+        "Fed SR 11-7 / OCC 2011-12 'Supervisory Guidance on Model Risk Management' (2011): the canonical framework - model definition, effective challenge, validation elements (conceptual soundness, ongoing monitoring, outcomes analysis), inventory, governance. Binding on banks only; de facto cross-industry standard",
+        "Fed/OCC/FDIC SR 26-2 'Revised Guidance on Model Risk Management' (April 17, 2026): supersedes SR 11-7 and SR 21-8; explicitly risk-based and proportionate; applicability threshold for banking organizations >$30bn assets. For a fund the practical takeaway is regulatory endorsement of proportionate, risk-tiered MRM",
+        "AIFMD Level 2 (Reg. 231/2013): requires documented, periodically reviewed risk measurement arrangements and independent valuation processes - an indirect model-governance driver for EU/UK AIFMs",
+        "CESR/ESMA 10-788: VaR model adequacy, back-testing, and documentation expectations where UCITS use the VaR approach",
+        "SEC: no direct MRM rule for advisers; model failures surface through Advisers Act anti-fraud provisions, Rule 206(4)-7 compliance-program adequacy, and valuation/disclosure enforcement (and Rule 2a-5 for registered funds)"
+      ],
+      "practiceNotes": [
+        "No regulator requires SR 11-7-style MRM of hedge funds; adoption is driven by institutional allocator due diligence, dependence on models for NAV and risk, and staff imported from banks. Consulting literature (Deloitte) frames MRM at investment managers around asset allocation, algorithmic trading/rebalancing, market and liquidity risk, and regulatory compliance models, plus emerging generative-AI and digital-asset valuation risks",
+        "The sharpest firm-by-firm divergence is whether alpha models enter the validation perimeter: quant firms often run a bifurcated regime (full validation for pricing/risk/reporting models; performance-gated deployment reviews for signals)",
+        "For a research-platform build: model inventory, tiering, documentation templates, and change-control tooling are the highest-leverage artifacts to standardize early; validation depth can scale with headcount",
+        "External validation providers are widely used for Tier 1 pricing/VaR models at firms below the size needed for a standing MRM team",
+        "Surveillance analytics increasingly treated as models in-scope after FCA Market Watch 79 highlighted untested surveillance model failures"
+      ]
+    }
+  ],
+  "structuralRecommendations": [
+    "Keep Independent Risk Management as a standalone, fully independent department with the CRO reporting to the CEO/board (never the CIO) - mandatory-equivalent under AIFMD Art. 15 for any EU/UK nexus and a hard allocator expectation elsewhere",
+    "Do NOT stand up Market Surveillance as a separate department: constitute it as a named team (or named owner) inside Compliance with dedicated tooling, since buy-side practice and regulation (MAR Art. 16 duties on the firm, SEC 204A/206(4)-7 via the CCO) both anchor it in compliance; revisit only at large multi-strategy scale",
+    "Constitute Model Validation as a distinct unit under the CRO but organizationally separate from risk-model developers and quant research, with a single firmwide inventory covering pricing, risk, regulatory-reporting, AND surveillance models",
+    "Use committees, not new departments, for cross-cutting governance: a Risk Committee (risk appetite, limits, breaches) and a Model Risk/Governance Committee (inventory, findings, AI/ML adoption), both minuted",
+    "Split counterparty risk cleanly: Independent Risk owns exposure measurement, limits, and triggers; Treasury owns counterparty relationships and financing execution - avoid a separate counterparty-risk department",
+    "Adopt a tiered validation perimeter explicitly: full SR 11-7/SR 26-2-style validation for pricing, risk, and reporting models; documented lighter-touch deployment review plus performance gates for alpha/signal models - and write the exemption rationale down rather than leaving it implicit",
+    "If the platform trades UK/EU instruments or has UK/EU entities, build MAR Art. 16 STOR capability from day one; if US-only, calibrate surveillance to MNPI/insider-dealing typologies under 204A rather than replicating sell-side manipulation suites"
+  ],
+  "disagreementsAndVariation": [
+    "Risk veto rights: large multi-strategy platforms hard-code automatic drawdown-triggered capital cuts (reported ~5% drawdown -> ~50% cut, ~7.5% -> termination at Millennium; negotiated per-PM at Citadel/Point72) - these figures come from practice/careers literature, not primary disclosure; single-manager funds typically use escalation-based de-risking with CRO/CIO judgment instead of automatic triggers",
+    "Independence at small firms: AIFMD itself permits proportionality (safeguards instead of full hierarchical separation); the PWG Asset Managers' Committee likewise concedes complete independence is impracticable at small funds - versus allocator checklists that increasingly demand a fully separate risk officer regardless of size",
+    "Surveillance ownership is trending but unsettled: traditional view places surveillance wholly in 2LOD compliance; Oliver Wyman and large-firm practice show growing 1LOD (front-office) ownership of conduct monitoring with 2LOD oversight - buy-side firms mostly remain compliance-owned",
+    "US vs UK/EU surveillance obligations genuinely differ: MAR Art. 16(2) imposes an affirmative detection-and-STOR duty on buy-side firms; the US imposes no equivalent affirmative surveillance/reporting rule on advisers (204A requires preventive MNPI policies) - so identical firms run materially different programs by jurisdiction",
+    "Model validation perimeter for alpha models: no authority mandates it and practice diverges sharply - some funds validate everything material, many exempt proprietary signals; sources simply do not converge",
+    "SR guidance transition: SR 11-7 (2011) is superseded for banks by SR 26-2 (Apr 2026), which is more proportionate and applies above $30bn bank assets; fund practitioners citing 'SR 11-7-style' frameworks are referencing a now-superseded banking document - the principles persist but currency of citation varies",
+    "Form PF requirements are in flux: 2024 amendments (72-hour event reporting, expanded exposure data; compliance Oct 1, 2026) versus a 2026 SEC/CFTC joint proposal to raise the large hedge fund adviser threshold from $1.5bn to $10bn and streamline items - the reporting burden a new platform should plan for is genuinely uncertain",
+    "IOSCO liquidity recommendations (2018, revised 2025) are written for open-ended CIS; how far they bind or guide hedge funds with gates/lockups is a judgment call - most managers apply the framework selectively"
+  ],
+  "sourcesConsulted": [
+    {"url": "https://www.federalreserve.gov/supervisionreg/srletters/SR2602.pdf", "whatItSupported": "SR 26-2 (Apr 17, 2026, Fed/OCC/FDIC) supersedes SR 11-7 and SR 21-8; risk-based, proportionate MRM; applicability to banking organizations >$30bn (fetched via the SR letter page)"},
+    {"url": "https://www.federalreserve.gov/frrs/guidance/supervisory-guidance-on-model-risk-management.htm", "whatItSupported": "SR 11-7 content: effective challenge, validation elements (conceptual soundness, ongoing monitoring, outcomes analysis), model inventory, governance, risk-based validation frequency"},
+    {"url": "https://service.betterregulation.com/document/199123", "whatItSupported": "AIFMD Directive 2011/61/EU Article 15 text: functional and hierarchical separation of risk management from operating units incl. portfolio management; proportionality and safeguards"},
+    {"url": "https://www.handbook.fca.org.uk/handbook/FUND/3/7.html?date=2017-10-01", "whatItSupported": "UK implementation of AIFMD risk management requirements (FCA FUND 3.7) - permanent risk management function for UK AIFMs"},
+    {"url": "https://www.alfi.lu/getattachment/202e810c-60b8-4b11-b81c-cc11196e7798/app_data-import-alfi-risk-management-under-aifmd.pdf", "whatItSupported": "AIFMD Level 2 permanent risk management function detail: identify/measure/manage/monitor all relevant risks per AIF, risk limits, periodic review"},
+    {"url": "https://www.cftc.gov/sites/default/files/idc/groups/public/@swaps/documents/file/bestpractices.pdf", "whatItSupported": "PWG Asset Managers' Committee 'Best Practices for the Hedge Fund Industry' (2009): independent risk function reporting to senior management; five practice areas; small-fund segregation-of-duties concession"},
+    {"url": "https://www.aima.org/sound-practices/guides-to-sound-practices.html", "whatItSupported": "AIMA Guides to Sound Practices as the alternative-industry sound-practice corpus (risk, operational risk, valuation)"},
+    {"url": "https://www.aima.org/static/uploaded/57e23b6e-632c-4ed7-8a7944045d7f58b8.pdf", "whatItSupported": "AIMA Guide to Sound Practices for Operational Risk Management: comprehensive risk framework elements (liquidity, leverage, market, counterparty credit, operational risk); independence-with-collaboration principle"},
+    {"url": "http://www.mfaalts.org/downloads/Sound%20Practices%202007.pdf", "whatItSupported": "MFA Sound Practices for Hedge Fund Managers: risk management framework recommendations; senior management should not outsource risk monitoring"},
+    {"url": "https://www.fsb.org/uploads/r_131118.pdf", "whatItSupported": "FSB Principles for an Effective Risk Appetite Framework (Nov 2013): RAF elements, risk appetite statement, risk limits, board/senior-management roles"},
+    {"url": "https://www.iosco.org/library/pubdocs/pdf/IOSCOPD590.pdf", "whatItSupported": "IOSCO 2018 Recommendations for Liquidity Risk Management for Collective Investment Schemes"},
+    {"url": "https://www.iosco.org/library/pubdocs/pdf/IOSCOPD770.pdf", "whatItSupported": "IOSCO 2025 revised LRM recommendations: fund categorization by asset liquidity, anti-dilution liquidity management tools, alignment with FSB 2023 open-ended fund recommendations"},
+    {"url": "https://www.cssf.lu/en/2025/05/iosco-publishes-revised-liquidity-risk-management-recommendations-and-related-guidance-for-collective-investment-schemes/", "whatItSupported": "Confirmation and dating of IOSCO's 2025 revised LRM recommendations and implementation guidance"},
+    {"url": "https://www.esma.europa.eu/document/guidelines-risk-measurement-and-calculation-global-exposure-and-counterparty-risk-ucits", "whatItSupported": "CESR/10-788 guidelines: commitment vs VaR approaches for UCITS global exposure, VaR model adequacy and back-testing, counterparty risk calculation"},
+    {"url": "https://www.federalregister.gov/documents/2024/03/12/2024-03473/form-pf-reporting-requirements-for-all-filers-and-large-hedge-fund-advisers", "whatItSupported": "2024 Form PF amendments: expanded large hedge fund adviser reporting scope and data quality requirements"},
+    {"url": "https://www.mofo.com/resources/insights/250204-extended-compliance-date-for-recent-form-pf-amendments", "whatItSupported": "Form PF amendments compliance date extension to October 1, 2026"},
+    {"url": "https://www.federalregister.gov/documents/2023/06/12/2023-09775/form-pf-event-reporting-for-large-hedge-fund-advisers-and-private-equity-fund-advisers-requirements", "whatItSupported": "2023 Form PF current-event reporting for large hedge fund advisers (72-hour trigger events indicating significant fund stress)"},
+    {"url": "https://www.sec.gov/newsroom/press-releases/2026-40-sec-cftc-jointly-propose-amendments-reduce-private-fund-reporting-burdens", "whatItSupported": "2026 SEC/CFTC joint proposal: raise large hedge fund adviser threshold from $1.5bn to $10bn and streamline Form PF items - reporting requirements in flux"},
+    {"url": "https://www.fca.org.uk/publications/thematic-reviews/tr15-1-asset-management-firms-risk-market-abuse", "whatItSupported": "FCA TR15/1: asset managers' market abuse controls found comprehensive at only a minority of firms; emphasis on inside-information receipt across the investment process and on post-trade surveillance"},
+    {"url": "https://www.fca.org.uk/publications/newsletters/market-watch-79", "whatItSupported": "FCA Market Watch 79 (May 2024): surveillance model testing/implementation failures, data completeness, formal governance, risk-based testing, second-line/internal-audit oversight of surveillance models"},
+    {"url": "https://www.steel-eye.com/news/fca-market-watch-69-market-abuse-surveillance-conduct-issues", "whatItSupported": "FCA Market Watch 69 themes: market abuse surveillance expectations and periodic market abuse risk assessments driving surveillance coverage"},
+    {"url": "https://emissions-euets.com/persons-professionally-arranging-and-executing-transactions-mar", "whatItSupported": "MAR Art. 16(2) PPAET scope explicitly includes buy-side firms (AIF and UCITS managers, prop traders); detection systems + STOR duty as first line of defense against market abuse"},
+    {"url": "https://service.betterregulation.com/document/301249", "whatItSupported": "ESMA MAR Q&A Q6.1: PPAET definition/scope; automated surveillance necessary above a certain activity level but must be combined with human analysis"},
+    {"url": "https://www.fca.org.uk/markets/market-abuse/how-report-suspected-market-abuse-firm-or-trading-venue", "whatItSupported": "STOR submission mechanics and firm obligations under UK MAR"},
+    {"url": "https://www.sec.gov/rules-regulations/2003/12/compliance-programs-investment-companies-investment-advisers", "whatItSupported": "SEC Rule 206(4)-7 adopting release: written compliance policies/procedures, annual adequacy and effectiveness review, CCO requirement"},
+    {"url": "https://www.wilmerhale.com/en/insights/client-alerts/20241203-sec-enforcement-actions-reflect-expanding-focus-on-advisers-policies-and-procedures-to-prevent-misuse-of-material-nonpublic-information", "whatItSupported": "Section 204A scope and 2024 SEC enforcement: MNPI policies must be tailored to the adviser's specific business activities"},
+    {"url": "https://www.niceactimize.com/Lists/WhitePapers/FMC_MS_BuySide_Handbook.pdf", "whatItSupported": "Buy-side trade surveillance practice: surveillance operated within compliance function on buy-side; typology and program design (vendor practice literature)"},
+    {"url": "https://assets.bbhub.io/professional/sites/41/Global-Buy-Side-Compliance-Surveillance-24-2034.pdf", "whatItSupported": "Bloomberg 2024 Global Buy-Side Compliance and Surveillance Study: surveillance sits with compliance at buy-side firms; spend and vendor-consolidation trends"},
+    {"url": "https://www.oliverwyman.com/our-expertise/insights/2024/apr/strengthening-surveillance-programs-trade-venue-management.html", "whatItSupported": "Surveillance as 2LOD with increasing front-office (1LOD) ownership and need for clear 1LOD/2LOD role delineation - practice trend at larger firms"},
+    {"url": "https://www.deloitte.com/us/en/services/consulting/articles/model-risk-management-investment-management.html", "whatItSupported": "MRM at investment management organizations: model scope (asset allocation, algo trading/rebalancing, market/liquidity risk, regulatory compliance), lifecycle framework, independent validation, MLOps, generative-AI and digital-asset model risks"},
+    {"url": "https://assets.kpmg.com/content/dam/kpmg/xx/pdf/2020/03/model-risk-management.pdf", "whatItSupported": "KPMG global MRM benchmark: 94% of surveyed banks define 'model' per SR 11-7; inventory and validation operational practice - evidence of SR 11-7 as de facto standard"},
+    {"url": "https://www.financialresearch.gov/working-papers/2019/10/01/the-life-of-the-counterparty/", "whatItSupported": "OFR research on hedge fund-prime broker credit networks: average fund borrows from ~3 prime brokers; exposure scale and shock propagation"},
+    {"url": "https://www.bis.org/publ/qtrpdf/r_qt2403y.htm", "whatItSupported": "BIS Quarterly Review on the prime broker-hedge fund nexus: concentration, wrong-way risk (Archegos), implications for counterparty risk management"},
+    {"url": "https://thehedgefundjournal.com/counterparty-exposure-risk/", "whatItSupported": "Fund-side counterparty risk tactics: segregated accounts against rehypothecation, CDS-spread-triggered 'amber terms' moving assets to safety"},
+    {"url": "https://mergersandinquisitions.com/multi-manager-hedge-funds/", "whatItSupported": "Multi-strategy pod-model risk practice: central risk teams, drawdown-triggered capital cuts and pod termination, negotiated vs automatic thresholds (careers/practice literature - lower evidentiary weight, flagged as such)"},
+    {"url": "https://resonanzcapital.com/insights/checklist-for-assessing-hedge-fund-managers-risk-management-approach", "whatItSupported": "Allocator ODD perspective: independent risk function reporting to senior management as an assessment criterion; risk committee roles (appetite review, methodology approval, independence from day-to-day portfolio decisions)"}
+  ],
+  "confidence": "high"
+}

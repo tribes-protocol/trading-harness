@@ -1,0 +1,74 @@
+{
+  "_fixture": {
+    "note": "constructed from official docs field definitions (see docs/research/providers/helius.json), not captured live data",
+    "docsUrl": "https://www.helius.dev/docs/api-reference/das/getassetsbyowner.md"
+  },
+  "jsonrpc": "2.0",
+  "id": "pi-getAssetsByOwner",
+  "result": {
+    "last_indexed_slot": 312345678,
+    "total": 2,
+    "limit": 1000,
+    "page": 1,
+    "items": [
+      {
+        "interface": "FungibleToken",
+        "id": "J1toso1uCk3RLmjorhTtrVwY9HJ7X8V9yYac6Y7kGCPn",
+        "content": {
+          "metadata": {
+            "name": "Jito Staked SOL",
+            "symbol": "JitoSOL",
+            "description": "Jito's liquid staking token",
+            "token_standard": "Fungible"
+          }
+        },
+        "ownership": {
+          "frozen": false,
+          "delegated": false,
+          "delegate": null,
+          "ownership_model": "token",
+          "owner": "86xCnPeV69n6t3DnyGvkKobf9FdN2H9oiVDdaMpo2MMY"
+        },
+        "token_info": {
+          "symbol": "JitoSOL",
+          "balance": 35688813508,
+          "supply": 5949594702758293,
+          "decimals": 9,
+          "token_program": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
+          "associated_token_address": "9xAG8sFDGeyeqPDL2FaLLtoCr4bqPKuNBHW6VMLRHNqB",
+          "price_info": {
+            "price_per_token": 56.47943,
+            "total_price": 2015.6838854339217,
+            "currency": "USDC"
+          }
+        },
+        "burnt": false
+      },
+      {
+        "interface": "V1_NFT",
+        "id": "F9Lw3ki3hJ7PF9HQXsBzoY8GyE6sPoEZZdXJBsTTD2rk",
+        "content": {
+          "metadata": {
+            "name": "Example NFT",
+            "symbol": "XNFT",
+            "description": "Non-fungible asset without token_info.balance; excluded from token balances",
+            "token_standard": "NonFungible"
+          }
+        },
+        "ownership": {
+          "frozen": false,
+          "delegated": false,
+          "delegate": null,
+          "ownership_model": "single",
+          "owner": "86xCnPeV69n6t3DnyGvkKobf9FdN2H9oiVDdaMpo2MMY"
+        },
+        "burnt": false
+      }
+    ],
+    "nativeBalance": {
+      "lamports": 5000000000,
+      "price_per_sol": 150.25,
+      "total_price": 751.25
+    }
+  }
+}

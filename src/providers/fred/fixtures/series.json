@@ -1,0 +1,27 @@
+{
+  "_fixture": {
+    "note": "constructed from official docs field definitions (see docs/research/providers/fred.json), not captured live data",
+    "docsUrl": "https://fred.stlouisfed.org/docs/api/fred/series.html"
+  },
+  "realtime_start": "2026-07-17",
+  "realtime_end": "2026-07-17",
+  "seriess": [
+    {
+      "id": "GNPCA",
+      "realtime_start": "2026-07-17",
+      "realtime_end": "2026-07-17",
+      "title": "Real Gross National Product",
+      "observation_start": "1929-01-01",
+      "observation_end": "2025-01-01",
+      "frequency": "Annual",
+      "frequency_short": "A",
+      "units": "Billions of Chained 2017 Dollars",
+      "units_short": "Bil. of Chn. 2017 $",
+      "seasonal_adjustment": "Not Seasonally Adjusted",
+      "seasonal_adjustment_short": "NSA",
+      "last_updated": "2026-03-26 07:51:21-05",
+      "popularity": 39,
+      "notes": "BEA Account Code: A001RX"
+    }
+  ]
+}

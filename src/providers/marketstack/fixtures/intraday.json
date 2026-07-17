@@ -1,0 +1,63 @@
+{
+  "_fixture": {
+    "note": "constructed from official docs field definitions (see docs/research/providers/marketstack.json), not captured live data. bid/ask/last/mid/size fields are NULL per the documented IEX 2025-02-01 policy change; marketstack_last is the documented derived reference price.",
+    "docsUrl": "https://docs.apilayer.com/marketstack/docs/api-documentation"
+  },
+  "pagination": { "limit": 1000, "offset": 0, "count": 3, "total": 3 },
+  "data": [
+    {
+      "open": 512.1,
+      "high": 512.55,
+      "low": 511.8,
+      "mid": null,
+      "last": null,
+      "last_size": null,
+      "bid_size": null,
+      "bid_price": null,
+      "ask_price": null,
+      "ask_size": null,
+      "close": 512.4,
+      "volume": 10452,
+      "marketstack_last": 512.38,
+      "date": "2026-07-16T15:30:00+0000",
+      "symbol": "BRK-B",
+      "exchange": "IEXG"
+    },
+    {
+      "open": 512.4,
+      "high": 512.9,
+      "low": 512.15,
+      "mid": null,
+      "last": null,
+      "last_size": null,
+      "bid_size": null,
+      "bid_price": null,
+      "ask_price": null,
+      "ask_size": null,
+      "close": 512.7,
+      "volume": 8620,
+      "marketstack_last": 512.71,
+      "date": "2026-07-16T15:35:00+0000",
+      "symbol": "BRK-B",
+      "exchange": "IEXG"
+    },
+    {
+      "open": null,
+      "high": null,
+      "low": null,
+      "mid": null,
+      "last": null,
+      "last_size": null,
+      "bid_size": null,
+      "bid_price": null,
+      "ask_price": null,
+      "ask_size": null,
+      "close": null,
+      "volume": null,
+      "marketstack_last": 512.66,
+      "date": "2026-07-16T15:40:00+0000",
+      "symbol": "BRK-B",
+      "exchange": "IEXG"
+    }
+  ]
+}

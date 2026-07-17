@@ -1,0 +1,19 @@
+{
+  "_fixture": {
+    "note": "constructed from official docs field definitions (see docs/research/providers/alchemy.json), not captured live data",
+    "docsUrl": "https://www.alchemy.com/docs/reference/prices-api-quickstart"
+  },
+  "data": [
+    {
+      "symbol": "ETH",
+      "prices": [
+        {
+          "currency": "usd",
+          "value": "4608.2208671202",
+          "lastUpdatedAt": "2026-07-17T08:20:27Z"
+        }
+      ],
+      "error": null
+    }
+  ]
+}

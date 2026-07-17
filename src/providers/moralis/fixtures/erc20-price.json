@@ -1,0 +1,32 @@
+{
+  "_fixture": {
+    "note": "constructed from official docs field definitions (see docs/research/providers/moralis.json), not captured live data",
+    "docsUrl": "https://docs.moralis.com/web3-data-api/evm/reference/get-token-price"
+  },
+  "tokenName": "Wrapped Ether",
+  "tokenSymbol": "WETH",
+  "tokenLogo": "https://example.invalid/logos/weth.png",
+  "tokenDecimals": "18",
+  "nativePrice": {
+    "value": "1000000000000000000",
+    "decimals": 18,
+    "name": "Ether",
+    "symbol": "ETH",
+    "address": "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2"
+  },
+  "usdPrice": 3521.42,
+  "usdPriceFormatted": "3521.42",
+  "24hrPercentChange": "-1.25",
+  "usdPrice24h": 3566.01,
+  "usdPrice24hrUsdChange": -44.59,
+  "usdPrice24hrPercentChange": -1.25,
+  "exchangeAddress": "0x1f98431c8ad98523631ae4a59f267346ea31f984",
+  "exchangeName": "Uniswap v3",
+  "tokenAddress": "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2",
+  "pairAddress": "0x88e6a0c2ddd26feeb64f039a2c41296fcb3f5640",
+  "toBlock": "23456789",
+  "possibleSpam": false,
+  "verifiedContract": true,
+  "pairTotalLiquidityUsd": "145678901.23",
+  "securityScore": 92
+}
