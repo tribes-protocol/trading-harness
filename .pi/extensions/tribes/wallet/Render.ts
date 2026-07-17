@@ -7,16 +7,16 @@ import { renderStatusViewRail } from './ViewRail.ts'
 
 export const MAX_WALLET_ROWS = 12
 
+type ColumnKey = 'asset' | 'network' | 'balance' | 'price' | 'change' | 'value' | 'wallet'
+
 interface Column {
-  readonly key: 'asset' | 'network' | 'balance' | 'price' | 'change' | 'value' | 'wallet'
+  readonly key: ColumnKey
   readonly label: string
   readonly width: number
   readonly align: 'left' | 'right'
 }
 
-type ColumnDefinition = Omit<Column, 'width'>
-
-const COLUMN_GAP = '  '
+const COLUMN_GAP = ' '
 
 const CHAIN_LABELS: Readonly<Record<number, string>> = {
   1: 'Ethereum',
@@ -93,41 +93,43 @@ function cell(value: string, width: number, align: 'left' | 'right'): string {
   return align === 'right' ? ' '.repeat(padding) + clipped : clipped + ' '.repeat(padding)
 }
 
-function columnsForWidth(contentWidth: number): readonly Column[] {
-  let definitions: readonly ColumnDefinition[]
-  if (contentWidth >= 112) {
-    definitions = [
-      { key: 'asset', label: 'Asset', align: 'left' },
-      { key: 'network', label: 'Network', align: 'left' },
-      { key: 'balance', label: 'Balance', align: 'right' },
-      { key: 'price', label: 'Price', align: 'right' },
-      { key: 'change', label: '24h', align: 'right' },
-      { key: 'value', label: 'Value', align: 'right' },
-      { key: 'wallet', label: 'Wallet', align: 'left' }
-    ]
-  } else if (contentWidth >= 82) {
-    definitions = [
-      { key: 'asset', label: 'Asset', align: 'left' },
-      { key: 'network', label: 'Network', align: 'left' },
-      { key: 'balance', label: 'Balance', align: 'right' },
-      { key: 'change', label: '24h', align: 'right' },
-      { key: 'value', label: 'Value', align: 'right' }
-    ]
-  } else if (contentWidth >= 54) {
-    definitions = [
-      { key: 'asset', label: 'Asset', align: 'left' },
-      { key: 'balance', label: 'Balance', align: 'right' },
-      { key: 'value', label: 'Value', align: 'right' }
-    ]
-  } else {
-    definitions = [
-      { key: 'asset', label: 'Asset', align: 'left' },
-      { key: 'value', label: 'Value', align: 'right' }
-    ]
+function gapAfter(column: Column): string {
+  return column.key === 'value' ? '   ' : COLUMN_GAP
+}
+
+function joinColumns(columns: readonly Column[], cells: readonly string[]): string {
+  let row = cells[0] ?? ''
+  for (let index = 1; index < cells.length; index++) {
+    const previous = columns[index - 1]
+    row += (previous ? gapAfter(previous) : COLUMN_GAP) + (cells[index] ?? '')
   }
-  const gapsWidth = COLUMN_GAP.length * (definitions.length - 1)
-  const columnWidth = Math.max(1, Math.floor((contentWidth - gapsWidth) / definitions.length))
-  return definitions.map((definition) => ({ ...definition, width: columnWidth }))
+  return row
+}
+
+function columnsForWidth(contentWidth: number): readonly Column[] {
+  const baseColumns: readonly Column[] = [
+    { key: 'asset', label: 'Asset', width: 10, align: 'left' },
+    { key: 'network', label: 'Network', width: 10, align: 'left' },
+    { key: 'balance', label: 'Balance', width: 14, align: 'right' },
+    { key: 'price', label: 'Price', width: 9, align: 'right' },
+    { key: 'change', label: '24h', width: 8, align: 'right' },
+    { key: 'value', label: 'Value', width: 10, align: 'right' },
+    { key: 'wallet', label: 'Wallet', width: 12, align: 'left' }
+  ]
+  const totalWidth = (columns: readonly Column[]): number =>
+    columns.reduce((sum, column) => sum + column.width, 0) +
+    columns.slice(0, -1).reduce((sum, column) => sum + gapAfter(column).length, 0)
+  const dropOrder: readonly ColumnKey[] = ['wallet', 'price', 'change', 'network']
+  let columns = [...baseColumns]
+  for (const key of dropOrder) {
+    if (totalWidth(columns) <= contentWidth) break
+    columns = columns.filter((column) => column.key !== key)
+  }
+  if (totalWidth(columns) <= contentWidth) return columns
+  return [
+    { key: 'asset', label: 'Asset', width: Math.max(8, contentWidth - 11), align: 'left' },
+    { key: 'value', label: 'Value', width: 10, align: 'right' }
+  ]
 }
 
 function valueForColumn(asset: WalletAsset, column: Column, theme: Theme): string {
@@ -164,14 +166,20 @@ function renderBalances(
   const lines = [
     theme.fg(
       'dim',
-      columns.map((column) => cell(column.label, column.width, column.align)).join(COLUMN_GAP)
+      joinColumns(
+        columns,
+        columns.map((column) => cell(column.label, column.width, column.align))
+      )
     )
   ]
   for (const asset of page) {
     lines.push(
-      columns
-        .map((column) => cell(valueForColumn(asset, column, theme), column.width, column.align))
-        .join(COLUMN_GAP)
+      joinColumns(
+        columns,
+        columns.map((column) =>
+          cell(valueForColumn(asset, column, theme), column.width, column.align)
+        )
+      )
     )
   }
   if (assets.length > MAX_WALLET_ROWS) {
