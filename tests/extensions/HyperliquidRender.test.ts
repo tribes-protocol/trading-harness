@@ -52,7 +52,20 @@ const status: HyperliquidStatus = {
   recentTrades: [],
   openOrders: [],
   ledgerUpdates: [],
-  spotHoldings: []
+  spotHoldings: [
+    {
+      coin: 'USDC',
+      total: 42,
+      available: 40,
+      entryNotionalUsd: 42
+    },
+    {
+      coin: 'PURR',
+      total: 12.5,
+      available: 12.5,
+      entryNotionalUsd: 8.75
+    }
+  ]
 }
 
 function render(activeTab: HlTab): string {
@@ -68,14 +81,19 @@ describe('Hyperliquid widget balances', () => {
     expect(output).not.toContain('xyz eq')
   })
 
-  test('shows detailed per-dex balances in their own tab', () => {
+  test('shows perp accounts and spot holdings in one balances tab', () => {
     const output = render('balances')
 
-    expect(output).toContain('Balances(2)')
-    expect(output).toContain('Account')
+    expect(output).toContain('Balances(4)')
+    expect(output).toContain('Venue')
     expect(output).toContain('main')
     expect(output).toContain('xyz')
     expect(output).toContain('$23.93')
     expect(output).toContain('$89.45')
+    expect(output).toContain('spot')
+    expect(output).toContain('USDC')
+    expect(output).toContain('PURR')
+    expect(output.indexOf('USDC')).toBeLessThan(output.indexOf('main'))
+    expect(output).not.toContain('Spot(')
   })
 })
