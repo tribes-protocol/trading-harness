@@ -48,8 +48,7 @@ const WalletPnlMetricsSchema = z.object({
   unrealized_usd: BigNumberSchema,
   unrealized_percent: BigNumberSchema.nullish(),
   total_usd: BigNumberSchema,
-  total_percent: BigNumberSchema.nullish(),
-  avg_profit_per_trade_usd: BigNumberSchema
+  total_percent: BigNumberSchema.nullish()
 })
 
 const WalletPnlTokenSchema = z.object({
@@ -64,3 +63,17 @@ export const AssetBalanceWithPnlSchema = z.intersection(
   })
 )
 export type AssetBalanceWithPnl = z.infer<typeof AssetBalanceWithPnlSchema>
+
+const AssetPnlSummaryMetricsSchema = WalletPnlMetricsSchema.pick({
+  realized_profit_usd: true,
+  unrealized_usd: true,
+  total_usd: true
+})
+
+export const UserAssetsWithPnlResponseSchema = z.object({
+  assets: AssetBalanceWithPnlSchema.array(),
+  summary: z.object({
+    pnl: AssetPnlSummaryMetricsSchema
+  })
+})
+export type UserAssetsWithPnlResponse = z.infer<typeof UserAssetsWithPnlResponseSchema>
