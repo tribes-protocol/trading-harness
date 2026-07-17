@@ -10,8 +10,8 @@ import type { Theme } from '@earendil-works/pi-coding-agent'
 import { DynamicBorder } from '@earendil-works/pi-coding-agent'
 import { Container, hyperlink, Text, truncateToWidth, visibleWidth } from '@earendil-works/pi-tui'
 
-import type { StatusPanel } from '../tribes/wallet/PanelState.ts'
-import { renderStatusViewRail } from '../tribes/wallet/ViewRail.ts'
+import type { StatusPanel } from '../wallet/PanelState.ts'
+import { renderStatusViewRail } from '../wallet/ViewRail.ts'
 import type {
   AccountSummary,
   HlTab,

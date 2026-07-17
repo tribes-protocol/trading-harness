@@ -4,7 +4,7 @@ import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import { dirname, resolve } from 'node:path'
 import { promisify } from 'node:util'
 
-import { ensureJsonTreeString } from '../../hyperliquid/EnsureJson.ts'
+import { ensureJsonTreeString } from '../hyperliquid/EnsureJson.ts'
 import type { WalletAsset, WalletAssetPnl, WalletChainId, WalletStatus } from './StatusTypes.ts'
 
 const execFileAsync = promisify(execFile)

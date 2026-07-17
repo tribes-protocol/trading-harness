@@ -14,7 +14,7 @@ import {
   STATUS_REFRESH_EVENT,
   type StatusPanelState,
   writeStatusPanelState
-} from '../tribes/wallet/PanelState.ts'
+} from '../wallet/PanelState.ts'
 import { FALLBACK_PERP_DEXES, resolvePerpDexes } from './DexDiscovery.ts'
 import { ensureJsonTreeString } from './EnsureJson.ts'
 import { type CrossBucket, estimateCrossLiquidationPx } from './LiqEstimator.ts'

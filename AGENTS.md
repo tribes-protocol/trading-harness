@@ -294,8 +294,8 @@ The 10 analyst commands are data-driven, not hand-written. Add an entry to `ANAL
 
 These run inside Pi, not via `tribes-cli`, and are pinned to the exact Pi API version:
 
-- `tribes/` registers the `tribes-llm-proxy` model provider, mints a fresh `API_BEARER_TOKEN`, writes `API_BASE_URL` / `PRIVY_APP_ID` / token into `.env`, prints the welcome, and warms up the wallet. The compiled `tribes-cli` auto-loads `.env`.
-- `hyperliquid/` renders the live positions/status widget.
+- `tribes/` registers the `tribes-llm-proxy` model provider, mints a fresh `API_BEARER_TOKEN`, writes `API_BASE_URL` / `PRIVY_APP_ID` / token into `.env`, prints the welcome, warms up the wallet, and registers the nested wallet and Hyperliquid status extensions. The compiled `tribes-cli` auto-loads `.env`.
+- `tribes/hyperliquid/` renders the live positions/status widget; `tribes/wallet/` renders wallet balances and PnL.
 
 The custom provider's token pricing shown by Pi comes from each registered model's `cost` object, in dollars per million tokens: `input`, `output`, `cacheRead`, and `cacheWrite`. If the `/models` API omits pricing, the provider must use zero-cost defaults and Pi will show no meaningful token price or cost.
 

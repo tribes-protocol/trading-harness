@@ -1,8 +1,11 @@
 import type { Theme } from '@earendil-works/pi-coding-agent'
 import { describe, expect, test } from 'vitest'
 
-import { renderHyperliquidPositionsWidget } from '../../.pi/extensions/hyperliquid/Render.ts'
-import type { HlTab, HyperliquidStatus } from '../../.pi/extensions/hyperliquid/StatusTypes.ts'
+import { renderHyperliquidPositionsWidget } from '../../.pi/extensions/tribes/hyperliquid/Render.ts'
+import type {
+  HlTab,
+  HyperliquidStatus
+} from '../../.pi/extensions/tribes/hyperliquid/StatusTypes.ts'
 
 const theme = {
   fg: (_color: string, value: string) => value,

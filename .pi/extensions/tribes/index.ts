@@ -4,6 +4,7 @@
  *   - registers the `tribes-llm-proxy` model provider (./Provider.ts)
  *   - renders the welcome header on startup (./Welcome.ts)
  *   - warms the wallet snapshot on startup (./WalletSnapshot.ts)
+ *   - registers wallet + Hyperliquid status panels (./wallet, ./hyperliquid)
  *   - exposes a `/tribes:login` command so a logged-out user can authenticate in-app
  *
  * Sibling modules are imported relatively: Pi loads extensions via jiti, which
@@ -17,6 +18,7 @@ import {
   runLogin,
   writeAuthEnv
 } from './AuthBootstrap.ts'
+import registerHyperliquidExtension from './hyperliquid/index.ts'
 import { registerTribesProvider, type TribesApi } from './Provider.ts'
 import { registerWalletExtension } from './wallet/WalletExtension.ts'
 import { warmWalletSnapshot } from './WalletSnapshot.ts'
@@ -138,5 +140,6 @@ export default async function tribes(pi: TribesApi): Promise<void> {
     }
   })
 
+  registerHyperliquidExtension(pi)
   registerWalletExtension(pi)
 }
