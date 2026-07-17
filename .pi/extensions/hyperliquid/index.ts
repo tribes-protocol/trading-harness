@@ -11,6 +11,7 @@ import {
   selectStatusPanel,
   STATUS_PAGE_EVENT,
   STATUS_PANEL_EVENT,
+  STATUS_REFRESH_EVENT,
   type StatusPanelState,
   writeStatusPanelState
 } from '../tribes/wallet/PanelState.ts'
@@ -1046,6 +1047,9 @@ export default function hyperliquidStatus(pi: ExtensionAPI): void {
       showWidget = panelState.activePanel === 'hyperliquid'
       syncWidget(ctx)
     })
+    pi.events.on(STATUS_REFRESH_EVENT, () => {
+      void refreshStatus(ctx)
+    })
   })
 
   pi.on('session_shutdown', async () => {
@@ -1174,14 +1178,6 @@ export default function hyperliquidStatus(pi: ExtensionAPI): void {
       } else if (panelState.activePanel === 'hyperliquid') {
         scrollTab(-1)
       }
-    }
-  })
-
-  pi.registerCommand('hyperliquid:refresh', {
-    description: 'Fetch fresh Hyperliquid account status and update widget',
-    handler: async (_args, ctx) => {
-      await refreshStatus(ctx)
-      ctx.ui.notify('Hyperliquid status refreshed', 'info')
     }
   })
 }

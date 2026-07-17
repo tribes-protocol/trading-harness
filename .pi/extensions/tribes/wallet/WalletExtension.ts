@@ -8,6 +8,7 @@ import {
   selectStatusPanel,
   STATUS_PAGE_EVENT,
   STATUS_PANEL_EVENT,
+  STATUS_REFRESH_EVENT,
   type StatusPanelState,
   writeStatusPanelState
 } from './PanelState.ts'
@@ -201,11 +202,12 @@ export function registerWalletExtension(pi: ExtensionAPI): void {
     }
   })
 
-  pi.registerCommand('wallet:refresh', {
-    description: 'Fetch fresh wallet balances',
+  pi.registerCommand('refresh', {
+    description: 'Refresh Wallet and Hyperliquid account data',
     handler: async (_args, ctx) => {
+      pi.events.emit(STATUS_REFRESH_EVENT, undefined)
       await refreshStatus(ctx)
-      ctx.ui.notify('Wallet balances refreshed', 'info')
+      ctx.ui.notify('Wallet and Hyperliquid refresh requested', 'info')
     }
   })
 }

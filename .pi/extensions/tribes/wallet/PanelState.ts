@@ -12,6 +12,7 @@ export interface StatusPanelState {
 
 export const STATUS_PANEL_EVENT = 'tribes:status-view-changed'
 export const STATUS_PAGE_EVENT = 'tribes:status-page'
+export const STATUS_REFRESH_EVENT = 'tribes:status-refresh'
 
 const PANEL_STATE_PATH = 'runtime/tribes/status-panel.json'
 const DEFAULT_STATE: StatusPanelState = {
