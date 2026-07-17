@@ -9,9 +9,10 @@ export type Dex = string
 
 /**
  * The bottom-section tabs, mirroring the CoinGlass Hyperliquid address page:
- * Positions · Balances · Transactions · Open Orders · Deposits & Withdrawals · Spot.
+ * Positions · Balances · Transactions · Open Orders · Deposits & Withdrawals.
+ * Perp accounts and spot holdings share the Balances tab.
  */
-export type HlTab = 'positions' | 'balances' | 'transactions' | 'orders' | 'deposits' | 'spot'
+export type HlTab = 'positions' | 'balances' | 'transactions' | 'orders' | 'deposits'
 
 export interface OpenOrder {
   readonly coin: string
@@ -185,7 +186,7 @@ export interface HyperliquidStatus {
   readonly openOrders: readonly OpenOrder[]
   /** Deposits and withdrawals, newest first. Shown in the Deposits tab. */
   readonly ledgerUpdates: readonly LedgerUpdate[]
-  /** Non-zero spot token balances. Shown in the Spot tab. */
+  /** Non-zero spot token balances. Shown alongside perp accounts in the Balances tab. */
   readonly spotHoldings: readonly SpotHolding[]
   readonly error?: string
   // True while the wallet snapshot (.tribes/privy-wallets.json) hasn't been written

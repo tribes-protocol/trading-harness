@@ -27,16 +27,14 @@ const TAB_SEQUENCE: readonly HlTab[] = [
   'balances',
   'transactions',
   'orders',
-  'deposits',
-  'spot'
+  'deposits'
 ]
 const TAB_LABELS: Readonly<Record<HlTab, string>> = {
   positions: 'Positions',
   balances: 'Balances',
   transactions: 'Transactions',
   orders: 'Open Orders',
-  deposits: 'Deposits',
-  spot: 'Spot'
+  deposits: 'Deposits'
 }
 // Rows shown per page so the below-editor widget never grows unbounded; extra
 // items are reachable by paging (ctrl+shift+↑/↓).
@@ -91,10 +89,7 @@ export function fmtPrice(value: unknown): string {
 export function fmtLeverage(value: unknown): string {
   const n = coerceNumber(value)
   if (n === null) return '-'
-  const abs = Math.abs(n)
-  if (abs >= 10) return `${n.toFixed(1)}x`
-  if (abs >= 1) return `${n.toFixed(2)}x`
-  return `${n.toPrecision(2)}x`
+  return `${n}x`
 }
 
 export function fmtSignedUsd(n: number | null | undefined): string {
@@ -157,6 +152,7 @@ const RIGHT_ALIGNED_KEYS = new Set<string>([
   'trigger',
   'amount',
   'total',
+  'balance',
   'available'
 ])
 
@@ -235,16 +231,16 @@ function renderPositionsTable(
   if (positions.length === 0) return theme.fg('muted', 'No open positions')
 
   const baseColumns = [
-    { key: 'symbol', label: 'Symbol', width: 8 },
+    { key: 'symbol', label: 'Symbol', width: 9 },
     { key: 'side', label: 'Side', width: 5 },
-    { key: 'size', label: 'Size', width: 8 },
+    { key: 'upnl', label: 'uPnL', width: 7 },
     { key: 'margin', label: 'Margin', width: 9 },
-    { key: 'notional', label: 'Notional', width: 9 },
     { key: 'lev', label: 'Lev', width: 5 },
     { key: 'entry', label: 'Entry', width: 8 },
     { key: 'mark', label: 'Mark', width: 8 },
     { key: 'liq', label: 'Liq', width: 8 },
-    { key: 'upnl', label: 'uPnL', width: 9 },
+    { key: 'size', label: 'Size', width: 8 },
+    { key: 'notional', label: 'Notional', width: 9 },
     { key: 'fundingDay', label: 'Fund/day', width: 9 },
     { key: 'cost7d', label: 'Cost7d', width: 8 }
   ]
@@ -582,47 +578,51 @@ function renderLedgerUpdates(updates: readonly LedgerUpdate[], theme: Theme): st
   return lines.join('\n')
 }
 
-function renderSpotHoldings(holdings: readonly SpotHolding[], theme: Theme): string {
-  if (holdings.length === 0) return theme.fg('muted', 'No spot holdings')
+type BalanceRow =
+  | { readonly kind: 'perp'; readonly account: AccountSummary }
+  | { readonly kind: 'spot'; readonly holding: SpotHolding }
+
+function balanceRows(status: HyperliquidStatus): readonly BalanceRow[] {
+  return [
+    ...(status.spotHoldings ?? []).map((holding): BalanceRow => ({ kind: 'spot', holding })),
+    ...(status.hyperliquidAccounts ?? []).map((account): BalanceRow => ({ kind: 'perp', account }))
+  ]
+}
+
+function renderBalances(rows: readonly BalanceRow[], theme: Theme): string {
+  if (rows.length === 0) return theme.fg('muted', 'No balances')
   const columns = [
-    { key: 'coin', label: 'Coin', width: 14 },
-    { key: 'total', label: 'Total', width: 16 },
-    { key: 'available', label: 'Available', width: 16 },
+    { key: 'account', label: 'Venue', width: 14 },
+    { key: 'asset', label: 'Asset', width: 12 },
+    { key: 'balance', label: 'Balance', width: 12 },
+    { key: 'available', label: 'Available', width: 12 },
+    { key: 'margin', label: 'Margin', width: 12 },
+    { key: 'gross', label: 'Gross', width: 12 },
     { key: 'entry', label: 'Entry Value', width: 12 }
   ]
   const lines = [headerRow(columns, theme)]
-  for (const holding of holdings) {
-    const values: Record<string, string> = {
-      coin: holding.coin,
-      total: fmtSize(holding.total),
-      available: fmtSize(holding.available),
-      entry: holding.entryNotionalUsd !== null ? fmtUsd(holding.entryNotionalUsd) : '—'
-    }
-    lines.push(
-      columns.map((col) => cell(values[col.key], col.width, undefined, alignFor(col.key))).join(' ')
-    )
-  }
-  return lines.join('\n')
-}
-
-function renderBalances(accounts: readonly AccountSummary[], theme: Theme): string {
-  if (accounts.length === 0) return theme.fg('muted', 'No perp balances')
-  const columns = [
-    { key: 'account', label: 'Account', width: 14 },
-    { key: 'equity', label: 'Equity', width: 12 },
-    { key: 'available', label: 'Available', width: 12 },
-    { key: 'margin', label: 'Margin', width: 12 },
-    { key: 'gross', label: 'Gross', width: 12 }
-  ]
-  const lines = [headerRow(columns, theme)]
-  for (const account of accounts) {
-    const values: Record<string, string> = {
-      account: account.dex || 'main',
-      equity: fmtUsd(account.equityUsd),
-      available: fmtUsd(account.withdrawableUsd),
-      margin: fmtUsd(account.marginUsedUsd),
-      gross: fmtUsd(account.grossExposureUsd)
-    }
+  for (const row of rows) {
+    const values: Record<string, string> =
+      row.kind === 'perp'
+        ? {
+            account: row.account.dex || 'main',
+            asset: 'Perps',
+            balance: fmtUsd(row.account.equityUsd),
+            available: fmtUsd(row.account.withdrawableUsd),
+            margin: fmtUsd(row.account.marginUsedUsd),
+            gross: fmtUsd(row.account.grossExposureUsd),
+            entry: '—'
+          }
+        : {
+            account: 'spot',
+            asset: row.holding.coin,
+            balance: fmtSize(row.holding.total),
+            available: fmtSize(row.holding.available),
+            margin: '—',
+            gross: '—',
+            entry:
+              row.holding.entryNotionalUsd !== null ? fmtUsd(row.holding.entryNotionalUsd) : '—'
+          }
     lines.push(
       columns.map((col) => cell(values[col.key], col.width, undefined, alignFor(col.key))).join(' ')
     )
@@ -638,15 +638,13 @@ function tabCount(status: HyperliquidStatus, tab: HlTab): number {
     case 'positions':
       return (status.positions ?? []).length
     case 'balances':
-      return (status.hyperliquidAccounts ?? []).length
+      return balanceRows(status).length
     case 'transactions':
       return (status.recentTrades ?? []).length
     case 'orders':
       return (status.openOrders ?? []).length
     case 'deposits':
       return (status.ledgerUpdates ?? []).length
-    case 'spot':
-      return (status.spotHoldings ?? []).length
   }
 }
 
@@ -704,7 +702,7 @@ function renderTabBody(
         renderPositionsTable(page, contentWidth, theme)
       )
     case 'balances':
-      return renderPage(status.hyperliquidAccounts ?? [], scrollOffset, theme, (page) =>
+      return renderPage(balanceRows(status), scrollOffset, theme, (page) =>
         renderBalances(page, theme)
       )
     case 'transactions':
@@ -720,10 +718,6 @@ function renderTabBody(
     case 'deposits':
       return renderPage(status.ledgerUpdates ?? [], scrollOffset, theme, (page) =>
         renderLedgerUpdates(page, theme)
-      )
-    case 'spot':
-      return renderPage(status.spotHoldings ?? [], scrollOffset, theme, (page) =>
-        renderSpotHoldings(page, theme)
       )
   }
 }
