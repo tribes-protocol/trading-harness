@@ -7,7 +7,7 @@ import { renderStatusViewRail } from './ViewRail.ts'
 
 export const MAX_WALLET_ROWS = 12
 
-type ColumnKey = 'asset' | 'network' | 'balance' | 'price' | 'change' | 'value' | 'wallet'
+type ColumnKey = 'asset' | 'network' | 'balance' | 'price' | 'change' | 'value' | 'pnl' | 'wallet'
 
 interface Column {
   readonly key: ColumnKey
@@ -87,6 +87,13 @@ function changeLabel(asset: WalletAsset, theme: Theme): string {
   return change >= 0 ? theme.fg('success', label) : theme.fg('error', label)
 }
 
+function pnlLabel(value: number | null, theme: Theme): string {
+  if (value === null) return theme.fg('dim', '—')
+  const isPositive = value >= 0
+  const label = `${isPositive ? '▲' : '▼'} ${isPositive ? '+' : ''}${fmtUsd(value)}`
+  return isPositive ? theme.fg('success', label) : theme.fg('error', label)
+}
+
 function cell(value: string, width: number, align: 'left' | 'right'): string {
   const clipped = truncateToWidth(value, width, '…')
   const padding = Math.max(0, width - visibleWidth(clipped))
@@ -109,12 +116,13 @@ function joinColumns(columns: readonly Column[], cells: readonly string[]): stri
 function columnsForWidth(contentWidth: number): readonly Column[] {
   const baseColumns: readonly Column[] = [
     { key: 'asset', label: 'Asset', width: 10, align: 'left' },
-    { key: 'network', label: 'Network', width: 10, align: 'left' },
+    { key: 'network', label: 'Network', width: 8, align: 'left' },
+    { key: 'pnl', label: 'PnL', width: 8, align: 'right' },
     { key: 'balance', label: 'Balance', width: 14, align: 'right' },
-    { key: 'price', label: 'Price', width: 9, align: 'right' },
+    { key: 'value', label: 'Value', width: 8, align: 'right' },
+    { key: 'price', label: 'Price', width: 8, align: 'right' },
     { key: 'change', label: '24h', width: 8, align: 'right' },
-    { key: 'value', label: 'Value', width: 10, align: 'right' },
-    { key: 'wallet', label: 'Wallet', width: 12, align: 'left' }
+    { key: 'wallet', label: 'Wallet', width: 10, align: 'left' }
   ]
   const totalWidth = (columns: readonly Column[]): number =>
     columns.reduce((sum, column) => sum + column.width, 0) +
@@ -146,6 +154,8 @@ function valueForColumn(asset: WalletAsset, column: Column, theme: Theme): strin
       return changeLabel(asset, theme)
     case 'value':
       return fmtUsd(asset.balanceUsd)
+    case 'pnl':
+      return pnlLabel(asset.pnl?.totalUsd ?? null, theme)
     case 'wallet':
       return shortWallet(asset.wallet)
   }
@@ -239,6 +249,9 @@ export function renderWalletStatusWidget(
     theme.bold(theme.fg('text', `total ${fmtUsd(status.totalUsd)}`)) +
     '   ' +
     theme.fg('dim', `${status.assets.length} asset${status.assets.length === 1 ? '' : 's'}`) +
+    (status.totalPnlUsd === null
+      ? ''
+      : '   ' + pnlLabel(status.totalPnlUsd, theme) + theme.fg('dim', ' PnL')) +
     (refreshing ? '   ' + theme.fg('dim', 'syncing…') : '') +
     (status.stale ? '   ' + theme.fg('warning', 'cached') : '')
   container.addChild(new Text(hero, 1, 0))

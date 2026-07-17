@@ -5,7 +5,7 @@ import { dirname, resolve } from 'node:path'
 import { promisify } from 'node:util'
 
 import { ensureJsonTreeString } from '../../hyperliquid/EnsureJson.ts'
-import type { WalletAsset, WalletChainId, WalletStatus } from './StatusTypes.ts'
+import type { WalletAsset, WalletAssetPnl, WalletChainId, WalletStatus } from './StatusTypes.ts'
 
 const execFileAsync = promisify(execFile)
 const STATUS_PATH = 'runtime/tribes/wallet/live-status.json'
@@ -45,6 +45,33 @@ function chainIdValue(value: unknown): WalletChainId | null {
   return Number.isInteger(parsed) && parsed > 0 ? parsed : null
 }
 
+function normalizePnl(value: unknown): WalletAssetPnl | null {
+  if (!isRecord(value)) return null
+  const metrics = isRecord(value.pnl) ? value.pnl : value
+  const realizedUsd = nullableNumberValue(metrics.realized_profit_usd ?? metrics.realizedUsd)
+  const realizedPercent = nullableNumberValue(
+    metrics.realized_profit_percent ?? metrics.realizedPercent
+  )
+  const unrealizedUsd = nullableNumberValue(metrics.unrealized_usd ?? metrics.unrealizedUsd)
+  const totalUsd = nullableNumberValue(metrics.total_usd ?? metrics.totalUsd)
+  if (
+    realizedUsd === null ||
+    realizedPercent === null ||
+    unrealizedUsd === null ||
+    totalUsd === null
+  ) {
+    return null
+  }
+  return {
+    realizedUsd,
+    realizedPercent,
+    unrealizedUsd,
+    unrealizedPercent: nullableNumberValue(metrics.unrealized_percent ?? metrics.unrealizedPercent),
+    totalUsd,
+    totalPercent: nullableNumberValue(metrics.total_percent ?? metrics.totalPercent)
+  }
+}
+
 function normalizeAsset(value: unknown): WalletAsset | null {
   if (!isRecord(value)) return null
   const kind = value.kind === 'erc20' || value.kind === 'spl' ? value.kind : null
@@ -66,7 +93,8 @@ function normalizeAsset(value: unknown): WalletAsset | null {
     balanceUsd: numberValue(value.balanceUsd),
     usdPrice: numberValue(value.usdPrice),
     usdPrice24hrPercentChange: nullableNumberValue(value.usdPrice24hrPercentChange),
-    verified: stringValue(value.verified) ?? 'unknown'
+    verified: stringValue(value.verified) ?? 'unknown',
+    pnl: normalizePnl(value.pnl)
   }
 }
 
@@ -75,7 +103,7 @@ function normalizeAssets(value: unknown): readonly WalletAsset[] {
   return value
     .map(normalizeAsset)
     .filter((asset): asset is WalletAsset => asset !== null)
-    .filter((asset) => asset.balance !== 0 || asset.balanceUsd !== 0)
+    .filter((asset) => asset.balance !== 0 || asset.balanceUsd !== 0 || asset.pnl !== null)
     .sort((left, right) => right.balanceUsd - left.balanceUsd)
 }
 
@@ -118,11 +146,17 @@ function unavailableStatus(
     wallets: [],
     assets: [],
     totalUsd: 0,
+    totalPnlUsd: null,
     initializing: options.initializing,
     unauthenticated: options.unauthenticated,
     stale: false,
     error: message
   }
+}
+
+function totalPnlUsd(assets: readonly WalletAsset[]): number | null {
+  const values = assets.flatMap((asset) => (asset.pnl === null ? [] : [asset.pnl.totalUsd]))
+  return values.length === 0 ? null : values.reduce((sum, value) => sum + value, 0)
 }
 
 function errorMessage(error: unknown): string {
@@ -175,6 +209,7 @@ function cachedStatusFromUnknown(value: unknown): WalletStatus | null {
     wallets,
     assets,
     totalUsd: assets.reduce((sum, asset) => sum + asset.balanceUsd, 0),
+    totalPnlUsd: totalPnlUsd(assets),
     initializing: false,
     unauthenticated: false,
     stale: true,
@@ -218,10 +253,11 @@ export async function refreshWalletStatus(cwd: string): Promise<WalletStatus> {
       ok: true,
       schema: 'wallet-status.v1',
       updatedAt: new Date().toISOString(),
-      accountSource: 'wallet-assets',
+      accountSource: 'agent-assets',
       wallets: account.addresses,
       assets,
       totalUsd: assets.reduce((sum, asset) => sum + asset.balanceUsd, 0),
+      totalPnlUsd: totalPnlUsd(assets),
       initializing: false,
       unauthenticated: false,
       stale: false,
