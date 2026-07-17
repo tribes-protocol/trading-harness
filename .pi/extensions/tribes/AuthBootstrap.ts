@@ -195,6 +195,7 @@ export async function runLogin(
   startAuthRefreshTimer(ctx.cwd)
   try {
     await warmWalletSnapshot(ctx.cwd)
+    pi.events.emit('wallet:changed', undefined)
   } catch {
     // Warm-up is best-effort.
   }

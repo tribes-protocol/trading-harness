@@ -18,6 +18,7 @@ import {
   writeAuthEnv
 } from './AuthBootstrap.ts'
 import { registerTribesProvider, type TribesApi } from './Provider.ts'
+import { registerWalletExtension } from './wallet/WalletExtension.ts'
 import { warmWalletSnapshot } from './WalletSnapshot.ts'
 import { showWelcome } from './Welcome.ts'
 
@@ -104,6 +105,7 @@ export default async function tribes(pi: TribesApi): Promise<void> {
     startAuthRefreshTimer(ctx.cwd)
     try {
       await warmWalletSnapshot(ctx.cwd)
+      pi.events.emit('wallet:changed', undefined)
     } catch {
       // Warm-up is best-effort.
     }
@@ -135,4 +137,6 @@ export default async function tribes(pi: TribesApi): Promise<void> {
       ctx.ui.notify('Built-in header restored', 'info')
     }
   })
+
+  registerWalletExtension(pi)
 }

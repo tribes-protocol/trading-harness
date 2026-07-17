@@ -5,6 +5,15 @@ import { dirname, resolve } from 'node:path'
 import type { ExtensionAPI, ExtensionContext, Theme } from '@earendil-works/pi-coding-agent'
 import type { TUI } from '@earendil-works/pi-tui'
 
+import {
+  coerceStatusPanelState,
+  readStatusPanelState,
+  selectStatusPanel,
+  STATUS_PAGE_EVENT,
+  STATUS_PANEL_EVENT,
+  type StatusPanelState,
+  writeStatusPanelState
+} from '../tribes/wallet/PanelState.ts'
 import { FALLBACK_PERP_DEXES, resolvePerpDexes } from './DexDiscovery.ts'
 import { ensureJsonTreeString } from './EnsureJson.ts'
 import { type CrossBucket, estimateCrossLiquidationPx } from './LiqEstimator.ts'
@@ -917,6 +926,10 @@ async function refreshStatusSnapshot(cwd: string): Promise<HyperliquidStatus> {
 
 export default function hyperliquidStatus(pi: ExtensionAPI): void {
   let showWidget = true
+  let panelState: StatusPanelState = {
+    activePanel: 'hyperliquid',
+    lastVisiblePanel: 'hyperliquid'
+  }
   let activeTab: HlTab = 'positions'
   // Row offset into the active tab's list; paged by ctrl+shift+↑/↓, reset on tab switch.
   let scrollOffset = 0
@@ -933,7 +946,7 @@ export default function hyperliquidStatus(pi: ExtensionAPI): void {
 
   function syncWidget(ctx: ExtensionContext): void {
     if (!ctx.hasUI) return
-    if (!showWidget) {
+    if (!showWidget || panelState.activePanel !== 'hyperliquid') {
       ctx.ui.setWidget('hyperliquid-status', undefined)
       widgetHandle = null
       widgetRegistered = false
@@ -956,7 +969,8 @@ export default function hyperliquidStatus(pi: ExtensionAPI): void {
                   width,
                   refreshing,
                   activeTab,
-                  scrollOffset
+                  scrollOffset,
+                  panelState.activePanel
                 )
               : [widgetTheme.fg('dim', 'Hyperliquid Status (loading...)')],
           invalidate: (): void => {}
@@ -1011,11 +1025,13 @@ export default function hyperliquidStatus(pi: ExtensionAPI): void {
 
   pi.on('session_start', async (_event, ctx) => {
     const config = await readJson<WidgetConfig>(resolveConfigPath(ctx.cwd), DEFAULT_CONFIG)
-    showWidget = config.showWidget
+    panelState = await readStatusPanelState(ctx.cwd, config.showWidget ? 'hyperliquid' : 'hidden')
+    showWidget = panelState.activePanel === 'hyperliquid'
     activeTab = coerceTab(config.activeTab)
     const cached = await readJson<HyperliquidStatus | null>(resolveStatusPath(ctx.cwd), null)
     if (cached) lastStatus = cached
     syncWidget(ctx)
+    pi.events.emit(STATUS_PANEL_EVENT, panelState)
     await refreshStatus(ctx)
     if (lastStatus?.initializing) scheduleInitPoll(ctx, Date.now() + INIT_GRACE_MS)
     statusTimer = setInterval(() => {
@@ -1024,6 +1040,11 @@ export default function hyperliquidStatus(pi: ExtensionAPI): void {
 
     pi.events.on('wallet:changed', () => {
       void refreshStatus(ctx)
+    })
+    pi.events.on(STATUS_PANEL_EVENT, (value) => {
+      panelState = coerceStatusPanelState(value, panelState)
+      showWidget = panelState.activePanel === 'hyperliquid'
+      syncWidget(ctx)
     })
   })
 
@@ -1088,10 +1109,16 @@ export default function hyperliquidStatus(pi: ExtensionAPI): void {
   pi.registerCommand('hyperliquid:status', {
     description: 'Toggle Hyperliquid detailed status widget',
     handler: async (_args, ctx) => {
-      showWidget = !showWidget
+      panelState = selectStatusPanel(
+        panelState,
+        panelState.activePanel === 'hyperliquid' ? 'hidden' : 'hyperliquid'
+      )
+      showWidget = panelState.activePanel === 'hyperliquid'
+      await writeStatusPanelState(ctx.cwd, panelState)
       await saveWidgetConfig(ctx.cwd, { showWidget, activeTab })
       if (!lastStatus) lastStatus = await refreshStatusSnapshot(ctx.cwd)
       syncWidget(ctx)
+      pi.events.emit(STATUS_PANEL_EVENT, panelState)
       ctx.ui.notify(
         showWidget ? 'Hyperliquid status widget shown' : 'Hyperliquid status widget hidden',
         'info'
@@ -1118,22 +1145,36 @@ export default function hyperliquidStatus(pi: ExtensionAPI): void {
 
   pi.registerShortcut('ctrl+shift+right', {
     description: 'Hyperliquid widget: next tab',
-    handler: (ctx) => switchTab(ctx, { delta: 1 })
+    handler: (ctx) =>
+      panelState.activePanel === 'hyperliquid' ? switchTab(ctx, { delta: 1 }) : Promise.resolve()
   })
 
   pi.registerShortcut('ctrl+shift+left', {
     description: 'Hyperliquid widget: previous tab',
-    handler: (ctx) => switchTab(ctx, { delta: -1 })
+    handler: (ctx) =>
+      panelState.activePanel === 'hyperliquid' ? switchTab(ctx, { delta: -1 }) : Promise.resolve()
   })
 
   pi.registerShortcut('ctrl+shift+down', {
     description: 'Hyperliquid widget: page down (show more items)',
-    handler: () => scrollTab(1)
+    handler: () => {
+      if (panelState.activePanel === 'wallet') {
+        pi.events.emit(STATUS_PAGE_EVENT, { direction: 1 })
+      } else if (panelState.activePanel === 'hyperliquid') {
+        scrollTab(1)
+      }
+    }
   })
 
   pi.registerShortcut('ctrl+shift+up', {
     description: 'Hyperliquid widget: page up (show previous items)',
-    handler: () => scrollTab(-1)
+    handler: () => {
+      if (panelState.activePanel === 'wallet') {
+        pi.events.emit(STATUS_PAGE_EVENT, { direction: -1 })
+      } else if (panelState.activePanel === 'hyperliquid') {
+        scrollTab(-1)
+      }
+    }
   })
 
   pi.registerCommand('hyperliquid:refresh', {

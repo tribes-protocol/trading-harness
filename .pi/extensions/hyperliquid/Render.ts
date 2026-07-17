@@ -10,6 +10,8 @@ import type { Theme } from '@earendil-works/pi-coding-agent'
 import { DynamicBorder } from '@earendil-works/pi-coding-agent'
 import { Container, hyperlink, Text, truncateToWidth, visibleWidth } from '@earendil-works/pi-tui'
 
+import type { StatusPanel } from '../tribes/wallet/PanelState.ts'
+import { renderStatusViewRail } from '../tribes/wallet/ViewRail.ts'
 import type {
   AccountSummary,
   HlTab,
@@ -734,7 +736,8 @@ export function renderHyperliquidPositionsWidget(
   width: number,
   refreshing = false,
   activeTab: HlTab = 'positions',
-  scrollOffset = 0
+  scrollOffset = 0,
+  activePanel: StatusPanel = 'hyperliquid'
 ): string[] {
   // Loading uses a calm dim border; a real failure (missing account / error) is
   // a warning; a healthy account is the accent.
@@ -752,6 +755,7 @@ export function renderHyperliquidPositionsWidget(
   const contentWidth = Math.max(20, width - 2)
 
   container.addChild(new DynamicBorder(borderColor))
+  container.addChild(new Text(renderStatusViewRail(activePanel, theme, contentWidth), 1, 0))
 
   if (!status.ok) {
     const brandState = status.initializing
