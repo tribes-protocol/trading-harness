@@ -1,7 +1,10 @@
 import type { Theme } from '@earendil-works/pi-coding-agent'
 import { describe, expect, test } from 'vitest'
 
-import { renderHyperliquidPositionsWidget } from '../../.pi/extensions/hyperliquid/Render.ts'
+import {
+  fmtLeverage,
+  renderHyperliquidPositionsWidget
+} from '../../.pi/extensions/hyperliquid/Render.ts'
 import type { HlTab, HyperliquidStatus } from '../../.pi/extensions/hyperliquid/StatusTypes.ts'
 
 const theme = {
@@ -95,5 +98,12 @@ describe('Hyperliquid widget balances', () => {
     expect(output).toContain('PURR')
     expect(output.indexOf('USDC')).toBeLessThan(output.indexOf('main'))
     expect(output).not.toContain('Spot(')
+  })
+})
+
+describe('Hyperliquid widget formatting', () => {
+  test('renders leverage without redundant decimal places', () => {
+    expect(fmtLeverage(3)).toBe('3x')
+    expect(fmtLeverage('12')).toBe('12x')
   })
 })

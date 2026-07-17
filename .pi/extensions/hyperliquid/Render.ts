@@ -89,10 +89,7 @@ export function fmtPrice(value: unknown): string {
 export function fmtLeverage(value: unknown): string {
   const n = coerceNumber(value)
   if (n === null) return '-'
-  const abs = Math.abs(n)
-  if (abs >= 10) return `${n.toFixed(1)}x`
-  if (abs >= 1) return `${n.toFixed(2)}x`
-  return `${n.toPrecision(2)}x`
+  return `${n}x`
 }
 
 export function fmtSignedUsd(n: number | null | undefined): string {
@@ -234,16 +231,16 @@ function renderPositionsTable(
   if (positions.length === 0) return theme.fg('muted', 'No open positions')
 
   const baseColumns = [
-    { key: 'symbol', label: 'Symbol', width: 8 },
+    { key: 'symbol', label: 'Symbol', width: 9 },
     { key: 'side', label: 'Side', width: 5 },
-    { key: 'size', label: 'Size', width: 8 },
+    { key: 'upnl', label: 'uPnL', width: 7 },
     { key: 'margin', label: 'Margin', width: 9 },
-    { key: 'notional', label: 'Notional', width: 9 },
     { key: 'lev', label: 'Lev', width: 5 },
     { key: 'entry', label: 'Entry', width: 8 },
     { key: 'mark', label: 'Mark', width: 8 },
     { key: 'liq', label: 'Liq', width: 8 },
-    { key: 'upnl', label: 'uPnL', width: 9 },
+    { key: 'size', label: 'Size', width: 8 },
+    { key: 'notional', label: 'Notional', width: 9 },
     { key: 'fundingDay', label: 'Fund/day', width: 9 },
     { key: 'cost7d', label: 'Cost7d', width: 8 }
   ]
