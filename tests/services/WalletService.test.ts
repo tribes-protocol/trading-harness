@@ -87,35 +87,43 @@ describe('WalletService', () => {
         capturedUrl = String(url)
         capturedInit = init
         return new Response(
-          ensureJsonTreeString([
-            {
-              kind: 'erc20',
-              address: ERC20_TOKEN,
-              name: 'USD Coin',
-              symbol: 'USDC',
-              decimals: 6,
-              chainId: 8453,
-              logo: null,
-              verified: 'verified',
-              wallet: '0x1111111111111111111111111111111111111111',
-              balance: '150',
-              balanceUsd: '150',
-              usdPrice: '1',
-              usdPrice24hrPercentChange: '0.1',
-              pnl: {
+          ensureJsonTreeString({
+            assets: [
+              {
+                kind: 'erc20',
                 address: ERC20_TOKEN,
+                name: 'USD Coin',
+                symbol: 'USDC',
+                decimals: 6,
+                chainId: 8453,
+                logo: null,
+                verified: 'verified',
+                wallet: '0x1111111111111111111111111111111111111111',
+                balance: '150',
+                balanceUsd: '150',
+                usdPrice: '1',
+                usdPrice24hrPercentChange: '0.1',
                 pnl: {
-                  realized_profit_usd: '20',
-                  realized_profit_percent: '5.7',
-                  unrealized_usd: '10',
-                  unrealized_percent: '7.1',
-                  total_usd: '30',
-                  total_percent: '6',
-                  avg_profit_per_trade_usd: '6'
+                  address: ERC20_TOKEN,
+                  pnl: {
+                    realized_profit_usd: '20',
+                    realized_profit_percent: '5.7',
+                    unrealized_usd: '10',
+                    unrealized_percent: '7.1',
+                    total_usd: '30',
+                    total_percent: '6'
+                  }
                 }
               }
+            ],
+            summary: {
+              pnl: {
+                realized_profit_usd: '125',
+                unrealized_usd: '25',
+                total_usd: '150'
+              }
             }
-          ]),
+          }),
           {
             status: 200,
             headers: {
@@ -138,7 +146,8 @@ describe('WalletService', () => {
         walletAddresses: ['0x1111111111111111111111111111111111111111'],
         chainIds: undefined
       })
-      expect(assets[0]?.pnl?.pnl.total_usd.toNumber()).toBe(30)
+      expect(assets.assets[0]?.pnl?.pnl.total_usd.toNumber()).toBe(30)
+      expect(assets.summary.pnl.total_usd.toNumber()).toBe(150)
     } finally {
       await rm(cwd, { recursive: true, force: true })
     }

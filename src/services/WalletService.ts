@@ -16,7 +16,7 @@ import type { AgentWalletSnapshot } from '@/types/Privy'
 import { AgentWalletSnapshotSchema } from '@/types/Privy'
 import { NATIVE_MINT, type SolInstruction, SolInstructionSchema } from '@/types/Solana'
 import { type Tx, TxSchema } from '@/types/Tx'
-import { type AssetBalanceWithPnl, AssetBalanceWithPnlSchema } from '@/types/Wallet'
+import { type UserAssetsWithPnlResponse, UserAssetsWithPnlResponseSchema } from '@/types/Wallet'
 import type {
   BuildEthTransferParams,
   BuildSolTransferParams,
@@ -64,10 +64,19 @@ export class WalletService {
     return wallets
   }
 
-  async listAssets(params: ListWalletAssetsParams): Promise<AssetBalanceWithPnl[]> {
+  async listAssets(params: ListWalletAssetsParams): Promise<UserAssetsWithPnlResponse> {
     const { walletAddresses, chainIds } = params
     if (walletAddresses.length === 0) {
-      return []
+      return UserAssetsWithPnlResponseSchema.parse({
+        assets: [],
+        summary: {
+          pnl: {
+            realized_profit_usd: 0,
+            unrealized_usd: 0,
+            total_usd: 0
+          }
+        }
+      })
     }
     const searchQuery = new URLSearchParams({
       userAddresses: walletAddresses.join(',')
@@ -93,7 +102,7 @@ export class WalletService {
       throw new Error(`Agent assets fetch failed: ${response.status} ${response.statusText}`)
     }
     const data: unknown = await response.json()
-    return AssetBalanceWithPnlSchema.array().parse(data)
+    return UserAssetsWithPnlResponseSchema.parse(data)
   }
 
   buildEthTransfer(params: BuildEthTransferParams): Tx {

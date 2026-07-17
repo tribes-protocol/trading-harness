@@ -247,11 +247,11 @@ export function renderWalletStatusWidget(
     theme.fg('accent', '● Wallet') +
     '   ' +
     theme.bold(theme.fg('text', `total ${fmtUsd(status.totalUsd)}`)) +
-    '   ' +
-    theme.fg('dim', `${status.assets.length} asset${status.assets.length === 1 ? '' : 's'}`) +
     (status.totalPnlUsd === null
       ? ''
-      : '   ' + pnlLabel(status.totalPnlUsd, theme) + theme.fg('dim', ' PnL')) +
+      : theme.fg('dim', '   all-time ') + pnlLabel(status.totalPnlUsd, theme)) +
+    '   ' +
+    theme.fg('dim', `${status.assets.length} asset${status.assets.length === 1 ? '' : 's'}`) +
     (refreshing ? '   ' + theme.fg('dim', 'syncing…') : '') +
     (status.stale ? '   ' + theme.fg('warning', 'cached') : '')
   container.addChild(new Text(hero, 1, 0))

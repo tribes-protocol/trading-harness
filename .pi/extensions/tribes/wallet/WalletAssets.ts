@@ -20,6 +20,11 @@ type WalletAccountState =
   | { readonly kind: 'unauthenticated' }
   | { readonly kind: 'missing' }
 
+interface WalletAssetsResponse {
+  readonly assets: readonly WalletAsset[]
+  readonly totalPnlUsd: number | null
+}
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
 }
@@ -107,6 +112,24 @@ function normalizeAssets(value: unknown): readonly WalletAsset[] {
     .sort((left, right) => right.balanceUsd - left.balanceUsd)
 }
 
+function normalizeAssetsResponse(value: unknown): WalletAssetsResponse {
+  if (Array.isArray(value)) {
+    const assets = normalizeAssets(value)
+    return { assets, totalPnlUsd: totalPnlUsd(assets) }
+  }
+  if (!isRecord(value) || !Array.isArray(value.assets)) {
+    throw new Error('Wallet assets response was not a valid object')
+  }
+  const assets = normalizeAssets(value.assets)
+  const summary = isRecord(value.summary) ? value.summary : null
+  const summaryPnl = summary !== null && isRecord(summary.pnl) ? summary.pnl : null
+  return {
+    assets,
+    totalPnlUsd:
+      nullableNumberValue(summaryPnl?.total_usd ?? summaryPnl?.totalUsd) ?? totalPnlUsd(assets)
+  }
+}
+
 async function resolveWalletAccounts(cwd: string): Promise<WalletAccountState> {
   let raw: string
   try {
@@ -172,7 +195,7 @@ function hasSameWallets(left: readonly string[], right: readonly string[]): bool
 async function fetchWalletAssets(
   cwd: string,
   addresses: readonly string[]
-): Promise<readonly WalletAsset[]> {
+): Promise<WalletAssetsResponse> {
   const { stdout } = await execFileAsync(
     'tribes-cli',
     ['wallet', 'assets', '--wallet-addresses', ...addresses],
@@ -184,7 +207,7 @@ async function fetchWalletAssets(
     }
   )
   const parsed: unknown = JSON.parse(stdout)
-  return normalizeAssets(parsed)
+  return normalizeAssetsResponse(parsed)
 }
 
 async function writeCachedStatus(cwd: string, status: WalletStatus): Promise<void> {
@@ -209,7 +232,7 @@ function cachedStatusFromUnknown(value: unknown): WalletStatus | null {
     wallets,
     assets,
     totalUsd: assets.reduce((sum, asset) => sum + asset.balanceUsd, 0),
-    totalPnlUsd: totalPnlUsd(assets),
+    totalPnlUsd: nullableNumberValue(value.totalPnlUsd) ?? totalPnlUsd(assets),
     initializing: false,
     unauthenticated: false,
     stale: true,
@@ -248,7 +271,8 @@ export async function refreshWalletStatus(cwd: string): Promise<WalletStatus> {
   }
 
   try {
-    const assets = await fetchWalletAssets(cwd, account.addresses)
+    const response = await fetchWalletAssets(cwd, account.addresses)
+    const { assets } = response
     const status: WalletStatus = {
       ok: true,
       schema: 'wallet-status.v1',
@@ -257,7 +281,7 @@ export async function refreshWalletStatus(cwd: string): Promise<WalletStatus> {
       wallets: account.addresses,
       assets,
       totalUsd: assets.reduce((sum, asset) => sum + asset.balanceUsd, 0),
-      totalPnlUsd: totalPnlUsd(assets),
+      totalPnlUsd: response.totalPnlUsd,
       initializing: false,
       unauthenticated: false,
       stale: false,

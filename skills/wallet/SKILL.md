@@ -83,7 +83,8 @@ Pass addresses as separate space-separated arguments. `--chain-ids` filters EVM 
 - Mixed: Solana balances always return; `--chain-ids` only filters the EVM side.
 
 Each asset includes its current balance and all-time realized, unrealized, and total PnL when
-the agent assets service has trading history for that wallet/token pair.
+the agent assets service has trading history for that wallet/token pair. The response also
+includes `summary.pnl` with all-time realized, unrealized, and total PnL in USD across wallets.
 
 Supported EVM chain IDs: `1` Ethereum, `8453` Base, `42161` Arbitrum, `56` BSC, `137` Polygon,
 `10` Optimism.
