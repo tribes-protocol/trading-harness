@@ -1,21 +1,16 @@
-# Secrets / local environment
-.env
-*.env.local
-runtime/
-.tribes
-
-.pi/agent/auth.json
-.pi/agent/sessions/
-
-# Dependencies / build artifacts
 node_modules/
 dist/
-*.tgz
-.pi/agent/npm/
-skills/**/node_modules/
-skills/**/dist/
-skills/**/dist-test/
-code/typescript/dist/
-.playwright-cli/
-todos/
-.pi-subagents/
+.cache/
+coverage/
+*.log
+
+# Credentials must never be committed
+.env
+.env.*
+!.env.example
+
+# tribes auth material (private keys, JWT cache, wallet records) — never commit
+.tribes/
+
+# Mutable runtime state (venue status snapshots etc.)
+runtime/

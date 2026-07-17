@@ -1,0 +1,37 @@
+{
+  "_fixture": {
+    "note": "constructed from official docs field definitions (see docs/research/providers/birdeye.json), not captured live data",
+    "docsUrl": "https://docs.birdeye.so/reference/get-v1-wallet-token_list"
+  },
+  "success": true,
+  "data": {
+    "wallet": "Gt4RRcMg2mzEN9SDtSUjEjezC9b1nXjEGDQyEVbrc7Sk",
+    "totalUsd": 208.51979693780992,
+    "items": [
+      {
+        "address": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+        "decimals": 6,
+        "balance": 47289918,
+        "uiAmount": 47.289918,
+        "chainId": "solana",
+        "name": "USD Coin",
+        "symbol": "USDC",
+        "logoURI": "https://example.invalid/usdc.png",
+        "priceUsd": 0.99999744,
+        "valueUsd": 47.28979693780992
+      },
+      {
+        "address": "So11111111111111111111111111111111111111112",
+        "decimals": 9,
+        "balance": 1000186000,
+        "uiAmount": 1.000186,
+        "chainId": "solana",
+        "name": "Wrapped SOL",
+        "symbol": "SOL",
+        "logoURI": "https://example.invalid/sol.png",
+        "priceUsd": 161.2,
+        "valueUsd": 161.229983
+      }
+    ]
+  }
+}

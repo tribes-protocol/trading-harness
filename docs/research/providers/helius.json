@@ -1,0 +1,422 @@
+{
+  "provider": "Helius",
+  "reviewDate": "2026-07-17",
+  "officialDocsUrl": "https://www.helius.dev/docs",
+  "apiVersion": "No single global API version. JSON-RPC 2.0 for Solana RPC / DAS / Priority Fee methods; REST v0 for Enhanced Transactions and Webhooks (/v0/...); REST v1 for Wallet API (/v1/wallet/...). No formal versioning/deprecation policy page found; the 'Getting Data' guide flags the Enhanced Transactions API as legacy and recommends getTransactionsForAddress for new projects.",
+  "authentication": {
+    "mechanism": "API key",
+    "howPassed": "Query parameter named `api-key` appended to the endpoint URL (e.g. https://mainnet.helius-rpc.com/?api-key=YOUR_API_KEY). The Wallet API additionally documents an `X-Api-Key` header as an alternative.",
+    "headerName": "X-Api-Key (documented for Wallet API only)",
+    "queryParamName": "api-key",
+    "oauth": "not documented",
+    "securityGuidance": "Docs instruct: store keys in environment variables/secrets managers, never expose in client-side code or public repos, set up IP restrictions in the dashboard, use separate keys per environment, monitor usage in dashboard.",
+    "source": "https://www.helius.dev/docs/api-reference/authentication.md"
+  },
+  "baseUrls": [
+    { "url": "https://mainnet.helius-rpc.com", "purpose": "Solana mainnet RPC + DAS + Priority Fee (JSON-RPC POST) and Enhanced Transactions / Webhooks REST paths (/v0/...)" },
+    { "url": "https://devnet.helius-rpc.com", "purpose": "Solana devnet equivalent of the above" },
+    { "url": "https://beta.helius-rpc.com", "purpose": "Mainnet 'Gatekeeper Beta' RPC endpoint" },
+    { "url": "wss://mainnet.helius-rpc.com", "purpose": "Mainnet WebSocket RPC (also wss://devnet.helius-rpc.com, wss://beta.helius-rpc.com)" },
+    { "url": "https://api.helius.xyz", "purpose": "Wallet API REST host (/v1/wallet/...)" },
+    { "url": "https://laserstream-mainnet-{region}.helius-rpc.com", "purpose": "LaserStream gRPC regional hosts; documented regions: ewr, pitt, slc, lax, lon, ams, fra, tyo, sgp; devnet: laserstream-devnet-ewr.helius-rpc.com" },
+    { "url": "https://abc-456-fast-mainnet.helius-rpc.com (pattern)", "purpose": "'Secure RPC' per-account endpoint pattern shown in endpoints doc (account-specific hostnames); devnet pattern 123-xyz-fast-devnet.helius-rpc.com" }
+  ],
+  "endpoints": [
+    {
+      "name": "getAsset (DAS)",
+      "httpMethod": "POST",
+      "path": "/ (JSON-RPC method getAsset on mainnet/devnet helius-rpc.com)",
+      "requiredParams": ["id (mint address of token/NFT)"],
+      "optionalParams": ["options.showUnverifiedCollections", "options.showCollectionMetadata", "options.showFungible"],
+      "responseFields": ["result.last_indexed_slot", "result.interface", "result.id", "result.content", "result.authorities", "result.compression", "result.grouping", "result.royalty", "result.creators", "result.ownership", "result.supply", "result.mutable", "result.burnt", "result.token_info", "result.plugins"],
+      "pagination": "none (single asset)",
+      "freshness": "Indexed near-real-time (last_indexed_slot returned); embedded price data explicitly cached with a 600-second cache ('may not be fresh')",
+      "creditCost": "10 credits (DAS methods are 10 credits per request per DAS index page)",
+      "source": "https://www.helius.dev/docs/api-reference/das/getasset.md"
+    },
+    {
+      "name": "getAssetBatch (DAS)",
+      "httpMethod": "POST",
+      "path": "/ (JSON-RPC method getAssetBatch)",
+      "requiredParams": ["ids (array, up to 1,000 assets per request)"],
+      "optionalParams": ["display options (per DAS index)"],
+      "responseFields": ["array of asset objects (same shape as getAsset result)"],
+      "pagination": "none (batch by ids)",
+      "freshness": "Indexed near-real-time",
+      "creditCost": "10 credits",
+      "source": "https://www.helius.dev/docs/api-reference/das/llms.txt"
+    },
+    {
+      "name": "getAssetsByOwner (DAS)",
+      "httpMethod": "POST",
+      "path": "/ (JSON-RPC method getAssetsByOwner)",
+      "requiredParams": ["ownerAddress"],
+      "optionalParams": ["page (1-indexed)", "limit (max 1000)", "before/after cursors", "sortBy.sortBy (created|recent_action|updated|none)", "sortBy.sortDirection (asc|desc)", "options.showFungible", "options.showNativeBalance", "options.showGrandTotal", "options.showCollectionMetadata", "options.showUnverifiedCollections", "options.showZeroBalance"],
+      "responseFields": ["last_indexed_slot", "total", "limit", "page", "items[]", "items[].id (mint address)", "items[].interface", "items[].content.metadata (name, symbol, description, token_standard)", "items[].ownership (owner, frozen, delegated, delegate, ownership_model)", "items[].token_info (symbol, balance, supply, decimals, token_program, associated_token_address, price_info { price_per_token, total_price, currency }) — token_info balance/price fields documented in the DAS Fungible Token Extension guide for owner-scoped queries with showFungible", "nativeBalance (lamports, price_per_sol, total_price) when options.showNativeBalance=true — shape documented on the searchAssets reference; the getAssetsByOwner page documents the option but not the response field"],
+      "pagination": "Page-based (page/limit, max 1000/page) or cursor-based (before/after)",
+      "freshness": "Indexed near-real-time; last_indexed_slot documents guaranteed-indexed slot",
+      "creditCost": "10 credits",
+      "source": "https://www.helius.dev/docs/api-reference/das/getassetsbyowner.md"
+    },
+    {
+      "name": "searchAssets (DAS)",
+      "httpMethod": "POST",
+      "path": "/ (JSON-RPC method searchAssets)",
+      "requiredParams": ["ownerAddress and/or filter criteria; tokenType (fungible|nonFungible|regularNft|compressedNft|all)"],
+      "optionalParams": ["authorityAddress", "creatorAddress", "creatorVerified", "grouping", "tree", "compressed", "compressible", "frozen", "burnt", "interface", "royaltyTargetType/royaltyTarget/royaltyAmount", "supply", "supplyMint", "delegate", "ownerType", "sortBy", "page", "limit", "before/after", "options.showGrandTotal", "options.showNativeBalance", "options.showZeroBalance", "options.showCollectionMetadata"],
+      "responseFields": ["assets.last_indexed_slot", "assets.total", "assets.limit", "assets.page", "assets.items[]", "nativeBalance.lamports", "nativeBalance.price_per_sol", "nativeBalance.total_price"],
+      "pagination": "Hybrid: page-based plus before/after cursors",
+      "freshness": "Indexed near-real-time; SOL price fields subject to price caching",
+      "creditCost": "10 credits",
+      "source": "https://www.helius.dev/docs/api-reference/das/searchassets.md"
+    },
+    {
+      "name": "getTokenAccounts (DAS)",
+      "httpMethod": "POST",
+      "path": "/ (JSON-RPC method getTokenAccounts)",
+      "requiredParams": ["owner (or mint)"],
+      "optionalParams": ["mint", "page", "limit", "cursor", "before", "after", "options.showZeroBalance"],
+      "responseFields": ["last_indexed_slot", "total", "limit", "cursor", "token_accounts[] (address, mint, owner, amount, delegated_amount, frozen, burnt)"],
+      "pagination": "Cursor-based (cursor/before/after) or page/limit",
+      "freshness": "Indexed near-real-time",
+      "creditCost": "10 credits",
+      "source": "https://www.helius.dev/docs/api-reference/das/gettokenaccounts.md"
+    },
+    {
+      "name": "getSignaturesForAsset (DAS)",
+      "httpMethod": "POST",
+      "path": "/ (JSON-RPC method getSignaturesForAsset)",
+      "requiredParams": ["asset id"],
+      "optionalParams": ["pagination params per DAS conventions"],
+      "responseFields": ["transaction signature history for an asset including compressed NFTs"],
+      "pagination": "page/cursor per DAS conventions",
+      "freshness": "Indexed near-real-time",
+      "creditCost": "10 credits",
+      "source": "https://www.helius.dev/docs/api-reference/das/llms.txt"
+    },
+    {
+      "name": "getTransactionsForAddress (Helius-exclusive RPC extension)",
+      "httpMethod": "POST",
+      "path": "/ (JSON-RPC method getTransactionsForAddress)",
+      "requiredParams": ["address (base58)"],
+      "optionalParams": ["transactionDetails (signatures|full, default signatures)", "sortOrder (asc|desc, default desc)", "limit (up to 1000, default 1000)", "paginationToken ('slot:position' format)", "commitment (finalized|confirmed; processed NOT supported)", "encoding (json|jsonParsed|base64|base58)", "maxSupportedTransactionVersion", "minContextSlot", "filters.slot (gte/gt/lte/lt)", "filters.blockTime (gte/gt/lte/lt/eq)", "filters.signature", "filters.status (succeeded|failed|any)", "filters.tokenAccounts (none|balanceChanged|all)", "filters.tokenTransfer (with, direction in|out|any, mint, amount ranges)"],
+      "responseFields": ["signatures mode: signature, slot, transactionIndex, err, memo, blockTime, confirmationStatus, paginationToken; full mode: slot, transactionIndex, blockTime, transaction, meta, paginationToken"],
+      "pagination": "Opaque paginationToken cursor; continue until token is null",
+      "freshness": "Real-time at confirmed/finalized commitment; mainnet retention documented as 'Unlimited', devnet 2 weeks, testnet unsupported",
+      "creditCost": "Signatures-only: 10 credits flat; full transactions: 10 credits per 100 returned (min 10); failed responses free",
+      "source": "https://www.helius.dev/docs/rpc/gettransactionsforaddress.md"
+    },
+    {
+      "name": "getTransfersByAddress (Helius-exclusive RPC extension)",
+      "httpMethod": "POST",
+      "path": "/ (JSON-RPC method getTransfersByAddress)",
+      "requiredParams": ["address (base58 owner wallet) — JSON-RPC params is a positional array: [address, config]"],
+      "optionalParams": ["config.with (counterparty)", "config.direction (in|out|any)", "config.mint", "config.solMode (merged|separate; merged default — native SOL and WSOL merged, mint rewritten to So11111111111111111111111111111111111111111; separate keeps WSOL mint So11111111111111111111111111111111111111112)", "config.filters (amount/blockTime/slot comparisons)", "config.limit (1-100, default 100)", "config.paginationToken", "config.commitment (default finalized)", "config.sortOrder (default desc)"],
+      "responseFields": ["data[] (signature: string, slot: number, blockTime: number, type: string, fromUserAccount: string|null, toUserAccount: string|null, fromTokenAccount: string, toTokenAccount: string, mint: string, amount: STRING raw base-unit integer, decimals: number, uiAmount: STRING decimals-adjusted, feeAmount/feeUiAmount: strings only for Token-2022 transfer fees, confirmationStatus: string, transactionIdx/instructionIdx/innerInstructionIdx: numbers; token-account fields omitted for native SOL transfers)", "paginationToken"],
+      "pagination": "Cursor via paginationToken; no batch requests allowed",
+      "freshness": "Real-time at confirmed/finalized commitment; positioned in docs as 'reconciled transfer history' for balance reconciliation",
+      "creditCost": "10 credits per request; requires Developer plan or higher",
+      "source": "https://www.helius.dev/docs/rpc/gettransfersbyaddress.md"
+    },
+    {
+      "name": "getHealth (standard Solana RPC)",
+      "httpMethod": "POST",
+      "path": "/ (JSON-RPC method getHealth on mainnet/devnet helius-rpc.com)",
+      "requiredParams": [],
+      "optionalParams": [],
+      "responseFields": ["result: \"ok\" when the node is healthy (JSON-RPC error otherwise)"],
+      "pagination": "none",
+      "freshness": "Real-time node health",
+      "creditCost": "1 credit (Credits Per Method table) — cheapest documented probe for auth/connectivity checks",
+      "source": "https://www.helius.dev/docs/api-reference/rpc/http/llms.txt"
+    },
+    {
+      "name": "getProgramAccountsV2 (Helius-enhanced RPC)",
+      "httpMethod": "POST",
+      "path": "/ (JSON-RPC method getProgramAccountsV2)",
+      "requiredParams": ["program id (per standard getProgramAccounts semantics)"],
+      "optionalParams": ["cursor-based pagination (1-10,000 per request)", "changedSinceSlot for incremental account updates"],
+      "responseFields": ["program account list (per RPC docs)"],
+      "pagination": "Cursor-based, 1-10,000 accounts per request",
+      "freshness": "Real-time RPC",
+      "creditCost": "1 credit (vs 10 for legacy getProgramAccounts)",
+      "source": "https://www.helius.dev/docs/api-reference/rpc/http/llms.txt"
+    },
+    {
+      "name": "getTokenAccountsByOwnerV2 (Helius-enhanced RPC)",
+      "httpMethod": "POST",
+      "path": "/ (JSON-RPC method getTokenAccountsByOwnerV2)",
+      "requiredParams": ["owner address"],
+      "optionalParams": ["cursor pagination", "changedSinceSlot"],
+      "responseFields": ["token account list (per RPC docs)"],
+      "pagination": "Cursor-based",
+      "freshness": "Real-time RPC",
+      "creditCost": "1 credit",
+      "source": "https://www.helius.dev/docs/api-reference/rpc/http/llms.txt"
+    },
+    {
+      "name": "Parse Transactions (Enhanced Transactions)",
+      "httpMethod": "POST",
+      "path": "/v0/transactions (on mainnet/devnet helius-rpc.com)",
+      "requiredParams": ["body: transactions[] (array of signatures, max 100 per request)"],
+      "optionalParams": ["query: commitment (finalized|confirmed, default finalized; processed unsupported)"],
+      "responseFields": ["array of EnhancedTransaction: description, type, source, fee, feePayer, signature, slot, timestamp, nativeTransfers[], tokenTransfers[], accountData[], transactionError, instructions[], events (nft, swap, compressed, ...)"],
+      "pagination": "none (batch by signatures)",
+      "freshness": "Parses confirmed/finalized transactions only; near-real-time after confirmation",
+      "creditCost": "100 credits per parsing operation (billing docs)",
+      "source": "https://www.helius.dev/docs/api-reference/enhanced-transactions/gettransactions.md"
+    },
+    {
+      "name": "Get Parsed Transactions By Address (Enhanced Transactions)",
+      "httpMethod": "GET",
+      "path": "/v0/addresses/{address}/transactions (on mainnet/devnet helius-rpc.com)",
+      "requiredParams": ["address (path)", "api-key (query)"],
+      "optionalParams": ["before-signature", "after-signature", "commitment (finalized|confirmed)", "token-accounts (none|balanceChanged|all, default none)", "sort-order (asc|desc, default desc)", "gt-slot/gte-slot/lt-slot/lte-slot", "gt-time/gte-time/lt-time/lte-time", "source (e.g. MAGIC_EDEN, JUPITER, RAYDIUM)", "type (e.g. SWAP, NFT_SALE, TRANSFER)", "limit (1-100)"],
+      "responseFields": ["array of EnhancedTransaction objects (same shape as Parse Transactions)"],
+      "pagination": "Signature-cursor pagination via before-signature / after-signature",
+      "freshness": "confirmed/finalized only; processed unsupported",
+      "creditCost": "100 credits per parsing operation (billing docs); API flagged legacy — docs recommend getTransactionsForAddress for new projects",
+      "source": "https://www.helius.dev/docs/api-reference/enhanced-transactions/gettransactionsbyaddress.md"
+    },
+    {
+      "name": "getPriorityFeeEstimate (Priority Fee API)",
+      "httpMethod": "POST",
+      "path": "/ (JSON-RPC method getPriorityFeeEstimate)",
+      "requiredParams": ["transaction (base58/base64 serialized tx) OR accountKeys[] — at least one"],
+      "optionalParams": ["options.transactionEncoding (Base58|Base64)", "options.priorityLevel (Min|Low|Medium|High|VeryHigh|UnsafeMax)", "options.includeAllPriorityFeeLevels", "options.lookbackSlots (1-150)", "options.includeVote", "options.recommended", "options.evaluateEmptySlotAsZero"],
+      "responseFields": ["result.priorityFeeEstimate (microlamports) OR result.priorityFeeLevels (min, low, medium, high, veryHigh, unsafeMax)"],
+      "pagination": "none",
+      "freshness": "Real-time, based on recent blockchain activity over the configured lookback window",
+      "creditCost": "1 credit (billing docs)",
+      "source": "https://www.helius.dev/docs/api-reference/priority-fee/getpriorityfeeestimate.md"
+    },
+    {
+      "name": "Create Webhook (Webhooks API; CRUD also documented: GET list, GET by id, PUT update, PATCH toggle, DELETE)",
+      "httpMethod": "POST",
+      "path": "/v0/webhooks (on mainnet.helius-rpc.com; api-key query param)",
+      "requiredParams": ["webhookURL", "webhookType (enhanced|raw|discord|enhancedDevnet|rawDevnet|discordDevnet)"],
+      "optionalParams": ["transactionTypes[] (omit for all)", "accountAddresses[] (max 100,000 per webhook)", "authHeader", "encoding", "txnStatus"],
+      "responseFields": ["webhookID", "wallet", "webhookURL", "transactionTypes", "accountAddresses", "webhookType", "authHeader", "active"],
+      "pagination": "n/a",
+      "freshness": "Push-based real-time event delivery (HTTP POST on matching Solana events)",
+      "creditCost": "1 credit per delivered event; 100 credits per management operation (billing docs); 5-50 max webhooks per account depending on plan",
+      "source": "https://www.helius.dev/docs/api-reference/webhooks/create-webhook.md"
+    },
+    {
+      "name": "Get Wallet Balances (Wallet API — Beta)",
+      "httpMethod": "GET",
+      "path": "https://api.helius.xyz/v1/wallet/{address}/balances",
+      "requiredParams": ["address (path, base58)", "api-key query param or X-Api-Key header"],
+      "optionalParams": ["page (default 1)", "limit (1-100, default 100)", "showZeroBalance (default false)", "showNative (default true)", "showNfts (default false; first page only, max 100)"],
+      "responseFields": ["balances[] (mint, symbol, name, balance, decimals, pricePerToken, usdValue, logoUri, tokenProgram)", "nfts[]", "totalUsdValue (current page only)", "pagination (page, limit, hasMore)"],
+      "pagination": "page/limit with pagination.hasMore",
+      "freshness": "Balances current; USD prices 'sourced from DAS and update hourly, covering the top 10,000 tokens by market cap' — 'estimates, not real-time market rates'",
+      "creditCost": "100 credits per request; Beta — 'Endpoints and response formats may change'",
+      "source": "https://www.helius.dev/docs/wallet-api/balances.md"
+    },
+    {
+      "name": "Get Wallet Transaction History (Wallet API — Beta)",
+      "httpMethod": "GET",
+      "path": "https://api.helius.xyz/v1/wallet/{address}/history",
+      "requiredParams": ["address (path)", "api-key"],
+      "optionalParams": ["limit (1-100, default 100)", "before (cursor = pagination.nextCursor)", "after", "type (SWAP|TRANSFER|NFT_SALE|...)", "tokenAccounts (none|balanceChanged|all, default balanceChanged)"],
+      "responseFields": ["data[] (signature, timestamp, slot, fee, feePayer, error, balanceChanges[] {mint, amount, decimals})", "pagination.hasMore", "pagination.nextCursor"],
+      "pagination": "Cursor-based via pagination.nextCursor + before",
+      "freshness": "Near-real-time (timestamp may be null for very recent transactions)",
+      "creditCost": "100 credits per request; Beta; token-account coverage documented as limited before slot 111,491,819",
+      "source": "https://www.helius.dev/docs/wallet-api/history.md"
+    },
+    {
+      "name": "Get Wallet Identity (Wallet API — Beta; plus batch-identity, balance-at, transfers, funded-by endpoints)",
+      "httpMethod": "GET",
+      "path": "https://api.helius.xyz/v1/wallet/{wallet}/identity (batch: POST /v1/wallet/batch-identity, up to 100 addresses/domains)",
+      "requiredParams": ["wallet (address or .sol/ANS domain)"],
+      "optionalParams": ["per endpoint; batch accepts up to 100 entries"],
+      "responseFields": ["identity tags — docs cite database of 32,500+ tagged accounts and 3,000+ programs (exchanges, protocols, institutions)"],
+      "pagination": "n/a for single lookups",
+      "freshness": "not documented",
+      "creditCost": "100 credits per request; Beta",
+      "source": "https://www.helius.dev/docs/api-reference/wallet-api/llms.txt"
+    }
+  ],
+  "coverage": {
+    "assetClasses": ["Crypto only: Solana native SOL, SPL fungible tokens, Token-2022 assets, NFTs (Metaplex), compressed NFTs (cNFTs), ZK-compressed accounts"],
+    "chains": ["Solana mainnet", "Solana devnet (testnet explicitly unsupported for getTransactionsForAddress; FAQ mentions only mainnet+devnet)"],
+    "marketsExchanges": "Not a market-data provider. Enhanced Transactions parses on-chain activity from 70+ Solana programs (Jupiter, Raydium, Orca, Magic Eden, Tensor, Metaplex, Solend, Squads, etc.); parsing coverage varies by protocol.",
+    "instrumentTypes": ["on-chain transactions", "token transfers", "token/NFT holdings and metadata", "program accounts", "priority fees", "wallet identity/funding provenance"],
+    "geographies": "Global service; LaserStream gRPC has 9 documented mainnet regions (US x4, Europe x3, Asia x2). ToS bars use by OFAC-sanctioned parties/regions.",
+    "notCovered": ["equities", "fixed income", "FX", "commodities", "derivatives", "any non-Solana blockchain", "order-book market data", "real-time token price feeds (prices provided are hourly estimates)"]
+  },
+  "freshness": {
+    "solanaRpc": "Real-time node access with standard Solana commitment levels (processed/confirmed/finalized).",
+    "dasApi": "Near-real-time indexed data; responses include last_indexed_slot ('all data up to and including this slot is guaranteed to have been indexed'). Embedded token price data cached ~600 seconds.",
+    "enhancedTransactions": "Post-confirmation parsing; commitment finalized (default) or confirmed only — processed unsupported.",
+    "walletApi": "Balances near-real-time; USD prices update hourly and cover only top 10,000 tokens by market cap; documented as estimates, not real-time market rates.",
+    "laserStream": "Real-time gRPC/WebSocket streaming (accounts, transactions, blocks, slots) with configurable commitment; 24-hour historical replay (216,000 slots).",
+    "webhooks": "Push-based delivery on event occurrence."
+  },
+  "historicalDepth": {
+    "getTransactionsForAddress": "Mainnet: documented retention 'Unlimited' (full history); devnet: 2 weeks; testnet: unsupported. Token-account discovery before slot 111,491,819 requires documented workarounds (ownership metadata absent in earlier blocks); certain system-program addresses fall back to legacy archival/slot-scan with limited indexing.",
+    "walletApiHistory": "Token-account-related coverage documented as limited before slot 111,491,819 ('transactions involving token accounts active before this slot may be missing').",
+    "standardRpc": "'Full Solana history through standard RPC, enhanced methods, and indexing guidance' per Getting Data guide; explicit archival retention windows not documented per method.",
+    "laserStreamReplay": "24 hours / 216,000 slots replay only."
+  },
+  "pagination": {
+    "dasApi": "Page-based (page starting at 1, limit up to 1000) and cursor-based (before/after; getTokenAccounts also has cursor field).",
+    "heliusRpcExtensions": "Opaque paginationToken cursors (getTransactionsForAddress 'slot:position' format, limit up to 1000; getTransfersByAddress limit 1-100). getProgramAccountsV2 cursor supports 1-10,000 per request plus changedSinceSlot incremental sync.",
+    "enhancedTransactions": "Signature cursors: before-signature / after-signature, limit 1-100.",
+    "walletApi": "balances: page/limit + pagination.hasMore; history/transfers: cursor via pagination.nextCursor + before/after."
+  },
+  "rateLimits": {
+    "byPlan": {
+      "Free": { "price": "$0/mo", "credits": "1M/mo", "rpc": "10 req/s", "dasAndEnhanced": "2 req/s", "sendTransaction": "1/s", "walletApi": "2/s", "zkCompression": "2/s" },
+      "Developer": { "price": "$49/mo", "credits": "10M/mo", "rpc": "50 req/s", "dasAndEnhanced": "10 req/s", "sendTransaction": "5/s" },
+      "Business": { "price": "$499/mo", "credits": "100M/mo", "rpc": "200 req/s", "dasAndEnhanced": "50 req/s", "sendTransaction": "50/s", "sendBundle": "5/s" },
+      "Professional": { "price": "$999/mo", "credits": "200M/mo", "rpc": "500 req/s (+100 RPS purchasable for $100/mo)", "dasAndEnhanced": "100 req/s", "sendTransaction": "100/s", "walletApi": "100/s", "zkCompression": "100/s", "getProgramAccounts": "75/s", "simulateBundle": "500/s" },
+      "Enterprise": "Custom rate limits, volume discounts, SLA guarantees"
+    },
+    "specialLimits": {
+      "sender": "50/s across all tiers (0 credits)",
+      "getProgramAccounts": "5/s (Free) to 75/s (Professional)",
+      "getValidityProof": "1/s to 20/s",
+      "laserStreamWsConnections": "5 (Free) to 1,000 (Professional) concurrent; 1,000 subscriptions per connection all tiers",
+      "webhooks": "5-50 max webhooks per account; 100,000 addresses per webhook",
+      "batchLimits": "getTransaction: 100 items/request; getTransactionsForAddress & getTransfersByAddress: no batch requests; other historical methods: 10 items/request"
+    },
+    "creditCosts": {
+      "standardRpc": "1 credit (getProgramAccounts legacy: 10; getProgramAccountsV2: 1)",
+      "historicalRpc10Credits": "getBlock, getBlocks, getBlocksWithLimit, getBlockTime, getInflationReward, getProgramAccounts, getSignaturesForAddress, getTransaction, getTransfersByAddress",
+      "das": "10 credits/request",
+      "enhancedTransactions": "100 credits per parsing operation",
+      "walletApi": "100 credits/request",
+      "streaming": "2 credits per 0.1 MB uncompressed (LaserStream gRPC/WebSocket)",
+      "webhookEvents": "1 credit/event; 100 credits/management operation",
+      "zkCompression": "10 credits/call; getValidityProofs 100 credits",
+      "preConfirmations": "10 credits/message",
+      "additionalCredits": "$5 per million via autoscaling"
+    },
+    "onExceed": "HTTP 429. On credit exhaustion without autoscaling: '429 max usage reached'. Unused credits do not roll over.",
+    "backoffGuidance": "Documented exponential backoff: wait ~1s before first retry, double each retry up to 30s max, add ±25% jitter, abandon after 5 attempts. Retryable: 408, 429, 500, 502, 503, 504, network errors. Non-retryable: 400, 401, 403, 404, 409, 422.",
+    "source": "https://www.helius.dev/docs/billing/rate-limits.md, https://www.helius.dev/docs/billing/credits.md, https://www.helius.dev/docs/billing/plans.md"
+  },
+  "errors": {
+    "documentedStatusCodes": {
+      "401": "Authentication failure — check api-key query parameter",
+      "429": "Rate limit exceeded or 'max usage reached' (credits exhausted) — upgrade plan, throttle, or enable autoscaling",
+      "500": "Server error — check status page (helius.statuspage.io), contact support if persistent",
+      "503": "Service unavailable — retry after brief delay",
+      "504": "Gateway timeout — reduce request scope, use pagination, optimize query params"
+    },
+    "errorSchema": "Not formally documented in the error-codes FAQ; RPC/DAS methods follow JSON-RPC 2.0 request/response conventions (jsonrpc/id/result observed in reference pages) but a canonical error payload schema is not published.",
+    "source": "https://www.helius.dev/docs/faqs/error-codes.md, https://www.helius.dev/docs/billing/rate-limits.md"
+  },
+  "entitlements": {
+    "allPlansIncludingFree": ["Solana RPC (mainnet+devnet)", "DAS API", "Enhanced Transactions", "Priority Fee API", "Webhooks", "Wallet API", "LaserStream WebSocket standard methods", "ZK Compression"],
+    "developerPlus": ["getTransfersByAddress (Developer plan or higher)", "LaserStream WSS Helius extensions", "LaserStream gRPC (devnet only at Developer)"],
+    "businessPlus": ["LaserStream gRPC mainnet (Business & Professional; 10 connections at Business, 100 at Professional)", "sendBundle (Business & Professional only)"],
+    "professionalOnly": ["Pre-Confirmations (10 credits/msg)", "Data add-ons (5 TB $400/mo to 100 TB $6,000/mo, overage 2 credits per 0.1 MB)", "additional +100 RPS purchase"],
+    "enterprise": ["custom rate limits", "volume discounts", "SLA guarantees", "direct engineering support"],
+    "support": "Community (Free), Chat (Developer), Priority Chat (Business), Slack/Telegram (Professional)",
+    "source": "https://www.helius.dev/docs/billing/plans.md"
+  },
+  "sdks": [
+    { "language": "TypeScript/Node.js", "package": "helius-sdk", "repo": "https://github.com/helius-labs/helius-sdk", "status": "Officially maintained by Helius; v2.0.0 rewrite onto @solana/kit", "covers": "RPC, DAS, Enhanced Transactions, asset/ownership queries" },
+    { "language": "Rust", "package": "helius", "repo": "https://github.com/helius-labs/helius-rust-sdk", "status": "Officially maintained by Helius (docs.rs/helius)", "covers": "RPC, DAS, Enhanced Transactions" },
+    { "language": "Kotlin / PHP / Python / Rust (sync & async variants)", "package": "various community packages", "repo": "listed in SDK docs", "status": "Community-maintained; docs state 'not officially maintained by our team — only the Node.js and Rust SDKs are'", "covers": "varies" }
+  ],
+  "licensing": {
+    "storageCaching": "Not explicitly addressed. ToS defines 'Included Responses' (HTTP/WebSocket node responses with 200 status) but publishes no explicit license terms governing storage or caching of retrieved data. Record as not documented.",
+    "redistribution": "ToS Section 7(v) prohibits: 'sublicense, lease, sell, resell, rent, loan, distribute, transfer or otherwise allow the use of Helius Products ... for the benefit of third party.' Reselling/redistributing the service (and arguably its outputs as a service) is prohibited; redistribution rights for underlying public blockchain data are not separately addressed.",
+    "attribution": "No attribution or display requirements documented.",
+    "dataAccuracy": "ToS Section 12 disclaims: 'Helius disclaims any knowledge of, and does not guarantee: (a) the accuracy, reliability, or correctness of any data provided through helius.dev.' Services are 'as is' / 'as available'.",
+    "sla": "No uptime commitment in standard ToS; SLA guarantees only via Enterprise plans. Termination: 'we reserve the right to terminate your account at any time and for any reason.'",
+    "sanctions": "Use prohibited for OFAC-embargoed/blocked countries, organizations, persons.",
+    "source": "https://www.helius.dev/terms"
+  },
+  "limitations": [
+    "Solana-only: no other chains, no traditional asset classes; unusable for multi-asset coverage beyond the Solana segment.",
+    "Not a market-data provider: token USD prices (Wallet API / DAS nativeBalance) update hourly, cover only the top 10,000 tokens by market cap, and are documented as 'estimates, not real-time market rates'; DAS getAsset price data has a 600-second cache. Must never be presented as real-time or execution-quality pricing.",
+    "Wallet API is in Beta: 'Endpoints and response formats may change' — schema stability risk for production pipelines.",
+    "Enhanced Transactions API is flagged as legacy in the Getting Data guide (getTransactionsForAddress recommended for new projects); parsing coverage varies by protocol and detailed decoding depends on Anchor IDL availability across the ~70+ supported programs.",
+    "Token-account-level history before slot 111,491,819 has documented gaps/workarounds (ownership metadata absent in early blocks) affecting getTransactionsForAddress token filters and Wallet API history completeness.",
+    "Enhanced/parsed endpoints do not support 'processed' commitment; lowest latency is 'confirmed'.",
+    "Incoming SPL transfers can be missed on address-history queries unless token-accounts / filters.tokenAccounts is set to balanceChanged or all (ATA vs wallet pubkey caveat).",
+    "Devnet retention for getTransactionsForAddress is only 2 weeks; testnet unsupported.",
+    "Credits do not roll over; exhaustion without autoscaling returns '429 max usage reached', halting data flows mid-cycle.",
+    "No SLA on self-serve plans; ToS allows termination at any time and disclaims data accuracy — institutional dependence requires an Enterprise contract for SLA and support guarantees.",
+    "LaserStream historical replay is limited to 24 hours (216,000 slots) — not a backfill mechanism.",
+    "No formal published versioning/deprecation policy; error response schema not formally documented.",
+    "DAS indexing lag must be handled via last_indexed_slot; no hard freshness SLO documented."
+  ],
+  "institutionalFit": {
+    "primaryFor": [
+      "Solana on-chain holdings and portfolio composition (DAS getAssetsByOwner/searchAssets/getTokenAccounts; Wallet API balances)",
+      "Full-history Solana transaction and transfer research/backfill (getTransactionsForAddress with unlimited mainnet retention, getTransfersByAddress reconciled transfers)",
+      "Counterparty/entity analysis on Solana (Wallet API identity with 32,500+ tagged accounts, funded-by provenance)",
+      "Real-time Solana event monitoring and alerting (webhooks; LaserStream gRPC/WSS on Business+ plans)",
+      "NFT/cNFT and Token-2022 metadata and ownership (DAS is the reference implementation for the Digital Asset Standard)",
+      "Solana transaction cost analytics (Priority Fee API)"
+    ],
+    "fallbackFor": [
+      "Human-readable transaction classification (Enhanced Transactions — legacy-flagged, parsing coverage varies; prefer getTransactionsForAddress + in-house enrichment)",
+      "Indicative USD valuations of Solana tokens (hourly, top-10k only — acceptable only as a fallback/estimate layer behind a dedicated market-data provider)"
+    ],
+    "notSuitableFor": [
+      "Real-time or historical market pricing/quotes (any asset class)",
+      "Any non-Solana chain or traditional securities data",
+      "Redistribution/resale of the service to third parties (ToS-prohibited)"
+    ],
+    "hardConstraints": [
+      "Hourly price estimates must never be presented as real-time market data; label as indicative with timestamp.",
+      "Wallet API beta schemas require contract tests and change monitoring before production use.",
+      "Pre-slot-111,491,819 token-account gaps must be disclosed in any completeness-sensitive research output.",
+      "Institutional deployment should be on Business/Professional minimum (rate limits, LaserStream mainnet) and Enterprise for SLA; budget credits: DAS=10, Enhanced=100, Wallet=100 per call.",
+      "Respect documented backoff (1s doubling to 30s, ±25% jitter, 5 attempts) and non-retryable code handling in all adapters."
+    ]
+  },
+  "sourcesConsulted": [
+    { "url": "https://www.helius.dev/docs/llms.txt", "whatItVerified": "Official docs root/index; complete map of documentation sections, SDK repos, status page, billing and API-reference URLs" },
+    { "url": "https://www.helius.dev/docs/api-reference", "whatItVerified": "API categories (RPC HTTP/WebSocket, DAS, Priority Fee, Enhanced Transactions, ZK Compression, LaserStream, Webhooks) and reference navigation" },
+    { "url": "https://www.helius.dev/docs/api-reference/authentication.md", "whatItVerified": "api-key query-parameter authentication mechanism and security guidance" },
+    { "url": "https://www.helius.dev/docs/api-reference/endpoints.md", "whatItVerified": "Base URLs: mainnet/devnet/beta helius-rpc.com HTTP + WSS, secure per-account endpoints, deprecated staked host" },
+    { "url": "https://www.helius.dev/docs/billing/llms.txt", "whatItVerified": "Billing docs index; plan tiers, credit allocations, headline rate limits" },
+    { "url": "https://www.helius.dev/docs/billing/plans.md", "whatItVerified": "Plan pricing ($0/$49/$499/$999), credits, per-plan feature gating (LaserStream gRPC, Pre-Confirmations, data add-ons), support levels, Enterprise SLA" },
+    { "url": "https://www.helius.dev/docs/billing/rate-limits.md", "whatItVerified": "Per-plan RPC and DAS/Enhanced rate limits, special method limits, batch limits, 429 behavior, exponential backoff guidance, retryable vs non-retryable codes" },
+    { "url": "https://www.helius.dev/docs/billing/credits.md", "whatItVerified": "Credit costs per API family (RPC 1, DAS 10, Enhanced 100, Wallet 100, streaming 2/0.1MB, webhooks 1/event, ZK 10/100)" },
+    { "url": "https://www.helius.dev/docs/faqs/error-codes.md", "whatItVerified": "Documented status codes 401/429/500/503/504 and remediation guidance; absence of formal error schema" },
+    { "url": "https://www.helius.dev/docs/faqs.md", "whatItVerified": "Solana-only network support, credits do not roll over, '429 max usage reached' on exhaustion, autoscaling/prepaid credits" },
+    { "url": "https://www.helius.dev/docs/api-reference/das/llms.txt", "whatItVerified": "Complete DAS method list (12 methods), JSON-RPC 2.0 transport, 10-credit cost, getAssetBatch 1,000-asset cap" },
+    { "url": "https://www.helius.dev/docs/api-reference/das/getasset.md", "whatItVerified": "getAsset params, options, response fields, 600-second price cache caveat" },
+    { "url": "https://www.helius.dev/docs/api-reference/das/searchassets.md", "whatItVerified": "searchAssets filters, tokenType values, hybrid pagination, response shape incl. nativeBalance" },
+    { "url": "https://www.helius.dev/docs/api-reference/das/getassetsbyowner.md", "whatItVerified": "getAssetsByOwner params, 1000/page max, display options, last_indexed_slot semantics" },
+    { "url": "https://www.helius.dev/docs/api-reference/das/gettokenaccounts.md", "whatItVerified": "getTokenAccounts params, cursor pagination, token_accounts response fields" },
+    { "url": "https://www.helius.dev/docs/api-reference/rpc/http/llms.txt", "whatItVerified": "Full standard RPC method list with credit tiers; Helius-exclusive extensions (getTransactionsForAddress, getTransfersByAddress, getProgramAccountsV2, getTokenAccountsByOwnerV2); re-verified 2026-07-17: getHealth listed at 1 credit; getTransactionsForAddress and getTransfersByAddress both flagged Developer plan+" },
+    { "url": "https://www.helius.dev/docs/das/fungible-token-extension.md", "whatItVerified": "Verified 2026-07-17 for adapter build: token_info subfields for owner-scoped fungible queries (symbol, balance, supply, decimals, token_program, associated_token_address) and price_info subfields (price_per_token, total_price, currency) with worked JitoSOL example; supported on getAssetsByOwner and searchAssets" },
+    { "url": "https://www.helius.dev/docs/rpc/gettransactionsforaddress.md", "whatItVerified": "getTransactionsForAddress full spec: params/filters, paginationToken, credit metering, unlimited mainnet retention, devnet 2 weeks, slot 111,491,819 caveat" },
+    { "url": "https://www.helius.dev/docs/rpc/gettransfersbyaddress.md", "whatItVerified": "getTransfersByAddress spec: config params, response fields, 10 credits, Developer+ requirement; re-verified 2026-07-17: params is positional [address, config]; amount and uiAmount are strings (raw base units / decimals-adjusted); solMode merged rewrites native SOL + WSOL mint to So11111111111111111111111111111111111111111; token-account fields omitted for native SOL rows" },
+    { "url": "https://www.helius.dev/docs/api-reference/enhanced-transactions/llms.txt", "whatItVerified": "Enhanced Transactions endpoint inventory: POST /v0/transactions, GET /v0/addresses/{address}/transactions" },
+    { "url": "https://www.helius.dev/docs/api-reference/enhanced-transactions/overview.md", "whatItVerified": "EnhancedTransaction response fields and endpoint purposes" },
+    { "url": "https://www.helius.dev/docs/api-reference/enhanced-transactions/gettransactions.md", "whatItVerified": "Parse Transactions: 100-signature batch max, commitment restrictions, 70+ parsed programs, response schema" },
+    { "url": "https://www.helius.dev/docs/api-reference/enhanced-transactions/gettransactionsbyaddress.md", "whatItVerified": "By-address endpoint: query params, signature-cursor pagination, ATA caveat" },
+    { "url": "https://www.helius.dev/docs/api-reference/priority-fee/getpriorityfeeestimate.md", "whatItVerified": "getPriorityFeeEstimate params (priorityLevel, lookbackSlots 1-150), response fields" },
+    { "url": "https://www.helius.dev/docs/api-reference/webhooks/llms.txt", "whatItVerified": "Webhooks CRUD endpoints (POST/GET/PUT/PATCH/DELETE /v0/webhooks)" },
+    { "url": "https://www.helius.dev/docs/api-reference/webhooks/create-webhook.md", "whatItVerified": "Create Webhook body params, webhookType values, 100k address limit, response fields" },
+    { "url": "https://www.helius.dev/docs/api-reference/wallet-api/llms.txt", "whatItVerified": "Wallet API endpoint inventory, api.helius.xyz base URL, X-Api-Key header option, 100-credit cost, identity database size, Beta status" },
+    { "url": "https://www.helius.dev/docs/wallet-api/balances.md", "whatItVerified": "Balances endpoint params/response, hourly top-10k USD pricing, 'estimates not real-time' language" },
+    { "url": "https://www.helius.dev/docs/wallet-api/history.md", "whatItVerified": "History endpoint cursor pagination, response schema, slot 111,491,819 coverage note, 100 credits" },
+    { "url": "https://www.helius.dev/docs/api-reference/laserstream/grpc/llms.txt", "whatItVerified": "LaserStream 9 regional mainnet hostnames, 24h/216,000-slot replay, plan gating, 2 credits per 0.1MB" },
+    { "url": "https://www.helius.dev/docs/getting-data.md", "whatItVerified": "Data-access decision guidance, 'full Solana history' claim, Enhanced Transactions flagged legacy" },
+    { "url": "https://www.helius.dev/docs/sdks.md", "whatItVerified": "Official SDKs (Node.js helius-sdk, Rust helius) vs community SDKs (not officially maintained)" },
+    { "url": "https://www.helius.dev/terms", "whatItVerified": "ToS: no-resale/sublicense clause 7(v), Included Responses definition, accuracy disclaimer (Section 12), no SLA, termination-at-will, OFAC sanctions restrictions" }
+  ],
+  "confidence": "high",
+  "openQuestions": [
+    "Exact archival retention windows for standard RPC historical methods (getBlock/getTransaction/getSignaturesForAddress) are not documented per method — 'full Solana history' is claimed only in the Getting Data guide.",
+    "No published license terms explicitly govern storage, caching, or downstream display of API response data ('Included Responses' is defined but its usage rights are not) — Enterprise agreement should clarify before redistributing derived datasets.",
+    "Canonical machine-readable error response schema (JSON-RPC error object fields, REST error bodies) is not formally documented.",
+    "Formal deprecation/versioning policy and advance-notice commitments are not published; Enhanced Transactions is flagged legacy without a sunset date.",
+    "Webhook delivery guarantees (retry semantics, ordering, at-least-once vs best-effort) are not covered in the pages reviewed.",
+    "Credit cost of getPriorityFeeEstimate and per-DAS-method exceptions are stated only at category level (Priority Fee 1 credit, DAS 10 credits) — per-endpoint pages omit costs.",
+    "Whether Wallet API rate limits and Beta status carry contractual protections at Enterprise tier is not documented publicly."
+  ]
+}

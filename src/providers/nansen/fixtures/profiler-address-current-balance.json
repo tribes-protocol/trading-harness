@@ -1,0 +1,33 @@
+{
+  "_fixture": {
+    "note": "constructed from official docs field definitions (see docs/research/providers/nansen.json), not captured live data",
+    "docsUrl": "https://docs.nansen.ai/api/profiler/address-current-balances"
+  },
+  "data": [
+    {
+      "chain": "ethereum",
+      "address": "0x1111111111111111111111111111111111111111",
+      "token_address": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+      "token_symbol": "USDC",
+      "token_name": "USD Coin",
+      "token_amount": 1523.75,
+      "price_usd": 1.0,
+      "value_usd": 1523.75
+    },
+    {
+      "chain": "ethereum",
+      "address": "0x1111111111111111111111111111111111111111",
+      "token_address": "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2",
+      "token_symbol": "WETH",
+      "token_name": "Wrapped Ether",
+      "token_amount": 12.5,
+      "price_usd": 3050.42,
+      "value_usd": 38130.25
+    }
+  ],
+  "pagination": {
+    "page": 1,
+    "per_page": 1000,
+    "is_last_page": true
+  }
+}

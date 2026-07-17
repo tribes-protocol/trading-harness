@@ -1,0 +1,9 @@
+{
+  "_fixture": {
+    "note": "constructed from official docs field definitions (see docs/research/providers/alchemy.json), not captured live data",
+    "docsUrl": "https://www.alchemy.com/docs/reference/compute-units"
+  },
+  "jsonrpc": "2.0",
+  "id": 1,
+  "result": "0x12f5a1c"
+}

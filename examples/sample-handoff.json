@@ -1,0 +1,49 @@
+{
+  "id": "handoff-example-0001",
+  "fromDepartment": "global-macro",
+  "toDepartment": "portfolio-management",
+  "at": "2026-07-17T08:00:00.000Z",
+  "subject": "EXAMPLE — disinflation trend intact; duration stance input",
+  "dataSources": [
+    "fred:/fred/series/observations (CPIAUCSL, latest vintage)",
+    "fred:/fred/series/observations (DGS10)",
+    "artifacts/notes/2026-07-17-cpi-note.json"
+  ],
+  "analyticalMethods": [
+    "YoY transformation of CPIAUCSL (calculated, method in note)",
+    "10y nominal vs breakeven decomposition"
+  ],
+  "findings": [
+    {
+      "statement": "Headline CPI YoY declined for the third consecutive month per latest-vintage FRED data (as of the most recent monthly print).",
+      "evidenceType": "calculated",
+      "support": ["fred:CPIAUCSL"],
+      "confidence": "high"
+    },
+    {
+      "statement": "The disinflation trend supports a modestly longer duration stance over a 3-month horizon.",
+      "evidenceType": "analyst_judgment",
+      "support": ["artifacts/notes/2026-07-17-cpi-note.json"],
+      "confidence": "medium"
+    }
+  ],
+  "confidence": "medium",
+  "assumptions": ["No energy-price shock over the horizon", "Latest vintage approximates final revisions"],
+  "limitations": [
+    "FRED data is EOD/monthly and revised; point-in-time vintages not used in this example",
+    "This is a synthetic EXAMPLE artifact demonstrating the schema — not real analysis"
+  ],
+  "unresolvedQuestions": ["Shelter component stickiness vs private rent indices"],
+  "recommendedNextAction": "PM to review duration stance vs current limit headroom; risk view requested before any sizing.",
+  "artifacts": ["artifacts/notes/2026-07-17-cpi-note.json"],
+  "dissents": [
+    {
+      "by": "fi-credit-analyst",
+      "department": "fixed-income-credit",
+      "position": "Disinflation is priced; duration add is late.",
+      "rationale": "Forward curve already implies the cutting cycle; risk/reward at current levels is asymmetric.",
+      "at": "2026-07-17T07:45:00.000Z"
+    }
+  ],
+  "schemaVersion": "1.0.0"
+}

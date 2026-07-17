@@ -1,0 +1,537 @@
+{
+  "provider": "Birdeye (Birdeye Data Services / BDS)",
+  "reviewDate": "2026-07-17",
+  "officialDocsUrl": "https://docs.birdeye.so/",
+  "apiVersion": "Docs site labeled v1.0; REST paths carry mixed per-endpoint versions (/defi/* unversioned legacy, /defi/v2/*, /defi/v3/*, /wallet/v2/*, /v1/wallet/*). No formal versioning or deprecation policy page documented; changelog (updated every ~3-7 days) shows additive releases rather than breaking changes.",
+  "authentication": {
+    "mechanism": "API key in request header",
+    "restHeader": "X-API-KEY",
+    "chainSelectionHeader": "x-chain (optional header on most endpoints; default 'solana'; enum per endpoint, superset observed: solana, ethereum, arbitrum, avalanche, bsc, optimism, polygon, base, zksync, monad, hyperevm, aptos, fogo, mantle, megaeth, robinhood, sui)",
+    "websocketAuth": "API key as query parameter x-api-key on the wss URL, plus required header 'Sec-WebSocket-Protocol: echo-protocol'",
+    "keyProvisioning": "Sign up at https://bds.birdeye.so/auth/sign-up, then generate key in BDS Dashboard > Security tab",
+    "oauth": "not documented"
+  },
+  "baseUrls": [
+    {
+      "url": "https://public-api.birdeye.so",
+      "purpose": "REST API (all plans; no plan-specific hosts documented)"
+    },
+    {
+      "url": "wss://public-api.birdeye.so/socket/{chain}?x-api-key=YOUR-API-KEY",
+      "purpose": "WebSocket subscriptions (chain in path, e.g. /socket/solana)"
+    },
+    {
+      "url": "https://mcp.birdeye.so/mcp",
+      "purpose": "Official Birdeye MCP Server (Beta) for AI agents; authenticated with x-api-key header"
+    }
+  ],
+  "endpoints": [
+    {
+      "name": "Price (single)",
+      "method": "GET",
+      "path": "/defi/price",
+      "requiredParams": ["address"],
+      "optionalParams": ["check_liquidity", "include_liquidity", "ui_amount_mode (raw|scaled|both, Solana only)", "x-chain header"],
+      "topLevelResponseFields": ["success", "data.value", "data.updateUnixTime", "data.updateHumanTime", "data.priceChange24h", "data.priceInNative?", "data.liquidity?", "data.isScaledUiToken?", "data.scaledValue?", "data.multiplier?"],
+      "pagination": "none",
+      "freshness": "real-time per vendor claim; response carries updateUnixTime of last price update; no quantified latency SLA documented",
+      "cuCost": 3,
+      "plans": "all tiers incl. free Standard"
+    },
+    {
+      "name": "Price - Multiple",
+      "method": "GET",
+      "path": "/defi/multi_price",
+      "requiredParams": ["list_address (comma-separated, max 100 tokens per request)"],
+      "optionalParams": ["check_liquidity", "include_liquidity", "ui_amount_mode", "x-chain header"],
+      "topLevelResponseFields": ["success", "data (map keyed by token address -> same price object as /defi/price)"],
+      "pagination": "none (batch of up to 100)",
+      "freshness": "real-time per vendor claim; updateUnixTime per token",
+      "cuCost": "batch CU model (see batch-token-cu-cost doc)",
+      "plans": "Lite, Starter, Premium, Business, Enterprise (not free Standard)"
+    },
+    {
+      "name": "OHLCV V3",
+      "method": "GET",
+      "path": "/defi/v3/ohlcv",
+      "requiredParams": ["address", "type (1s|15s|30s|1m|3m|5m|15m|30m|1H|2H|4H|6H|8H|12H|1D|3D|1W|1M)", "time_from (unix s)", "time_to (unix s)"],
+      "optionalParams": ["currency (usd|native)", "ui_amount_mode", "mode (range|count)", "count_limit (0-5000, default 5000)", "padding", "outlier", "x-chain header (subset: solana, bsc, base, ethereum, monad, fogo, mantle, hyperevm, megaeth, robinhood)"],
+      "topLevelResponseFields": ["success", "data.is_scaled_ui_token", "data.multiplier?", "data.items[] (o, h, l, c, v, v_usd, unix_time, address, type, currency)"],
+      "pagination": "none; max 5000 candles per request (use time windows to page)",
+      "freshness": "near-real-time (1-second candles offered); retention limits: 1s candles up to 2 weeks, 15s/30s up to 3 months; minute+ retention not documented",
+      "cuCost": "dynamic: <1000 candles = 60 CU; 1000-2000 = 90 CU; 2000-5000 = 120 CU",
+      "plans": "all tiers incl. free Standard"
+    },
+    {
+      "name": "Price - Historical (time series)",
+      "method": "GET",
+      "path": "/defi/history_price",
+      "requiredParams": ["address", "address_type (token|pair)", "type (1m..1M intervals)", "time_from", "time_to"],
+      "optionalParams": ["ui_amount_mode", "x-chain header"],
+      "topLevelResponseFields": ["success", "data.isScaledUiToken", "data.multiplier?", "data.items[] (unixTime, value, scaledValue?)"],
+      "pagination": "none documented; window via time_from/time_to",
+      "freshness": "historical series; max lookback not documented",
+      "cuCost": 45,
+      "plans": "all tiers incl. free Standard"
+    },
+    {
+      "name": "Price - Historical by unix time (point-in-time)",
+      "method": "GET",
+      "path": "/defi/historical_price_unix",
+      "requiredParams": ["address"],
+      "optionalParams": ["unixtime", "ui_amount_mode", "x-chain header"],
+      "topLevelResponseFields": ["success", "data.value", "data.updateUnixTime", "data.priceChange24h", "data.isScaledUiToken", "data.scaledValue?", "data.multiplier?"],
+      "pagination": "none",
+      "freshness": "point-in-time historical price at a given unix timestamp (documented use: portfolio reconstruction / backtesting)",
+      "cuCost": 6,
+      "plans": "all tiers incl. free Standard"
+    },
+    {
+      "name": "Token - Overview",
+      "method": "GET",
+      "path": "/defi/token_overview",
+      "requiredParams": ["address"],
+      "optionalParams": ["frames (up to 8 custom intervals: 5s-3600s in 5s steps, 1m-1440m, 1h/2h/4h/8h/24h)", "ui_amount_mode", "x-chain header"],
+      "topLevelResponseFields": ["address", "symbol", "name", "decimals", "marketCap", "fdv", "totalSupply", "circulatingSupply", "liquidity", "price", "holder", "priceChange{frame}Percent", "v{frame} / v{frame}USD volumes", "buy/sell splits and trade counts per frame", "uniqueWallet{frame}", "extensions (coingeckoId, socials)", "logoURI", "lastTradeUnixTime"],
+      "pagination": "none",
+      "freshness": "rolling-window stats down to 1m (and second-level frames); real-time per vendor claim",
+      "cuCost": 25,
+      "plans": "all tiers incl. free Standard; on Sui market cap and supply fields are unavailable"
+    },
+    {
+      "name": "Token - Market Data (single)",
+      "method": "GET",
+      "path": "/defi/v3/token/market-data",
+      "requiredParams": ["address"],
+      "optionalParams": ["ui_amount_mode", "x-chain header (all 17 chains incl. sui)"],
+      "topLevelResponseFields": ["success", "data.address", "data.price", "data.liquidity", "data.total_supply", "data.circulating_supply", "data.market_cap", "data.fdv", "data.holder?", "data.is_scaled_ui_token?", "data.multiplier?"],
+      "pagination": "none",
+      "freshness": "current snapshot; real-time per vendor claim",
+      "cuCost": 12,
+      "plans": "all tiers incl. free Standard; 'multiple' variant is Business/Enterprise only"
+    },
+    {
+      "name": "Token - Trade Data (single)",
+      "method": "GET",
+      "path": "/defi/v3/token/trade-data/single",
+      "requiredParams": ["address"],
+      "optionalParams": ["frames (max 8 custom intervals)", "ui_amount_mode", "x-chain header"],
+      "topLevelResponseFields": ["price", "history_{frame}_price", "price_change_{frame}_percent", "volume_{frame}(_usd)", "volume_buy/sell_{frame}(_usd)", "trade_{frame}", "buy_{frame}", "sell_{frame}", "unique_wallet_{frame}"],
+      "pagination": "none",
+      "freshness": "rolling-window trade statistics; real-time per vendor claim",
+      "cuCost": "not individually confirmed (CU table lists Token trade-data family; 'multiple' variant Business+ only)",
+      "plans": "Lite, Starter, Premium, Business, Enterprise (not free Standard)"
+    },
+    {
+      "name": "Token - Security",
+      "method": "GET",
+      "path": "/defi/token_security",
+      "requiredParams": ["address"],
+      "optionalParams": ["x-chain header (all chains except Sui)"],
+      "topLevelResponseFields": ["Solana: creatorAddress, ownerAddress, creationTx, creationTime, creatorBalance, creatorPercentage, top10HolderPercent, totalSupply, freezeAuthority, isToken2022, jupStrictList", "EVM: isHoneypot, isMintable, isProxy, canTakeBackOwnership, buyTax, sellTax, isAntiWhale, holderCount, lpHolders, totalSupply, creatorAddress, ownerAddress"],
+      "pagination": "none",
+      "freshness": "not documented (snapshot security/rug-check attributes)",
+      "cuCost": 40,
+      "plans": "Lite, Starter, Premium, Business, Enterprise (not free Standard); not available on Sui"
+    },
+    {
+      "name": "Token - List (V3)",
+      "method": "GET",
+      "path": "/defi/v3/token/list",
+      "requiredParams": ["sort_by (liquidity|market_cap|fdv|recent_listing_time|last_trade_unix_time|holder|volume/price-change/trade-count metrics|global_fees_paid)", "sort_type (asc|desc)"],
+      "optionalParams": ["min_/max_ filters on liquidity, market_cap, fdv, holder, volume/price-change/trade-count across 1m-30d windows", "min_global_fees_paid", "offset (0-10000)", "limit (1-100, default 100)", "ui_amount_mode", "x-chain header (subset)"],
+      "topLevelResponseFields": ["success", "data.items[]", "data.has_next"],
+      "pagination": "offset/limit with constraint offset + limit <= 10000; has_next flag; deeper scans require /defi/v3/token/list/scroll (Business/Enterprise only, rate-limited to 2 rps)",
+      "freshness": "screener-style current stats; real-time per vendor claim",
+      "cuCost": "not individually confirmed in fetched CU excerpt",
+      "plans": "all tiers; scroll variant Business/Enterprise only"
+    },
+    {
+      "name": "Trades - Token Seek By Time",
+      "method": "GET",
+      "path": "/defi/txs/token/seek_by_time",
+      "requiredParams": ["address"],
+      "optionalParams": ["offset (0-10000)", "limit (1-100, default 100)", "tx_type (swap|add|remove|all, default swap)", "before_time (unix s)", "after_time (unix s)", "ui_amount_mode", "x-chain header"],
+      "topLevelResponseFields": ["trade records: quote, base, basePrice, quotePrice, txHash, source, blockUnixTime, txType, owner, side, pricePair, from, to, tokenPrice, poolId", "hasNext"],
+      "pagination": "offset/limit (offset + limit <= 10000) plus time-cursor via before_time/after_time; hasNext flag",
+      "freshness": "tick-level DEX trades; real-time per vendor claim",
+      "cuCost": "Trades - Token documented at 10 CU (v3 trades 20 CU)",
+      "plans": "Lite, Starter, Premium, Business, Enterprise (not free Standard)"
+    },
+    {
+      "name": "Token - Holder list",
+      "method": "GET",
+      "path": "/defi/v3/token/holder",
+      "requiredParams": ["address"],
+      "optionalParams": ["offset (offset + limit <= 10000)", "limit (max 100)", "ui_amount_mode", "x-chain header"],
+      "topLevelResponseFields": ["data.items[] (amount, decimals, mint, owner, token_account, ui_amount)"],
+      "pagination": "offset/limit, capped at 10000 total (top ~10k holders reachable)",
+      "freshness": "not documented",
+      "cuCost": 40,
+      "plans": "all tiers; reference page lists supported chain 'Solana' only",
+      "note": "Holder distribution/profile/positions endpoints also exist (holder/v1, token/v1 families)"
+    },
+    {
+      "name": "Search (token/market)",
+      "method": "GET",
+      "path": "/defi/v3/search",
+      "requiredParams": [],
+      "optionalParams": ["keyword", "search_by (combination|address|name|symbol)", "search_mode (exact|fuzzy)", "target (all|token|market)", "chain (default all)", "sort_by (volume_24h_usd default; fdv, marketcap, liquidity, price...)", "sort_type", "verify_token (Solana only)", "markets (comma-separated sources)", "offset", "limit (1-20)"],
+      "topLevelResponseFields": ["success", "data.items[]"],
+      "pagination": "offset/limit (limit max 20)",
+      "freshness": "current stats; not further documented",
+      "cuCost": "not individually confirmed",
+      "plans": "Lite, Starter, Premium, Business, Enterprise"
+    },
+    {
+      "name": "Pair - Overview (single)",
+      "method": "GET",
+      "path": "/defi/v3/pair/overview/single",
+      "requiredParams": ["address (pair contract)"],
+      "optionalParams": ["ui_amount_mode", "x-chain header (reference lists solana|fogo)"],
+      "topLevelResponseFields": ["address", "name", "source", "created_at", "liquidity", "liquidity_change_percentage_24h", "price", "volume_{30m..24h}", "trade_{30m..24h}", "trade_history_*", "unique_wallet_*", "base/quote token detail objects"],
+      "pagination": "none",
+      "freshness": "rolling-window pool stats; real-time per vendor claim",
+      "cuCost": "not individually confirmed",
+      "plans": "all tiers; 'multiple' variant Business/Enterprise only"
+    },
+    {
+      "name": "All-Time Trades (single)",
+      "method": "GET",
+      "path": "/defi/v3/all-time/trades/single",
+      "requiredParams": ["address", "time_frame (1m..1y|alltime, default 24h)"],
+      "optionalParams": ["ui_amount_mode", "x-chain header (all 17 chains)"],
+      "topLevelResponseFields": ["success", "data: address, total_volume, total_volume_usd, volume_buy_usd, volume_sell_usd, volume_buy, volume_sell, total_trade, buy, sell"],
+      "pagination": "none",
+      "freshness": "cumulative aggregates over token's entire existence ('alltime')",
+      "cuCost": "not individually confirmed; 'multiple' variant Business/Enterprise only",
+      "plans": "Lite, Starter, Premium, Business, Enterprise"
+    },
+    {
+      "name": "Token - All Market List",
+      "method": "GET",
+      "path": "/defi/v2/markets",
+      "requiredParams": ["address", "sort_by (liquidity|volume24h, default liquidity)", "sort_type (asc|desc, default desc)"],
+      "optionalParams": ["offset (default 0)", "limit (1-20, default 10)", "x-chain header (17-value enum)"],
+      "topLevelResponseFields": ["success", "data.items[] (address, base{address,decimals,symbol,icon}, quote{address,decimals,symbol,icon}, name, source, liquidity, price (nullable), volume24h, trade24h, trade24hChangePercent, uniqueWallet24h, uniqueWallet24hChangePercent, createdAt)", "data.total"],
+      "pagination": "offset/limit (limit max 20)",
+      "freshness": "current market/pool stats; real-time per vendor claim",
+      "cuCost": "not individually confirmed",
+      "plans": "all tiers (Standard, Lite, Starter, Premium, Business, Enterprise)"
+    },
+    {
+      "name": "Wallet - Token List (Portfolio, Beta)",
+      "method": "GET",
+      "path": "/v1/wallet/token_list",
+      "requiredParams": ["wallet", "x-chain header (solana only)"],
+      "optionalParams": ["ui_amount_mode (raw|scaled, default scaled; Solana only)"],
+      "topLevelResponseFields": ["success", "data.wallet", "data.totalUsd", "data.items[] (address, decimals, balance, uiAmount, chainId, name, symbol, icon?, logoURI, priceUsd, valueUsd, isScaledUiToken?, multiplier?)"],
+      "pagination": "none documented",
+      "freshness": "current portfolio snapshot; response carries no timestamp; real-time per vendor claim",
+      "cuCost": "not individually confirmed",
+      "plans": "Lite, Starter, Premium, Business, Enterprise (not free Standard)",
+      "note": "Reference page is labeled Beta and marked deprecated; a wallet v2 family (current-net-worth, token-balance, transfer) exists. Wallet v1 group is rate-capped at 30 rps/150 rpm (rate-limiting doc also cites a 30 rpm cap on the group)."
+    },
+    {
+      "name": "Supported Networks",
+      "method": "GET",
+      "path": "/defi/networks",
+      "requiredParams": [],
+      "optionalParams": [],
+      "topLevelResponseFields": ["success", "data (array of network name strings)"],
+      "pagination": "none",
+      "freshness": "static reference data",
+      "cuCost": "utils-tier (Utils Credits endpoint also exists at /utils/v1/credits for CU balance checks)",
+      "plans": "all tiers"
+    }
+  ],
+  "coverage": {
+    "assetClasses": ["Crypto only: on-chain DEX/token market data (spot AMM trading), token metadata/security, wallet portfolio/PnL, holder analytics, perps analytics (perps/v1 endpoints for perp DEX data), 'smart money' analytics"],
+    "chains": {
+      "supportedNetworksDocPage": ["Solana", "Ethereum", "Arbitrum", "Avalanche", "BSC", "Optimism", "Polygon", "Base", "zkSync", "Sui", "Monad", "MegaETH", "Fogo", "Aptos"],
+      "xChainEnumOnEndpointReferences": ["solana", "ethereum", "arbitrum", "avalanche", "bsc", "optimism", "polygon", "base", "zksync", "monad", "hyperevm", "aptos", "fogo", "mantle", "megaeth", "robinhood", "sui"],
+      "note": "The supported-networks doc page (14 chains) lags the endpoint references (17 x-chain values incl. hyperevm, mantle, robinhood); per-endpoint chain support varies — e.g. OHLCV v3 lists a 10-chain subset, pair overview lists solana/fogo, holder v3 lists Solana only"
+    },
+    "marketsExchanges": "DEX/AMM venues only; AMM coverage page lists ~229 integrations across 10 chains (e.g. Solana 31, Base 33, Arbitrum 32, BSC 29, Ethereum 24, Polygon 21, Avalanche 16, Optimism 15, Sui 15, zkSync 13); marketing copy says '180+ decentralized exchanges'. No CEX order-book data via the public REST API (an 'Advanced CEX liquidity' doc page exists for the Birdeye app, not documented as a BDS API).",
+    "instrumentTypes": ["Fungible tokens/coins on supported chains", "DEX liquidity pairs/pools", "Perp-DEX tokens/positions via perps/v1 (Beta-adjacent)", "No equities, FX, rates, fixed income, or traditional asset classes"],
+    "geographies": "Not applicable (global public blockchains)"
+  },
+  "freshness": {
+    "restPrices": "Vendor states BDS provides 'high-quality, real-time blockchain and DeFi data'; price responses include updateUnixTime; no quantified latency SLA documented",
+    "ohlcv": "Candles down to 1-second granularity (implies near-real-time ingestion); no explicit latency figure documented",
+    "trades": "Tick-level DEX transactions with blockUnixTime; 'Txs - Latest Block Number' endpoint exposes ingestion head; no latency SLA documented",
+    "websocket": "Streaming subscriptions (price/OHLCV, trades, new listings, new pairs, large trades, wallet txs, token stats, transfers) for push delivery; no latency SLA documented",
+    "eodOrDelayed": "No delayed/EOD product tiers documented — all plans appear to serve the same live data; free Standard tier is limited by access/rate, not by delay (delay-based tiering not documented)"
+  },
+  "historicalDepth": {
+    "ohlcvSecondCandles": "Documented retention: 1s candles up to 2 weeks; 15s and 30s candles up to 3 months",
+    "ohlcvMinuteAndAbove": "not documented (no stated lookback limit)",
+    "historyPrice": "no explicit range limits documented",
+    "trades": "seek_by_time supports arbitrary before_time/after_time cursors; total addressable depth not documented; all-time trade aggregates available via /defi/v3/all-time/trades ('alltime' time_frame)",
+    "walletPnl": "not documented"
+  },
+  "pagination": {
+    "primaryMechanism": "offset/limit query params with hard cap 'offset + limit <= 10000' on list-style endpoints (token list, holders, trades); has_next/hasNext boolean in responses",
+    "timeCursor": "trade endpoints add before_time/after_time unix-second cursors ('seek_by_time' family) to page beyond the offset cap",
+    "scroll": "'Token - List (V3) Scroll' endpoint exists for deep enumeration; Business/Enterprise only; rate-limited to 2 rps",
+    "batchEndpoints": "multi/multiple/batch variants take comma-separated address lists (e.g. multi_price max 100 addresses) instead of pagination"
+  },
+  "rateLimits": {
+    "perPlan": {
+      "Standard (free)": "1 rps",
+      "Lite": "15 rps",
+      "Starter": "15 rps",
+      "Premium": "50 rps / 1000 rpm",
+      "Business": "100 rps / 1500 rpm (B-15/B-30/B-50 tiers: 150 rps)",
+      "GrowthAutoScale": "150 rps (9000 rpm), custom",
+      "Enterprise": "Custom"
+    },
+    "perApiCaps": {
+      "highThroughputGroup300rps": ["/defi/price", "/defi/multi_price", "/defi/ohlcv/base_quote", "/defi/price_volume/single", "/defi/price_volume/multi", "/defi/token_overview", "/defi/v2/tokens/top_traders", "/defi/v3/token/meta-data/*", "/defi/v3/token/market-data*", "/defi/v3/token/trade-data/*", "/defi/v3/all-time/trades/*"],
+      "midGroup100rps": "most trade, OHLCV, token, pair, holder, mint/burn endpoints",
+      "tokenlistAndSecurity": "150 rps",
+      "tokenListScroll": "2 rps",
+      "walletV1Group": "30 rps / 150 rpm on /v1/wallet/token_list, /v1/wallet/tx_list, /v1/wallet/token_balance, /v1/wallet/list_supported_chain; rate-limiting doc also states a 30 rpm cap on the wallet API group"
+    },
+    "quotas": "Usage metered in Compute Units (CUs) per plan (30k free ... 500M on B-50); overage billed per additional 1M CUs ($23 Lite down to $3.50 B-50); dynamic CU pricing for OHLCV v3 (60/90/120 CU by candle count) and recent-txs (25/75/125 CU by rows); WebSocket usage billed as Compute Unit Per Byte (CUPB 0.00008-0.08 by subscription type); /utils/v1/credits endpoint checks remaining CUs",
+    "backoffGuidance": "Docs recommend implementing 'exponential backoff or retry-after mechanisms to retry failed requests after a delay'; no Retry-After or X-RateLimit-* response headers documented"
+  },
+  "errors": {
+    "envelope": "{\"success\": false, \"message\": \"<description>\"} — same success/message envelope as successful responses (success:true + data)",
+    "statusCodes": {
+      "400": "Bad Request — invalid request parameters or payload",
+      "401": "Unauthorized — authentication required",
+      "403": "Forbidden — access denied (no permission for the resource, e.g. plan entitlement)",
+      "422": "Unprocessable Entity — invalid data",
+      "429": "Too Many Requests — rate limit exceeded; wait and retry",
+      "500": "Internal Server Error"
+    },
+    "machineReadableErrorCodes": "not documented (message strings only)"
+  },
+  "entitlements": {
+    "model": "Two axes: (1) monthly CU quota + rps by plan; (2) endpoint access matrix by package ('Data accessibility by packages')",
+    "freeStandardTier": "Single-item price/OHLCV/overview/market-data, token lists, holders, trending, search, most single-lookup endpoints; excludes multi_price, token_security, token_creation_info, metadata, trade-data, seek_by_time trade paging, wallet portfolio",
+    "liteStarter": "Adds token_security, creation info, metadata (single), trade-data (single), seek_by_time trades, wallet portfolio/tx history, multi_price; docs state 'The LITE/STARTER package can only access the multiple price API; all other multiple APIs are not accessible'",
+    "premium": "Adds WebSockets (per pricing and accessibility pages) and Token Meta Data (Multiple)",
+    "businessEnterprise": "All APIs; exclusively unlocks batch/multi endpoints (market-data multiple, trade-data multiple, price stats multiple, pair overview multiple, wallet net-worth/PnL multiple, holder batch, all-time trades multiple, token list scroll, token list all)",
+    "websocketDiscrepancy": "Pricing page: Premium includes websockets with 500 connections, Business 2,000; accessibility matrix: websocket subscriptions marked Premium and Business/Enterprise; websocket doc page: 'WebSocket access is available for Business Package subscribers, which includes 500 concurrent connections' — inconsistent across official pages"
+  },
+  "sdks": [
+    {
+      "name": "Official MCP Server (mcp.birdeye.so/mcp)",
+      "language": "protocol-level (MCP); connect via npx mcp-remote with x-api-key header",
+      "status": "Official, documented as Beta"
+    },
+    {
+      "name": "Language SDKs (Python/JS/etc.)",
+      "language": "none documented",
+      "status": "No official client libraries documented on docs.birdeye.so; third-party wrappers (e.g. birdeye-py) exist but are not official and were not used as sources"
+    }
+  ],
+  "licensing": {
+    "source": "Birdeye Terms of Service at docs.birdeye.so/docs/terms (Wings Lab entity)",
+    "storageCaching": "ToS Clause 10.2.a prohibits users from 'copy, scrape, extract, download, store, reproduce, replicate, record, or otherwise capture' data, including via 'bots, crawlers, scripts, APIs, or any other tools' — as written this appears platform-oriented, but no separate API/BDS data-license carve-out permitting storage/caching is documented",
+    "redistribution": "Prohibited: 'resell, sublicense, lease, rent, distribute, transfer, share, or otherwise provide access to the Services' (10.2.c); 'You shall not deep-link, redistribute or facilitate the redistribution of Dashboard Information' (4.5)",
+    "attribution": "No attribution or display requirements documented (a brand-assets page exists but no mandated attribution found)",
+    "permittedUse": "Services 'for your personal own use' (7.2.h); dashboard information 'not intended for actual trading purposes or market advice' (4.6)",
+    "termination": "Termination 'with or without notice' for violations or 'any other reasons' (11.2); no refunds post-termination (11.1)",
+    "institutionalImplication": "The public ToS as written conflicts with institutional needs (storing data, serving derived data to internal users/clients). Redistribution/storage rights would need to be secured contractually via the documented Enterprise channel (docs enterprise-contact page) before production use"
+  },
+  "limitations": [
+    "Crypto/DEX-only: no equities, FX, fixed income, commodities, or CEX order books — cannot serve as a multi-asset provider; it is a specialist on-chain data source",
+    "No quantified latency SLA or uptime guarantee documented anywhere in public docs; 'real-time' is a marketing-level claim",
+    "Historical depth undocumented for most datasets (only second-level OHLCV retention is specified: 1s = 2 weeks, 15s/30s = 3 months); institutional backtesting depth cannot be verified from docs",
+    "Per-chain feature asymmetry: Sui lacks wallet APIs, token_security, token_creation_info, tokens/all, and market-cap/supply fields; liquidity is computed differently on Sui; several v3 endpoints list only chain subsets (holder v3: Solana only; pair overview: solana/fogo)",
+    "Docs internally inconsistent in places: supported-networks page (14 chains) vs endpoint x-chain enums (17); websocket plan entitlement stated differently on three official pages",
+    "Pagination hard cap offset + limit <= 10000 on list/holder/trade endpoints; deep enumeration requires Business/Enterprise scroll endpoint throttled to 2 rps",
+    "Identifier regime is contract addresses per chain, not symbols/ISINs — symbol mapping and cross-chain entity resolution are the integrator's responsibility; search endpoint is fuzzy/symbol-based and Solana-only for verify_token filter",
+    "Free Standard tier is 1 rps / 30k CU — unusable beyond evaluation; batch endpoints locked to Business+ raises cost of portfolio-scale polling on lower tiers",
+    "No machine-readable error codes (message strings only); no documented Retry-After / X-RateLimit-* headers, complicating precise client-side throttling",
+    "No formal versioning/deprecation policy; v1/v2/v3 endpoint families coexist and evolve via changelog — integration requires active changelog monitoring",
+    "Token security/rug-check fields differ structurally between Solana and EVM chains; no methodology or revision policy documented",
+    "ToS as published prohibits storing/redistributing data, and states data is 'not intended for actual trading purposes' — a hard legal blocker absent an enterprise agreement"
+  ],
+  "institutionalFit": {
+    "primaryFor": [
+      "On-chain DEX market data across Solana + major EVM chains + Sui/Aptos: real-time token prices, tick-level DEX trades, OHLCV down to 1s, pool liquidity — this is Birdeye's core institutional value",
+      "Token screening/discovery (token list v3 with rich filters, new listings, trending) and long-tail/memecoin coverage (~8M+ tokens claimed via MCP page)",
+      "Token security/rug-check screening for pre-trade diligence on long-tail tokens (non-Sui chains)",
+      "Wallet analytics: portfolio net worth, PnL, holder distribution, top traders, smart-money flows"
+    ],
+    "fallbackFor": [
+      "Cross-chain token reference data / metadata (fallback to dedicated metadata providers; address-keyed, symbol mapping DIY)",
+      "Historical crypto price series for majors (fallback where a provider with documented depth is primary, since Birdeye lookback is undocumented)"
+    ],
+    "notSuitableFor": [
+      "Any non-crypto asset class (equities, FX, rates, commodities)",
+      "CEX spot/derivatives order-book or trade data",
+      "Regulated/auditable EOD valuation feeds requiring documented methodology, revision policy, and SLA"
+    ],
+    "hardConstraints": [
+      "Do not present Birdeye data as exchange-official or SLA-backed real-time; no latency guarantee is documented",
+      "Do not persist, cache long-term, or redistribute Birdeye data (including to platform end-users) without an enterprise license — public ToS prohibits it",
+      "ToS states data is not intended for actual trading purposes; trading-adjacent use requires contractual cover",
+      "Batch endpoints and websockets require Premium/Business+ tiers; capacity planning must use the CU model (incl. dynamic CU on OHLCV v3 and recent txs)",
+      "1s/15s/30s OHLCV must be consumed and archived within the 2-week/3-month retention windows if needed later — but note archival itself is a licensing question",
+      "Per-chain capability matrix must gate feature exposure (e.g. hide token security for Sui)"
+    ]
+  },
+  "sourcesConsulted": [
+    {
+      "url": "https://docs.birdeye.so/",
+      "whatItVerified": "Official docs root; nav structure (Quick Start, Public/Premium APIs, BDS, MCP Server); docs version label v1.0; llms.txt index availability"
+    },
+    {
+      "url": "https://docs.birdeye.so/llms.txt",
+      "whatItVerified": "Complete official index of documentation and API reference pages; endpoint families (price, OHLCV, token, pair, txs, wallet, holder, smart money, perps, blockchain, websocket); changelog entries incl. July 2026 releases"
+    },
+    {
+      "url": "https://docs.birdeye.so/docs/authentication-api-keys",
+      "whatItVerified": "API key provisioning flow via bds.birdeye.so dashboard Security tab; key passed in request headers"
+    },
+    {
+      "url": "https://docs.birdeye.so/docs/rate-limiting",
+      "whatItVerified": "Per-tier account rate limits (Standard 1 rps ... Business 100 rps/1500 rpm, Enterprise custom); wallet API group 30 rpm cap; exponential backoff recommendation"
+    },
+    {
+      "url": "https://docs.birdeye.so/docs/per-api-rate-limit",
+      "whatItVerified": "Per-endpoint rate caps: 300 rps group, 100 rps group, tokenlist/security 150 rps, token list scroll 2 rps, wallet v1 endpoints 30 rps/150 rpm"
+    },
+    {
+      "url": "https://docs.birdeye.so/docs/pricing",
+      "whatItVerified": "Plan tiers and prices (Standard $0/30k CU/1 rps; Lite $39; Starter $99; Premium $199/websockets/50 rps; Business $499-$2,050 tiers; Growth AutoScale; Enterprise custom); CU overage rates; websocket connection counts (Premium 500, Business 2,000) and CUPB overage note"
+    },
+    {
+      "url": "https://docs.birdeye.so/docs/data-accessibility-by-packages",
+      "whatItVerified": "Endpoint-by-package entitlement matrix; batch/multiple endpoints exclusive to Business+; Lite/Starter multiple-API restriction; websocket subscriptions at Premium+; token_security not on free Standard"
+    },
+    {
+      "url": "https://docs.birdeye.so/docs/compute-unit-cost",
+      "whatItVerified": "CU costs per endpoint (price 3, history_price 45, historical_price_unix 6, OHLCV 35, token_overview 25, metadata 5, market-data 12, token_security 40, trades token 10, v3 trades 20, wallet net worth 40, holder 40); batch and dynamic CU references; websocket CUPB 0.00008-0.08"
+    },
+    {
+      "url": "https://docs.birdeye.so/docs/dynamic-cu-cost",
+      "whatItVerified": "Dynamic CU tables: OHLCV v3 60/90/120 CU by candle count (max 5000); recent txs 25/75/125 CU by rows (max 500)"
+    },
+    {
+      "url": "https://docs.birdeye.so/docs/supported-networks",
+      "whatItVerified": "14 supported networks listed; Sui limitations (no wallet APIs, token_security, token_creation_info, tokens/all; missing market cap/supply in overview; different liquidity calc)"
+    },
+    {
+      "url": "https://docs.birdeye.so/docs/data-coverage",
+      "whatItVerified": "'180+ decentralized exchanges' coverage claim; 10-chain list with staleness disclaimer; absence of documented historical depth/latency on this page"
+    },
+    {
+      "url": "https://docs.birdeye.so/docs/amm-coverage",
+      "whatItVerified": "Per-chain AMM/DEX integration lists (~229 total across 10 chains: Solana 31, Base 33, Arbitrum 32, BSC 29, Ethereum 24, Polygon 21, Avalanche 16, Optimism 15, Sui 15, zkSync 13)"
+    },
+    {
+      "url": "https://docs.birdeye.so/docs/terms",
+      "whatItVerified": "ToS clauses: 10.2.a capture/storage prohibition; 10.2.c resale/redistribution prohibition; 4.5 no deep-linking/redistribution of dashboard information; 7.2.h personal use; 4.6 not for actual trading purposes; 11.1/11.2 termination; no attribution mandate found"
+    },
+    {
+      "url": "https://docs.birdeye.so/docs/websocket",
+      "whatItVerified": "WebSocket URL format wss://public-api.birdeye.so/socket/{chain}?x-api-key=...; Sec-WebSocket-Protocol: echo-protocol; subscription types; 100 tokens/connection (price/txs/ohlcv), 1 address/connection (wallet); 'Business Package ... 500 concurrent connections' statement (conflicts with pricing page)"
+    },
+    {
+      "url": "https://docs.birdeye.so/docs/error-handling",
+      "whatItVerified": "Error envelope {success:false, message:string}; status codes 400/401/403/422/429/500 with messages; no Retry-After header or formal backoff spec"
+    },
+    {
+      "url": "https://docs.birdeye.so/docs/birdeye-data-services-bds",
+      "whatItVerified": "'high-quality, real-time blockchain and DeFi data' freshness claim; 'enterprise-ready platform' positioning; absence of latency/uptime SLAs"
+    },
+    {
+      "url": "https://docs.birdeye.so/docs/birdeye-ai",
+      "whatItVerified": "Official Birdeye MCP Server (Beta) at https://mcp.birdeye.so/mcp; x-api-key auth; 15k+ coins / 8M+ tokens claims; no official language SDKs documented"
+    },
+    {
+      "url": "https://docs.birdeye.so/changelog",
+      "whatItVerified": "Release cadence (~every 3-7 days); July 2026 releases (Robinhood chain, Blockchain Data APIs, First-Buyers API, Token Liquidity History APIs); additive evolution, no formal deprecation notices"
+    },
+    {
+      "url": "https://docs.birdeye.so/reference/get-defi-price",
+      "whatItVerified": "Base URL https://public-api.birdeye.so; X-API-KEY header; x-chain header 17-value enum; /defi/price params and response schema"
+    },
+    {
+      "url": "https://docs.birdeye.so/reference/get-defi-multi_price",
+      "whatItVerified": "/defi/multi_price params, 100-address max, response map schema, plan availability (not free tier)"
+    },
+    {
+      "url": "https://docs.birdeye.so/reference/get-defi-v3-ohlcv",
+      "whatItVerified": "/defi/v3/ohlcv params (18 interval types incl. 1s/15s/30s), time range mode, 5000-candle cap, second-candle retention (1s: 2 weeks; 15s/30s: 3 months), candle response fields, 10-chain subset"
+    },
+    {
+      "url": "https://docs.birdeye.so/reference/get-defi-history_price",
+      "whatItVerified": "/defi/history_price params (address_type token|pair, intervals 1m-1M, time_from/time_to), response items schema, no documented lookback limit"
+    },
+    {
+      "url": "https://docs.birdeye.so/reference/get-defi-historical_price_unix",
+      "whatItVerified": "/defi/historical_price_unix point-in-time price lookup, params and response schema, backtesting use case"
+    },
+    {
+      "url": "https://docs.birdeye.so/reference/get-defi-token_overview",
+      "whatItVerified": "/defi/token_overview params (frames up to 8 custom intervals incl. second-level), full stats response fields (marketCap, fdv, supplies, liquidity, holder, per-frame volume/price-change/unique-wallet)"
+    },
+    {
+      "url": "https://docs.birdeye.so/reference/get-defi-token_security",
+      "whatItVerified": "/defi/token_security params; Solana vs EVM response field sets; all chains except Sui; Lite+ plan requirement"
+    },
+    {
+      "url": "https://docs.birdeye.so/reference/get-defi-v3-token-market-data",
+      "whatItVerified": "/defi/v3/token/market-data params and response (price, liquidity, supplies, market_cap, fdv, holder); 17-chain support; all-tier access"
+    },
+    {
+      "url": "https://docs.birdeye.so/reference/get-defi-v3-token-trade-data-single",
+      "whatItVerified": "/defi/v3/token/trade-data/single params (frames max 8) and per-frame price/volume/trade/unique-wallet response fields; Lite+ requirement"
+    },
+    {
+      "url": "https://docs.birdeye.so/reference/get-defi-v3-token-list",
+      "whatItVerified": "/defi/v3/token/list sort/filter params, offset+limit<=10000 pagination, has_next, 100/call cap"
+    },
+    {
+      "url": "https://docs.birdeye.so/reference/get-defi-txs-token-seek_by_time",
+      "whatItVerified": "/defi/txs/token/seek_by_time params (tx_type, before_time/after_time), trade record fields, hasNext, offset cap"
+    },
+    {
+      "url": "https://docs.birdeye.so/reference/get-defi-v3-token-holder",
+      "whatItVerified": "/defi/v3/token/holder params, pagination cap, holder item fields, Solana-only chain listing"
+    },
+    {
+      "url": "https://docs.birdeye.so/reference/get-defi-v3-search",
+      "whatItVerified": "/defi/v3/search params (search_by/search_mode/target/chain/markets/verify_token), limit 1-20"
+    },
+    {
+      "url": "https://docs.birdeye.so/reference/get-defi-v3-pair-overview-single",
+      "whatItVerified": "/defi/v3/pair/overview/single params and pool stats response fields; solana/fogo chain listing"
+    },
+    {
+      "url": "https://docs.birdeye.so/reference/get-defi-v3-all-time-trades-single",
+      "whatItVerified": "/defi/v3/all-time/trades/single time_frame enum incl. 'alltime', cumulative volume/trade response fields, 17-chain support"
+    },
+    {
+      "url": "https://docs.birdeye.so/reference/get-defi-networks",
+      "whatItVerified": "/defi/networks response (array of network strings); endpoint-level error status codes 400/401/403/429/500"
+    },
+    {
+      "url": "https://docs.birdeye.so/reference/get-defi-v2-markets.md",
+      "whatItVerified": "/defi/v2/markets params (address, sort_by liquidity|volume24h, sort_type, offset, limit 1-20 default 10), 17-value x-chain enum, market item response fields (base/quote token objects, name, source, liquidity, nullable price, volume24h, trade24h(+ChangePercent), uniqueWallet24h(+ChangePercent), createdAt), data.total, all-tier availability"
+    },
+    {
+      "url": "https://docs.birdeye.so/reference/get-v1-wallet-token_list.md",
+      "whatItVerified": "/v1/wallet/token_list params (wallet required, ui_amount_mode raw|scaled), x-chain solana-only, full response schema (data.wallet, data.totalUsd, data.items[] address/decimals/balance/uiAmount/chainId/name/symbol/icon/logoURI/priceUsd/valueUsd/isScaledUiToken/multiplier), verbatim example response, Lite+ plan requirement, Beta/deprecated labeling"
+    }
+  ],
+  "confidence": "medium",
+  "openQuestions": [
+    "WebSocket entitlement: pricing page says Premium includes websockets (500 connections), accessibility matrix marks websocket subs Premium+, but the websocket doc page says access is 'available for Business Package subscribers' — which is authoritative?",
+    "Do BDS/enterprise API agreements grant storage, caching, derived-works, and redistribution rights that override the public ToS clauses 10.2.a/10.2.c/4.5? Public docs provide only an enterprise-contact channel, no API data license text",
+    "Historical lookback for minute+ OHLCV, history_price, tick trades, and wallet PnL is undocumented — actual depth must be confirmed with the vendor before committing to backtesting workloads",
+    "No latency/uptime SLA documented — what SLA do Enterprise contracts offer?",
+    "Exact CU cost for several institutional endpoints (token list v3, search, pair overview, trade-data single, all-time trades) not confirmed from the fetched CU table excerpt — consult the full compute-unit-cost and batch-token-cu-cost pages when contracting",
+    "Chain list inconsistency (supported-networks page: 14 chains vs endpoint enums: 17 incl. hyperevm, mantle, robinhood) — confirm production-supported chain set and per-endpoint chain matrix",
+    "Whether the 429 response ever includes a Retry-After header is undocumented",
+    "Price/OHLCV methodology (pool-weighting, outlier filtering beyond the 'outlier' flag, wash-trade handling) is not documented — material for research-grade data quality assessment",
+    "Perps v1 and smart-money endpoints appear recent; their tier requirements and stability guarantees need confirmation"
+  ]
+}

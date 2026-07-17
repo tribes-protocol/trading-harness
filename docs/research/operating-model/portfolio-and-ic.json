@@ -1,0 +1,524 @@
+{
+  "area": "Portfolio management and investment committee",
+  "reviewDate": "2026-07-17",
+  "scopeNote": "Multi-strategy hedge fund / institutional asset manager. Covers (1) Portfolio Management at pod/strategy level, (2) central portfolio construction and capital allocation (CIO office), and (3) the Investment Committee and investment reporting/decision-record function. Distinguishes regulatory requirements (REG), widely accepted institutional practice (PRACTICE), and firm-specific judgment calls (JUDGMENT) throughout.",
+  "departments": [
+    {
+      "name": "Portfolio Management (Pod / Strategy Level)",
+      "mandate": "Generate risk-adjusted returns within a written, delegated mandate set by the CIO office / Investment Committee. The mandate (pod term sheet or strategy IPS) defines the investable universe, allocated capital, gross/net exposure ranges, per-name and concentration limits, factor-neutrality requirements, liquidity constraints, and a drawdown/stop-out schedule. The PM owns day-to-day portfolio construction, position sizing, rebalancing and drawdown management inside those boundaries; the PM does NOT own the limits themselves, which are set and enforced outside the pod.",
+      "responsibilities": [
+        "Idea generation/selection and translation of research into positions with documented rationale",
+        "Position sizing: scaling positions by conviction, expected return, volatility, liquidity and marginal risk contribution, within per-name/issuer/sector limits (Kelly-style or vol-target scaling in systematic pods; discretionary conviction-weighting in fundamental pods)",
+        "Portfolio construction: maintaining the book's target factor/beta profile (e.g., market-, sector-, factor-neutral where mandated), hedging residual exposures, managing gross/net within bands",
+        "Rebalancing: bringing actual weights back to target on a rules-based cadence and/or drift-trigger basis, net of transaction-cost considerations",
+        "Drawdown management: monitoring peak-to-trough P&L against the stop-out schedule; proactively de-grossing as triggers approach; executing mandated de-risking on breach",
+        "Liquidity and capacity management for the book (days-to-liquidate, borrow availability, crowding)",
+        "Compliance with restricted lists, MNPI/information-barrier policies, position-limit regimes (e.g., CFTC/exchange limits, EU short-selling disclosure)",
+        "Producing trade rationale, book commentary and review materials; contributing to IC memos and investor communications",
+        "Supervising pod analysts/execution traders; certifying accuracy of positions vs shadow records"
+      ],
+      "workflows": [
+        {
+          "name": "Daily book review and risk sign-off",
+          "cadence": "Daily (start-of-day and end-of-day)",
+          "description": "PM reviews overnight/flash P&L, exposure and risk reports (VaR, factor exposures, stress results, limit utilization), reconciles positions vs fund accounting/administrator shadow, and adjusts the book. Daily P&L attribution is standard at institutional scale ($1B+ funds overwhelmingly run daily attribution).",
+          "inputs": "Start-of-day positions from operations; flash P&L; independent risk report (VaR, factor, stress, limit headroom); market/borrow data; research notes; compliance restricted list",
+          "outputs": "Orders to trading/execution; updated target portfolio; PM daily commentary; exception acknowledgements (limit warnings)"
+        },
+        {
+          "name": "Position sizing and trade construction",
+          "cadence": "Intraday / ad hoc, per idea",
+          "description": "New or resized positions are constructed from a research thesis: expected return vs downside, marginal contribution to book risk, liquidity (ADV %, days-to-cover), borrow cost, and remaining limit headroom. Systematic pods embed sizing in validated models; discretionary pods document sizing rationale. Positions above delegated thresholds require CIO/IC approval.",
+          "inputs": "Research memo/thesis; liquidity and borrow data; limit headroom from risk system; transaction cost estimates",
+          "outputs": "Trade tickets with sizing rationale; updated model portfolio; (above threshold) approval request to CIO/IC"
+        },
+        {
+          "name": "Rebalancing",
+          "cadence": "Systematic: daily/weekly rules-based. Discretionary: weekly/monthly plus drift-band triggers",
+          "description": "Actual vs target weights monitored; rebalancing executed when drift exceeds tolerance bands or on scheduled review, per a formalized rebalancing policy (CFA Institute IPS guidance: rebalancing policy with trigger thresholds and review schedule should be written down, not ad hoc).",
+          "inputs": "Target weights/model portfolio; actual positions; drift report; transaction-cost model; corporate-action and flow calendar",
+          "outputs": "Rebalancing order list; post-rebalance confirmation; drift-exception log"
+        },
+        {
+          "name": "Drawdown management and de-grossing",
+          "cadence": "Continuous monitoring; escalation at defined trigger levels",
+          "description": "Peak-to-trough drawdown on allocated capital tracked against the stop-out schedule. Widely reported multi-strategy practice: intervention triggers around 3-5% drawdown (capital cut, often ~50%) and termination/full stop-out around 5-10% (e.g., figures reported for Millennium in practice literature: 5% triggers 50% capital reduction, 7.5% terminates the pod). Enforcement sits with the central risk desk, deliberately designed so no individual can argue past a stop. Exact levels are firm-specific JUDGMENT; the existence of hard, externally enforced triggers is widely accepted PRACTICE.",
+          "inputs": "Real-time P&L vs allocated capital; stop-out schedule from mandate; central risk desk notices",
+          "outputs": "De-grossing plan and executed risk reduction; escalation notice to CIO/risk; post-event review memo"
+        },
+        {
+          "name": "Monthly portfolio and attribution review with CIO/risk",
+          "cadence": "Monthly (formal); weekly touchpoints common",
+          "description": "Review of returns vs benchmark/hurdle, attribution by position/sector/factor, limit utilization, thesis health (are positions performing for the stated reason), capacity, and any breaches or near-misses.",
+          "inputs": "Independent performance attribution (ex-post and ex-ante); risk utilization history; breach log",
+          "outputs": "Pod review pack; action items (trim/exit lists); input to capital reallocation decisions"
+        },
+        {
+          "name": "Contribution to IC / investor reporting cycle",
+          "cadence": "Monthly and quarterly",
+          "description": "PM provides commentary, outlook and position-level context for the IC pack, investor letters, and regulatory reporting data (Form PF / AIFMD Annex IV data assembled by operations/compliance from PM books).",
+          "inputs": "Attribution and exposure data; templates from reporting team",
+          "outputs": "PM commentary; certified position data; responses to allocator due-diligence questions"
+        }
+      ],
+      "controls": [
+        "REG (US): Advisers Act fiduciary duty; Rule 206(4)-7 requires written policies/procedures covering portfolio management processes, trading, and allocation, reviewed at least annually",
+        "REG (US): Rule 204-2 books and records - written communications relating to recommendations, advice, orders and performance must be retained (generally 5 years, first 2 easily accessible); this is the statutory hook that makes PM decision rationale auditable",
+        "REG (EU): AIFMD Art. 15 and Level 2 - all risks relevant to each AIF's strategy must be identified, measured, monitored with adequate frequency; risk management must be functionally and hierarchically separated from portfolio management (Level 2 Art. 42-45; Art. 80 conditions on delegation); Level 2 Art. 18 requires a written, regularly updated due-diligence policy for investments",
+        "REG (UK): FCA SYSC + SM&CR - named senior manager accountability (Statements of Responsibilities) for investment management; duty of responsibility for breaches",
+        "REG (US, where applicable): CFTC/exchange speculative position limits; SEC/EU short-position reporting",
+        "PRACTICE: Pre-trade compliance checks (restricted list, concentration, mandate rules) embedded in OMS; hard blocks not advisory warnings for prohibited items",
+        "PRACTICE: Hard risk limits monitored and enforced by an independent risk function with authority to cut positions (MFA Sound Practices: senior management should not outsource risk monitoring; a consistent risk framework such as VaR should be employed)",
+        "PRACTICE: Model governance for systematic sizing/portfolio-construction models by analogy to Fed/OCC/FDIC model risk guidance (SR 11-7, superseded April 17, 2026 by SR 26-2 interagency Revised Guidance on Model Risk Management): development documentation, independent validation, ongoing monitoring",
+        "PRACTICE: Trade rationale capture at order entry; decision-to-execution audit trail linking thesis/memo to orders to fills",
+        "PRACTICE: Code of ethics / personal account dealing controls (Rule 204A-1 in the US)",
+        "JUDGMENT: exact limit schedule (per-name %, gross/net bands, factor limits), stop-out levels, and PM discretion thresholds vary by firm, strategy and liquidity profile"
+      ],
+      "independence": "Embedded (first line of defense). PMs sit in the revenue function and cannot be independent; the control design instead requires that risk limit-setting and enforcement, valuation, and performance measurement sit OUTSIDE portfolio management. Under AIFMD this separation is a legal requirement; in the US it is supervisory expectation and near-universal institutional practice.",
+      "dependencies": [
+        "Independent Risk Management (limits, monitoring, stop-out enforcement)",
+        "Trading/Execution desk (order handling, best execution)",
+        "Treasury/Financing (leverage, margin, borrow, cash)",
+        "Operations/Fund Accounting (positions, P&L, reconciliation, shadow NAV)",
+        "Compliance (restricted lists, personal trading, MNPI barriers, regulatory reporting)",
+        "Research & Data platform (internal research, market data, alternative data)",
+        "Technology (OMS/PMS, risk analytics, attribution systems)"
+      ],
+      "handoffs": [
+        {
+          "to": "Trading/Execution",
+          "direction": "outbound",
+          "content": "Orders with limit prices/urgency/constraints and algo instructions; PM receives back fills, execution quality (TCA) reports"
+        },
+        {
+          "to": "Risk Management",
+          "direction": "bidirectional",
+          "content": "Outbound: full position transparency, strategy changes, new instrument requests. Inbound: daily risk reports, limit utilization, breach notices and mandated de-risking instructions (which the PM must execute, not negotiate)"
+        },
+        {
+          "to": "CIO Office / Capital Allocation",
+          "direction": "bidirectional",
+          "content": "Outbound: performance/attribution packs, capital requests, capacity estimates. Inbound: mandate letter, allocated capital and limit schedule, reallocation and stop-out decisions"
+        },
+        {
+          "to": "Investment Committee",
+          "direction": "outbound",
+          "content": "Investment memos for above-threshold positions/new strategies; periodic strategy review presentations; responses to IC challenge"
+        },
+        {
+          "to": "Compliance",
+          "direction": "bidirectional",
+          "content": "Outbound: trade rationale records, communications (all on captured channels), attestations. Inbound: restricted list updates, breach findings, policy changes"
+        },
+        {
+          "to": "Operations/Fund Accounting",
+          "direction": "bidirectional",
+          "content": "Outbound: trade details, booking instructions. Inbound: reconciled positions, P&L, break reports requiring PM confirmation"
+        },
+        {
+          "to": "Investor Relations",
+          "direction": "outbound",
+          "content": "Monthly/quarterly commentary, DDQ answers, exposure summaries (reviewed by compliance before release)"
+        }
+      ],
+      "regulatoryBasis": [
+        "Investment Advisers Act Rule 204-2 (books and records: recommendations, orders, performance) - 17 CFR 275.204-2",
+        "Investment Advisers Act Rule 206(4)-7 (compliance program, annual review)",
+        "SEC Form PF (portfolio data: exposures, leverage, liquidity; large hedge fund advisers file quarterly; 72-hour current reports for extraordinary losses/margin events; thresholds under amendment in 2026)",
+        "AIFMD Art. 15 + Commission Delegated Regulation (EU) 231/2013 Arts. 18 (due diligence), 42-45 (risk management separation), 80 (functional/hierarchical separation on delegation); Annex IV reporting",
+        "FCA SYSC 4-10 and SM&CR (SYSC 23-24 allocation of prescribed responsibilities)",
+        "CFTC position limits regime (17 CFR Part 150, 2020 final rule) for covered derivatives",
+        "Fed/OCC/FDIC SR 26-2 Revised Guidance on Model Risk Management (April 2026, supersedes SR 11-7) - banking guidance applied by analogy to quant model governance"
+      ],
+      "practiceNotes": [
+        "Multi-manager platforms run PMs as semi-autonomous pods with own P&L; capital is reallocated near-continuously based on performance, drawdown behavior and risk utilization (practice literature; specific mechanics are opaque and vary by firm)",
+        "Discretionary pod platforms run risk control sequentially/reactively (central risk desk detects breach, then intervenes); systematic multi-strategy platforms embed position sizing and drawdown control continuously in execution logic (Resonanz Capital analysis) - the research platform should support both patterns",
+        "Reported stop-out conventions (3-5% intervention, 5-7.5%+ termination) come from secondary/practice sources, not primary fund disclosure - treat as indicative, not standard",
+        "PM artifacts consumed daily: risk report, flash P&L, attribution, borrow/financing report, restricted list. PM artifacts produced daily: orders, commentary, updated model portfolio. This artifact loop is the core of the front-office data model"
+      ]
+    },
+    {
+      "name": "Central Portfolio Construction & Capital Allocation (CIO Office)",
+      "mandate": "Allocate the firm's capital and risk budget across strategies/pods to maximize firm-level risk-adjusted return, subject to fund-level mandate, leverage, liquidity and investor commitments. Owns the aggregate book: netting across pods, firm-level hedging overlays, factor/crowding management, capacity, and the pod mandate/limit architecture. Functions as an internal capital-allocation business sitting between the pods and the Investment Committee.",
+      "responsibilities": [
+        "Define and issue pod/strategy mandates (universe, capital, limit schedule, stop-out schedule, hurdle/payout terms)",
+        "Allocate and dynamically reallocate capital across pods based on realized Sharpe, drawdown behavior, capacity, correlation/crowding, and opportunity set (monthly/weekly tactical shifts are common; firm-level controls prevent any single strategy from dominating the risk budget)",
+        "Monitor aggregate exposures that are invisible at pod level (shared factor exposures - rates, dollar, energy, crowding - that cause simultaneous multi-pod drawdowns in macro shocks)",
+        "Run firm-level hedging/overlay programs and manage fund-level gross/net leverage with treasury",
+        "Sponsor and gate new PM/strategy onboarding (business case, backtest/track-record review, mandate design) for IC approval",
+        "Enforce, jointly with independent risk, the stop-out and capital-reduction schedule",
+        "Manage capacity and coordinate with IR on inflows/redemptions and their allocation"
+      ],
+      "workflows": [
+        {
+          "name": "Capital allocation review",
+          "cadence": "Formal monthly/quarterly; tactical adjustments weekly or intra-month",
+          "description": "Review pod-level risk-adjusted performance, drawdown state, risk utilization and correlation; decide increases/cuts/terminations. Decisions above defined size or involving new strategies escalate to the IC. Documented in a capital allocation memo with rationale (auditability).",
+          "inputs": "Pod P&L and attribution; risk utilization and stress results; factor/crowding analytics; capacity and liquidity estimates; financing costs from treasury; investor flow projections",
+          "outputs": "Updated capital allocation schedule; revised pod limit schedules; capital allocation memo (rationale, alternatives considered); termination/stop-out notices"
+        },
+        {
+          "name": "Firm-level risk and stress review",
+          "cadence": "Daily monitoring; weekly deep-dive with CRO; monthly to IC",
+          "description": "Aggregate exposure, netting and stress review across all pods with independent risk; identify shared exposures and impose top-of-house hedges or pod-level constraints.",
+          "inputs": "Aggregated position data; independent risk stress scenarios; counterparty/margin data",
+          "outputs": "Overlay hedge orders; top-of-house constraint changes; firm risk summary for IC/board pack"
+        },
+        {
+          "name": "New PM / new strategy onboarding",
+          "cadence": "Ad hoc, gated",
+          "description": "Business case, due diligence on track record/backtests (model validation for systematic strategies), mandate and limit design, operational readiness sign-offs (risk, compliance, ops, treasury), then IC approval before capital is released.",
+          "inputs": "Candidate track record/backtest; proposed mandate; risk/compliance/ops assessments",
+          "outputs": "Pod mandate letter/term sheet; IC approval memo and decision record; onboarding checklist completion"
+        },
+        {
+          "name": "Annual mandate re-underwrite",
+          "cadence": "Annual",
+          "description": "Each pod mandate, limit schedule and payout structure re-reviewed against realized behavior and firm strategy; feeds annual compliance review under Rule 206(4)-7 and AIFMD periodic risk-policy review.",
+          "inputs": "Full-year attribution; breach/exception history; peer/capacity analysis",
+          "outputs": "Renewed or amended mandates; retirement of stale limits; report to IC"
+        }
+      ],
+      "controls": [
+        "PRACTICE: Documented capital-allocation methodology and decision memos (who decided, on what data, why) - required in substance by fiduciary duty and books-and-records rules even though no rule names 'capital allocation' as such",
+        "PRACTICE: Dual control with independent risk on limit changes; limit increases require risk sign-off, not just CIO instruction",
+        "PRACTICE: Delegated authority matrix - CIO discretion up to defined size/risk; IC approval above; board/GP notification for material changes to fund-level leverage or strategy mix",
+        "PRACTICE: Override log - any override of model-driven or policy-driven allocation must be documented with rationale and reviewed by IC (mirrors SR 26-2 expectations on overrides of model output)",
+        "REG (EU): AIFMD risk-profile consistency - the AIFM must ensure each AIF's risk profile corresponds to its size, portfolio structure, strategies and objectives; leverage limits per AIF must be set and reported (Annex IV)",
+        "REG (US): Form PF exposures/leverage/liquidity data must reconcile to the allocation and risk records"
+      ],
+      "independence": "Embedded in the front office (it is an investment function) but structurally distinct from pod PMs to avoid marking-own-homework on capital decisions; must operate in check-and-balance with a fully independent risk function. In smaller firms this function collapses into the CIO personally - the control then shifts to IC oversight and documentation.",
+      "dependencies": [
+        "Independent Risk Management (aggregate analytics, stress, veto on limit increases)",
+        "Treasury (financing capacity, margin, unencumbered cash)",
+        "Performance/analytics team (attribution at pod and firm level)",
+        "Investor Relations (flows, capacity commitments, investor-level terms)",
+        "Compliance/Legal (mandate documents, side letters, regulatory limits)"
+      ],
+      "handoffs": [
+        {
+          "to": "Portfolio Management (pods)",
+          "direction": "outbound",
+          "content": "Mandate letters, capital allocations, limit and stop-out schedules, reallocation decisions; receives back performance packs and capital requests"
+        },
+        {
+          "to": "Investment Committee",
+          "direction": "outbound",
+          "content": "Capital allocation proposals and memos, new-strategy approval requests, firm-level exposure and performance summary; receives back approvals/conditions/rejections recorded in IC minutes"
+        },
+        {
+          "to": "Risk Management",
+          "direction": "bidirectional",
+          "content": "Outbound: proposed limit/mandate changes for independent review. Inbound: aggregate stress results, crowding alerts, breach escalations, stop-out triggers"
+        },
+        {
+          "to": "Treasury/Financing",
+          "direction": "bidirectional",
+          "content": "Outbound: projected financing needs from allocation changes. Inbound: financing costs, margin constraints, counterparty capacity that constrain allocation"
+        },
+        {
+          "to": "Investor Relations",
+          "direction": "bidirectional",
+          "content": "Outbound: capacity guidance, strategy-mix narrative for investors. Inbound: subscription/redemption pipeline affecting allocatable capital"
+        }
+      ],
+      "regulatoryBasis": [
+        "Advisers Act fiduciary duty (allocation decisions must be in clients'/fund's best interest; cross-fund allocation conflicts must be managed and disclosed)",
+        "AIFMD Art. 15 (risk profile), Art. 25 (leverage), Annex IV reporting",
+        "Form PF (fund-level leverage, exposure, liquidity reporting)",
+        "IOSCO CIS governance and conflicts-of-interest guidance (IOSCOPD219, IOSCOPD342) - independent oversight of operator decisions affecting investors"
+      ],
+      "practiceNotes": [
+        "Multi-strategy funds operate under unified management with a single committee overseeing capital allocation and risk across strategies; tiered decision structures (senior PMs oversee cross-strategy allocation, strategy leads advise) are typical (CAIS, AlphaMaven primers)",
+        "Dynamic reallocation cadence is a differentiator: some platforms shift capital weekly/monthly on Sharpe momentum; others re-underwrite quarterly - the platform should treat allocation cadence as a configurable policy, not a constant",
+        "Netting across uncorrelated pods produces trading-cost and performance-fee efficiencies (pass-through vs netted fee structures differ by firm)",
+        "This function is the least standardized and least publicly documented of the three - primary sources are thin; most detail comes from allocator research and practice literature"
+      ]
+    },
+    {
+      "name": "Investment Committee & Investment Reporting",
+      "mandate": "Formal governance body (plus its supporting secretariat/reporting function) that authorizes investment decisions above delegated thresholds, approves new strategies/mandates and exceptions, oversees performance against mandate, and ensures decisions and their rationale are documented, challenged and auditable. It is the mechanism by which fiduciary 'procedural prudence' is demonstrated: a documented, consistently followed process with recorded deliberation, votes and dissent.",
+      "responsibilities": [
+        "Approve/reject above-threshold positions, new strategies/pods, illiquid or hard-to-value (Level 3) investments, exceptions and overrides to policy",
+        "Set and periodically review the delegated authority matrix (what PMs/CIO can do without IC approval)",
+        "Review performance, risk, limit utilization/breaches, liquidity and counterparty summaries at each meeting",
+        "Maintain the IC charter (composition, quorum, voting rules, conflicts procedure) and review it annually",
+        "Maintain decision records: memos, minutes, votes, dissents, conditions of approval, and a decisions log reconciled to executed trades",
+        "Oversee the production and integrity of investment reporting (IC packs, board reporting, investor reporting inputs, GIPS-compliant performance where compliance is claimed)",
+        "Conduct annual self-assessment and post-mortems on major decisions (wins and losses)"
+      ],
+      "workflows": [
+        {
+          "name": "IC meeting cycle",
+          "cadence": "Formal monthly or quarterly; weekly pipeline/screening meetings in deal-driven strategies; ad hoc sessions for urgent approvals or breach escalations",
+          "description": "Standing agenda: prior minutes approval, conflicts declarations, performance/risk review, pending approvals (memos pre-circulated), watchlist, exceptions/breaches, action-item follow-up. Materials distributed in advance so meeting time is spent on challenge, not presentation (Northern Trust / CAPTRUST IC best-practice guidance). Institutional committees are typically 5-9 members with an odd number to prevent ties; hedge fund ICs are commonly smaller (3-5) and CIO-chaired - composition is JUDGMENT, documented process is PRACTICE.",
+          "inputs": "IC pack (performance vs benchmark, attribution, risk dashboard, limit/breach log, liquidity, counterparty); investment memos; prior minutes and open action items",
+          "outputs": "Approved minutes; decision records with votes and recorded dissent; conditions/covenants attached to approvals; updated decisions log; action items"
+        },
+        {
+          "name": "Investment memo preparation and challenge",
+          "cadence": "Per decision (pre-circulated ahead of meeting)",
+          "description": "Standardized memo template: thesis and edge; expected return and downside scenarios; proposed sizing and limits; liquidity/exit analysis; key risks and mitigants; valuation basis; relevant regulatory/ESG considerations; explicit exit/review criteria. Memos capture the information, expectations and logic behind the decision (Addepar/Stanford research on investment memos) and create the reasonable-basis record required by CFA Standard V(A) and, in the EU, the written due-diligence policy under AIFMD Level 2 Art. 18. Version-controlled; the version voted on is preserved.",
+          "inputs": "PM/analyst research; risk pre-review; compliance/legal review for restricted or conflicted items",
+          "outputs": "Final memo of record; challenge log (questions raised and responses); approval/rejection with rationale"
+        },
+        {
+          "name": "Decision recording and dissent capture",
+          "cadence": "Every meeting/decision",
+          "description": "Minutes record attendees, quorum, materials referenced, key discussion points, questions and objections, the vote, and any dissent. ERISA-influenced fiduciary guidance is explicit: minutes are the evidence of a prudent process ('if a prudent decision was made and no one documented it, did it happen?'), and should reflect in detail why an investment was included or rejected. CFA Standard V(A) guidance: a committee may issue a decision an individual disagrees with if it has a reasonable and adequate basis; dissenting members can have their names disassociated - recording dissent rather than suppressing it is the sound practice. In practice most votes are unanimous because committees discuss to consensus; the record must still show the deliberation.",
+          "inputs": "Meeting deliberation; draft minutes; voting results",
+          "outputs": "Approved minutes (approved at next meeting); dissent register; decisions log entry linking memo -> decision -> subsequent execution (decision-to-trade audit trail)"
+        },
+        {
+          "name": "Approval-threshold administration",
+          "cadence": "Continuous; matrix reviewed at least annually",
+          "description": "Delegated authority matrix defines what requires IC approval: typically new strategies/pods, positions above X% of NAV or above per-name limits, illiquid/side-pocket investments, exceptions to the IPS/mandate, cross trades and principal transactions (which also carry statutory consent requirements), and overrides of risk-driven stop-outs. Thresholds vary by liquidity and firm size - liquid hedge fund strategies delegate more to PMs with hard risk limits; private-markets and allocator ICs approve individual deals. Threshold design is JUDGMENT; having a written matrix with escalation triggers is PRACTICE.",
+          "inputs": "Charter and authority matrix; requests exceeding delegated authority; compliance flags",
+          "outputs": "Approvals/rejections/conditional approvals; amended matrix; exception log"
+        },
+        {
+          "name": "Investment reporting production and distribution",
+          "cadence": "Monthly IC pack; quarterly board/investor reporting; annual GIPS and regulatory cycle",
+          "description": "Reporting function assembles the IC pack and downstream reporting: performance vs benchmark, attribution, risk summary, limit utilization, breach/exception reporting, liquidity and counterparty exposure. Feeds: board reporting, investor letters, Form PF (large hedge fund advisers quarterly within 60 days of quarter end, plus 72-hour current reports on trigger events), AIFMD Annex IV, and GIPS composite reports where the firm claims compliance (GIPS 2020: pooled funds need not be in composites unless the strategy is offered as a segregated account; time-weighted return reports build to 10 years of history; independent verification is optional but common).",
+          "inputs": "Certified performance data from fund accounting/performance team; risk data; PM commentary; compliance sign-off",
+          "outputs": "IC pack; board pack; investor reporting inputs; regulatory filings data; GIPS composite reports and verification support"
+        },
+        {
+          "name": "Annual governance review and post-mortems",
+          "cadence": "Annual (plus event-driven post-mortems)",
+          "description": "Charter/IPS review; committee self-assessment; review of decision quality (hit rate of approved vs rejected proposals, post-mortems on large losses AND large wins); feeds the Rule 206(4)-7 annual compliance review record.",
+          "inputs": "Decisions log; performance outcomes; breach and exception history",
+          "outputs": "Updated charter/IPS; self-assessment record; process-change actions"
+        }
+      ],
+      "controls": [
+        "PRACTICE: Written IC charter: composition, quorum, voting rules (majority vs chair-decides vs CIO-veto - varies), conflicts-of-interest procedure (declarations at meeting start, recusal), and delegated authority matrix",
+        "PRACTICE: Pre-circulated materials with a standard memo template; no approval without a memo of record",
+        "PRACTICE: Minutes drafted promptly, approved at next meeting, retained in an immutable/auditable store; decisions log reconciled to trades so any position can be traced back to an authorizing decision",
+        "PRACTICE: Dissent and objections recorded, not smoothed over; conditions of approval tracked to completion",
+        "REG (US): Rule 204-2 retention applies to memos, minutes and related communications (5+ years); Rule 206(4)-7 annual review must cover the decision-making process; SEC examiners request IC minutes and decision rationale in exams",
+        "REG (US, ERISA-touching mandates): fiduciary prudence is judged on process, not outcomes - substantive prudence (expertise) plus procedural prudence (robust, documented, consistently followed process); DOL 2026 proposed guidance on selecting designated investment alternatives reinforces process documentation",
+        "REG (UK): SM&CR - collective committee decisions do not dilute individual senior manager accountability; the FCA expects clear lines of accountability and adequate MI to governance bodies (2025 asset management portfolio letter)",
+        "REG (EU): AIFMD Level 2 Art. 18 written due-diligence policy; Art. 60+ governance and senior-management responsibilities",
+        "PRACTICE (voluntary standard): GIPS for performance presentation; CFA Institute Code and Standards V(A) (diligence/reasonable basis), V(B) (communication), V(C) (record retention: maintain records supporting investment analyses and recommendations)"
+      ],
+      "independence": "The IC is a governance body of the first line (investment leadership), not an independent control function. Independence is achieved by: (a) mandatory participation/visibility of the CRO and CCO (voting membership for the CRO varies by firm; compliance is usually a non-voting observer); (b) the fund's board of directors (with independent directors, per AIMA offshore fund governance practice) sitting above the manager's IC with ultimate fiduciary responsibility for the fund vehicle; (c) the immutable decision record enabling ex-post challenge by compliance, auditors, regulators and investors.",
+      "dependencies": [
+        "CIO Office (proposals, allocation memos)",
+        "Portfolio Management (memos, strategy reviews)",
+        "Risk Management (independent risk opinion on every above-threshold proposal; risk dashboard for packs)",
+        "Compliance/Legal (conflicts screening, regulatory sign-off, records retention)",
+        "Performance/Fund Accounting (certified performance and attribution data)",
+        "Fund Board / GP (matters reserved above the IC: material strategy changes, valuation policy, side pockets, gates)"
+      ],
+      "handoffs": [
+        {
+          "to": "CIO Office / Portfolio Management",
+          "direction": "bidirectional",
+          "content": "Inbound: memos, capital allocation proposals, exception requests. Outbound: approvals with conditions, rejections with rationale, revised delegated authority - all as formal decision records"
+        },
+        {
+          "to": "Risk Management",
+          "direction": "bidirectional",
+          "content": "Inbound: independent risk opinion on proposals, breach escalations requiring IC action. Outbound: risk-appetite and limit-framework endorsements, mandated remediations"
+        },
+        {
+          "to": "Compliance",
+          "direction": "bidirectional",
+          "content": "Inbound: conflicts flags, regulatory-change items requiring IC awareness. Outbound: minutes/decision records for the compliance archive and annual review; exception approvals for compliance monitoring"
+        },
+        {
+          "to": "Fund Board / GP",
+          "direction": "outbound",
+          "content": "Quarterly summary of decisions, performance vs mandate, breaches and remediation; escalation of matters reserved for the board (valuation disputes, gates/side pockets, material strategy drift)"
+        },
+        {
+          "to": "Investor Relations / Reporting",
+          "direction": "outbound",
+          "content": "Approved performance and commentary for investor letters and DDQs; decision narratives for allocator operational due diligence (allocators routinely test whether IC minutes exist and match stated process)"
+        },
+        {
+          "to": "Internal Audit / External Auditors / Regulators",
+          "direction": "outbound",
+          "content": "On request: charter, minutes, memos, decisions log, dissent register - the auditability package demonstrating that stated process was followed"
+        }
+      ],
+      "regulatoryBasis": [
+        "No US statute mandates an investment committee per se - the obligation is indirect via Advisers Act fiduciary duty, Rule 206(4)-7 (documented process) and Rule 204-2 (records of recommendations/advice)",
+        "ERISA prudence caselaw and DOL guidance (process-based prudence) for any ERISA-plan mandates; drives documentation norms industry-wide",
+        "FCA SYSC/SM&CR: governance-body effectiveness, MI adequacy, named accountability (SYSC 23-24; FCA asset management portfolio letter expectations)",
+        "AIFMD Level 2 Arts. 18, 57-66 (due diligence, organizational/governance requirements); Annex IV reporting",
+        "IOSCO Examination of Governance for Collective Investment Schemes (IOSCOPD219) and conflicts guidelines (IOSCOPD342)",
+        "GIPS standards (voluntary; CFA Institute) for composite construction and performance presentation; hedge fund adoption is lower than long-only but rising with institutionalization",
+        "CFA Institute Standards of Professional Conduct V(A)-(C) (reasonable basis, communication, record retention; group-decision dissent handling)"
+      ],
+      "practiceNotes": [
+        "Formality varies sharply by firm type: multi-strategy pod platforms concentrate authority in the CIO/capital-allocation process with a thin formal IC (speed matters; risk limits do the governance work), while allocators, endowments, OCIOs and private-markets firms run formal voting ICs with full memo cycles. The research platform should model 'IC' as a configurable governance layer, not a fixed org unit",
+        "Memo quality practice (Addepar/Stanford brief): lead with the decision requested; capture expectations and logic explicitly so post-mortems can distinguish bad process from bad luck",
+        "Auditability pattern that examiners and allocator ODD teams test: memo (version of record) -> minutes (deliberation, vote, dissent) -> decisions log -> executed trades -> performance attribution; any break in that chain is a finding",
+        "Dissent recording is genuinely contested in practice: some GCs advise minimal minutes (litigation exposure), while fiduciary-governance consultants advise detailed minutes including objections; the dominant institutional position post-ERISA-litigation-wave is detailed process documentation"
+      ]
+    }
+  ],
+  "structuralRecommendations": [
+    "Split 'Portfolio Management' into two modeled functions: pod/strategy-level PM and a central CIO-office capital-allocation & portfolio-construction function. In a multi-strategy context these have different mandates, artifacts, cadences and controls, and the capital-allocation layer is where cross-pod decisions (the scope's 'capital allocation across strategies/pods') actually live.",
+    "Model the Investment Committee as a governance layer/committee with a charter, not an operating department; its only operating staff is a secretariat. Make its formality configurable (thin CIO-led approval process for liquid multi-strat vs full memo-and-vote IC for private markets/allocator use cases).",
+    "Move production of performance/investor reporting OUT of the IC construct into an independent performance & reporting function (middle office/fund accounting ownership, GIPS responsibility there); the IC consumes certified reporting and must not produce the numbers it is overseeing.",
+    "Keep Risk Management strictly outside Portfolio Management in the department graph - functional/hierarchical separation is a hard AIFMD requirement and universal institutional expectation; limit enforcement and stop-outs must be modeled as risk-owned controls that PMs receive, not set.",
+    "Add an explicit cross-cutting 'decision record / audit trail' capability linking memo -> IC decision (vote + dissent) -> mandate/limit change -> orders -> fills -> attribution; auditability is the core regulatory hook (Rule 204-2 / 206(4)-7, AIFMD Art. 18) and the thing allocator ODD teams test.",
+    "Add a model-governance sub-function (shared between Risk and the quant platform) for position-sizing/portfolio-construction models, referencing the interagency model risk framework (SR 26-2, which superseded SR 11-7 in April 2026 - do not cite SR 11-7 as current)."
+  ],
+  "disagreementsAndVariation": [
+    "IC formality: hedge fund practice literature shows multi-strat platforms governing via CIO + risk limits with minimal formal IC, whereas fiduciary/consultant literature (Northern Trust, CAPTRUST, Mercer, Cambridge Associates) assumes formal voting committees. Both are real; varies by firm type, strategy liquidity and investor base.",
+    "Drawdown/stop-out numbers: widely repeated figures (e.g., Millennium 5% -> 50% capital cut, 7.5% -> termination; 3-5% intervention elsewhere) come from secondary practice sources (substack/industry blogs), not primary disclosure. The existence of hard externally-enforced triggers is well supported; the specific levels are indicative only.",
+    "Dissent recording: consultant/fiduciary guidance recommends detailed minutes including objections; some legal advisers counsel leaner minutes to limit litigation discovery exposure. CFA Standards permit disassociation from group conclusions. No single standard exists - firms make a documented policy choice.",
+    "CRO role on the IC: some firms give the CRO a vote (or veto), others keep risk as challenger/observer to preserve independence; AIFMD separation requirements push EU firms toward the observer/veto model.",
+    "GIPS adoption: effectively standard for institutional long-only managers, still a minority practice among hedge funds (ACA/CFA Institute materials note the 2020 standards were redesigned partly to make pooled-fund/hedge-fund compliance feasible).",
+    "Form PF requirements are in flux (2026): current rules require large hedge fund advisers (>= $1.5B hedge fund AUM) to file quarterly within 60 days plus 72-hour current reports; 2026 SEC/CFTC 'burden-reduction' proposals would raise the large-adviser threshold to $10B and slim reporting; latest compliance deadline moved to October 1, 2026. Any platform encoding of Form PF logic should be flagged as unstable.",
+    "Model risk guidance: SR 11-7 was superseded by interagency SR 26-2 on April 17, 2026; SR 26-2 explicitly scopes OUT generative/agentic AI models and emphasizes risk-based tailoring. It is banking guidance - applied to asset managers only by analogy/institutional convention, which itself varies by firm.",
+    "Approval thresholds: liquid-strategy firms delegate heavily to PMs within hard risk limits (IC approves mandates, not trades); private-markets and allocator ICs approve individual investments. Threshold levels (as % NAV or absolute) are firm-specific judgment with no regulatory floor."
+  ],
+  "sourcesConsulted": [
+    {
+      "url": "https://www.ecfr.gov/current/title-17/chapter-II/part-275/section-275.204-2",
+      "whatItSupported": "SEC Rule 204-2 books-and-records: retention of written communications relating to recommendations, advice, orders and performance - the statutory basis for auditable PM/IC decision records (consulted via search excerpt of the eCFR text)"
+    },
+    {
+      "url": "https://www.smarsh.com/regulations/investment-advisers-act-of-1940-rule-204-2/",
+      "whatItSupported": "Rule 204-2 retention periods (5 years, first 2 easily accessible) and scope of records tied to recommendations/performance"
+    },
+    {
+      "url": "https://portal.ct.gov/DOB/Securities-Licensing/Advisers-State/Compliance-Programs-of-Connecticut-Investment-Advisers",
+      "whatItSupported": "Rule 206(4)-7 elements: written policies covering portfolio management processes, annual review, CCO designation; 204-2 amendment requiring retention of policies and annual-review records"
+    },
+    {
+      "url": "https://www.federalreserve.gov/supervisionreg/srletters/SR2602.htm",
+      "whatItSupported": "SR 26-2 (April 17, 2026) Revised Guidance on Model Risk Management supersedes SR 11-7 and SR 21-8; risk-based tailoring; generative/agentic AI out of scope"
+    },
+    {
+      "url": "https://www.sullcrom.com/insights/memo/2026/April/OCC-Fed-FDIC-Issue-Revised-Guidance-Model-Risk-Management",
+      "whatItSupported": "Interagency nature of the 2026 model-risk revision and its relevance thresholds (banking organizations >$30B); confirms SR 11-7 no longer current"
+    },
+    {
+      "url": "https://www.alfi.lu/getattachment/202e810c-60b8-4b11-b81c-cc11196e7798/app_data-import-alfi-risk-management-under-aifmd.pdf",
+      "whatItSupported": "AIFMD risk-management framework: identify/document/measure/monitor all relevant risks with adequate frequency; risk profile must correspond to AIF size/structure/strategy"
+    },
+    {
+      "url": "https://www.linklaters.com/en/insights/publications/aifmd/delegation",
+      "whatItSupported": "AIFMD functional and hierarchical separation of portfolio management from risk management, incl. Level 2 Art. 80 conditions on delegation"
+    },
+    {
+      "url": "https://www.esma.europa.eu/sites/default/files/library/esma34-32-352_qa_aifmd.pdf",
+      "whatItSupported": "ESMA Q&A on AIFMD application (risk management, delegation, reporting) - authority for EU-side requirements"
+    },
+    {
+      "url": "https://www.aima.org/sound-practices/guides-to-sound-practices.html",
+      "whatItSupported": "AIMA Guides to Sound Practices catalogue, incl. Guide for European Hedge Fund Managers covering the investment process, portfolio risk management and operational controls; AIMA position that fund governance rests with the fund board, which delegates to the manager"
+    },
+    {
+      "url": "http://www.mfaalts.org/downloads/Sound%20Practices%202007.pdf",
+      "whatItSupported": "MFA Sound Practices for Hedge Fund Managers: risk monitoring must not be outsourced by senior management; consistent portfolio risk framework (e.g., VaR); seven-section structure covering risk management and trading operations"
+    },
+    {
+      "url": "https://www.gipsstandards.org/standards/gips-standards-for-firms/gips-standards-handbook-for-firms/",
+      "whatItSupported": "GIPS composite-construction requirements (all discretionary fee-paying portfolios in composites) and firm-level reporting obligations"
+    },
+    {
+      "url": "https://web.acaglobal.com/hubfs/2022%20Assets%20from%20Pardot%20Migration/2020%20GIPS%20Standards%20for%20Hedge%20Funds%20White%20Paper.pdf",
+      "whatItSupported": "2020 GIPS changes relevant to hedge funds: pooled funds need not be in composites unless offered as segregated accounts; valuation-frequency implications; verification practice"
+    },
+    {
+      "url": "https://www.iosco.org/library/pubdocs/pdf/ioscopd219.pdf",
+      "whatItSupported": "IOSCO Examination of Governance for Collective Investment Schemes - independent oversight framework above the manager"
+    },
+    {
+      "url": "https://www.iosco.org/library/pubdocs/pdf/IOSCOPD342.pdf",
+      "whatItSupported": "IOSCO guidelines on conflicts of interest facing CIS operators - basis for conflicts declarations and independent review in investment decision processes"
+    },
+    {
+      "url": "https://handbook.fca.org.uk/handbook/sysc23/sysc23s3",
+      "whatItSupported": "FCA SM&CR overview: Statements of Responsibilities, senior manager duty of responsibility - individual accountability overlaying committee decisions"
+    },
+    {
+      "url": "https://handbook.fca.org.uk/handbook/sysc24",
+      "whatItSupported": "FCA allocation of prescribed senior-management responsibilities (SYSC 24)"
+    },
+    {
+      "url": "https://www.fca.org.uk/publication/portfolio-letters/asset-management-portfolio-letter.pdf",
+      "whatItSupported": "FCA supervisory expectations for asset managers: governance effectiveness, senior accountability for risk control, adequate MI to governance bodies"
+    },
+    {
+      "url": "https://www.sec.gov/files/ia-6297-fact-sheet.pdf",
+      "whatItSupported": "Form PF current-reporting amendments: 72-hour current reports for large hedge fund advisers on extraordinary losses, margin/default events, PB terminations, redemption events"
+    },
+    {
+      "url": "https://www.federalregister.gov/documents/2026/04/24/2026-07993/form-pf-reporting-requirements-for-all-filers",
+      "whatItSupported": "2026 SEC/CFTC Form PF amendment proposal (burden reduction; threshold changes) - evidence requirements are in flux"
+    },
+    {
+      "url": "https://corpgov.law.harvard.edu/2026/06/16/form-pf-amendments-signal-slimmer-private-fund-reporting/",
+      "whatItSupported": "Analysis of 2026 Form PF direction incl. proposed large-hedge-fund-adviser threshold increase from $1.5B to $10B"
+    },
+    {
+      "url": "https://www.cfainstitute.org/standards/professionals/code-ethics-standards/standards-of-practice-v-a",
+      "whatItSupported": "CFA Standard V(A) Diligence and Reasonable Basis - group/committee research decisions, reasonable-basis documentation, and dissenting-member disassociation"
+    },
+    {
+      "url": "https://www.cfainstitute.org/insights/professional-learning/refresher-readings/2026/basics-of-portfolio-planning-and-construction",
+      "whatItSupported": "IPS elements: risk/return objectives, constraints, benchmark, formalized rebalancing policy with drift tolerances and review schedule, governance procedures"
+    },
+    {
+      "url": "https://longterminvesting.stanford.edu/sites/g/files/sbiybj23856/files/media/file/addepar-investment-memos-and-decision-making.pdf",
+      "whatItSupported": "Investment memos capture information, expectations and logic behind decisions; decisions should lead the document (direct fetch returned 403; content taken from search excerpt - flagged as such)"
+    },
+    {
+      "url": "https://www.northerntrust.com/content/dam/northerntrust/wealth-management/global/en/documents/investment-committee-best-practices-getting-organized.pdf",
+      "whatItSupported": "IC organization best practices: charter, composition, record-keeping; minutes covering agenda items, discussion points, questions/objections and final decisions (consulted via search excerpts; companion 'running an effective meeting' PDF fetch timed out)"
+    },
+    {
+      "url": "https://www.responsive.io/blog/investment-committee-guide",
+      "whatItSupported": "IC practice literature: vote all items even with dissenters; minutes content; facilitation to surface dissent productively"
+    },
+    {
+      "url": "https://www.bricker.com/benefits-insights/investment-committee-best-practices-if-a-prudent-decision-was-made-and-no-one-documented-it-did-it-happen",
+      "whatItSupported": "ERISA fiduciary documentation: minutes as evidence of prudent process; record in detail why investments were included or rejected"
+    },
+    {
+      "url": "https://www.mercer.com/en-us/insights/retirement/defined-contribution-plans/a-guide-to-fiduciary-committee-governance/",
+      "whatItSupported": "Fiduciary committee governance: substantive vs procedural prudence; committees, IPS, regular reviews, detailed minutes"
+    },
+    {
+      "url": "https://www.federalregister.gov/documents/2026/03/31/2026-06178/fiduciary-duties-in-selecting-designated-investment-alternatives",
+      "whatItSupported": "DOL 2026 proposal on fiduciary duties in selecting investment alternatives - current regulatory reinforcement of process documentation"
+    },
+    {
+      "url": "https://resonanzcapital.com/insights/systematic-multi-strategy-vs.-discretionary-pod-platforms-different-engines-different-risk",
+      "whatItSupported": "Fetched in full: discretionary pod platforms as internal capital-allocation businesses with sequential/reactive central risk enforcement vs systematic platforms with sizing/drawdown control embedded in execution logic; cross-pod shared-exposure drawdown risk"
+    },
+    {
+      "url": "https://youngandcalculated.substack.com/p/how-multi-manager-hedge-funds-actually",
+      "whatItSupported": "Pod-model mechanics: per-pod risk budgets as max drawdown, automatic capital cuts on breach, reported Millennium stop-out levels (secondary practice source - flagged as indicative, not authoritative)"
+    },
+    {
+      "url": "https://www.caisgroup.com/articles/an-introduction-to-multi-strategy-hedge-funds",
+      "whatItSupported": "Multi-strategy funds operate under unified management with a single committee overseeing capital allocation and risk across strategies"
+    },
+    {
+      "url": "https://alpha-maven.com/learn/multi-strategy-hedge-funds",
+      "whatItSupported": "Tiered decision structures (senior PMs oversee cross-strategy allocation; strategy leads advise); dynamic monthly/weekly reallocation on risk-adjusted performance; firm-level risk-budget caps per strategy"
+    },
+    {
+      "url": "https://thehedgefundjournal.com/campbell-the-evolution-of-a-quantitative-multi-strategy-manager/",
+      "whatItSupported": "Netting benefits across uncorrelated internal strategies (trading-cost and fee efficiencies)"
+    },
+    {
+      "url": "https://aaronhall.com/approval-thresholds-for-investment-committee-decisions/",
+      "whatItSupported": "Approval-threshold design considerations: thresholds vary by liquidity/risk profile; threshold flexibility and periodic review (practice commentary - low authority, used for design patterns only)"
+    },
+    {
+      "url": "https://www.aurum.com/insight/thought-piece/multi-strategy-hedge-fund-strategies-explained/",
+      "whatItSupported": "Fetched: confirms multi-strategy funds are heterogeneous in business model, risk parameters and allocation approach - supports 'varies by firm' framing (explicitly lacks operational specifics)"
+    }
+  ],
+  "confidence": "medium"
+}

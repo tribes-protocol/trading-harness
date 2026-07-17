@@ -1,0 +1,715 @@
+{
+  "schemaVersion": "1.0.0",
+  "generatedAt": "2026-07-17T00:00:00Z",
+  "providers": [
+    {
+      "id": "marketstack",
+      "name": "Marketstack",
+      "docsUrl": "https://docs.apilayer.com/marketstack/docs/api-documentation",
+      "docsReviewDate": "2026-07-17",
+      "apiVersion": "v2 (v1 deprecated after 2025-06-30)",
+      "baseUrl": "https://api.marketstack.com/v2",
+      "authMechanism": "query parameter access_key",
+      "envVar": "MARKETSTACK_API_KEY",
+      "capabilities": [
+        {
+          "operation": "market.quote",
+          "assetClasses": ["equity", "etf", "equity_index"],
+          "freshness": "eod",
+          "historicalDepth": "n/a (latest EOD record)",
+          "verification": "docs-reviewed",
+          "lastVerifiedAt": "2026-07-17",
+          "priority": 80,
+          "notes": "Quote derived from latest EOD record; NOT real-time. Intraday bid/ask/last NULL since IEX 2025-02-01 policy change without direct IEX entitlement."
+        },
+        {
+          "operation": "market.daily_bars",
+          "assetClasses": ["equity", "etf", "equity_index"],
+          "freshness": "eod",
+          "historicalDepth": "plan-gated: Free 1y, Basic 10y, Professional+ 15+y (marketing claims up to 30y)",
+          "verification": "docs-reviewed",
+          "lastVerifiedAt": "2026-07-17",
+          "priority": 80,
+          "notes": "CRSP-methodology adjusted prices available (adj_* fields); splits/dividends for US-listed venues."
+        },
+        {
+          "operation": "market.intraday_bars",
+          "assetClasses": ["equity", "etf"],
+          "freshness": "delayed",
+          "historicalDepth": "US/IEX universe only; sub-15min intervals need Professional plan",
+          "verification": "docs-reviewed",
+          "lastVerifiedAt": "2026-07-17",
+          "priority": 60,
+          "notes": "US-only IEX data, not consolidated tape. Treat as indicative, never as consolidated real-time."
+        },
+        {
+          "operation": "market.corporate_actions",
+          "assetClasses": ["equity", "etf"],
+          "freshness": "eod",
+          "verification": "docs-reviewed",
+          "lastVerifiedAt": "2026-07-17",
+          "priority": 80,
+          "notes": "Splits and dividends endpoints; US-listed venue coverage strongest."
+        },
+        {
+          "operation": "market.tickers",
+          "assetClasses": ["equity", "etf", "equity_index"],
+          "freshness": "eod",
+          "verification": "docs-reviewed",
+          "lastVerifiedAt": "2026-07-17",
+          "priority": 80,
+          "notes": "Symbology enrichment: CIK, ISIN, CUSIP, LEI, SIC, sector/industry. Documented capability; no normalized service route yet (no TickersSource interface) — direct adapter use only."
+        },
+        {
+          "operation": "market.exchanges",
+          "assetClasses": ["equity", "etf"],
+          "freshness": "eod",
+          "verification": "docs-reviewed",
+          "lastVerifiedAt": "2026-07-17",
+          "priority": 80,
+          "notes": "Exchange metadata incl. MIC, operating MIC, LEI."
+        }
+      ],
+      "rateLimits": [
+        { "plan": "all", "limit": "5 requests/second global; /commodities and /companyratings 1 call/minute" },
+        { "plan": "Free", "limit": "100 requests/month" },
+        { "plan": "Basic", "limit": "10,000 requests/month" },
+        { "plan": "Professional", "limit": "100,000 requests/month" }
+      ],
+      "licensing": {
+        "storageRestrictions": "Not explicitly prohibited in reviewed docs; upstream sources (Tiingo for US, Finnworlds) may impose display/redistribution conditions.",
+        "attribution": "Not required per reviewed docs.",
+        "redistribution": "Standard API license; resale/syndication not covered — treat as internal-use.",
+        "notes": "US data licensed via Tiingo; intraday is IEX-only and bid/ask/last fields are NULL since 2025-02-01 without direct IEX entitlement."
+      },
+      "entitlementNotes": [
+        "Historical depth, intraday granularity (<15min), and several datasets (commodities, company ratings) are plan-gated.",
+        "v1 endpoints deprecated after 2025-06-30 — v2 only."
+      ],
+      "limitations": [
+        "EOD is the core dataset; intraday is US/IEX-only and not consolidated tape.",
+        "Intraday closing prices differ from official auction-based EOD closes.",
+        "No options, futures curves, or fixed-income instrument data."
+      ],
+      "preferredUses": [
+        "PRIMARY: global equity/ETF/index EOD history, corporate actions, symbology, exchange reference data."
+      ],
+      "reviewConfidence": "high",
+      "researchRecord": "docs/research/providers/marketstack.json"
+    },
+    {
+      "id": "fred",
+      "name": "FRED (Federal Reserve Bank of St. Louis)",
+      "docsUrl": "https://fred.stlouisfed.org/docs/api/fred/",
+      "docsReviewDate": "2026-07-17",
+      "apiVersion": "v1 (fred/*); v2 only for bulk release observations",
+      "baseUrl": "https://api.stlouisfed.org/fred",
+      "authMechanism": "query parameter api_key (32-char lowercase alphanumeric)",
+      "envVar": "FRED_API_KEY",
+      "capabilities": [
+        {
+          "operation": "macro.series",
+          "assetClasses": ["macro", "rates", "credit", "fx", "commodity"],
+          "freshness": "eod",
+          "historicalDepth": "varies per series; some from 1929 or earlier; vintages (ALFRED) back to first publication",
+          "verification": "docs-reviewed",
+          "lastVerifiedAt": "2026-07-17",
+          "priority": 90,
+          "notes": "De facto institutional reference for official macro series (GDP, CPI, employment, Treasury curves, credit spreads incl. ICE BofA OAS, FX reference rates). Point-in-time vintages via realtime_start/end — revision-safe backtesting."
+        },
+        {
+          "operation": "macro.series_search",
+          "assetClasses": ["macro", "rates", "credit", "fx", "commodity"],
+          "freshness": "eod",
+          "verification": "docs-reviewed",
+          "lastVerifiedAt": "2026-07-17",
+          "priority": 90,
+          "notes": "fred/series/search with full-text and tag filtering."
+        },
+        {
+          "operation": "macro.releases",
+          "assetClasses": ["macro"],
+          "freshness": "eod",
+          "verification": "docs-reviewed",
+          "lastVerifiedAt": "2026-07-17",
+          "priority": 90,
+          "notes": "Release calendar + fred/series/updates for change detection (minute-granularity windows). Documented capability; no normalized service route yet (MacroSeriesSource has no releases method) — direct adapter use only."
+        }
+      ],
+      "rateLimits": [
+        { "plan": "all", "limit": "No numeric limit published; HTTP 429 on breach — use conservative client-side throttling (~2 rps)" }
+      ],
+      "licensing": {
+        "storageRestrictions": "API Terms of Use prohibit storing/caching/archiving FRED content and incorporating it into any database without written permission — DISK CACHING DISABLED for this adapter; in-memory per-process only.",
+        "attribution": "REQUIRED verbatim: 'This product uses the FRED API but is not endorsed or certified by the Federal Reserve Bank of St. Louis.' Also cite the original source via FRED (e.g. 'Source: BLS via FRED').",
+        "redistribution": "Restricted; series from third-party sources carry upstream restrictions.",
+        "notes": "Attribution string must appear in any user-facing report built on FRED data."
+      },
+      "entitlementNotes": ["Free API key; no paid tiers."],
+      "limitations": [
+        "No intraday/real-time market data; highest frequency is daily.",
+        "Data revised by source agencies — always distinguish latest vs point-in-time vintage.",
+        "Storage/caching prohibition constrains platform-side persistence."
+      ],
+      "preferredUses": [
+        "PRIMARY: US + international macro series, rates/credit/FX reference series, vintage (point-in-time) macro data, release calendars."
+      ],
+      "reviewConfidence": "medium",
+      "researchRecord": "docs/research/providers/fred.json"
+    },
+    {
+      "id": "coingecko",
+      "name": "CoinGecko Pro API",
+      "docsUrl": "https://docs.coingecko.com",
+      "docsReviewDate": "2026-07-17",
+      "apiVersion": "v3 (docs v3.0.1)",
+      "baseUrl": "https://pro-api.coingecko.com/api/v3",
+      "authMechanism": "header x-cg-pro-api-key (query x_cg_pro_api_key also supported)",
+      "envVar": "COINGECKO_PRO_API_KEY",
+      "capabilities": [
+        {
+          "operation": "market.quote",
+          "assetClasses": ["crypto"],
+          "freshness": "delayed",
+          "verification": "docs-reviewed",
+          "lastVerifiedAt": "2026-07-17",
+          "priority": 70,
+          "notes": "Aggregated cached prices (20-30s cadence on paid plans). Symbol is interpreted as a CoinGecko coin id (e.g. 'bitcoin') — symbols alone are ambiguous."
+        },
+        {
+          "operation": "onchain.token_price",
+          "assetClasses": ["crypto"],
+          "chains": ["ethereum", "solana", "polygon", "arbitrum", "optimism", "base", "bsc", "avalanche", "other"],
+          "freshness": "delayed",
+          "verification": "docs-reviewed",
+          "lastVerifiedAt": "2026-07-17",
+          "priority": 65,
+          "notes": "simple/price by coin id; onchain (GeckoTerminal) endpoints for contract-address lookups. Cached aggregates, not exchange-direct."
+        },
+        {
+          "operation": "onchain.token_ohlcv",
+          "assetClasses": ["crypto"],
+          "freshness": "delayed",
+          "historicalDepth": "daily since 2014 (plan-gated 2y/10y); hourly since 2018; 5-min Enterprise-only",
+          "verification": "docs-reviewed",
+          "lastVerifiedAt": "2026-07-17",
+          "priority": 60,
+          "notes": "market_chart / OHLC endpoints; daily point finalized 00:10 UTC."
+        },
+        {
+          "operation": "onchain.token_market",
+          "assetClasses": ["crypto", "defi", "nft"],
+          "freshness": "delayed",
+          "verification": "docs-reviewed",
+          "lastVerifiedAt": "2026-07-17",
+          "priority": 75,
+          "notes": "coins/markets, categories, global aggregates, exchange metadata with trust_score and depth metrics, derivatives listings. Documented capability; no normalized service route yet — direct adapter use only."
+        },
+        {
+          "operation": "onchain.dex_pairs",
+          "assetClasses": ["crypto", "defi"],
+          "freshness": "delayed",
+          "verification": "docs-reviewed",
+          "lastVerifiedAt": "2026-07-17",
+          "priority": 55,
+          "notes": "GeckoTerminal onchain endpoints under /onchain/."
+        }
+      ],
+      "rateLimits": [
+        { "plan": "Demo", "limit": "100 calls/min; 10k credits/month" },
+        { "plan": "paid tiers", "limit": "per-minute limit + monthly call credits; 200 OK = 1 credit" }
+      ],
+      "licensing": {
+        "storageRestrictions": "Not explicitly prohibited for internal use in reviewed docs.",
+        "attribution": "Attribution expected for public display of data (per docs/branding guidance).",
+        "redistribution": "TOS 4.1.6: no sell/rent/lease/sub-license/re-distribute/syndicate without executed agreement.",
+        "notes": "Internal research use is the safe envelope."
+      },
+      "entitlementNotes": [
+        "Pro base URL requires a paid plan key; Demo keys use a different host and lower freshness.",
+        "Historical depth plan-gated: 2y (Demo/Basic) vs 10y (Analyst/Lite+)."
+      ],
+      "limitations": [
+        "Aggregated cached data (10s-12h cadence depending on endpoint/plan) — never present as tick-level real-time.",
+        "Crypto/NFT/DEX only.",
+        "Hourly data plan-gated; 5-minutely Enterprise-only."
+      ],
+      "preferredUses": [
+        "PRIMARY: crypto reference prices, market caps, sector/category analytics, venue quality screening, long crypto history.",
+        "FALLBACK: DEX pair data (behind Birdeye)."
+      ],
+      "reviewConfidence": "high",
+      "researchRecord": "docs/research/providers/coingecko-pro.json"
+    },
+    {
+      "id": "birdeye",
+      "name": "Birdeye Data Services",
+      "docsUrl": "https://docs.birdeye.so/",
+      "docsReviewDate": "2026-07-17",
+      "apiVersion": "mixed per-endpoint (/defi/*, /defi/v2/*, /defi/v3/*, /wallet/v2/*)",
+      "baseUrl": "https://public-api.birdeye.so",
+      "authMechanism": "header X-API-KEY (+ x-chain header for chain selection, default solana)",
+      "envVar": "BIRDEYE_API_KEY",
+      "capabilities": [
+        {
+          "operation": "onchain.token_price",
+          "assetClasses": ["crypto", "defi"],
+          "chains": ["solana", "ethereum", "polygon", "arbitrum", "optimism", "base", "bsc", "avalanche", "other"],
+          "freshness": "realtime",
+          "verification": "docs-reviewed",
+          "lastVerifiedAt": "2026-07-17",
+          "priority": 70,
+          "notes": "DEX-derived prices by contract address; vendor claims real-time but NO quantified latency SLA — verify empirically before latency-sensitive use."
+        },
+        {
+          "operation": "onchain.token_ohlcv",
+          "assetClasses": ["crypto", "defi"],
+          "chains": ["solana", "ethereum", "polygon", "arbitrum", "optimism", "base", "bsc", "avalanche", "other"],
+          "freshness": "realtime",
+          "historicalDepth": "1s candles: 2 weeks; 15s/30s: 3 months; minute+ retention undocumented",
+          "verification": "docs-reviewed",
+          "lastVerifiedAt": "2026-07-17",
+          "priority": 70,
+          "notes": "OHLCV down to 1-second granularity; tick-level DEX trades via seek_by_time."
+        },
+        {
+          "operation": "onchain.dex_pairs",
+          "assetClasses": ["crypto", "defi"],
+          "chains": ["solana", "ethereum", "polygon", "arbitrum", "optimism", "base", "bsc", "avalanche", "other"],
+          "freshness": "realtime",
+          "verification": "docs-reviewed",
+          "lastVerifiedAt": "2026-07-17",
+          "priority": 70,
+          "notes": "Pool liquidity, trades, token screening (token list v3), new listings, token security/rug-check."
+        },
+        {
+          "operation": "onchain.wallet_balances",
+          "assetClasses": ["crypto"],
+          "chains": ["solana", "ethereum", "polygon", "arbitrum", "optimism", "base", "bsc", "avalanche", "other"],
+          "freshness": "realtime",
+          "verification": "docs-reviewed",
+          "lastVerifiedAt": "2026-07-17",
+          "priority": 40,
+          "notes": "Wallet portfolio/net-worth endpoints; secondary to Helius (Solana) and Moralis/Alchemy (EVM)."
+        }
+      ],
+      "rateLimits": [
+        { "plan": "Standard (free)", "limit": "1 rps" },
+        { "plan": "Lite/Starter", "limit": "15 rps" },
+        { "plan": "Premium", "limit": "50 rps / 1000 rpm" },
+        { "plan": "Business", "limit": "100-150 rps / 1500 rpm" }
+      ],
+      "licensing": {
+        "storageRestrictions": "ToS clause 10.2.a prohibits copying/scraping/storing/reproducing data as written (platform-oriented wording, no API carve-out documented) — treat storage as RESTRICTED pending clarification; disk caching disabled.",
+        "attribution": "Not documented.",
+        "redistribution": "Prohibited per ToS.",
+        "notes": "Compute-unit billing per endpoint; WebSocket available on paid plans."
+      },
+      "entitlementNotes": ["Free tier 1 rps is unusable for production; Premium+ recommended for research workloads."],
+      "limitations": [
+        "Crypto/DEX only; no CEX order books.",
+        "No latency SLA or uptime guarantee documented.",
+        "Historical depth undocumented for most datasets."
+      ],
+      "preferredUses": [
+        "PRIMARY: multi-chain DEX market data — token prices by contract, tick trades, fine-grained OHLCV, liquidity, long-tail token screening, token security checks."
+      ],
+      "reviewConfidence": "medium",
+      "researchRecord": "docs/research/providers/birdeye.json"
+    },
+    {
+      "id": "alchemy",
+      "name": "Alchemy",
+      "docsUrl": "https://www.alchemy.com/docs",
+      "docsReviewDate": "2026-07-17",
+      "apiVersion": "per-product: node v2, NFT v3, Data/Portfolio v1, Prices v1",
+      "baseUrl": "https://api.g.alchemy.com",
+      "authMechanism": "API key embedded in URL path ({network}.g.alchemy.com/v2/{key}); Data/Prices APIs under api.g.alchemy.com with key in path",
+      "envVar": "ALCHEMY_API_KEY",
+      "capabilities": [
+        {
+          "operation": "onchain.rpc",
+          "assetClasses": ["crypto", "defi"],
+          "chains": ["ethereum", "polygon", "arbitrum", "optimism", "base", "bsc", "avalanche", "solana", "other"],
+          "freshness": "realtime",
+          "historicalDepth": "full archive data on all plan tiers",
+          "verification": "docs-reviewed",
+          "lastVerifiedAt": "2026-07-17",
+          "priority": 80,
+          "notes": "JSON-RPC node access across 40+ chains; logs/receipts/traces (traces PAYG+); WebSockets + HMAC-signed webhooks. Documented capability; no normalized service route (raw RPC is adapter-direct only)."
+        },
+        {
+          "operation": "onchain.transfers",
+          "assetClasses": ["crypto"],
+          "chains": ["ethereum", "polygon", "arbitrum", "optimism", "base", "other"],
+          "freshness": "delayed",
+          "historicalDepth": "historical transfers by block range; indexing lag not quantified",
+          "verification": "docs-reviewed",
+          "lastVerifiedAt": "2026-07-17",
+          "priority": 75,
+          "notes": "alchemy_getAssetTransfers; toBlock 'indexed' tag signals indexing pipeline lag."
+        },
+        {
+          "operation": "onchain.wallet_balances",
+          "assetClasses": ["crypto", "nft"],
+          "chains": ["ethereum", "polygon", "arbitrum", "optimism", "base", "solana", "other"],
+          "freshness": "realtime",
+          "verification": "docs-reviewed",
+          "lastVerifiedAt": "2026-07-17",
+          "priority": 65,
+          "notes": "Portfolio API multi-chain token + NFT balances; Token API balances/metadata."
+        },
+        {
+          "operation": "onchain.token_price",
+          "assetClasses": ["crypto"],
+          "freshness": "unknown",
+          "verification": "docs-reviewed",
+          "lastVerifiedAt": "2026-07-17",
+          "priority": 40,
+          "notes": "Prices API v1: update frequency and lookback NOT documented — inspect per-price lastUpdatedAt at runtime; never present as exchange-grade real-time."
+        }
+      ],
+      "rateLimits": [
+        { "plan": "Free", "limit": "30M CU/month, 500 CUPS; Prices API 300 req/hour" },
+        { "plan": "PAYG", "limit": "usage-billed at ~$0.45/M CU; account-level throughput" }
+      ],
+      "licensing": {
+        "storageRestrictions": "Internal business purposes only per ToS v2.0 (2025-06-27); no explicit caching clause.",
+        "attribution": "Not required.",
+        "redistribution": "Prohibited (no frame/mirror/sell/resell/rent).",
+        "notes": "Compute-unit metering; costs vary per method (eth_getLogs 75 CU etc.)."
+      },
+      "entitlementNotes": ["Trace/debug APIs require PAYG+; throughput configured at account level."],
+      "limitations": [
+        "Crypto/on-chain only.",
+        "Prices API freshness/depth undocumented.",
+        "No formal API versioning/deprecation policy document."
+      ],
+      "preferredUses": [
+        "PRIMARY: EVM multi-chain node RPC, historical transfer reconstruction, real-time event monitoring (webhooks).",
+        "FALLBACK: multi-chain wallet balances, token prices."
+      ],
+      "reviewConfidence": "medium",
+      "researchRecord": "docs/research/providers/alchemy.json"
+    },
+    {
+      "id": "helius",
+      "name": "Helius",
+      "docsUrl": "https://www.helius.dev/docs",
+      "docsReviewDate": "2026-07-17",
+      "apiVersion": "JSON-RPC 2.0 (RPC/DAS); REST v0 (enhanced tx, webhooks); REST v1 (wallet)",
+      "baseUrl": "https://mainnet.helius-rpc.com",
+      "authMechanism": "query parameter api-key",
+      "envVar": "HELIUS_API_KEY",
+      "capabilities": [
+        {
+          "operation": "onchain.rpc",
+          "assetClasses": ["crypto", "defi"],
+          "chains": ["solana"],
+          "freshness": "realtime",
+          "verification": "docs-reviewed",
+          "lastVerifiedAt": "2026-07-17",
+          "priority": 85,
+          "notes": "Solana RPC with commitment levels; DAS API indexed near-real-time (last_indexed_slot in responses); LaserStream gRPC + webhooks for events. Documented capability; no normalized service route (raw RPC is adapter-direct only)."
+        },
+        {
+          "operation": "onchain.wallet_balances",
+          "assetClasses": ["crypto", "nft"],
+          "chains": ["solana"],
+          "freshness": "realtime",
+          "verification": "docs-reviewed",
+          "lastVerifiedAt": "2026-07-17",
+          "priority": 80,
+          "notes": "DAS getAssetsByOwner/getTokenAccounts; embedded USD prices are hourly ESTIMATES for top-10k tokens only — never treat embedded prices as market data."
+        },
+        {
+          "operation": "onchain.transfers",
+          "assetClasses": ["crypto"],
+          "chains": ["solana"],
+          "freshness": "realtime",
+          "historicalDepth": "mainnet: unlimited full history (getTransactionsForAddress); devnet 2 weeks",
+          "verification": "docs-reviewed",
+          "lastVerifiedAt": "2026-07-17",
+          "priority": 80,
+          "notes": "Full-history Solana transaction research; Enhanced Transactions API flagged legacy — prefer getTransactionsForAddress."
+        }
+      ],
+      "rateLimits": [
+        { "plan": "Free", "limit": "1M credits/mo; RPC 10 rps; DAS/enhanced 2 rps" },
+        { "plan": "Developer $49/mo", "limit": "10M credits; RPC 50 rps; DAS 10 rps" },
+        { "plan": "Business $499/mo", "limit": "100M credits; RPC 200 rps; DAS 50 rps" }
+      ],
+      "licensing": {
+        "storageRestrictions": "Not documented — record as unknown.",
+        "attribution": "Not required.",
+        "redistribution": "ToS 7(v) prohibits sublicense/resell/distribute of Helius products.",
+        "notes": "Credit-based billing per request type."
+      },
+      "entitlementNotes": ["Wallet API and LaserStream have plan-specific limits."],
+      "limitations": [
+        "Solana-only.",
+        "Embedded token prices are hourly estimates (top 10k tokens), explicitly not real-time market rates.",
+        "Token-account discovery before slot 111,491,819 needs documented workarounds."
+      ],
+      "preferredUses": [
+        "PRIMARY: Solana holdings, full-history transaction/transfer research, entity tagging (32,500+ tagged accounts), real-time Solana event monitoring."
+      ],
+      "reviewConfidence": "high",
+      "researchRecord": "docs/research/providers/helius.json"
+    },
+    {
+      "id": "moralis",
+      "name": "Moralis",
+      "docsUrl": "https://docs.moralis.com",
+      "docsReviewDate": "2026-07-17",
+      "apiVersion": "EVM v2.2; DeFi v1; Solana unversioned (solana-gateway)",
+      "baseUrl": "https://deep-index.moralis.io/api/v2.2",
+      "authMechanism": "header X-API-Key",
+      "envVar": "MORALIS_API_KEY",
+      "capabilities": [
+        {
+          "operation": "onchain.wallet_balances",
+          "assetClasses": ["crypto", "defi", "nft"],
+          "chains": ["ethereum", "polygon", "arbitrum", "optimism", "base", "bsc", "avalanche", "solana", "other"],
+          "freshness": "realtime",
+          "verification": "docs-reviewed",
+          "lastVerifiedAt": "2026-07-17",
+          "priority": 70,
+          "notes": "Documented freshness: blocks p50<4s; derived metrics (holders, PnL) may lag under load. Multi-chain balances, net worth, DeFi positions (5,000+ protocols, plan-gated)."
+        },
+        {
+          "operation": "onchain.transfers",
+          "assetClasses": ["crypto"],
+          "chains": ["ethereum", "polygon", "arbitrum", "optimism", "base", "bsc", "avalanche", "other"],
+          "freshness": "realtime",
+          "historicalDepth": "full decoded wallet history (per-chain genesis depth not stated)",
+          "verification": "docs-reviewed",
+          "lastVerifiedAt": "2026-07-17",
+          "priority": 70,
+          "notes": "Decoded transaction history; token metadata with holder concentration, spam/security scores."
+        },
+        {
+          "operation": "onchain.token_price",
+          "assetClasses": ["crypto", "defi"],
+          "chains": ["ethereum", "polygon", "arbitrum", "optimism", "base", "bsc", "avalanche", "solana", "other"],
+          "freshness": "realtime",
+          "verification": "docs-reviewed",
+          "lastVerifiedAt": "2026-07-17",
+          "priority": 60,
+          "notes": "DEX-derived prices (not consolidated CEX tape); thin-liquidity pairs can mislead — use min_pair_side_liquidity_usd / securityScore mitigations."
+        },
+        {
+          "operation": "onchain.dex_pairs",
+          "assetClasses": ["crypto", "defi"],
+          "chains": ["ethereum", "polygon", "arbitrum", "optimism", "base", "bsc", "avalanche", "other"],
+          "freshness": "realtime",
+          "historicalDepth": "pair OHLCV down to 1s bars",
+          "verification": "docs-reviewed",
+          "lastVerifiedAt": "2026-07-17",
+          "priority": 60,
+          "notes": "Swap tape, pair OHLCV, liquidity. Solana removed 2026-07-17: adapter's getDexPairs does not support solana (registry/adapter mismatch found in review)."
+        }
+      ],
+      "rateLimits": [
+        { "plan": "Free", "limit": "40 rps; 40,000 CU/day" },
+        { "plan": "Starter $49/mo+", "limit": "40+ rps; CU quotas by tier, overage billed" }
+      ],
+      "licensing": {
+        "storageRestrictions": "Not explicitly addressed in General T&C.",
+        "attribution": "Not required.",
+        "redistribution": "No transfer/sub-licence of Services to third parties; data redistribution not explicitly addressed — treat as internal-use.",
+        "notes": "Compute-unit billing per endpoint (e.g. token price 50 CU, DeFi positions 5000 CU)."
+      },
+      "entitlementNotes": ["DeFi positions, token search/trending are plan-gated (Starter/Pro+)."],
+      "limitations": [
+        "Crypto/on-chain only.",
+        "Prices/OHLCV are DEX-derived, not consolidated tape.",
+        "Derived metrics can lag during high activity."
+      ],
+      "preferredUses": [
+        "PRIMARY: EVM wallet intelligence (history, PnL, net worth), token due-diligence (holders, spam/security scores), DeFi position monitoring.",
+        "FALLBACK: EVM/Solana token prices and DEX data."
+      ],
+      "reviewConfidence": "high",
+      "researchRecord": "docs/research/providers/moralis.json"
+    },
+    {
+      "id": "nansen",
+      "name": "Nansen",
+      "docsUrl": "https://docs.nansen.ai/",
+      "docsReviewDate": "2026-07-17",
+      "apiVersion": "v1 (/api/v1/); v1beta1 backtesting (beta, breaking changes possible)",
+      "baseUrl": "https://api.nansen.ai",
+      "authMechanism": "header apikey (lowercase)",
+      "envVar": "NANSEN_API_KEY",
+      "capabilities": [
+        {
+          "operation": "onchain.labeled_flows",
+          "assetClasses": ["crypto", "defi"],
+          "chains": ["ethereum", "solana", "polygon", "arbitrum", "optimism", "base", "bsc", "avalanche", "other"],
+          "freshness": "realtime",
+          "historicalDepth": "smart-money historical holdings: 4-year rolling window; token screener retention: ~130min (minute) / ~50h (hourly) / ~50d (daily)",
+          "verification": "docs-reviewed",
+          "lastVerifiedAt": "2026-07-17",
+          "priority": 90,
+          "notes": "Differentiated proprietary dataset: smart-money netflows/holdings/DEX trades of labeled entities. Labels are MODEL ESTIMATES. Strict redistribution limits — internal research use only. premium_labels default flips to false 2026-04-01."
+        },
+        {
+          "operation": "onchain.wallet_balances",
+          "assetClasses": ["crypto"],
+          "chains": ["ethereum", "solana", "polygon", "arbitrum", "optimism", "base", "bsc", "avalanche", "bitcoin", "other"],
+          "freshness": "realtime",
+          "verification": "docs-reviewed",
+          "lastVerifiedAt": "2026-07-17",
+          "priority": 50,
+          "notes": "Profiler balances/PnL/counterparties across 30+ chains; per-endpoint chain support varies significantly (Bitcoin Profiler-only; Solana lacks tx lookup)."
+        }
+      ],
+      "rateLimits": [
+        { "plan": "Free", "limit": "15 rps / 300 rpm" },
+        { "plan": "Pro (paid)", "limit": "75 rps / 1,500 rpm; per-endpoint overrides (e.g. profiler perp-trades 5 rpm)" }
+      ],
+      "licensing": {
+        "storageRestrictions": "Governed by Data Redistribution Guidelines (2025-11-18) + ToS.",
+        "attribution": "Some endpoints redistributable with/without attribution per Guidelines; smart-money data is restricted.",
+        "redistribution": "Endpoint-specific allowlist; DEFAULT TO INTERNAL-ONLY for anything not explicitly allowed.",
+        "notes": "Check the per-endpoint redistribution table before any external publication."
+      },
+      "entitlementNotes": ["Pro plan needed for meaningful throughput; beta endpoints subject to breaking changes."],
+      "limitations": [
+        "Crypto-only.",
+        "Chain support varies per endpoint (smart-money historical on only 4 chains).",
+        "Labels are proprietary model output — treat as model_estimate, not observed fact.",
+        "Short retention on screener granularities."
+      ],
+      "preferredUses": [
+        "PRIMARY: smart-money flow intelligence, wallet/entity due diligence and forensics, token holder-base analytics."
+      ],
+      "reviewConfidence": "high",
+      "researchRecord": "docs/research/providers/nansen.json"
+    },
+    {
+      "id": "newsdata",
+      "name": "NewsData.io",
+      "docsUrl": "https://newsdata.io/documentation",
+      "docsReviewDate": "2026-07-17",
+      "apiVersion": "path v1 (/api/1/)",
+      "baseUrl": "https://newsdata.io/api/1",
+      "authMechanism": "header X-ACCESS-KEY (preferred) or query apikey",
+      "envVar": "NEWSDATA_API_KEY",
+      "capabilities": [
+        {
+          "operation": "news.latest",
+          "assetClasses": ["equity", "crypto", "macro", "commodity", "fx", "multi_asset"],
+          "freshness": "delayed",
+          "historicalDepth": "/1/latest covers rolling 48h window",
+          "verification": "docs-reviewed",
+          "lastVerifiedAt": "2026-07-17",
+          "priority": 80,
+          "notes": "200+ countries, ~89 languages, source-tier filtering. Real-time claimed on paid plans; free tier delayed 12h — freshness recorded as delayed until plan verified. Measure actual latency via fetched_at."
+        },
+        {
+          "operation": "news.search",
+          "assetClasses": ["equity", "crypto", "macro", "commodity", "fx", "multi_asset"],
+          "freshness": "delayed",
+          "verification": "docs-reviewed",
+          "lastVerifiedAt": "2026-07-17",
+          "priority": 80,
+          "notes": "q/qInTitle queries; crypto endpoint has per-coin tagging + vendor sentiment (Professional+); market endpoint is ticker-tagged news."
+        },
+        {
+          "operation": "news.archive",
+          "assetClasses": ["equity", "crypto", "macro", "commodity", "fx", "multi_asset"],
+          "freshness": "historical",
+          "historicalDepth": "plan-gated: Basic 6mo, Professional 2y, Corporate 10y",
+          "verification": "docs-reviewed",
+          "lastVerifiedAt": "2026-07-17",
+          "priority": 80,
+          "notes": "Historical corpus for NLP/backtest research."
+        }
+      ],
+      "rateLimits": [
+        { "plan": "Free", "limit": "200 credits/day; 30 credits/15min" },
+        { "plan": "paid", "limit": "1,800 credits/15min; monthly quotas 20k-50k+ credits" }
+      ],
+      "licensing": {
+        "storageRestrictions": "None documented for internal use.",
+        "attribution": "Not required per reviewed terms.",
+        "redistribution": "PERMISSIVE (unusual): terms explicitly allow customers to sublicense/sell/syndicate/share the Data on their own responsibility.",
+        "notes": "Data Derivatives usable for internal AND external business purposes."
+      },
+      "entitlementNotes": ["Sentiment filter Professional+; archive depth plan-gated; free tier delayed 12h."],
+      "limitations": [
+        "News-only: no prices or reference data.",
+        "Terms do not guarantee real-time delivery even on paid plans.",
+        "Vendor sentiment is a model estimate."
+      ],
+      "preferredUses": [
+        "PRIMARY: multi-geography news monitoring, ticker-tagged news flow, crypto news with sentiment, historical news corpus."
+      ],
+      "reviewConfidence": "high",
+      "researchRecord": "docs/research/providers/newsdata.json"
+    },
+    {
+      "id": "tavily",
+      "name": "Tavily",
+      "docsUrl": "https://docs.tavily.com",
+      "docsReviewDate": "2026-07-17",
+      "apiVersion": "unversioned (dated changelog; 'fast'/'ultra-fast' depths in beta)",
+      "baseUrl": "https://api.tavily.com",
+      "authMechanism": "Authorization: Bearer tvly-<key>",
+      "envVar": "TAVILY_API_KEY",
+      "capabilities": [
+        {
+          "operation": "search.web",
+          "assetClasses": ["multi_asset", "equity", "crypto", "macro", "other"],
+          "freshness": "realtime",
+          "verification": "docs-reviewed",
+          "lastVerifiedAt": "2026-07-17",
+          "priority": 85,
+          "notes": "Live web search with time_range/start_date/end_date filters; topic=news for recent news. Result 'content' is snippet text — vet sources before institutional use. 'answer' field is LLM-generated."
+        },
+        {
+          "operation": "search.extract",
+          "assetClasses": ["multi_asset", "other"],
+          "freshness": "realtime",
+          "verification": "docs-reviewed",
+          "lastVerifiedAt": "2026-07-17",
+          "priority": 85,
+          "notes": "Page extraction to markdown at request time; crawl/map for site traversal (IR sites, regulator sites). Documented capability; no normalized service route yet (no ExtractSource interface) — direct adapter use only."
+        },
+        {
+          "operation": "news.search",
+          "assetClasses": ["multi_asset", "equity", "crypto", "macro"],
+          "freshness": "realtime",
+          "verification": "docs-reviewed",
+          "lastVerifiedAt": "2026-07-17",
+          "priority": 30,
+          "notes": "FALLBACK news discovery via topic=news when NewsData is unavailable; not a licensed news feed."
+        }
+      ],
+      "rateLimits": [
+        { "plan": "Development", "limit": "100 RPM standard endpoints" },
+        { "plan": "Production (paid/PAYGO)", "limit": "1,000 RPM standard; crawl 100 RPM; research creation 20 RPM" }
+      ],
+      "licensing": {
+        "storageRestrictions": "Not documented.",
+        "attribution": "Not required.",
+        "redistribution": "Prohibited (ToS 3.2(ii): no sublicense/resell/distribute of Services).",
+        "notes": "Credit-based usage billing."
+      },
+      "entitlementNotes": ["Production keys require active paid plan or PAYGO."],
+      "limitations": [
+        "Not a market-data provider — unsuitable as any pricing source.",
+        "Web-derived content quality varies; requires source vetting.",
+        "No documented index-depth guarantee."
+      ],
+      "preferredUses": [
+        "PRIMARY: qualitative web research, document extraction for research pipelines, event/controversy scanning.",
+        "FALLBACK: breaking-news awareness."
+      ],
+      "reviewConfidence": "high",
+      "researchRecord": "docs/research/providers/tavily.json"
+    }
+  ]
+}

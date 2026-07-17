@@ -1,0 +1,13 @@
+{
+  "_fixture": {
+    "note": "constructed from official docs field definitions (see docs/research/providers/coingecko-pro.json), not captured live data. Response object is keyed by CoinGecko coin id; the adapter must ignore keys starting with '_'.",
+    "docsUrl": "https://docs.coingecko.com/reference/simple-price"
+  },
+  "bitcoin": {
+    "usd": 118211.42813786284,
+    "usd_market_cap": 2351650203845.66,
+    "usd_24h_vol": 46953265807.03,
+    "usd_24h_change": 1.0385321,
+    "last_updated_at": 1784196602
+  }
+}

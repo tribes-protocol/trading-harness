@@ -1,0 +1,30 @@
+{
+  "_fixture": {
+    "note": "constructed from official docs field definitions (see docs/research/providers/marketstack.json), not captured live data",
+    "docsUrl": "https://docs.apilayer.com/marketstack/docs/api-documentation"
+  },
+  "pagination": { "limit": 1, "offset": 0, "count": 1, "total": 1 },
+  "data": [
+    {
+      "open": 190.5,
+      "high": 192.4,
+      "low": 190.02,
+      "close": 192.12,
+      "volume": 48123456,
+      "adj_high": 192.15,
+      "adj_low": 189.78,
+      "adj_close": 191.88,
+      "adj_open": 190.26,
+      "adj_volume": 48123456,
+      "split_factor": 1.0,
+      "dividend": 0.0,
+      "name": "Apple Inc",
+      "exchange_code": "NASDAQ",
+      "asset_type": "Stock",
+      "price_currency": "usd",
+      "symbol": "AAPL",
+      "exchange": "XNAS",
+      "date": "2026-07-16T00:00:00+0000"
+    }
+  ]
+}

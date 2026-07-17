@@ -1,0 +1,56 @@
+{
+  "_fixture": {
+    "note": "constructed from official docs field definitions (see docs/research/providers/moralis.json), not captured live data",
+    "docsUrl": "https://docs.moralis.com/data-api/evm/wallet/token-balances.md"
+  },
+  "page": 1,
+  "page_size": 100,
+  "block_number": "23456789",
+  "cursor": null,
+  "result": [
+    {
+      "token_address": "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+      "name": "Ether",
+      "symbol": "ETH",
+      "logo": "https://example.invalid/logos/eth.png",
+      "thumbnail": "https://example.invalid/logos/eth_thumb.png",
+      "decimals": 18,
+      "balance": "1250000000000000000",
+      "possible_spam": false,
+      "verified_contract": true,
+      "usd_price": "3521.42",
+      "usd_price_24hr_percent_change": "-1.25",
+      "usd_price_24hr_usd_change": "-44.59",
+      "usd_value_24hr_usd_change": "-55.74",
+      "usd_value": 4401.78,
+      "portfolio_percentage": 77.9,
+      "balance_formatted": "1.25",
+      "native_token": true,
+      "total_supply": null,
+      "total_supply_formatted": null,
+      "percentage_relative_to_total_supply": null
+    },
+    {
+      "token_address": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+      "name": "USD Coin",
+      "symbol": "USDC",
+      "logo": "https://example.invalid/logos/usdc.png",
+      "thumbnail": "https://example.invalid/logos/usdc_thumb.png",
+      "decimals": 6,
+      "balance": "1250000000",
+      "possible_spam": false,
+      "verified_contract": true,
+      "usd_price": "0.9998",
+      "usd_price_24hr_percent_change": "-0.03",
+      "usd_price_24hr_usd_change": "-0.0003",
+      "usd_value_24hr_usd_change": "-0.37",
+      "usd_value": 1249.75,
+      "portfolio_percentage": 22.1,
+      "balance_formatted": "1250",
+      "native_token": false,
+      "total_supply": "42690000000000000",
+      "total_supply_formatted": "42690000000",
+      "percentage_relative_to_total_supply": 0.0000029
+    }
+  ]
+}

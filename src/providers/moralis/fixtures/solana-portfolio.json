@@ -1,0 +1,26 @@
+{
+  "_fixture": {
+    "note": "constructed from official docs field definitions (see docs/research/providers/moralis.json), not captured live data",
+    "docsUrl": "https://docs.moralis.com/data-api/solana/wallet/portfolio.md"
+  },
+  "nativeBalance": {
+    "solana": "1.5",
+    "lamports": "1500000000"
+  },
+  "nfts": [],
+  "tokens": [
+    {
+      "associatedTokenAddress": "3emsAVdmGKERbHjmGfQ6oZ1e35dkf5iYcS6U4CPKFVaa",
+      "mint": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+      "name": "USD Coin",
+      "symbol": "USDC",
+      "tokenStandard": 1,
+      "amount": "250.75",
+      "amountRaw": "250750000",
+      "decimals": 6,
+      "logo": "https://example.invalid/logos/usdc.png",
+      "isVerifiedContract": true,
+      "possibleSpam": false
+    }
+  ]
+}

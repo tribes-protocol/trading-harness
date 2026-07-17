@@ -1,0 +1,347 @@
+{
+  "provider": "NewsData.io",
+  "reviewDate": "undefined",
+  "officialDocsUrl": "https://newsdata.io/documentation",
+  "apiVersion": {
+    "pathVersion": "1 (all endpoints under /api/1/)",
+    "openApiInfoVersion": "1.0.0 (OpenAPI 3.1.0 spec published at https://newsdata.io/openapi.json)",
+    "versioningPolicy": "No formal versioning/deprecation policy page documented. Deprecations are announced via the official changelog (https://newsdata.io/changelog); precedent: the `ai_content` response field deprecation was announced 2025-09-30 with removal effective 2025-11-01 (~1 month notice).",
+    "notes": "Legacy endpoint /1/news is retained as a documented, fully supported alias of /1/latest."
+  },
+  "authentication": {
+    "mechanism": "API key (no OAuth, no JWT documented)",
+    "queryParameter": "apikey",
+    "header": "X-ACCESS-KEY",
+    "rule": "Send the key either as the `apikey` query-string parameter or as the `X-ACCESS-KEY` HTTP header; one of the two is required on every request. Parameter names are case-insensitive.",
+    "keyFormat": "Opaque per-account string issued from the user dashboard after signup; examples show a `pub_` prefix (not guaranteed).",
+    "source": "https://newsdata.io/openapi.json (securitySchemes ApiKeyQuery + ApiKeyHeader; root security requires one of the two)"
+  },
+  "baseUrls": [
+    {
+      "url": "https://newsdata.io/api",
+      "description": "Production (sole server in official OpenAPI spec); all endpoint paths are prefixed /1/, i.e. effective base https://newsdata.io/api/1",
+      "planSpecificHosts": "None documented — single host for all plans"
+    }
+  ],
+  "endpoints": [
+    {
+      "name": "Latest News",
+      "method": "GET",
+      "path": "/1/latest",
+      "creditCost": 1,
+      "requiredParams": ["apikey (or X-ACCESS-KEY header)"],
+      "optionalParams": ["q", "qInTitle", "qInMeta", "country", "excludecountry", "category", "excludecategory", "language", "excludelanguage", "domain", "domainurl", "excludedomain", "prioritydomain (top|medium|low)", "id (up to page-size limit; must be used alone)", "url (must be used alone)", "timeframe (1-48 hours or 1m-2880m; paid plans only)", "timezone (IANA)", "image (0|1)", "video (0|1)", "full_content (0|1)", "removeduplicate (0|1; data from 2024-07-24 onward)", "sentiment (positive|neutral|negative; Professional/Corporate, data from 2024-01-12)", "sentiment_score (1-100; requires sentiment)", "tag (Professional/Corporate)", "region (Corporate; data from 2024-01-29)", "organization (Corporate; data from 2024-05-24)", "creator", "datatype (data from 2025-11-28)", "size (1-50 paid, 1-10 free)", "page", "sort (pubdatedesc|pubdateasc|relevancy|source|fetched_at)", "excludefield"],
+      "topLevelResponseFields": ["status", "totalResults", "results[] (Article objects)", "nextPage"],
+      "articleFields": ["article_id", "link", "title", "description", "content (plan-gated)", "keywords", "creator", "language", "country", "category", "datatype", "pubDate", "pubDateTZ", "fetched_at", "image_url", "video_url", "source_id", "source_name", "source_priority", "source_url", "source_icon", "sentiment (plan-gated)", "sentiment_stats (plan-gated)", "ai_tag (plan-gated)", "ai_region (Corporate)", "ai_org (Corporate)", "ai_summary (plan-gated)", "duplicate"],
+      "pagination": "Cursor: pass response `nextPage` as `page`; numeric page number when sort=relevancy|source|fetched_at (capped at 10,000 results)",
+      "freshness": "Rolling last-48-hours window. Real-time on paid plans; 12-hour delay on free plan. Does not accept from_date/to_date.",
+      "notes": "Filter incompatibilities: at most one of q/qInTitle/qInMeta; one of domain/domainurl/excludedomain; country XOR excludecountry; category XOR excludecategory; language XOR excludelanguage; timeframe XOR from_date/to_date; id and url must be used alone."
+    },
+    {
+      "name": "News (legacy alias)",
+      "method": "GET",
+      "path": "/1/news",
+      "creditCost": 1,
+      "requiredParams": ["apikey"],
+      "optionalParams": ["Identical to /1/latest"],
+      "topLevelResponseFields": ["status", "totalResults", "results[]", "nextPage"],
+      "pagination": "Same as /1/latest",
+      "freshness": "Same as /1/latest",
+      "notes": "Documented in the OpenAPI spec as 'Identical to /1/latest — same parameters, same behaviour, same response, same 1-credit cost.'"
+    },
+    {
+      "name": "News Archive",
+      "method": "GET",
+      "path": "/1/archive",
+      "creditCost": 5,
+      "requiredParams": ["apikey", "At least one of: q, qInTitle, qInMeta, country, category, language, domain, domainurl, prioritydomain, id, url, image, video, full_content"],
+      "optionalParams": ["from_date (YYYY-MM-DD or YYYY-MM-DD HH:MM:SS, UTC)", "to_date", "timezone", "excludecountry/excludecategory/excludelanguage/excludedomain", "removeduplicate", "sentiment + sentiment_score", "tag", "region", "organization", "creator", "datatype", "image", "video", "full_content", "size", "page", "sort (incl. fetched_at)", "excludefield"],
+      "topLevelResponseFields": ["status", "totalResults", "results[]", "nextPage"],
+      "pagination": "Same cursor mechanism (nextPage -> page)",
+      "freshness": "Historical (EOD-style corpus). Look-back depth is plan-gated: Basic 6 months, Professional 2 years, Corporate 10 years. Not available on the free plan.",
+      "notes": "Consumes 5 API credits per call/page — deep historical sweeps are expensive."
+    },
+    {
+      "name": "Crypto News",
+      "method": "GET",
+      "path": "/1/crypto",
+      "creditCost": 1,
+      "requiredParams": ["apikey"],
+      "optionalParams": ["coin (comma-separated crypto ticker symbols)", "q/qInTitle/qInMeta", "language/excludelanguage", "domain/domainurl/excludedomain", "prioritydomain", "id", "url", "from_date/to_date OR timeframe (paid only; not both)", "timezone", "image", "video", "full_content", "removeduplicate", "sentiment", "tag (crypto-specific tag set)", "size", "page", "sort (pubdatedesc|pubdateasc|relevancy|source — no fetched_at)", "excludefield"],
+      "topLevelResponseFields": ["status", "totalResults", "results[] (CryptoArticle objects incl. `coin` field)", "nextPage"],
+      "pagination": "Same cursor mechanism",
+      "freshness": "Real-time on paid plans. Free plan: last 7 days only, with 12-hour delay, and from_date/to_date/timeframe cannot be used.",
+      "notes": "No country/category filters on this endpoint. `coin` response field lists crypto ticker symbols mentioned in the article."
+    },
+    {
+      "name": "Market (financial/stock-market) News",
+      "method": "GET",
+      "path": "/1/market",
+      "creditCost": 1,
+      "requiredParams": ["apikey"],
+      "optionalParams": ["symbol (comma-separated stock ticker symbols)", "q/qInTitle/qInMeta", "country/excludecountry", "language/excludelanguage", "domain/domainurl/excludedomain", "prioritydomain", "id", "url", "from_date/to_date OR timeframe (paid only)", "timezone", "image", "video", "full_content", "removeduplicate", "sentiment + sentiment_score", "tag", "organization", "creator", "datatype", "size", "page", "sort (incl. fetched_at)", "excludefield"],
+      "topLevelResponseFields": ["status", "totalResults", "results[] (MarketArticle objects incl. `symbol` field)", "nextPage"],
+      "pagination": "Same cursor mechanism",
+      "freshness": "Real-time on paid plans; default window last 48 hours when no dates given. Free plan: last 7 days, 12-hour delay, no date/timeframe params.",
+      "notes": "Launched 2025-10-16 per official changelog. Vendor llms.txt labels it beta; the OpenAPI spec does not. This is NEWS tagged with tickers — not price/quote data."
+    },
+    {
+      "name": "News Sources directory",
+      "method": "GET",
+      "path": "/1/sources",
+      "creditCost": 1,
+      "requiredParams": ["apikey"],
+      "optionalParams": ["country", "category", "language", "domainurl", "prioritydomain"],
+      "topLevelResponseFields": ["status", "totalResults (max 100)", "results[] (Source objects: id, name, url, icon, priority, description, category, language, country, total_article, last_fetch)", "nextPage (always null)"],
+      "pagination": "None — returns up to 100 sources, nextPage is always null",
+      "freshness": "Directory data; `last_fetch` per source shows when the source was last crawled",
+      "notes": "Returned `id` is used with the `domain` filter on news endpoints."
+    },
+    {
+      "name": "News Count",
+      "method": "GET",
+      "path": "/1/count",
+      "creditCost": 50,
+      "requiredParams": ["apikey", "from_date", "to_date", "At least one of: q, qInTitle, qInMeta, country, category, language, domain, domainurl, prioritydomain, image, video, full_content"],
+      "optionalParams": ["interval (all|hour|day; default all)", "exclude* variants", "removeduplicate", "sentiment + sentiment_score", "tag", "region", "organization", "creator", "datatype", "size (histogram entries per page)", "page", "sort (pubdatedesc|pubdateasc)"],
+      "topLevelResponseFields": ["interval=all: status, results (single total object)", "interval=hour|day: status, results[] (per-bucket counts), nextPage"],
+      "pagination": "Histogram pages via nextPage -> page",
+      "freshness": "Aggregates over the archive corpus; look-back bounded by plan archive depth",
+      "notes": "Paid plans only ('plans with count access'). Introduced 2025-11-20 per changelog. 50 credits per call."
+    },
+    {
+      "name": "Crypto News Count",
+      "method": "GET",
+      "path": "/1/crypto/count",
+      "creditCost": 50,
+      "requiredParams": ["apikey", "from_date", "to_date"],
+      "optionalParams": ["coin", "q/qInTitle/qInMeta", "language/excludelanguage", "domain/domainurl/excludedomain", "prioritydomain", "image", "video", "full_content", "removeduplicate", "sentiment", "tag", "interval", "size", "page", "sort"],
+      "topLevelResponseFields": ["status", "results (total or histogram)", "nextPage (histogram mode)"],
+      "pagination": "Histogram pages via nextPage -> page",
+      "freshness": "Aggregates over crypto news corpus",
+      "notes": "Paid plans only; 50 credits per call."
+    },
+    {
+      "name": "Market News Count",
+      "method": "GET",
+      "path": "/1/market/count",
+      "creditCost": 50,
+      "requiredParams": ["apikey", "from_date", "to_date"],
+      "optionalParams": ["symbol", "q/qInTitle/qInMeta", "country/excludecountry", "language/excludelanguage", "domain/domainurl/excludedomain", "prioritydomain", "image", "video", "full_content", "removeduplicate", "sentiment + sentiment_score", "tag", "organization", "creator", "datatype", "interval", "size", "page", "sort"],
+      "topLevelResponseFields": ["status", "results (total or histogram)", "nextPage (histogram mode)"],
+      "pagination": "Histogram pages via nextPage -> page",
+      "freshness": "Aggregates over ticker-tagged market news corpus",
+      "notes": "Paid plans only; 50 credits per call. Useful for news-volume analytics per ticker."
+    }
+  ],
+  "coverage": {
+    "assetClasses": "NEWS ONLY — this provider supplies no prices, quotes, fundamentals, or reference data. News is tagged for equities (stock ticker `symbol` on /1/market) and cryptocurrencies (`coin` on /1/crypto); general/business/politics/etc. news via /1/latest and /1/archive.",
+    "geographies": "200+ countries (llms.txt cites 206), ~89 languages; filters use ISO 3166-1 alpha-2 country codes and ISO 639-1 language codes",
+    "sources": "Tens of thousands of publishers (vendor materials cite 84,000-99,000+ depending on date; not independently verifiable). Source tiers exposed via prioritydomain: top = top 10% of domains, medium = top 30%, low = top 50%.",
+    "categories": "Fixed taxonomy: business, crime, domestic, education, entertainment, environment, food, health, lifestyle, other, politics, science, sports, technology, top, tourism, world",
+    "datatypes": "news, blog, multimedia, forum, press release, review, research, opinion, analysis, podcast (datatype field/filter, data from 2025-11-28 onward)",
+    "chains": "Not applicable — crypto coverage is by coin ticker symbol on news articles, not by blockchain/chain",
+    "instrumentTypes": "Stock tickers (plain ticker strings on /1/market) and crypto ticker symbols (on /1/crypto). No ISIN/FIGI/CUSIP or exchange-qualified symbology documented."
+  },
+  "freshness": {
+    "latest": "Real-time on paid plans (vendor claim); free plan articles delayed 12 hours. /1/latest covers a rolling 48-hour window.",
+    "archive": "Historical corpus; depth plan-gated (6 months / 2 years / 10 years).",
+    "crypto": "Real-time on paid plans; free plan limited to last 7 days with 12-hour delay.",
+    "market": "Real-time on paid plans; default last-48-hours window; free plan last 7 days with 12-hour delay.",
+    "sources": "Directory with per-source last_fetch timestamp.",
+    "count": "Aggregates over stored corpus.",
+    "realTimeCaveat": "The vendor's own Terms state: 'While reasonable efforts are made to deliver content close to the time of publication, delivery times may vary, and real-time availability is not guaranteed.' The `fetched_at` response field (added 2025-12-19) exposes collection time and enables latency measurement.",
+    "push": "No webhooks/WebSocket/SSE available today; polling only. WebSocket streaming announced as 'coming soon' in the official changelog on 2026-06-23."
+  },
+  "historicalDepth": {
+    "free": "No archive access; /1/latest 48h window; /1/crypto and /1/market last 7 days",
+    "basic": "Archive: past 6 months",
+    "professional": "Archive: past 2 years",
+    "corporate": "Archive: past 10 years (expanded per changelog entry of 2026-06-22; custom historical ranges also purchasable)",
+    "enrichmentFieldDepth": "AI/enrichment filters are date-gated regardless of plan: sentiment from 2024-01-12, ai_region from 2024-01-29, ai_org from 2024-05-24, removeduplicate from 2024-07-24, datatype from 2025-11-28",
+    "totalCorpus": "Vendor cites 100M+ articles gathered since ~2016 (marketing figure)"
+  },
+  "pagination": {
+    "mechanism": "Cursor-based: response field `nextPage` (opaque string, null when exhausted) is passed as the `page` query parameter on the next request with identical filters.",
+    "exception": "With sort=relevancy|source|fetched_at, `page` is a page NUMBER instead, and results are capped at 10,000 total.",
+    "pageSize": "size param: 1-50 on paid plans, 1-10 on free plan; defaults to plan maximum. Each page consumes the endpoint's credit cost (1 / 5 / 50).",
+    "sourcesEndpoint": "/1/sources does not paginate (max 100 rows, nextPage always null)"
+  },
+  "rateLimits": {
+    "shortWindow": {
+      "free": "30 credits per 15 minutes",
+      "paid": "1,800 credits per 15 minutes (documented uniformly for 'paid plans'; no per-tier differentiation documented)",
+      "onExceed": "HTTP 429; docs state requests are blocked until the window resets after 15 minutes"
+    },
+    "quotas": {
+      "free": "200 API credits per day",
+      "basic": "20,000 API credits per month",
+      "professional": "50,000 API credits per month",
+      "corporate": "1,000,000 API credits per month",
+      "addOnCredits": "$0.006 per additional credit on paid plans (per official pricing data)"
+    },
+    "creditAccounting": {
+      "standardEndpoints": "1 credit per request (/1/latest, /1/news, /1/crypto, /1/market, /1/sources)",
+      "archive": "5 credits per request",
+      "countEndpoints": "50 credits per request (/1/count, /1/crypto/count, /1/market/count)",
+      "articlesPerCredit": "10 on free plan, 50 on paid plans",
+      "failedRequests": "Docs FAQ states credits are counted only when a request executes and returns a result; requests with wrong parameters/filters or zero results are not counted"
+    },
+    "observabilityHeaders": "Response headers `X-RateLimit-Remaining` (remaining request budget) and `X-API-Limit-Remaining` (remaining API credits) are documented in the official OpenAPI spec on 200 responses",
+    "backoffGuidance": "No formal backoff policy in the API docs. The vendor's llms.txt recommends honoring Retry-After on 429 and exponential backoff with jitter for 429/5xx; official SDKs implement automatic retries with exponential backoff (2s->4s->8s->16s->32s, 60s cap) and honor Retry-After. Retry-After header behavior is described in vendor llms.txt, not in the OpenAPI spec."
+  },
+  "errors": {
+    "envelope": "{ \"status\": \"error\", \"results\": { \"message\": \"<human-readable>\", \"code\": \"<ErrorCode>\" } } — an InvalidFilterDetail variant adds fields such as invalid_domain, invalid_country, invalid_category, invalid_language, invalid_datatype, invalid_field, invalid_id, invalid_tag, invalid_region, invalid_coin, invalid_ticker, and a suggestion[] array",
+    "httpStatusCodes": {
+      "200": "Success (body status = 'success')",
+      "400": "BadRequest — required parameter missing or malformed query",
+      "401": "Unauthorized — missing/invalid API key or request not allowed for this key",
+      "403": "Forbidden — plan does not include this endpoint or parameter",
+      "422": "UnprocessableEntity — unsupported filter value, too many values, invalid date, or incompatible filter combination",
+      "429": "TooManyRequests — rate limit exceeded or API credits exhausted",
+      "500": "ServerError — unexpected server error",
+      "503": "ServiceUnavailable — endpoint temporarily unavailable due to maintenance"
+    },
+    "machineReadableCodes": ["Unauthorized", "ServerError", "TooManyRequests", "InvalidRequest", "AccessDenied", "ServiceUnavailable (NB: the enum value contains a trailing space, per the official spec)", "NotFound", "UnsupportedFilter", "FilterLimitExceed", "UnsupportedParameter", "TooManyQueryFilter", "TooManyFilter", "TooManyLogicalOperator", "UnsupportedDateFormat", "UnsupportedQueryLength", "UnsupportedQInTitleLength", "UnsupportedQInMetaLength", "RateLimitExceeded", "ApiLimitExceeded", "MalformedUrl", "MaxPageLimitExceeded", "MalformedQuery"]
+  },
+  "entitlements": {
+    "free": {
+      "price": "$0 (no card required)",
+      "credits": "200/day, 10 articles/credit, 30 credits/15min",
+      "endpoints": "latest, news, crypto (7-day window), market (7-day window), sources",
+      "excluded": "archive, all count endpoints, full content, timeframe param, sentiment/AI filters, real-time (12-hour delay applies)",
+      "qLength": "100 chars"
+    },
+    "basic": {
+      "price": "$199.99/month or $1,919.99/year",
+      "credits": "20,000/month, 50 articles/credit, 1,800 credits/15min",
+      "adds": "Real-time delivery, archive (6 months), count endpoints, full content, article images, timeframe, AI summary, tracker/advanced search/save search/data download (dashboard), add-on credits at $0.006",
+      "excluded": "sentiment analysis, AI tags, ai_region/ai_org filters",
+      "qLength": "100 chars (per official pricing data q_limit)"
+    },
+    "professional": {
+      "price": "$349.99/month or $3,359.99/year",
+      "credits": "50,000/month, 50 articles/credit, 1,800 credits/15min",
+      "adds": "Sentiment analysis + sentiment_score filter, AI tags (tag filter), archive depth 2 years, dedicated support, AI content",
+      "excluded": "ai_region filter (Corporate only); organization filter documented as Corporate-only in OpenAPI",
+      "qLength": "256 chars (per official pricing data q_limit)"
+    },
+    "corporate": {
+      "price": "$1,299.99/month or $9,989.99/year",
+      "credits": "1,000,000/month, 50 articles/credit, 1,800 credits/15min",
+      "adds": "Archive depth 10 years, ai_region + organization (ai_org) filters, all AI features, dedicated support",
+      "qLength": "512 chars (per official pricing data q_limit)"
+    },
+    "customEnterprise": "Custom pricing via sales; unlimited/negotiated credits; custom historical data ranges purchasable (also one-off historical downloads via https://newsdata.io/historical-news-download)",
+    "parameterGating": "OpenAPI documents per-parameter gating: timeframe = paid plans only; sentiment/sentiment_score/tag = Professional+Corporate; region/organization = Corporate; full_content = 'plans with full-content access'; archive/count = 'plans with archive/count access'. Filter-value caps: 'up to your plan's filter limit (default 5)'."
+  },
+  "sdks": [
+    {"language": "Python", "repo": "https://github.com/newsdataapi/python-client", "package": "newsdataapi (PyPI)", "status": "Official; vendor llms.txt documents Python 3.8-3.14 support, retries with backoff, Retry-After handling, pagination helpers (scroll/paginate), typed exceptions"},
+    {"language": "Node.js", "repo": "https://github.com/newsdataapi/newsdata-nodejs-client", "package": "npm", "status": "Official"},
+    {"language": "PHP", "repo": "https://github.com/newsdataapi/php-client", "status": "Official"},
+    {"language": "Java", "repo": "https://github.com/newsdataapi/newsdata-java-sdk", "status": "Official"},
+    {"language": "React (hooks)", "repo": "https://github.com/newsdataapi/newsdata-reactjs-client", "status": "Official (useLatestNews, useCryptoNews, useMarketNews hooks)"},
+    {"language": "MCP server (Python)", "repo": "https://github.com/newsdataapi/newsdata.io-mcp", "status": "Official MCP server exposing latest/archive/crypto/market endpoints as AI-assistant tools"},
+    {"language": ".NET / Go / Dart-Flutter", "repo": "not found on official GitHub org listing", "status": "Referenced only in vendor marketing (llms.txt); NOT verified as existing official SDKs — treat as unknown"}
+  ],
+  "licensing": {
+    "grant": "Terms grant a limited, non-exclusive, non-transferable, non-sub-licensable license to use the API for personal or internal business purposes; a separate clause grants use of 'Data Derivatives' for internal AND external business purposes.",
+    "redistribution": "Terms explicitly state: 'The customers can sublicense, sell, syndicate or otherwise share the Data with any third party on their own risk.' NewsData.io simultaneously disclaims ownership: article content 'remains the sole property of those who make it available' and 'NewsData.io is a data aggregator and doesn't have the right to authorise any user to use the data for their personal and commercial purposes' — i.e., redistribution/republication risk (copyright) sits entirely with the customer.",
+    "storageCaching": "No storage or caching restriction is documented in the Terms; vendor guidance (llms.txt best practices) actively recommends server-side caching. Long-term archival storage is not explicitly addressed — not documented.",
+    "attribution": "No mandatory attribution/display requirement in the Terms. An optional mutual trademark license permits displaying the NewsData.io icon/advertising usage. Vendor best-practice guidance recommends displaying source_name and linking back to the original article.",
+    "prohibitions": "May not copy/rent/lease/sell/transfer/sublicense/reverse-engineer the API itself ('this may not be applicable to the data returned by the NewsData.io API'); may not share API keys; may not make the API available over a network for use by others; may not bypass the API-key registration process.",
+    "warranties": "Content provided as-is; NewsData.io disclaims accuracy/completeness/availability warranties and does not guarantee real-time delivery. DMCA takedown process documented; content may be removed at any time.",
+    "governingLaw": "India (exclusive jurisdiction of Indian courts). Operating entity referenced in Terms as NewsData.io/Bytesview; third-party directories cited by vendor llms.txt name Algodom Media LLP.",
+    "freeDatasets": "Separate free curated datasets on GitHub are CC BY 4.0 (attribution required) — distinct from API data.",
+    "commercialUseFreeTier": "Vendor FAQ states commercial use is permitted on the free plan."
+  },
+  "limitations": [
+    "News-only provider: no prices, quotes, candles, fundamentals, filings, or reference data. The 'Market' endpoint is ticker-tagged news, not market data.",
+    "Free tier articles are delayed 12 hours and crypto/market lookback is 7 days — free-tier output must never be labeled real-time.",
+    "Terms explicitly do not guarantee real-time delivery even on paid plans; use the fetched_at field to measure actual collection latency.",
+    "No push delivery (webhooks/WebSocket/SSE) as of the review date; polling only, bounded by 1,800 credits/15min on paid plans. WebSocket streaming announced 'coming soon' (changelog 2026-06-23) but not yet documented as available.",
+    "Symbol mapping is bare ticker strings (e.g. AMZN, BTC) with no exchange qualification, ISIN/FIGI/CUSIP, or documented symbology standard — ticker collisions across exchanges are unaddressed; institutional symbol mapping must be done downstream.",
+    "AI enrichment (sentiment, tags, region, org) is vendor-model output with no documented accuracy metrics, and is date-gated (sentiment only from 2024-01-12, ai_org from 2024-05-24, datatype from 2025-11-28) — historical backfills of these fields are incomplete.",
+    "Archive depth is plan-gated (6mo/2y/10y) and archive calls cost 5 credits per page; count calls cost 50 credits — historical corpus building at scale is credit-expensive.",
+    "sort=relevancy|source|fetched_at result sets are hard-capped at 10,000 results.",
+    "Market endpoint is recent (launched 2025-10-16) and labeled beta in vendor materials; schema/behavior may change.",
+    "Rate-limit numbers (30/1,800 per 15 min) appear in docs-page text and vendor llms.txt but not in the OpenAPI spec; Retry-After semantics are described only in the vendor llms.txt/SDKs — not formally specified.",
+    "Internal inconsistencies between official sources: llms.txt says filter-value caps rise to 10 on Pro/Corporate while the OpenAPI spec says 'default 5' for all plans and pricing data gives q-length 100/100/256/512 while llms.txt says 100 across free — verify caps with vendor before capacity planning.",
+    "No public SLA or uptime commitment documented (pricing feature matrix has an 'uptime' boolean for paid tiers with no percentage defined).",
+    "Publisher-content copyright remains with original publishers; redistribution/derivative display of full content is at the customer's own legal risk (Terms).",
+    "'duplicate' flag and removeduplicate filter exist, but dedup quality is undocumented; content field may be truncated for some publishers even on paid plans due to upstream restrictions.",
+    "Docs site is a client-side React SPA (not crawlable server-side); authoritative machine-readable spec is https://newsdata.io/openapi.json.",
+    "Governing law/jurisdiction is India; entity is an LLP — relevant for institutional vendor-risk review."
+  ],
+  "institutionalFit": {
+    "primaryFor": [
+      "Broad multi-geography, multi-language news monitoring and aggregation (200+ countries, ~89 languages, source-tier filtering)",
+      "Crypto news feed with per-coin tagging and vendor sentiment (Professional+ for sentiment filter)",
+      "Ticker-tagged equity news flow and news-volume analytics (market + market/count endpoints) where seconds-level latency is not required",
+      "Historical news corpus construction for NLP/backtesting research (Corporate: 10-year archive; one-off historical downloads available)"
+    ],
+    "fallbackFor": [
+      "Market-moving real-time news alerts — pull-only polling, uncommitted latency, and no SLA make it a fallback behind institutional low-latency news feeds",
+      "Sentiment signal generation — vendor AI sentiment is coarse (3-way + stats) with no documented accuracy; use as a secondary/confirmation signal"
+    ],
+    "notSuitableFor": [
+      "Any price/quote/reference/fundamental data function",
+      "Compliance-grade audit trails of publisher content (content may be removed at any time; no completeness warranty)",
+      "Sub-minute latency trading triggers (no push delivery; polling + credit windows)"
+    ],
+    "hardConstraints": [
+      "Free-tier (12-hour delayed) data must never be presented as real-time; even paid 'real-time' is contractually best-effort — display fetched_at-derived latency where freshness matters",
+      "Full-content republication requires downstream copyright clearance — Terms place all redistribution risk on the customer; prefer excerpt + source_name + link-back",
+      "Credit budget must reserve 5x for archive pages and 50x for count calls; per-15-minute ceiling (1,800 credits paid) bounds peak ingestion at ~90,000 articles/15min",
+      "Plan gating must be enforced in the adapter: archive/count/timeframe/full_content/sentiment/tag (Pro+), region/organization (Corporate)",
+      "Symbol/coin tags must be mapped to internal security master before joining with market data"
+    ]
+  },
+  "sourcesConsulted": [
+    {
+      "url": "https://newsdata.io/openapi.json",
+      "whatItVerified": "Official OpenAPI 3.1.0 spec (info.version 1.0.0): server https://newsdata.io/api; both auth schemes (apikey query param, X-ACCESS-KEY header); all 9 GET endpoints with full parameter definitions, plan/date gating notes, credit costs; response schemas (Article/CryptoArticle/MarketArticle/Source/Count envelopes); error envelope + full ErrorCode enum; HTTP status codes 200/400/401/403/422/429/500/503; pagination rules incl. 10,000-result cap on relevancy/source/fetched_at sorts; X-RateLimit-Remaining and X-API-Limit-Remaining response headers; filter incompatibility rules; free-plan 12-hour delay and 7-day crypto/market windows."
+    },
+    {
+      "url": "https://newsdata.io/llms.txt",
+      "whatItVerified": "Vendor-published LLM knowledge file (compiled June 2026): rate limits (30 credits/15min free, 1,800/15min paid, 200/day free), monthly credit allocations, plan prices, articles-per-credit (10 free/50 paid), coverage claims (200+ countries, ~89 languages, sources counts), category/datatype taxonomies, SDK feature detail, Retry-After/backoff guidance, no-webhook status, best practices, known limitations. Self-flags some items as [UNVERIFIED]; used as corroboration, not sole source, where possible."
+    },
+    {
+      "url": "https://newsdata.io/web/v1/pricing",
+      "whatItVerified": "Live data source that renders the official /pricing page: per-plan API credits (200/day, 20k, 50k, 1M per month), articles per credit (10/50/50/50), USD monthly/yearly prices (0, 199.99/1919.99, 349.99/3359.99, 1299.99/9989.99), add-on credit price $0.006, feature matrix (archive false on free; count_api false on free; ai_tags and sentiment_analysis Professional+; ai_region Corporate only; full_content/timeframe/real-time paid only; historical_data '6 months'/'2 Year'/'10 Years'), q_limit per plan (100/100/256/512)."
+    },
+    {
+      "url": "https://newsdata.io/web/v1/changelog",
+      "whatItVerified": "Official changelog data (renders /changelog): WebSocket streaming 'coming soon' (2026-06-23); Corporate plan extended to 10 years historical + custom historical ranges (2026-06-22); official Postman collection (2025-12-29); datatype/fetched_at/sort updates (2025-12-19); datatype field (2025-11-28); News Count API launch (2025-11-20); market-endpoint AI tags (2025-11-12); excludecountry (2025-11-11); Market endpoint launch (2025-10-16); ai_content field deprecation effective 2025-11-01 announced 2025-09-30 (deprecation-practice evidence)."
+    },
+    {
+      "url": "https://newsdata.io/documentation",
+      "whatItVerified": "Canonical docs root (client-side React SPA; confirmed via page fetch + bundle). Content verified from its production asset https://s.newsdata.io/assets/DocumentationPage-Cjh09Tba.js: rate-limit text ('Free Plan: 30 credits every 15 minutes', 'Paid plans: 1800 credits every 15 minutes', 429 until window resets), credit-consumption rules (archive 5 credits, count 50 credits), free-plan article delay statement, timeframe semantics (1-48h, 1m-2880m), archive plan-gating, pubDateTZ field, 'Real-time WebSocket (Coming Soon)' section."
+    },
+    {
+      "url": "https://newsdata.io/terms",
+      "whatItVerified": "Terms & Conditions (content verified from production asset https://s.newsdata.io/assets/TermsConditions-CjW6fGAk.js): license grant scope, API-key confidentiality, prohibited uses, data-ownership disclaimers, customer right to 'sublicense, sell, syndicate or otherwise share the Data... on their own risk', no real-time guarantee clause, optional trademark/attribution license, as-is warranty disclaimer, DMCA process, India governing law, refund/cancellation terms."
+    },
+    {
+      "url": "https://github.com/newsdataapi",
+      "whatItVerified": "Official GitHub organization ('Official NewsData.io repositories for SDKs...'): confirmed official SDKs — python-client, php-client, newsdata-nodejs-client, newsdata-reactjs-client, newsdata-java-sdk, and newsdata.io-mcp (official MCP server). No .NET/Go/Dart repos observed in the pinned/listed set."
+    },
+    {
+      "url": "https://newsdata.io/pricing",
+      "whatItVerified": "Official pricing page URL (SPA; renders from /web/v1/pricing above). Pricing FAQ text confirmed from asset https://s.newsdata.io/assets/Pricing-BF77I1Ty.js: API-credit definition (only counted when executed with results; wrong parameters/zero results not counted), archive = 5 credits regardless of filters, monthly/yearly billing."
+    }
+  ],
+  "confidence": "high",
+  "openQuestions": [
+    "Per-plan filter-value caps: OpenAPI says 'default 5' for all list filters; vendor llms.txt says 10 on Professional/Corporate — needs vendor confirmation.",
+    "Search-query max length: pricing data q_limit says 100/100/256/512 by plan; llms.txt says 100-char cap on free — the OpenAPI 'default 100' is consistent, but per-plan values should be confirmed.",
+    "Is the 1,800 credits/15min ceiling identical for Corporate/Enterprise, and is it negotiable?",
+    "Is /1/market still formally beta (llms.txt says beta; OpenAPI and changelog do not flag it)?",
+    "SLA/uptime: pricing matrix has an 'uptime' boolean for paid tiers but no documented percentage or SLA terms.",
+    "Retry-After header on 429: described in vendor llms.txt and honored by SDKs, but not present in the OpenAPI spec — confirm it is actually emitted.",
+    "Existence/maintenance of .NET, Go, and Dart/Flutter SDKs (marketing mention only; not on the GitHub org listing).",
+    "WebSocket streaming GA date, pricing, and plan availability (announced 'coming soon' 2026-06-23).",
+    "Explicit contractual position on long-term storage/archival of retrieved articles (Terms are silent; caching is recommended in vendor guidance).",
+    "Legal operating entity confirmation (Algodom Media LLP vs 'NewsData.io/Bytesview' as named in Terms) for vendor due diligence."
+  ]
+}

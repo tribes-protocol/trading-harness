@@ -1,0 +1,266 @@
+{
+  "area": "Data/research platform, news & event analysis, and structural gaps",
+  "reviewDate": "undefined",
+  "researchDateActual": "2026-07-17",
+  "departments": [
+    {
+      "name": "Data Engineering & Research Platform",
+      "mandate": "Own the firm's research data estate and computation platform end-to-end: acquire, license, ingest, validate, and serve internal and third-party data with point-in-time (bitemporal) correctness; and provide reproducible research infrastructure (versioned data, code, environments, experiment registry) so that any investment-relevant research artifact can be re-derived, audited, and produced to regulators or internal assurance functions on demand.",
+      "responsibilities": [
+        "Data vendor lifecycle management across the full third-party lifecycle: planning/scouting, trials, due diligence and selection, contract negotiation support, onboarding, ongoing monitoring, and termination (mirrors the 2023 Interagency Third-Party Risk Management guidance lifecycle)",
+        "Alternative-data diligence coordination with Compliance: documented, consistently applied written diligence covering data provenance, collection consent, web-scraping/ToS exposure, PII handling, and MNPI risk attestations (SEC April 2022 EXAMS risk alert explicitly criticized ad hoc, inconsistent, undocumented diligence)",
+        "Ingestion pipeline engineering with schema/contract enforcement, deduplication, and delivery SLA monitoring",
+        "Security master / symbology and entity mastering: identifier crosswalks (ticker/CUSIP/ISIN/FIGI), corporate-action processing, entity resolution for news and alt-data joins",
+        "Data quality controls: completeness, timeliness, accuracy and consistency checks; anomaly detection; vendor restatement tracking; quarantine-and-incident process with documented exception handling (BCBS 239 principles adopted by analogy)",
+        "Point-in-time correctness: bitemporal storage (event date vs. knowledge/as-of date), PIT vendor snapshots, retention of delisted/dead securities to prevent survivorship bias, restatement-aware fundamentals to prevent look-ahead bias",
+        "Research reproducibility infrastructure: dataset versioning, code version control, pinned environments, immutable experiment/backtest registry, end-to-end lineage from raw vendor file to signal to recommendation",
+        "Entitlement and access management enforcing license terms, information barriers (MNPI walls), and PII restrictions",
+        "Data-spend management: usage metering against vendor licenses, renewal economics, duplicate-feed rationalization",
+        "Recordkeeping support: retention and prompt-production capability for research records consistent with Advisers Act Rule 204-2 (five-plus years, first two easily accessible)"
+      ],
+      "workflows": [
+        {
+          "name": "Vendor trial and onboarding",
+          "cadence": "Per vendor, ad hoc (typically 4-12 weeks per vendor)",
+          "description": "Structured evaluation and onboarding of a new data vendor: diligence questionnaire (provenance, consent, MNPI/ToS/PII attestations), sample-data evaluation on the platform, Compliance sign-off, contract execution, entitlement configuration, ingestion spec, production cutover.",
+          "inputs": "Vendor questionnaire responses, sample data, license draft, requesting desk's use case, Compliance policy checklist",
+          "outputs": "Diligence memo (retained), Compliance approval record, executed contract, entitlement config, ingestion spec, catalog entry"
+        },
+        {
+          "name": "Ingestion and data-quality gate",
+          "cadence": "Daily / intraday per feed",
+          "description": "Automated ingestion with validation gates (schema, completeness, timeliness, statistical anomaly checks); failures quarantine the batch and open an incident rather than propagating to research consumers.",
+          "inputs": "Vendor feeds (market, fundamental, alternative), internal trade/position data, DQ rule definitions",
+          "outputs": "Validated curated datasets, DQ dashboard/scorecards, quarantine log, incident tickets"
+        },
+        {
+          "name": "Point-in-time snapshotting and restatement processing",
+          "cadence": "Daily, plus on vendor restatement events",
+          "description": "Capture as-of snapshots of mutable datasets (fundamentals, estimates, index membership); process vendor restatements into bitemporal tables preserving what-was-known-when; audit-log every retroactive change.",
+          "inputs": "Raw vendor deliveries, restatement notices, prior snapshots",
+          "outputs": "Bitemporal tables, restatement audit log, PIT-correctness test results"
+        },
+        {
+          "name": "Symbology and corporate-action mastering",
+          "cadence": "Daily",
+          "description": "Maintain the security/entity master; apply corporate actions; resolve identifier changes so historical joins remain correct including for delisted names.",
+          "inputs": "Exchange/reference-data feeds, corporate-action feeds, vendor identifier files",
+          "outputs": "Security master file, identifier crosswalks, dead-security registry"
+        },
+        {
+          "name": "Experiment and backtest registration",
+          "cadence": "Continuous, per research experiment",
+          "description": "Every material backtest/experiment is registered with code commit hash, dataset versions, parameters, environment spec, and results, producing an immutable, re-runnable record supporting model documentation and effective challenge (SR 11-7 lineage / 2026 revised interagency MRM guidance).",
+          "inputs": "Code commit, versioned dataset references, parameters, environment manifest",
+          "outputs": "Immutable experiment record, results artifact, lineage graph entry"
+        },
+        {
+          "name": "Vendor ongoing monitoring and re-diligence",
+          "cadence": "Quarterly SLA/quality review; annual re-diligence",
+          "description": "Score vendors on delivery reliability, data quality drift, and continued compliance representations; re-run diligence at renewal; document termination and data-destruction on offboarding.",
+          "inputs": "SLA metrics, DQ trend data, updated vendor attestations, contract terms",
+          "outputs": "Vendor scorecard, renewed compliance attestation, renewal/termination recommendation"
+        },
+        {
+          "name": "Data incident post-mortem",
+          "cadence": "Per incident, with monthly rollup",
+          "description": "Root-cause analysis of data errors that reached research or production signals, including impact assessment on live strategies and backtests, and remediation tracking.",
+          "inputs": "Incident ticket, lineage graph, affected experiment registry entries",
+          "outputs": "Root-cause report, affected-research impact assessment, remediation actions"
+        },
+        {
+          "name": "Access and entitlement recertification",
+          "cadence": "Quarterly or semiannual",
+          "description": "Review who can access which datasets against license terms, information barriers, and least-privilege; revoke stale access; evidence retained for audit.",
+          "inputs": "Entitlement records, HR joiner/leaver data, license terms, barrier lists from Compliance",
+          "outputs": "Recertification report, revocation log"
+        }
+      ],
+      "controls": [
+        "Written, consistently applied and documented alternative-data diligence policies and procedures (regulatory expectation: Advisers Act Section 204A; SEC EXAMS April 2022 risk alert deficiencies; App Annie enforcement precedent)",
+        "Third-party lifecycle controls modeled on the 2023 Interagency TPRM guidance (planning, due diligence, contract, ongoing monitoring, termination) — banking guidance, adopted as institutional practice by managers",
+        "Data quality thresholds with automated gates, quarantine authority, and documented exception/override handling (BCBS 239 principles by analogy)",
+        "Bitemporal integrity tests preventing silent retroactive mutation of history; retention of delisted securities",
+        "Immutable, versioned experiment registry supporting model documentation and independent validation (SR 11-7 and the April 2026 revised interagency MRM guidance, SR 26-02 / OCC 2026-13)",
+        "Entitlement enforcement tied to license terms and information barriers; quarterly recertification",
+        "Change management and segregation of duties for pipeline and reference-data changes",
+        "Records retention and prompt-production consistent with Advisers Act Rule 204-2 (>=5 years, first 2 easily accessible; electronic records safeguarded against loss/alteration with access limited to authorized personnel)"
+      ],
+      "independence": "Shared service (first-line function) serving all investment teams; not independent in the assurance sense. Two carve-outs: (1) vendor-diligence approval requires sign-off from an independent Compliance function; (2) the data-quality function should hold quarantine authority that cannot be overridden by a PM without a documented escalation. Independent validation of models built on the platform sits outside this department (second line).",
+      "dependencies": [
+        "Compliance (MNPI determinations, diligence sign-off, information-barrier definitions)",
+        "Legal (contract negotiation, ToS/IP/privacy review of data sources)",
+        "IT / Information Security (infrastructure, access control, resilience)",
+        "Quant Research and PM desks (requirements, data feedback, error reports)",
+        "Trading/Operations (execution, position, and corporate-action data as inputs)",
+        "Finance (data budget and vendor spend approval)"
+      ],
+      "handoffs": [
+        { "to": "Quant Research / PM desks", "direction": "outbound", "content": "Curated point-in-time datasets, data catalog entries with known-issue flags, lineage metadata, experiment-registry services" },
+        { "to": "Compliance", "direction": "outbound", "content": "New-vendor diligence packets for approval; dataset usage logs and diligence records for regulatory exams" },
+        { "to": "Compliance", "direction": "inbound", "content": "Approved/prohibited vendor determinations, restricted-data flags, MNPI rulings, information-barrier lists" },
+        { "to": "Legal", "direction": "outbound", "content": "Draft vendor contracts and flagged ToS/privacy/IP issues for review; termination notices requiring data-destruction certification" },
+        { "to": "Model Risk / Validation", "direction": "outbound", "content": "Versioned input datasets, lineage graphs, and experiment records enabling independent revalidation of research models" },
+        { "to": "Trading / Operations", "direction": "inbound", "content": "Executions, positions, corporate-action confirmations, broker data feeding research datasets" },
+        { "to": "Internal Audit / regulators", "direction": "outbound", "content": "Reproducibility evidence: experiment registry extracts, DQ incident history, entitlement recertification records, diligence memos" },
+        { "to": "News & Event Analysis", "direction": "outbound", "content": "Entity-mapped, deduplicated news/filings feeds, archives, and NLP enrichment services" }
+      ],
+      "regulatoryBasis": [
+        "Investment Advisers Act Section 204A and Rule 204A-1: duty to maintain written policies reasonably designed to prevent misuse of MNPI — extended by the SEC Division of Examinations April 2022 risk alert to alternative-data sourcing (regulatory requirement for RIAs)",
+        "SEC v. App Annie (Sept 2021, $10M penalty): first alt-data-vendor enforcement; establishes that funds must diligence vendor representations about MNPI and data provenance (enforcement precedent)",
+        "Advisers Act Rule 204-2 (17 CFR 275.204-2): books-and-records retention including records relating to recommendations and advice (regulatory requirement for RIAs)",
+        "Interagency Guidance on Third-Party Relationships: Risk Management (Fed/OCC/FDIC, June 2023): lifecycle framework — binding expectations for banking organizations only; persuasive institutional practice for fund managers",
+        "SR 11-7 (2011) and its April 2026 replacement (revised interagency model risk management guidance, SR 26-02 / OCC Bulletin 2026-13): data quality and documentation underpinning models; applies to banking organizations >$30B assets, explicitly excludes generative/agentic AI, and is non-enforceable guidance — hedge funds adopt it voluntarily as the de facto benchmark",
+        "BCBS 239 (2013): risk-data aggregation principles (governance, accuracy, completeness, timeliness, lineage) — bank regulation, adopted by analogy as data-governance good practice"
+      ],
+      "practiceNotes": [
+        "Point-in-time/bitemporal data is widely accepted institutional practice, not a regulation: practitioner literature estimates survivorship bias inflates hedge-fund index returns ~2-4%/yr and equity backtests on current index constituents by ~1-2%/yr; look-ahead bias from restated fundamentals is regarded as the most dangerous silent bias",
+        "Reproducibility tooling (data versioning, experiment tracking, pinned environments) is accepted practice at mature quant firms but implementation depth varies widely; there is no regulatory mandate naming specific tools",
+        "Centralized vs. federated data engineering varies by firm: multi-manager platforms centralize market data, symbology, and entitlements while pods may retain proprietary alt-data pipelines; single-strategy quant firms usually fully centralize",
+        "Data-spend governance (usage metering, duplicate-feed rationalization) is a growing practice area as alt-data budgets grow; judgment call on where it reports (COO vs. CTO vs. head of research)"
+      ]
+    },
+    {
+      "name": "News & Event Analysis",
+      "mandate": "Systematically monitor news, regulatory filings, and event flow across firm positions and watchlists; triage items for materiality within defined SLAs; verify source authenticity and credibility before signals reach portfolio managers; maintain catalyst/event calendars; and route potential MNPI or manipulation indicators to Compliance rather than to the investment process.",
+      "responsibilities": [
+        "Real-time monitoring of tiered sources: regulatory filings (8-K, Form 4, 13D/G), regulator portals (FDA, antitrust/competition authorities, court dockets), newswires, company press releases and IR pages, index-provider notices, and (as a low-credibility tier) social media",
+        "Materiality triage against positions and watchlists: tiered alerting — Tier 1 instant alerts (8-Ks, M&A announcements, recalls, halts), Tier 2 digest items (IR calendar changes, deck uploads) — per institutional monitoring practice",
+        "Source credibility and authenticity verification: cross-confirmation rules before any single-source item is actionable; hoax/fake-press-release detection (SEC has repeatedly charged fake-release manipulation schemes, e.g., Marketwired-distributed false releases in 2015 and the 2021 phony-press-release scheme with >$10M illicit profits)",
+        "Catalyst calendar maintenance: earnings dates, FDA PDUFA dates, court rulings, regulatory decision deadlines, index rebalances, macro releases",
+        "Event post-mortems measuring detection latency, routing accuracy, and action taken",
+        "MNPI hygiene: any item suspected to be non-public routes to Compliance first; no retransmission of unverified market rumors (market-abuse exposure under Exchange Act 10b-5 and, in the EU/UK, MAR Article 12 dissemination provisions)"
+      ],
+      "workflows": [
+        {
+          "name": "Continuous monitoring and tiered alerting",
+          "cadence": "Market hours minimum; 24x5 with overnight coverage at large multi-strategy firms",
+          "description": "Automated feed monitoring with entity mapping to positions/watchlists; tier-1 items page the owning analyst/PM and (as configured) Risk and Compliance; tier-2 items batch into digests.",
+          "inputs": "News/filings feeds (entity-mapped by Data Engineering), position and watchlist data, source-tier policy",
+          "outputs": "Routed alerts with materiality tier and position context; alert audit log"
+        },
+        {
+          "name": "Materiality triage and escalation",
+          "cadence": "Intraday, minutes-level SLA for tier-1",
+          "description": "Human/analyst triage of automated alerts: confirm relevance, size against exposure, tag materiality, escalate to PM and Risk; suppress noise with documented rationale.",
+          "inputs": "Raw alerts, exposure data from Risk, catalyst calendar",
+          "outputs": "Triaged event ticket (materiality tag, owner, deadline), escalation notifications"
+        },
+        {
+          "name": "Source verification protocol",
+          "cadence": "Per suspicious or single-source item",
+          "description": "Before an unconfirmed item becomes actionable: verify wire authenticity, confirm via issuer IR page or regulator source, check domain/spoofing indicators; unverified items are flagged block-on-unverified.",
+          "inputs": "Suspect item, issuer IR contacts, wire-service verification channels",
+          "outputs": "Verification log entry, verified/blocked disposition"
+        },
+        {
+          "name": "Daily event briefing",
+          "cadence": "Daily pre-open (and post-close summary at some firms)",
+          "description": "Digest of overnight events, day-ahead catalysts, and open event tickets distributed to desks and Risk.",
+          "inputs": "Overnight alert log, catalyst calendar, desk watchlists",
+          "outputs": "Event digest, updated catalyst calendar"
+        },
+        {
+          "name": "Catalyst calendar review",
+          "cadence": "Weekly",
+          "description": "Reconcile the catalyst calendar against desk expectations and vendor calendars; identify coverage gaps for upcoming binary events.",
+          "inputs": "Vendor calendars, desk catalyst hypotheses, prior calendar",
+          "outputs": "Updated calendar, coverage-gap list"
+        },
+        {
+          "name": "Post-event review",
+          "cadence": "Per major event; monthly rollup",
+          "description": "Measure detection-to-alert latency, routing correctness, and whether credibility protocol was followed; feed improvements back into tiering rules.",
+          "inputs": "Alert audit log, event tickets, market timestamps",
+          "outputs": "Latency metrics, process-change recommendations"
+        }
+      ],
+      "controls": [
+        "Source-tier policy with documented credibility ratings and single-source trading restrictions",
+        "Mandatory verification protocol for unconfirmed market-moving items (fake-press-release/hoax risk is an established SEC enforcement pattern)",
+        "MNPI escalation procedure: suspected non-public items go to Compliance before any desk distribution (Advisers Act 204A)",
+        "Prohibition on retransmitting unverified rumors (market-abuse exposure: Exchange Act 10b-5; EU MAR Art. 12 for EU-touching activity)",
+        "Complete audit log of alerts, triage decisions, and distributions retained as records (Advisers Act Rule 204-2)",
+        "News-vendor license compliance for internal redistribution and archiving",
+        "Escalation-path testing and coverage roster for overnight/holiday gaps"
+      ],
+      "independence": "Judgment call, not a regulatory matter — three observed models: (a) standalone centralized news/event desk (large multi-strategy and event-driven firms; consistent triage, 24-hour coverage, economies of scale on feeds); (b) fully embedded in each pod/desk (smaller funds; better context, duplicated spend, inconsistent MNPI hygiene); (c) hybrid — centralized monitoring utility as a shared service with embedded desk-level triage. Recommendation for this harness: hybrid, modeled as a distinct department because it exercises cross-department routing (PM, Risk, Compliance, Data Engineering) well. Quant-heavy firms often treat news purely as a data feed owned by Data Engineering with NLP enrichment, which is a legitimate alternative.",
+      "dependencies": [
+        "Data Engineering & Research Platform (feed infrastructure, entity mapping, deduplication, archives, NLP enrichment)",
+        "Compliance (MNPI escalation counterparty, rumor policy)",
+        "PM desks (watchlists, catalyst hypotheses, materiality feedback)",
+        "Risk Management (exposure data for materiality scoring)",
+        "Trading (execution of verified time-critical decisions)"
+      ],
+      "handoffs": [
+        { "to": "PM / Research desks", "direction": "outbound", "content": "Triaged, credibility-scored event alerts with position context and materiality tier; daily event digest and catalyst calendar" },
+        { "to": "Compliance", "direction": "outbound", "content": "Immediate escalation of suspected MNPI, manipulation indicators, or unverifiable market-moving items" },
+        { "to": "Risk Management", "direction": "outbound", "content": "Material event notifications touching concentrated or leveraged exposures" },
+        { "to": "Data Engineering & Research Platform", "direction": "inbound", "content": "Entity-mapped news/filings feeds, historical archives, dedup and enrichment services" },
+        { "to": "PM desks", "direction": "inbound", "content": "Watchlists, position changes, and catalyst hypotheses defining monitoring scope" },
+        { "to": "Trading", "direction": "outbound", "content": "Verified time-critical event notifications on held names (whether this desk can trigger orders directly varies by firm — usually it cannot; PM authorization required)" }
+      ],
+      "regulatoryBasis": [
+        "No regulation mandates a news/event desk — the structure is entirely an operating-model choice (judgment call)",
+        "Advisers Act Section 204A: written procedures to prevent MNPI misuse apply to information arriving via news/rumor channels (regulatory requirement)",
+        "Exchange Act Section 10(b)/Rule 10b-5 and EU Market Abuse Regulation Art. 12: trading on or spreading false information is market manipulation; SEC enforcement against fake press-release schemes (2015 Marketwired-distributed releases; 2021 phony-release scheme) motivates the verification protocol (regulatory requirement as a boundary condition)",
+        "Advisers Act Rule 204-2: alert/triage records relating to recommendations are retainable books and records (regulatory requirement)"
+      ],
+      "practiceNotes": [
+        "Institutional monitoring practice converges on tiered alerting (instant vs. digest) and routing by role (PM queue, risk, compliance) — supported by vendor/practitioner literature rather than regulation",
+        "Event-driven funds treat catalyst tracking as core front-office alpha work (event probability, post-event valuation); at such firms this function is front office, not support",
+        "Detection-latency metrics and post-event reviews are a maturing practice; few firms publish benchmarks",
+        "AI/LLM-based news summarization is increasingly used for first-pass triage; note the April 2026 revised interagency MRM guidance explicitly excludes generative/agentic AI from its scope, leaving a governance gap firms must fill with internal policy"
+      ]
+    }
+  ],
+  "structuralRecommendations": [
+    "SPLIT (internal): within Data Engineering & Research Platform, separate 'Data Sourcing & Vendor Management' (compliance-heavy contract/diligence lifecycle) from 'Platform Engineering & Data Quality' (technical pipelines, PIT stores, reproducibility) as two sub-functions under one accountable head — the workflow families, skills, and control counterparties are distinct.",
+    "KEEP AS DISTINCT DEPARTMENT (hybrid staffing): News & Event Analysis should be modeled as its own department in the harness (central monitoring utility + embedded desk triage), because it exercises realistic cross-department routing to PM, Risk, Compliance, and Data Engineering; note that fully standalone desks are typical only at multi-manager scale and quant firms often fold news into Data Engineering as a feed.",
+    "ADD (in scope): Research/Investment Compliance function (MNPI controls, alt-data diligence sign-off, expert-network chaperoning, restricted/watch lists) — regulatorily unavoidable (Advisers Act 204A, SEC April 2022 risk alert, App Annie); without it, the vendor-onboarding and MNPI-escalation workflows in this area have no counterparty.",
+    "ADD (in scope, thin): Model Risk / Independent Validation as a second-line function (effective challenge of research models per SR 11-7 and its April 2026 replacement) — may be merged into a broader Risk department if one exists in the harness, but the independence property must be preserved.",
+    "ADD (in scope, thin interface): Execution/Trading desk as a boundary object — research recommendation -> order staging -> execution report closes the research data loop, and execution/position data is a critical research-platform input; full trading operations (algo suites, TCA vendor management, settlement) are OUT of scope for a research-platform harness.",
+    "ADD (in scope if not covered elsewhere): Market/Portfolio Risk Management as a consumer of research outputs and provider of exposure data for news materiality scoring.",
+    "OUT OF SCOPE (model as external handoff endpoints only): Legal (contract review service in vendor onboarding), Investor Relations (client-facing; no daily research artifacts), Internal Audit (third-line periodic assurance — represent as an audit-evidence export requirement on the platform, not a workflow department, per IIA Three Lines Model), Valuation Committee/Pricing (fund-ops NAV domain per AIMA valuation sound practices; retain one handoff — research inputs for hard-to-value positions), Fund Accounting/Administration, Treasury/Financing, HR/Facilities — none of these consume or produce research artifacts at daily cadence, and modeling them as endpoints keeps the harness realistic without bloat.",
+    "SCOPE BOUNDARY (performance): keep backtest and live performance analytics inside the research platform; official GIPS composite construction/reporting is OUT of scope — GIPS is a voluntary, firm-wide, marketing-facing standard and relatively uncommon among hedge funds."
+  ],
+  "disagreementsAndVariation": [
+    "Standalone vs. embedded news desk: no industry consensus; varies by AUM, strategy (event-driven treats it as front office; quant treats it as a data feed), and time-zone footprint. This document recommends hybrid but flags it as a judgment call.",
+    "SR 11-7 applicability: it is banking-organization guidance (and its April 2026 replacement applies to banks >$30B and is explicitly non-enforceable); hedge funds adopt it voluntarily as benchmark practice. The 2026 revision explicitly excludes generative/agentic AI, so firms using LLM-based research tooling face a guidance vacuum — internal policy must fill it, and practice diverges sharply.",
+    "BCBS 239 is bank regulation; asset managers adopt its lineage/quality principles selectively — citing it as 'required' for a fund would be wrong.",
+    "Data-quarantine authority: whether the central data team can block data a PM wants to use varies — centralized multi-manager platforms enforce quarantine; pod-autonomy firms often allow pods to self-source, accepting inconsistency.",
+    "Depth of alternative-data diligence varies from questionnaire-only to full legal provenance audits; the SEC's criticism targeted inconsistency and lack of documentation rather than mandating a specific depth.",
+    "GIPS compliance is widespread among traditional asset managers but uncommon among hedge funds; it is recommended practice, never a legal requirement.",
+    "Best-execution reporting regimes diverge: the EU dropped RTS 28 public reporting under the MiFID II review while retaining the Art. 27 best-execution obligation; the US relies on the adviser's fiduciary duty — a harness should not hard-code one jurisdiction's reporting artifact.",
+    "Sources on point-in-time bias magnitudes (2-4%/yr hedge fund survivorship, 1-2%/yr equity constituent bias) are practitioner estimates, not regulatory findings; treat as order-of-magnitude."
+  ],
+  "sourcesConsulted": [
+    { "url": "https://www.federalreserve.gov/frrs/guidance/supervisory-guidance-on-model-risk-management.htm", "whatItSupported": "SR 11-7 supervisory guidance on model risk management: development, independent validation/effective challenge, governance, documentation" },
+    { "url": "https://www.federalreserve.gov/supervisionreg/srletters/SR2602.pdf", "whatItSupported": "Revised interagency model risk management guidance (SR 26-02) replacing SR 11-7; emphasis on data quality infrastructure underpinning models" },
+    { "url": "https://www.occ.gov/news-issuances/bulletins/2026/bulletin-2026-13.html", "whatItSupported": "Confirmation that the April 17, 2026 revised MRM guidance replaces the 2011 guidance, targets banks >$30B, excludes generative/agentic AI, and is non-enforceable" },
+    { "url": "https://www.sidley.com/en/insights/newsupdates/2021/09/sec-fines-app-annie-inc-10-million-for-securities-fraud", "whatItSupported": "SEC App Annie enforcement (Sept 2021, $10M): alt-data vendor misrepresentation of MNPI controls; first alt-data vendor action" },
+    { "url": "https://www.akingump.com/en/insights/alerts/sec-division-of-examinations-finally-speaks-on-alternative-data", "whatItSupported": "SEC EXAMS observations on alternative data: deficiencies in memorializing and consistently applying vendor diligence" },
+    { "url": "https://www.paulhastings.com/insights/client-alerts/sec-risk-alert-focuses-on-potential-deficiencies-regarding-use-and", "whatItSupported": "SEC Division of Examinations April 26, 2022 risk alert (Investment Adviser MNPI Compliance Issues): alt-data policy deficiencies under Section 204A" },
+    { "url": "https://www.mofo.com/resources/insights/220502-sec-deficiencies-investment-adviser-mnpi-compliance-practices", "whatItSupported": "Same April 2022 risk alert: definition of alternative data and expectation of reasonably designed written P&Ps for alt-data MNPI risk" },
+    { "url": "https://www.law.cornell.edu/cfr/text/17/275.204-2", "whatItSupported": "Advisers Act Rule 204-2 books-and-records text: covered records and 5-year/first-2-years-accessible retention; electronic recordkeeping safeguards" },
+    { "url": "https://www.federalregister.gov/documents/2023/06/09/2023-12340/interagency-guidance-on-third-party-relationships-risk-management", "whatItSupported": "2023 Interagency Third-Party Risk Management guidance: five-stage lifecycle (planning, due diligence/selection, contract, ongoing monitoring, termination)" },
+    { "url": "https://www.bis.org/publ/bcbs_nl36.htm", "whatItSupported": "BCBS 239 principles: governance/infrastructure, accuracy and completeness, timeliness, adaptability; lineage and data-quality expectations (bank regulation, used by analogy)" },
+    { "url": "https://www.theiia.org/globalassets/documents/resources/the-iias-three-lines-model-an-update-of-the-three-lines-of-defense-july-2020/three-lines-model-updated-english.pdf", "whatItSupported": "IIA Three Lines Model (2020): first/second-line management roles vs. third-line internal audit independence — basis for classifying internal audit as out-of-scope assurance endpoint" },
+    { "url": "https://www.aima.org/article/aima-publishes-updated-guide-to-sound-practices-for-hedge-fund-valuation.html", "whatItSupported": "AIMA Guide to Sound Practices for Hedge Fund Valuation: board responsibility, valuation committee/governance recommendations — basis for placing valuation outside the research platform with a defined handoff" },
+    { "url": "https://www.sec.gov/comments/s7-07-20/s70720-7464497-221255.pdf", "whatItSupported": "AIMA 2018 valuation sound-practices guide (16 recommendations across governance, transparency, procedures, sources/models) as filed with the SEC" },
+    { "url": "https://www.gipsstandards.org/wp-content/uploads/2021/03/2020_gips_standards_firms.pdf", "whatItSupported": "GIPS 2020 for firms: firm-wide voluntary compliance, composite requirements, verification recommended — basis for scoping GIPS reporting out of the research harness" },
+    { "url": "https://www.esma.europa.eu/press-news/esma-news/esma-clarifies-best-execution-reporting-requirements-under-mifid-ii", "whatItSupported": "ESMA position on RTS 28: detailed venue/execution-quality reports no longer required under reviewed MiFID II, while Art. 27 best-execution duty remains" },
+    { "url": "https://www.esma.europa.eu/sites/default/files/2025-04/ESMA35-335435667-6253_Final_Report_-_MiFID_II_RTS_on_order_execution_policies.pdf", "whatItSupported": "ESMA final report on MiFID II order execution policy RTS: written execution policy, annual review, monitoring obligations" },
+    { "url": "https://www.aurum.com/insight/thought-piece/event-driven-hedge-fund-strategies-explained/", "whatItSupported": "Event-driven strategy primer: alpha from corporate catalysts, event probabilities, post-event valuation — front-office framing of event analysis" },
+    { "url": "https://visualping.io/blog/monitoring-events-arbitrage-investing", "whatItSupported": "Institutional monitoring practice (vendor literature, lower authority — labeled as practice not regulation): tiered alerting (Tier 1 instant 8-K/recall vs Tier 2 digest), routing to PM/risk/compliance queues" },
+    { "url": "https://caia.org/sites/default/files/5_aiar_vol-5_issue-3_hedge-fund-compliance.pdf", "whatItSupported": "Scharfman/CAIA hedge fund compliance chapter: expert-network risks, restricted lists, call chaperoning, call limits" },
+    { "url": "https://www.acaglobal.com/insights/increasing-importance-robust-insider-trading-controls-private-markets-fund-managers", "whatItSupported": "Expert-network vetting practices: chaperoning, cooling-off periods, MNPI training expectations" },
+    { "url": "https://www.zuckermanlaw.com/sec-whistleblower-lawyers/sec-scrutinizes-fake-news-promoting-stocks/", "whatItSupported": "SEC enforcement pattern against fake-news/paid-promotion schemes — motivation for source-verification controls" },
+    { "url": "https://blog.wiztrust.com/en/market-manipulation-through-fake-press-releases", "whatItSupported": "Fake press-release manipulation cases (incl. 2015 Marketwired-distributed releases; 2021 phony-release scheme >$10M) — verification-protocol rationale" },
+    { "url": "https://perspectives.refinitiv.com/future-of-investing-trading/how-to-use-point-in-time-data-to-avoid-bias-in-backtesting/", "whatItSupported": "Point-in-time data as the accepted remedy for look-ahead/survivorship bias in backtesting (vendor practice literature)" },
+    { "url": "https://www.susanpotter.net/quant/backtest-bias-taxonomy/", "whatItSupported": "Practitioner taxonomy of backtest biases; look-ahead bias characterized as the most dangerous/silent (practitioner literature, order-of-magnitude estimates only)" },
+    { "url": "https://www.akj.com/blog/hedge-fund-roles-explained", "whatItSupported": "Standard hedge fund front/middle/back-office function inventory used for the structural gap scan (trading, IR, treasury, fund accounting, reconciliation, compliance, technology)" },
+    { "url": "https://www.aima.org/static/uploaded/f3ba00da-0445-48eb-ba7ae68601ce5fb0.pdf", "whatItSupported": "AIMA hedge fund start-up guide: expected functions and service-provider relationships in an institutional-quality manager" }
+  ],
+  "confidence": "high"
+}

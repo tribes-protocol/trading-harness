@@ -1,0 +1,626 @@
+{
+  "provider": "Tavily",
+  "reviewDate": "2026-07-17",
+  "reviewDateNote": "Task template supplied reviewDate 'undefined'; actual review date recorded from environment (2026-07-17).",
+  "officialDocsUrl": "https://docs.tavily.com",
+  "apiVersion": "unversioned (no version segment in URLs; no documented versioning or deprecation policy; dated changelog at https://docs.tavily.com/changelog.md; 'fast' and 'ultra-fast' search depths marked BETA as of Dec 2025 changelog entry)",
+  "authentication": {
+    "mechanism": "Bearer token in Authorization header",
+    "headerFormat": "Authorization: Bearer tvly-YOUR_API_KEY",
+    "keyPrefix": "tvly-",
+    "optionalHeaders": {
+      "X-Project-ID": "organize and track usage by project",
+      "X-Session-Id": "opaque identifier for a session of related requests",
+      "X-Human-Id": "opaque identifier for the end-user behind the request",
+      "X-Tavily-Access-Mode": "value 'keyless' enables free, rate-limited keyless access to /search and /extract only (no API key required)"
+    },
+    "enterpriseKeyManagement": "Enterprise plans can programmatically generate/deactivate scoped keys via a separate host (https://api-key-generator.tavily.com/), authenticated with a Bearer Tavily API key; generated keys have key_type development|production, credit limits (key_limit 1-100,000, default 200) and TTL (ttl_hours 1-8,760, default 10)",
+    "source": "https://docs.tavily.com/documentation/api-reference/introduction"
+  },
+  "baseUrls": [
+    {
+      "url": "https://api.tavily.com",
+      "purpose": "All core API requests (/search, /extract, /crawl, /map, /research, /usage, /org-usage)"
+    },
+    {
+      "url": "https://api-key-generator.tavily.com/",
+      "purpose": "Enterprise-only API key management (/generate-keys, /deactivate-keys, /key-info)"
+    }
+  ],
+  "endpoints": [
+    {
+      "name": "Search",
+      "method": "POST",
+      "path": "/search",
+      "requiredParams": [
+        "query (string)"
+      ],
+      "optionalParams": [
+        "search_depth (string, default 'basic'; 'advanced'=2 credits; 'fast'/'ultra-fast' BETA=1 credit)",
+        "topic (string, default 'general'; options: general, news, finance)",
+        "max_results (integer, default 5, range 0-20)",
+        "chunks_per_source (integer, default 3, range 1-3, advanced depth only)",
+        "time_range (string: day/week/month/year or d/w/m/y)",
+        "start_date (YYYY-MM-DD)",
+        "end_date (YYYY-MM-DD)",
+        "include_answer (bool/string: true|false|basic|advanced, default false)",
+        "include_raw_content (bool/string: true|false|markdown|text, default false)",
+        "include_images (boolean, default false)",
+        "include_image_descriptions (boolean, default false; requires include_images)",
+        "include_favicon (boolean, default false)",
+        "include_domains (array, max 300)",
+        "exclude_domains (array, max 150)",
+        "country (string; 'prioritize content from the selected country')",
+        "auto_parameters (boolean, default false; may auto-select 2-credit advanced search)",
+        "exact_match (boolean, default false; only exact quoted-phrase matches)",
+        "include_usage (boolean, default false)",
+        "safe_search (boolean, default false; Enterprise only)"
+      ],
+      "responseFields": [
+        "query",
+        "answer (if requested)",
+        "images",
+        "results[] {title, url, content, score, favicon, images, raw_content (if include_raw_content), published_date (topic=news only; format undocumented)}",
+        "auto_parameters (if requested)",
+        "response_time",
+        "usage (if requested)",
+        "request_id"
+      ],
+      "pagination": "none documented (max_results 0-20 per request)",
+      "freshness": "live web index; FAQ claims 'up-to-date and real-time results'; recency controllable via time_range/start_date/end_date and topic=news",
+      "creditCost": "1 credit (basic/fast/ultra-fast), 2 credits (advanced)",
+      "source": "https://docs.tavily.com/documentation/api-reference/endpoint/search.md"
+    },
+    {
+      "name": "Extract",
+      "method": "POST",
+      "path": "/extract",
+      "requiredParams": [
+        "urls (string or array of strings; max 20 URLs per request)"
+      ],
+      "optionalParams": [
+        "query (string; user intent for reranking extracted content chunks)",
+        "chunks_per_source (integer, default 3, range 1-5)",
+        "extract_depth (string: basic|advanced, default basic)",
+        "format (string: markdown|text, default markdown)",
+        "include_images (boolean, default false)",
+        "include_favicon (boolean, default false)",
+        "timeout (float, 1.0-60.0 seconds)",
+        "include_usage (boolean, default false)"
+      ],
+      "responseFields": [
+        "results[] {url, raw_content, images, favicon}",
+        "failed_results[]",
+        "response_time",
+        "usage",
+        "request_id"
+      ],
+      "pagination": "none documented",
+      "freshness": "fetched at request time from the live page (varies by target site)",
+      "creditCost": "1 credit per 5 successful URLs (basic); 2 credits per 5 successful URLs (advanced); failed extractions not charged",
+      "source": "https://docs.tavily.com/documentation/api-reference/endpoint/extract.md"
+    },
+    {
+      "name": "Crawl",
+      "method": "POST",
+      "path": "/crawl",
+      "requiredParams": [
+        "url (string; root URL to begin the crawl)"
+      ],
+      "optionalParams": [
+        "instructions (string; natural-language crawler instructions, raises cost to 2 credits per 10 pages)",
+        "max_depth (integer, default 1, range 1-5)",
+        "max_breadth (integer, default 20, range 1-500)",
+        "limit (integer, default 50, min 1)",
+        "select_paths / select_domains / exclude_paths / exclude_domains (regex arrays)",
+        "allow_external (boolean, default true)",
+        "chunks_per_source (integer, default 3, range 1-5; max 500 chars per chunk)",
+        "extract_depth (basic|advanced, default basic)",
+        "format (markdown|text, default markdown)",
+        "include_images (boolean, default false)",
+        "include_favicon (boolean, default false)",
+        "timeout (float, 10-150 seconds, default 150)",
+        "include_usage (boolean, default false)"
+      ],
+      "responseFields": [
+        "base_url",
+        "results[] {url, raw_content, favicon}",
+        "response_time",
+        "usage",
+        "request_id"
+      ],
+      "pagination": "none documented; bounded by max_depth/max_breadth/limit",
+      "freshness": "fetched at request time (live pages)",
+      "creditCost": "mapping: 1 credit per 10 successful pages (2 with instructions) plus extraction: 1 credit per 5 basic extractions or 2 per 5 advanced",
+      "source": "https://docs.tavily.com/documentation/api-reference/endpoint/crawl.md"
+    },
+    {
+      "name": "Map",
+      "method": "POST",
+      "path": "/map",
+      "requiredParams": [
+        "url (string; root URL to begin the mapping)"
+      ],
+      "optionalParams": [
+        "instructions (string)",
+        "max_depth (integer, default 1, range 1-5)",
+        "max_breadth (integer, default 20, range 1-500)",
+        "limit (integer, default 50, min 1)",
+        "select_paths / select_domains / exclude_paths / exclude_domains (regex arrays)",
+        "allow_external (boolean, default true)",
+        "timeout (float, 10-150 seconds, default 150)",
+        "include_usage (boolean, default false)"
+      ],
+      "responseFields": [
+        "base_url",
+        "results (array of URL strings)",
+        "response_time",
+        "usage",
+        "request_id"
+      ],
+      "pagination": "none documented",
+      "freshness": "fetched at request time",
+      "creditCost": "1 credit per 10 successful pages; 2 credits per 10 pages with instructions",
+      "source": "https://docs.tavily.com/documentation/api-reference/endpoint/map.md"
+    },
+    {
+      "name": "Create Research Task",
+      "method": "POST",
+      "path": "/research",
+      "requiredParams": [
+        "input (string; the research task or question)"
+      ],
+      "optionalParams": [
+        "model (string, default 'auto'; options mini|pro|auto)",
+        "stream (boolean, default false; true returns Server-Sent Events)",
+        "output_schema (object; JSON Schema for structured output)",
+        "citation_format (string, default 'numbered'; numbered|mla|apa|chicago)",
+        "include_domains (array, max 20; soft preference)",
+        "exclude_domains (array, max 20; hard blocklist)",
+        "output_length (string, default 'standard'; short|standard|long)",
+        "files (array, max 5; .txt/.md/.json, max 80,000 words each)"
+      ],
+      "responseFields": [
+        "request_id",
+        "created_at",
+        "status (e.g. 'pending')",
+        "input",
+        "model",
+        "response_time"
+      ],
+      "pagination": "n/a (async task; poll GET /research/{request_id})",
+      "freshness": "runs live web research at request time; asynchronous completion",
+      "creditCost": "dynamic: 4-110 credits (mini) to 15-250 credits (pro) per request, per API Credits doc",
+      "source": "https://docs.tavily.com/documentation/api-reference/endpoint/research.md"
+    },
+    {
+      "name": "Get Research Task",
+      "method": "GET",
+      "path": "/research/{request_id}",
+      "requiredParams": [
+        "request_id (path, string)"
+      ],
+      "optionalParams": [],
+      "responseFields": [
+        "HTTP 200 (completed|failed): request_id, status, response_time, created_at, content (string or object), sources[]",
+        "HTTP 202 (pending|in_progress): request_id, status, response_time"
+      ],
+      "pagination": "n/a; poll until 200 (polling counts against default rate limits, not the 20 RPM research-creation limit)",
+      "freshness": "n/a (task status/result retrieval)",
+      "creditCost": "not separately documented",
+      "source": "https://docs.tavily.com/documentation/api-reference/endpoint/research-get.md"
+    },
+    {
+      "name": "Research (streaming mode)",
+      "method": "POST",
+      "path": "/research (with stream: true)",
+      "requiredParams": [
+        "input",
+        "stream: true"
+      ],
+      "optionalParams": [
+        "same as Create Research Task"
+      ],
+      "responseFields": [
+        "text/event-stream SSE; events: tool call, tool response, content, sources, 'event: done'; each event: id, object ('chat.completion.chunk'), model (mini|pro), created, choices[].delta"
+      ],
+      "pagination": "n/a (stream)",
+      "freshness": "live, incremental as research progresses",
+      "creditCost": "same dynamic research pricing",
+      "source": "https://docs.tavily.com/documentation/api-reference/endpoint/research-streaming.md"
+    },
+    {
+      "name": "Usage",
+      "method": "GET",
+      "path": "/usage",
+      "requiredParams": [],
+      "optionalParams": [
+        "X-Project-ID (header; scope usage query to a specific project)"
+      ],
+      "responseFields": [
+        "key (API key usage metrics)",
+        "account (account plan and usage information)"
+      ],
+      "pagination": "none documented",
+      "freshness": "current billing cycle usage",
+      "creditCost": "not documented; rate-limited to 10 requests per 10 minutes",
+      "source": "https://docs.tavily.com/documentation/api-reference/endpoint/usage.md"
+    },
+    {
+      "name": "Organization Usage (Enterprise)",
+      "method": "POST",
+      "path": "/org-usage",
+      "requiredParams": [
+        "organization_name (string, case-sensitive; caller must be org owner)"
+      ],
+      "optionalParams": [
+        "start_date (YYYY-MM-DD, default billing-cycle start)",
+        "end_date (YYYY-MM-DD, default today)",
+        "project_id (string)",
+        "depth (enum: basic|advanced|fast|pro|mini|auto|ultra-fast)"
+      ],
+      "responseFields": [
+        "organization {name, filters}",
+        "totals {usage, paygo_cost_usd, request_count, breakdown by type}",
+        "keys[] (per-key usage metrics)"
+      ],
+      "pagination": "none documented",
+      "freshness": "usage reporting",
+      "creditCost": "not documented; 'Access to this API is an enterprise feature only'; auth uses the organization owner's personal API key",
+      "source": "https://docs.tavily.com/documentation/enterprise/org-usage.md"
+    },
+    {
+      "name": "Generate Keys (Enterprise)",
+      "method": "POST",
+      "path": "/generate-keys",
+      "baseUrl": "https://api-key-generator.tavily.com/",
+      "requiredParams": [
+        "permission_level (string: admin|user)"
+      ],
+      "optionalParams": [
+        "name (string)",
+        "scope (array; user-level keys only)",
+        "key_type (development|production, default development)",
+        "key_limit (integer 1-100,000, default 200)",
+        "ttl_hours (integer 1-8,760, default 10)",
+        "count (integer 1-200, default 1)"
+      ],
+      "responseFields": [
+        "keys[]",
+        "expires_at",
+        "created",
+        "message",
+        "request_id"
+      ],
+      "pagination": "none documented",
+      "freshness": "n/a (admin)",
+      "creditCost": "Enterprise plan only",
+      "source": "https://docs.tavily.com/documentation/enterprise/generate-keys.md"
+    },
+    {
+      "name": "Deactivate Keys (Enterprise)",
+      "method": "POST",
+      "path": "/deactivate-keys",
+      "baseUrl": "https://api-key-generator.tavily.com/",
+      "requiredParams": [],
+      "optionalParams": [
+        "request_id (string; deactivates all keys from a previous /generate-keys call)",
+        "or Authorization header set to the individual key to deactivate"
+      ],
+      "responseFields": [
+        "message (string, e.g. 'Successfully deactivated 5 key(s)')"
+      ],
+      "pagination": "none documented",
+      "freshness": "n/a (admin)",
+      "creditCost": "Enterprise plan only",
+      "source": "https://docs.tavily.com/documentation/enterprise/deactivate-keys.md"
+    },
+    {
+      "name": "Key Info (Enterprise)",
+      "method": "GET",
+      "path": "/key-info",
+      "baseUrl": "https://api-key-generator.tavily.com/",
+      "requiredParams": [
+        "not verified in this review (page exists at https://docs.tavily.com/documentation/enterprise/key-info.md; endpoint existence and method confirmed via changelog)"
+      ],
+      "optionalParams": [
+        "unknown"
+      ],
+      "responseFields": [
+        "unknown"
+      ],
+      "pagination": "unknown",
+      "freshness": "n/a (admin)",
+      "creditCost": "Enterprise plan only",
+      "source": "https://docs.tavily.com/changelog.md (March 2026 entry: 'New endpoints: POST /generate-keys, POST /deactivate-keys, GET /key-info')"
+    }
+  ],
+  "coverage": {
+    "natureOfProvider": "Tavily is a web search, content-extraction, site-crawl, and agentic deep-research API optimized for LLMs/AI agents. It is NOT a market-data provider: it serves web pages, news, and web-derived answers, not exchange feeds or instrument-level datasets.",
+    "assetClasses": "not applicable / not documented — no instrument-, exchange-, or asset-class-level datasets. Closest financial affordance is the Search 'topic' parameter with a documented 'finance' option (scope of 'finance' topic sources not documented).",
+    "marketsExchangesGeographies": "not documented as structured coverage; global open web. Search supports a 'country' parameter to 'prioritize content from the selected country' (prioritization, not a strict filter) and include_domains/exclude_domains for source targeting.",
+    "chains": "not applicable — no blockchain/crypto chain datasets documented.",
+    "instrumentTypes": "not applicable — no instruments, symbols, or identifiers documented.",
+    "contentTypes": "web search results (title, url, content snippet, relevance score), optional LLM-generated answer, raw page content (markdown/text), images, site maps (URL lists), crawled page content, asynchronous multi-source research reports with citations (numbered/MLA/APA/Chicago) and optional JSON-schema structured output."
+  },
+  "freshness": {
+    "search": "live web index; vendor FAQ states it 'delivers up-to-date and real-time results' and 'typically returns results within seconds'; recency filterable via time_range/start_date/end_date; topic=news for recent news",
+    "extract": "content fetched from target URLs at request time; freshness equals the live page state",
+    "crawlMap": "live traversal at request time; timeout 10-150 seconds",
+    "research": "asynchronous task (status pending/in_progress -> completed/failed); performs live web research; completion time not guaranteed in docs",
+    "importantCaveat": "'real-time' here means live web retrieval, NOT real-time market data. Nothing from Tavily should be presented as an exchange-grade real-time quote or price feed."
+  },
+  "historicalDepth": {
+    "webContent": "no documented index-depth guarantee; Search supports arbitrary start_date/end_date filtering on publish/update date, but the docs do not state how far back the index reaches or how date metadata is derived",
+    "timeSeries": "none — Tavily has no historical time-series datasets"
+  },
+  "pagination": {
+    "mechanism": "none documented on any endpoint. Search is bounded by max_results (0-20); Extract by max 20 URLs per request; Crawl/Map by max_depth/max_breadth/limit; Research is an async task retrieved whole via GET /research/{request_id}."
+  },
+  "rateLimits": {
+    "development": {
+      "standardEndpoints": "100 RPM",
+      "crawl": "100 RPM",
+      "researchCreation": "20 RPM",
+      "usageEndpoint": "10 requests per 10 minutes"
+    },
+    "production": {
+      "standardEndpoints": "1,000 RPM",
+      "crawl": "100 RPM",
+      "researchCreation": "20 RPM",
+      "usageEndpoint": "10 requests per 10 minutes",
+      "note": "Production keys require an active paid plan or PAYGO enabled"
+    },
+    "enterprise": "custom rate limits (pricing page: 'Custom rate limits'); exact numbers not documented",
+    "researchPolling": "polling GET /research/{request_id} counts against default (standard) limits, not the 20 RPM research-creation limit",
+    "onExceed": "HTTP 429 with a 'retry-after' header (seconds to wait); message: 'Your request has been blocked due to excessive requests. Please reduce the rate of requests.'",
+    "backoffGuidance": "docs recommend 'implementing retry logic that respects the retry-after header value'",
+    "source": "https://docs.tavily.com/documentation/rate-limits.md"
+  },
+  "errors": {
+    "schema": "{ \"detail\": { \"error\": \"<string>\" } } — consistent nested detail.error string across documented error responses",
+    "statusCodes": {
+      "400": "Bad Request - Your request is invalid.",
+      "401": "Unauthorized - Your API key is wrong or missing.",
+      "404": "Research task not found (GET /research/{request_id})",
+      "429": "Too many requests - Rate limit exceeded (includes retry-after header)",
+      "432": "Key limit or Plan Limit exceeded",
+      "433": "PayGo limit exceeded",
+      "500": "Internal Server Error - We had a problem with our server."
+    },
+    "asyncStatusCodes": {
+      "201": "Research task created (POST /research)",
+      "202": "Research task pending/in_progress (GET /research/{request_id})",
+      "200": "Research task completed or failed (GET /research/{request_id})"
+    },
+    "sources": [
+      "https://docs.tavily.com/documentation/api-reference/endpoint/search.md",
+      "https://docs.tavily.com/documentation/api-reference/endpoint/research-get.md",
+      "https://docs.tavily.com/documentation/rate-limits.md"
+    ]
+  },
+  "entitlements": {
+    "plans": [
+      {
+        "name": "Researcher (Free)",
+        "price": "$0/month",
+        "credits": "1,000 API credits/month",
+        "notes": "no credit card required; email support"
+      },
+      {
+        "name": "Project",
+        "price": "$30/month (docs api-credits page); pricing page shows slider-based custom amount",
+        "credits": "4,000 API credits/month",
+        "notes": "'Higher rate limits'"
+      },
+      {
+        "name": "Bootstrap",
+        "price": "$100/month",
+        "credits": "15,000 credits/month"
+      },
+      {
+        "name": "Startup",
+        "price": "$220/month",
+        "credits": "38,000 credits/month"
+      },
+      {
+        "name": "Growth",
+        "price": "$500/month",
+        "credits": "100,000 credits/month"
+      },
+      {
+        "name": "Pay-as-you-go",
+        "price": "$0.008 per credit",
+        "credits": "per usage"
+      },
+      {
+        "name": "Enterprise",
+        "price": "custom",
+        "credits": "custom",
+        "notes": "custom rate limits; uptime and support SLAs; enterprise-grade security/privacy; dedicated account manager and Slack channel (per FAQ)"
+      }
+    ],
+    "tierGatedCapabilities": {
+      "productionApiKeys": "require active paid plan or PAYGO enabled",
+      "safe_search": "Enterprise only (Search parameter)",
+      "keyManagementApi": "Enterprise only (/generate-keys, /deactivate-keys, /key-info)",
+      "orgUsageApi": "Enterprise only (/org-usage)",
+      "slas": "Enterprise only",
+      "keylessAccess": "free, rate-limited, no account; /search and /extract only; /crawl, /map, /research require an API key"
+    },
+    "sources": [
+      "https://docs.tavily.com/documentation/api-credits.md",
+      "https://www.tavily.com/pricing",
+      "https://docs.tavily.com/documentation/keyless.md",
+      "https://docs.tavily.com/documentation/rate-limits.md"
+    ]
+  },
+  "sdks": [
+    {
+      "language": "Python",
+      "package": "tavily-python",
+      "install": "pip install tavily-python",
+      "methods": "search, extract, crawl, map (research via REST)",
+      "maintenanceStatus": "official docs page exists; maintenance cadence not documented on docs site"
+    },
+    {
+      "language": "JavaScript/TypeScript",
+      "package": "@tavily/core",
+      "install": "npm i @tavily/core",
+      "methods": "search, extract, crawl, map",
+      "maintenanceStatus": "official docs page exists; maintenance cadence not documented on docs site"
+    }
+  ],
+  "licensing": {
+    "termsUrl": "https://tavily.com/terms",
+    "redistribution": "Prohibited: ToS Section 3.2(ii) forbids customers to 'sublicense, resell, distribute, lease, rent, lend, transfer, assign or otherwise dispose of the Services'; Section 2 makes the API grant 'non-exclusive, revocable... non-transferable, and non-sublicensable' and states the API/keys 'may not be transferred, assigned, shared, or otherwise made available to any third party'.",
+    "storageCaching": "Not explicitly addressed for API output in the ToS reviewed; no documented cache-TTL or storage restriction was found. Treat long-term storage/derivative redistribution of retrieved third-party web content as an open legal question (underlying web content carries its own copyright regardless of Tavily's terms).",
+    "attributionDisplay": "No attribution or display requirements documented for search results.",
+    "ipOfResults": "ToS Section 9.3: Tavily 'owns and will continue to own all rights, title, and interest... in and to the Services'; output ownership is not explicitly defined; customers retain rights to their Input (Section 9.1).",
+    "privacyPosture": "FAQ states 'zero data retention' and 'SOC 2 certified'; privacy policy at https://tavily.com/privacy."
+  },
+  "limitations": [
+    "Not a market-data provider: no quotes, OHLCV, fundamentals, reference data, corporate actions, or identifiers. Unsuitable as any pricing/valuation source.",
+    "Search result 'content' is snippet/chunk text with a relevance 'score'; result quality and source authority vary — web-derived content requires source vetting before institutional use.",
+    "The optional 'answer' field is LLM-generated and must be treated as synthesized (hallucination-risk) content, not a primary source.",
+    "No pagination: Search caps at 20 results per request; Extract caps at 20 URLs per request.",
+    "'country' parameter prioritizes rather than strictly filters by geography; include_domains on /research is a soft preference, not a hard filter (exclude_domains is a hard blocklist).",
+    "Research endpoint credit cost is dynamic and wide-ranged (4-250 credits), making per-report cost hard to budget precisely; it is asynchronous with no documented completion-time guarantee.",
+    "'fast' and 'ultra-fast' search depths are marked BETA (Dec 2025 changelog).",
+    "No API versioning or deprecation policy is documented; behavior changes are communicated via changelog only — pin behaviors via integration tests.",
+    "Historical index depth and how publish/update dates are derived are not documented; date-filtered results may miss or misdate content.",
+    "Uptime/support SLAs only at Enterprise tier; usage endpoint is heavily rate-limited (10 requests/10 minutes), limiting real-time quota monitoring.",
+    "ToS prohibits resale/redistribution/sublicensing of the Services; storage/caching rights for retrieved content are not explicitly granted."
+  ],
+  "institutionalFit": {
+    "primaryFor": [
+      "Qualitative research retrieval: news discovery and monitoring (topic=news with time filters), company/issuer web research, event and controversy scanning",
+      "Document/web content ingestion for RAG pipelines (Extract with markdown output; Crawl/Map for IR sites, regulator sites, filings-adjacent web content)",
+      "Agentic deep-research report generation with citations and structured JSON output (Research endpoint with output_schema)"
+    ],
+    "fallbackFor": [
+      "Breaking-news awareness when a licensed newswire is unavailable (with source-quality vetting)",
+      "Ad-hoc fact verification and cross-referencing behind licensed data sources"
+    ],
+    "notSuitableFor": [
+      "Any market data function: real-time or delayed quotes, historical prices, fundamentals, reference/master data, corporate actions, index or benchmark data",
+      "Anything requiring redistribution of retrieved content to clients without an independent content-licensing review"
+    ],
+    "hardConstraints": [
+      "Never present Tavily-derived content as exchange or vendor market data; 'real-time' means live web retrieval only",
+      "LLM-generated 'answer' and Research report content must be labeled as synthesized and cite underlying sources",
+      "No resale/redistribution/sublicensing of the Service or shared API keys (ToS Sections 2, 3.2)",
+      "Production throughput ceiling of 1,000 RPM (standard) / 100 RPM (crawl) / 20 RPM (research creation) below Enterprise",
+      "429s must be handled by honoring the retry-after header"
+    ]
+  },
+  "sourcesConsulted": [
+    {
+      "url": "https://docs.tavily.com",
+      "whatItVerified": "docs root, section structure, endpoint list, llms.txt index location"
+    },
+    {
+      "url": "https://docs.tavily.com/llms.txt",
+      "whatItVerified": "complete official docs page inventory (endpoints, enterprise API, SDKs, best practices, changelog, OpenAPI spec location)"
+    },
+    {
+      "url": "https://docs.tavily.com/documentation/api-reference/introduction",
+      "whatItVerified": "base URL https://api.tavily.com; Bearer auth 'Authorization: Bearer tvly-YOUR_API_KEY'; X-Project-ID/X-Session-Id/X-Human-Id headers; JSON content type"
+    },
+    {
+      "url": "https://docs.tavily.com/documentation/api-reference/endpoint/search.md",
+      "whatItVerified": "POST /search full parameter set, defaults, response fields, credit costs, error status codes 400/401/429/432/433/500 and detail.error schema"
+    },
+    {
+      "url": "https://docs.tavily.com/documentation/api-reference/endpoint/extract.md",
+      "whatItVerified": "POST /extract parameters, 20-URL cap, response fields, credit costs"
+    },
+    {
+      "url": "https://docs.tavily.com/documentation/api-reference/endpoint/crawl.md",
+      "whatItVerified": "POST /crawl parameters, limits (depth/breadth/limit/timeout), response fields, credit costs"
+    },
+    {
+      "url": "https://docs.tavily.com/documentation/api-reference/endpoint/map.md",
+      "whatItVerified": "POST /map parameters, response fields (results as URL strings), credit costs"
+    },
+    {
+      "url": "https://docs.tavily.com/documentation/api-reference/endpoint/research.md",
+      "whatItVerified": "POST /research parameters (model, stream, output_schema, citation_format, domain filters, output_length, files), 201 response fields, async pending status"
+    },
+    {
+      "url": "https://docs.tavily.com/documentation/api-reference/endpoint/research-get.md",
+      "whatItVerified": "GET /research/{request_id}, 200 vs 202 semantics, status enums, content/sources fields, 401/404/500 errors"
+    },
+    {
+      "url": "https://docs.tavily.com/documentation/api-reference/endpoint/research-streaming.md",
+      "whatItVerified": "SSE streaming behavior, text/event-stream, event types, chat.completion.chunk event shape"
+    },
+    {
+      "url": "https://docs.tavily.com/documentation/api-reference/endpoint/usage.md",
+      "whatItVerified": "GET /usage, X-Project-ID header scoping, key/account response fields"
+    },
+    {
+      "url": "https://docs.tavily.com/documentation/rate-limits.md",
+      "whatItVerified": "dev vs production RPM limits per endpoint class, usage endpoint 10/10min, 429 + retry-after behavior and backoff guidance, production requires paid plan or PAYGO"
+    },
+    {
+      "url": "https://docs.tavily.com/documentation/api-credits.md",
+      "whatItVerified": "free 1,000 credits/month, plan tiers and prices (Project $30/4k, Bootstrap $100/15k, Startup $220/38k, Growth $500/100k, PAYGO $0.008/credit), per-endpoint credit costs, research dynamic pricing 4-250 credits"
+    },
+    {
+      "url": "https://www.tavily.com/pricing",
+      "whatItVerified": "public plan tiers, PAYGO $0.008/credit, Enterprise custom rate limits + SLAs, student plan"
+    },
+    {
+      "url": "https://docs.tavily.com/faq/faq.md",
+      "whatItVerified": "freshness claims ('up-to-date and real-time results'), zero data retention, SOC 2, Enterprise-only SLAs, free tier cap"
+    },
+    {
+      "url": "https://docs.tavily.com/documentation/keyless.md",
+      "whatItVerified": "keyless access mode (X-Tavily-Access-Mode: keyless) for /search and /extract only; crawl/map/research require API key"
+    },
+    {
+      "url": "https://docs.tavily.com/changelog.md",
+      "whatItVerified": "dated change entries (Dec 2025 - May 2026), BETA status of fast/ultra-fast depths, enterprise key-management endpoints (Mar 2026), absence of formal versioning policy"
+    },
+    {
+      "url": "https://docs.tavily.com/documentation/enterprise/generate-keys.md",
+      "whatItVerified": "POST /generate-keys on https://api-key-generator.tavily.com/, parameters, key_limit/ttl_hours ranges, Enterprise-only"
+    },
+    {
+      "url": "https://docs.tavily.com/documentation/enterprise/deactivate-keys.md",
+      "whatItVerified": "POST /deactivate-keys behavior (bulk via request_id or single via Authorization header)"
+    },
+    {
+      "url": "https://docs.tavily.com/documentation/enterprise/org-usage.md",
+      "whatItVerified": "POST /org-usage parameters, owner personal-key auth, totals/keys response, Enterprise-only"
+    },
+    {
+      "url": "https://docs.tavily.com/sdk/python/quick-start.md",
+      "whatItVerified": "official Python SDK tavily-python, install command, supported methods"
+    },
+    {
+      "url": "https://docs.tavily.com/sdk/javascript/quick-start.md",
+      "whatItVerified": "official JS/TS SDK @tavily/core, install command, supported methods"
+    },
+    {
+      "url": "https://tavily.com/terms",
+      "whatItVerified": "ToS: non-transferable/non-sublicensable API grant, prohibition on sublicense/resell/distribute (Section 3.2), IP ownership (Sections 9.1-9.3), no explicit attribution or result-storage clauses"
+    },
+    {
+      "url": "https://docs.tavily.com/documentation/best-practices/best-practices-search.md",
+      "whatItVerified": "topic=news 'includes published_date metadata' on search results (2026-07-17 adapter-build recheck); the field's format and exact placement are NOT documented — treat published_date as optional and parse defensively. The /search endpoint reference OpenAPI schema itself does not list published_date."
+    }
+  ],
+  "confidence": "high",
+  "openQuestions": [
+    "Exact Enterprise rate limits and SLA terms (documented only as 'custom')",
+    "Whether stored/cached API output (retrieved web content) may be retained long-term or embedded in redistributable research products — ToS silent on output storage; requires legal review of underlying-content copyright",
+    "GET /key-info request/response details (docs page exists but was not fetched in this review)",
+    "Scope and source list of the Search 'finance' topic (not documented)",
+    "Historical depth of the search index and provenance of publish/update dates used by date filters",
+    "Precise pricing-page Project-tier price (docs api-credits page says $30/month for 4,000 credits; pricing page shows a slider-based custom amount)",
+    "PAYGO spending caps/limits behavior behind the 433 'PayGo limit exceeded' status",
+    "Live observation 2026-07-17: POST /search with max_results=0 returns HTTP 400 despite the documented 0-20 range — treat 1 as the minimum."
+  ]
+}

@@ -1,0 +1,55 @@
+{
+  "_fixture": {
+    "note": "constructed from official docs field definitions (see docs/research/providers/alchemy.json), not captured live data",
+    "docsUrl": "https://www.alchemy.com/docs/data/transfers-api/transfers-endpoints/alchemy-get-asset-transfers"
+  },
+  "jsonrpc": "2.0",
+  "id": 1,
+  "result": {
+    "transfers": [
+      {
+        "category": "external",
+        "blockNum": "0x12f5a1c",
+        "from": "0x1e6e8695fab3eb382534915ea8d7cc1d1994b152",
+        "to": "0x28c6c06298d514db089934071355e5743bf21d60",
+        "value": 1.5,
+        "hash": "0x5c504ed432cb51138bcf09aa5e8a410dd4a1e204ef84bfed1be16dfba1b22060",
+        "uniqueId": "0x5c504ed432cb51138bcf09aa5e8a410dd4a1e204ef84bfed1be16dfba1b22060:external",
+        "tokenId": null,
+        "erc721TokenId": null,
+        "erc1155Metadata": null,
+        "asset": "ETH",
+        "rawContract": {
+          "value": "0x14d1120d7b160000",
+          "address": null,
+          "decimal": "0x12"
+        },
+        "metadata": {
+          "blockTimestamp": "2026-07-10T08:15:30.000Z"
+        }
+      },
+      {
+        "category": "erc20",
+        "blockNum": "0x12f5a2e",
+        "from": "0x28c6c06298d514db089934071355e5743bf21d60",
+        "to": "0x1e6e8695fab3eb382534915ea8d7cc1d1994b152",
+        "value": 2500.75,
+        "hash": "0x8a1f5dd0b2ef6dc07e2d1c1e2a2f4f3c9db3b78f5a3f2ce9a54f6f1e2f3a4b5c",
+        "uniqueId": "0x8a1f5dd0b2ef6dc07e2d1c1e2a2f4f3c9db3b78f5a3f2ce9a54f6f1e2f3a4b5c:log:12",
+        "tokenId": null,
+        "erc721TokenId": null,
+        "erc1155Metadata": null,
+        "asset": "USDC",
+        "rawContract": {
+          "value": "0x950e6ab0",
+          "address": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+          "decimal": "0x6"
+        },
+        "metadata": {
+          "blockTimestamp": "2026-07-10T08:20:42.000Z"
+        }
+      }
+    ],
+    "pageKey": "8d2a5f3e-4b6c-4a1d-9e7f-1c2b3a4d5e6f"
+  }
+}

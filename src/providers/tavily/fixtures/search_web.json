@@ -1,0 +1,27 @@
+{
+  "_fixture": {
+    "note": "constructed from official docs field definitions (see docs/research/providers/tavily.json), not captured live data",
+    "docsUrl": "https://docs.tavily.com/documentation/api-reference/endpoint/search.md"
+  },
+  "query": "european central bank rate decision",
+  "answer": "The European Central Bank held its deposit facility rate steady at its most recent meeting, citing easing inflation pressures.",
+  "images": [],
+  "results": [
+    {
+      "title": "ECB keeps rates on hold as inflation cools",
+      "url": "https://www.example-news.com/ecb-rates-hold",
+      "content": "The European Central Bank left its key deposit rate unchanged, saying inflation is moving toward its 2% target.",
+      "score": 0.97432,
+      "favicon": "https://www.example-news.com/favicon.ico"
+    },
+    {
+      "title": "Monetary policy decisions",
+      "url": "https://www.ecb.europa.eu/press/pr/date/html/index.en.html",
+      "content": "Press releases on the Governing Council's monetary policy decisions.",
+      "score": 0.91211,
+      "favicon": "https://www.ecb.europa.eu/favicon.ico"
+    }
+  ],
+  "response_time": 1.38,
+  "request_id": "req-fixture-web-0001"
+}

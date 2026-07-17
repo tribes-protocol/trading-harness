@@ -1,0 +1,62 @@
+{
+  "_fixture": {
+    "note": "constructed from official docs field definitions (see docs/research/providers/birdeye.json), not captured live data",
+    "docsUrl": "https://docs.birdeye.so/reference/get-defi-v2-markets"
+  },
+  "success": true,
+  "data": {
+    "items": [
+      {
+        "address": "58oQChx4yWmvKdwLLZzBi4ChoCc2fqCUWBkwMihLYQo2",
+        "base": {
+          "address": "So11111111111111111111111111111111111111112",
+          "decimals": 9,
+          "symbol": "SOL",
+          "icon": "https://example.invalid/sol.png"
+        },
+        "quote": {
+          "address": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+          "decimals": 6,
+          "symbol": "USDC",
+          "icon": "https://example.invalid/usdc.png"
+        },
+        "name": "SOL-USDC",
+        "source": "Raydium",
+        "liquidity": 18923441.02,
+        "price": 161.21,
+        "volume24h": 90211433.8,
+        "trade24h": 51234,
+        "trade24hChangePercent": -3.02,
+        "uniqueWallet24h": 8123,
+        "uniqueWallet24hChangePercent": 1.4,
+        "createdAt": "2021-04-05T02:26:54.000Z"
+      },
+      {
+        "address": "7qbRF6YsyGuLUVs6Y1q64bdVrfe4ZcUUz1JRdoVNUJnm",
+        "base": {
+          "address": "So11111111111111111111111111111111111111112",
+          "decimals": 9,
+          "symbol": "SOL",
+          "icon": "https://example.invalid/sol.png"
+        },
+        "quote": {
+          "address": "Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB",
+          "decimals": 6,
+          "symbol": "USDT",
+          "icon": "https://example.invalid/usdt.png"
+        },
+        "name": "SOL-USDT",
+        "source": "Orca",
+        "liquidity": 5211903.4,
+        "price": null,
+        "volume24h": 10422811.31,
+        "trade24h": 20481,
+        "trade24hChangePercent": 0.88,
+        "uniqueWallet24h": 3011,
+        "uniqueWallet24hChangePercent": -0.6,
+        "createdAt": "2022-01-19T11:03:10.000Z"
+      }
+    ],
+    "total": 2
+  }
+}

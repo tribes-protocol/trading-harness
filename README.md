@@ -1,149 +1,95 @@
-# trading-harness
+# Pi Research Platform
 
-Autonomous Hyperliquid trading harness for the [Pi coding agent](https://github.com/earendil-works/pi-coding-agent). Pi runs the wallet CLI, the Hyperliquid skill, and the hourly trading loop. You talk to Pi.
+Institutional multi-asset investment-research platform, built **pi-first**
+for the [pi coding agent](https://pi.dev): a strictly-typed TypeScript
+application layer (provider adapters, versioned schemas, capability
+registry, routed services, CLI) plus harness-native department skills and
+personas modeling a multi-strategy fund's operating structure. Claude Code
+is supported as a secondary harness.
 
-`AGENTS.md` is the operating constitution.
-
-## How it runs
-
-This repo **is** the agent's workspace. In a Tribes sandbox the control plane clones it into `/root/workspace`, runs `bootstrap.sh` once to install deps **and compile the whole project into a single `tribes-cli` binary installed on PATH**, injects the agent's authorization key + RPC/provider env, and launches `pi`. Auth is already wired at provisioning — **there is no manual login step**.
-
-To run it locally instead:
-
-```bash
-bun run bootstrap.sh   # install deps + compile the tribes-cli binary, then install it globally
-pi                      # start the harness
-```
-
-Pi reads `.pi/agent/settings.json` and `AGENTS.md`, then starts the trading harness. Everything below is a prompt to Pi.
-
-## Environment
-
-By default (`NODE_ENV` unset, empty, or `production`) the Tribes API base and Privy app id
-are **baked into the binary** — there is nothing to configure to run against production.
-The only thing a run needs is auth (a bearer token), and that is handled for you:
-
-- In a Tribes sandbox the control plane injects the token (`TRIBES_API_KEY`); no login step.
-- Anywhere else (Claude Code, a local shell), run `tribes-cli login` — or the `/tribes-login`
-  skill — once to mint and persist an `API_BEARER_TOKEN`.
-
-On startup the `tribes` extension mints a fresh `API_BEARER_TOKEN` into `.env` (refreshed
-every 24h). The `tribes-cli` binary auto-loads `.env` from the workspace, so every command
-reads its config straight from it — no token prefix on any command.
-
-These two vars only matter for **local, non-production dev** (`NODE_ENV` set to a
-non-production value), where the endpoints point at localhost and the Privy app id must be
-supplied:
-
-| Variable       | When needed                        | Purpose                                     |
-| -------------- | ---------------------------------- | ------------------------------------------- |
-| `PRIVY_APP_ID` | non-production `NODE_ENV` only     | Privy app for the agent wallet              |
-| `API_BASE_URL` | never read — kept for sandbox seed | Tribes API base (hardcoded per environment) |
-
-Direct wallet CLI usage from the workspace root:
+## Quick start (pi)
 
 ```bash
-tribes-cli wallet list
+npm install
+cp .env.example .env        # add provider API keys (all optional)
+pi                          # in this directory; trust the project when asked
 ```
 
-## Trading
-
-Deposit into Hyperliquid (bridge minimum is 5 USDC):
+Inside pi: skills are `/skill:<name>` (e.g. `/skill:market-brief`,
+`/skill:risk-review`, `/skill:crypto-research`), department personas are
+`/<name>` (e.g. `/risk-officer`, `/macro-analyst`). All data flows through
+the platform CLI:
 
 ```bash
-tribes-cli hyperliquid deposit --amount 25 --from <0x-privy-wallet>
+npx tsx src/cli/index.ts registry        # provider capability registry
+npx tsx src/cli/index.ts doctor          # config check (--live: 1 minimal call/provider)
+npx tsx src/cli/index.ts quote AAPL --json
+npx tsx src/cli/index.ts series CPIAUCSL --from 2020-01-01
+npx tsx src/cli/index.ts token price --chain ethereum --address 0x...
+npx tsx src/cli/index.ts token ohlcv --id bitcoin --interval 1d --limit 90
+npx tsx src/cli/index.ts news --query "central bank"
+npx tsx src/cli/index.ts search "tokenized treasuries adoption"
+npx tsx src/cli/index.ts validate handoff artifacts/handoffs/<file>.json
+npm test && npm run typecheck
 ```
 
-Withdraw USDC:
+## What's here
 
-```bash
-tribes-cli hyperliquid withdraw --amount 2 --from <0x-privy-wallet> --destination <0x-evm-address>
-```
+| Layer | Where | Notes |
+|---|---|---|
+| Core machinery | `src/core/` | HTTP (timeouts/retries/backoff/Retry-After), per-provider rate limiting, TTL caches, pagination caps, structured redacting logger, env-only credentials |
+| Schemas | `src/schemas/` | zod, versioned; every dataset carries source, freshness, quality flags, lineage; epistemic labels on findings |
+| Provider adapters | `src/providers/<id>/` | 10 providers, each built documentation-first from `docs/research/providers/<id>.json`, with doc-derived fixtures + mocked tests |
+| Capability registry | `src/registry/providers.json` | machine-readable verified capabilities, freshness, priorities, rate limits, licensing; verification status `unverified → docs-reviewed → live-tested` |
+| Routed services | `src/services/` | primary/fallback routing with recorded fallback usage, cross-provider disagreement surfacing (preserved, never averaged) |
+| CLI | `src/cli/` | `pi` — human-readable + `--json`; logs on stderr |
+| Departments | `src/departments/`, `docs/OPERATING_MODEL.md` | 17 modeled departments across three lines of defense; typed handoff artifacts with preserved dissent |
+| Skills (canonical) | `.pi/skills/` | 18 department workflows (macro/equity/crypto/FI/commodities research, market-structure, quant-signal, model-validation, risk-review, portfolio-review, ic-memo, compliance-check, news-triage, ops-treasury, performance-report, market-brief, provider-dd, handoff) |
+| Personas (canonical) | `.pi/prompts/` | 16 department personas with embedded discipline rules; `.claude/agents/` is generated from these via `npm run sync:agents` |
+| Claude-only workflows | `.claude/workflows/` | `morning-brief`, `ic-review`, `token-dd` multi-agent orchestrations (Claude Code's Workflow engine) |
+| Research records | `docs/research/` | provider docs reviews (with sources consulted) + operating-model research |
 
-Transfer USDC between spot and perp wallets:
+## Design commitments
 
-```bash
-tribes-cli hyperliquid transfer-usd-class --amount 2 --from <0x-privy-wallet> --direction spot-to-perp
-```
+1. **Documentation-first** — every provider capability claim traces to an
+   official-docs review with URLs and review date. Failing integrations
+   trigger doc re-reads, not blind patches.
+2. **Verification honesty** — nothing is marked `live-tested` without an
+   actual successful call. With no API keys present, adapters ship
+   `docs-reviewed` with mocked tests, and `pi doctor --live` upgrades
+   status only when it truly runs.
+3. **Data honesty** — EOD/delayed/cached/estimated data is flagged and
+   described as such, everywhere, always. Provider disagreements are
+   surfaced with both values. Missing coverage (options chains, futures
+   curves, bond-level FI) fails loudly — see `docs/COVERAGE.md`.
+4. **Secrets** — env vars only, registered with a redactor that scrubs
+   logs, errors, and outputs; `.env` is gitignored.
+5. **Auditability** — research notes, handoffs, IC memos are schema-valid
+   JSON artifacts with evidence types, confidence, limitations, and
+   verbatim dissents.
 
-Place a perp order:
+## Harness compatibility (pi-first)
 
-```bash
-tribes-cli hyperliquid trade-perp --from <0x-privy-wallet> --coin BTC --side long --type market --amount 0.001
-```
+The TypeScript platform (services, CLI, tests) is harness-agnostic — any
+agent that can run shell commands drives it via `npx tsx src/cli/index.ts`.
+The agent-facing assets are canonical in `.pi/` with Claude Code support
+derived from them:
 
-Place a stop-loss perp order (stop-market or stop-limit):
+| Asset | pi (pi.dev) — primary | Claude Code — derived |
+|---|---|---|
+| Project context | `AGENTS.md` (pi-native) | `CLAUDE.md` symlink → `AGENTS.md` |
+| Skills (18) | `.pi/skills/` canonical (Agent Skills standard; `/skill:<name>`) | `.claude/skills` symlink → `.pi/skills` (`.agents/skills` likewise, for newer pi builds and other harnesses) |
+| Department personas (16) | `.pi/prompts/` canonical (`/<name>`; frontmatter carries `description` + `claudeTools`) | `.claude/agents/` **generated** by `npm run sync:agents` — edit the `.pi/prompts` source, never the output |
+| Multi-agent workflows (3) | not available — pi has no orchestration; use the single-agent skill equivalents: `market-brief` ≈ morning-brief, `ic-memo` ≈ ic-review, `crypto-research` ≈ token-dd | `.claude/workflows/` (Workflow engine), an optional extra |
 
-```bash
-tribes-cli hyperliquid trade-perp --from <0x-privy-wallet> --coin BTC --side short --type stop_market --trigger-px 58000 --amount 0.001 --reduce-only
-tribes-cli hyperliquid trade-perp --from <0x-privy-wallet> --coin BTC --side short --type stop_limit --trigger-px 58000 --price 57900 --amount 0.001 --reduce-only
-```
+Note: the pi coding agent's binary is `pi`. This package deliberately
+declares **no** `bin` entry — always invoke the platform CLI as
+`npx tsx src/cli/index.ts` to avoid shadowing the harness binary.
 
-Place a take-profit perp order (take-market or take-limit):
+## Documentation
 
-```bash
-tribes-cli hyperliquid trade-perp --from <0x-privy-wallet> --coin BTC --side short --type take_market --trigger-px 72000 --amount 0.001 --reduce-only
-tribes-cli hyperliquid trade-perp --from <0x-privy-wallet> --coin BTC --side short --type take_limit --trigger-px 72000 --price 71900 --amount 0.001 --reduce-only
-```
-
-Place an atomic bracket (entry + linked take-profit and stop-loss as OCO) by adding `--tp-px`/`--sl-px`:
-
-```bash
-tribes-cli hyperliquid trade-perp --from <0x-privy-wallet> --dex xyz --coin MSFT --side long --type market --amount 1.307 --tp-px 405.56 --sl-px 371.13
-```
-
-Place a TWAP perp order (slices the order over a duration) and cancel it by id. Each sub-order must be ≥ $10 notional (a TWAP is split into `durationMinutes * 2` sub-orders), and the CLI rejects too-small TWAPs before signing:
-
-```bash
-tribes-cli hyperliquid twap-perp --from <0x-privy-wallet> --coin BTC --side long --amount 0.5 --duration-minutes 30 --randomize
-tribes-cli hyperliquid twap-cancel --from <0x-privy-wallet> --coin BTC --twap-id 1234
-```
-
-List open perp positions (read-only; `--all-dexes` sweeps main + every perp dex):
-
-```bash
-tribes-cli hyperliquid list-positions --address <0x-evm-address> --all-dexes
-```
-
-Place a spot order:
-
-```bash
-tribes-cli hyperliquid trade-spot --from <0x-privy-wallet> --pair HYPE/USDC --side buy --type market --amount 10
-```
-
-## Layout
-
-All executable code lives under a single root `src/` (one alias: `@/*` -> `./src/*`). Every
-command builder is composed into one entry, `src/cli/Tribes.ts`, which `bootstrap.sh` compiles
-into the `tribes-cli` binary. Each skill under `skills/<slug>/` is **documentation only** —
-its `SKILL.md` points the agent at the matching `tribes-cli <group>` command.
-
-```text
-AGENTS.md                  # Operating constitution
-bootstrap.sh               # First-boot: install deps + compile tribes-cli, install it globally
-src/                       # ALL code: command builders + shared foundation (@/*)
-  cli/                     # Tribes.ts (the tribes-cli entry) + one builder per group:
-                           #   Wallet, Hyperliquid, Transaction, SpotTrading, Token, News,
-                           #   Macros, WebSearch, Prediction, 9 analysts
-  common/ helpers/ services/ types/ utils/
-.pi/
-  agent/
-    settings.json          # Pi provider/model config
-    trust.json             # Trust the sandbox workspace on first boot
-  extensions/
-    tribes/                # LLM provider + proxy bearer token + welcome + wallet warm-up
-    hyperliquid/           # live Hyperliquid positions/status widget
-  skills/<slug>/SKILL.md   # skill docs only (no code); run via tribes-cli <group>
-.tribes/                   # runtime auth/wallet cache files (gitignored)
-```
-
-## Security
-
-- Never paste secrets into Pi prompts, summaries, or commits.
-- Wallet private keys live in Privy; RPC/API keys come from the environment.
-- `.env*` and `.tribes/*.json` wallet/key snapshots are gitignored.
-
-## References
-
-- Privy Agent Wallet CLI: <https://docs.privy.io/recipes/agent-integrations/agent-cli>
-- Hyperliquid API: <https://hyperliquid.gitbook.io/hyperliquid-docs/for-developers/api>
+- `docs/ARCHITECTURE.md` — layers and design rules
+- `docs/DATA_STANDARDS.md` — provenance, quality flags, identifier discipline
+- `docs/OPERATING_MODEL.md` — departments, governance forums, handoffs
+- `docs/COVERAGE.md` — honest asset-class coverage map
+- `docs/providers/<id>.md` — per-provider verified capability docs

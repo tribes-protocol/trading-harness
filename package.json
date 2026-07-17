@@ -1,50 +1,30 @@
 {
-  "name": "trading-harness",
-  "version": "1.0.0",
-  "description": "Autonomous Hyperliquid trading harness for Pi (standalone)",
-  "private": true,
+  "name": "pi-research-platform",
+  "version": "0.1.0",
+  "description": "Institutional multi-asset investment research platform for the Pi harness",
   "type": "module",
+  "private": true,
+  "engines": {
+    "node": ">=22"
+  },
   "scripts": {
-    "typecheck": "tsc --noEmit -p tsconfig.json",
-    "build": "bun run typecheck",
-    "dev": "sh scripts/dev.sh",
-    "test": "bun run typecheck",
-    "lint": "eslint . --ext .ts,.mts --max-warnings 0 --no-warn-ignored",
-    "lint:fix": "eslint . --ext .ts,.mts --fix --max-warnings 0 --no-warn-ignored",
-    "format": "prettier --write \"**/*.{ts,mts,md,json,jsonc,yml,yaml}\"",
-    "format:check": "prettier --check \"**/*.{ts,mts,md,json,jsonc,yml,yaml}\"",
-    "knip": "knip"
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "pi": "tsx src/cli/index.ts",
+    "sync:agents": "tsx scripts/sync-claude-agents.ts"
   },
   "dependencies": {
-    "@nktkas/hyperliquid": "0.32.2",
-    "@privy-io/node": "0.7.0",
-    "@solana/spl-token": "0.4.14",
-    "@solana/web3.js": "1.98.4",
-    "bignumber.js": "9.3.1",
-    "bs58": "4.0.1",
-    "commander": "14.0.3",
-    "jose": "4.15.9",
-    "viem": "2.46.3",
-    "zod": "3.25.76"
+    "bignumber.js": "^11.1.5",
+    "commander": "^13.1.0",
+    "jose": "^6.2.3",
+    "zod": "^3.24.1"
   },
   "devDependencies": {
-    "@earendil-works/pi-coding-agent": "0.80.3",
-    "@earendil-works/pi-tui": "0.80.3",
-    "@eslint/js": "9.39.3",
-    "@types/bs58": "4.0.1",
-    "@types/node": "20.17.6",
-    "@typescript-eslint/eslint-plugin": "8.56.1",
-    "@typescript-eslint/parser": "8.56.1",
-    "@vitest/coverage-v8": "4.1.3",
-    "eslint": "9.39.3",
-    "eslint-config-prettier": "10.1.8",
-    "eslint-plugin-import": "2.32.0",
-    "eslint-plugin-prettier": "5.5.3",
-    "eslint-plugin-simple-import-sort": "12.1.1",
-    "eslint-plugin-unused-imports": "4.4.1",
-    "knip": "5.44.0",
-    "prettier": "3.3.3",
-    "typescript": "5.8.3",
-    "vitest": "4.1.3"
+    "@types/node": "^22.10.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.7.0",
+    "vitest": "^3.0.0"
   }
 }

@@ -1,0 +1,363 @@
+{
+  "provider": "Alchemy",
+  "reviewDate": "2026-07-17",
+  "officialDocsUrl": "https://www.alchemy.com/docs",
+  "apiVersion": "Per-product path versioning: Node/Chain APIs v2 (/v2/{apiKey}), NFT API v3 (/nft/v3/{apiKey}), Portfolio/Data APIs v1 (/data/v1/{apiKey}), Prices API v1 (/prices/v1/{apiKey}). No single global API version; no formal versioning/deprecation policy document found (changelog exists at docs.alchemy.com/changelog).",
+  "authentication": {
+    "primaryMechanism": "API key embedded in the URL path",
+    "nodeAndChainApis": "API key appended directly to the URL path: https://eth-mainnet.g.alchemy.com/v2/YOUR_ALCHEMY_API_KEY (verified in Ethereum quickstart). Same pattern for other chains (e.g. solana-devnet.g.alchemy.com/v2/{apiKey}).",
+    "dataApis": "Portfolio/Data API and Historical Prices embed the API key in the path: https://api.g.alchemy.com/data/v1/{apiKey}/... and https://api.g.alchemy.com/prices/v1/{apiKey}/tokens/historical.",
+    "pricesApi": "Prices API quickstart documents an Authorization header with Bearer token (API key) for by-symbol/by-address endpoints; the historical endpoint reference shows the key in the URL path. Both patterns appear in official docs.",
+    "webhooksManagement": "Webhooks (Notify) management API uses an 'Auth Token' from the webhooks dashboard; webhook payloads are validated via the X-Alchemy-Signature header using HMAC SHA-256 with a per-webhook signing key.",
+    "notes": "No OAuth. No real credentials were used in this review; no live calls were made."
+  },
+  "baseUrls": [
+    {
+      "url": "https://{network}.g.alchemy.com/v2/{apiKey}",
+      "use": "Node/Chain JSON-RPC APIs and Enhanced APIs (alchemy_* methods). Examples verified: eth-mainnet.g.alchemy.com/v2/..., solana-devnet.g.alchemy.com/v2/... Mainnet subdomains verified 2026-07-17 in per-chain quickstarts: eth-mainnet, polygon-mainnet, arb-mainnet, opt-mainnet, base-mainnet.",
+      "source": "https://www.alchemy.com/docs/ethereum"
+    },
+    {
+      "url": "https://{network}.g.alchemy.com/nft/v3/{apiKey}",
+      "use": "NFT API v3 (REST, GET endpoints)",
+      "source": "https://www.alchemy.com/docs/reference/nft-api-quickstart"
+    },
+    {
+      "url": "https://api.g.alchemy.com/data/v1/{apiKey}",
+      "use": "Portfolio APIs (multi-chain tokens/NFTs/transaction history by wallet)",
+      "source": "https://www.alchemy.com/docs/data/portfolio-apis/portfolio-api-endpoints/portfolio-api-endpoints/get-tokens-by-address"
+    },
+    {
+      "url": "https://api.g.alchemy.com/prices/v1",
+      "use": "Prices API (token prices by symbol/address, historical prices)",
+      "source": "https://www.alchemy.com/docs/reference/prices-api-quickstart"
+    }
+  ],
+  "endpoints": [
+    {
+      "name": "Node JSON-RPC (standard EVM methods, e.g. eth_call, eth_getLogs, eth_blockNumber)",
+      "httpMethod": "POST",
+      "path": "https://{network}.g.alchemy.com/v2/{apiKey}",
+      "protocol": "JSON-RPC 2.0 over HTTPS; WebSocket subscriptions also offered per docs overview",
+      "keyParams": "Standard JSON-RPC body: jsonrpc, id, method, params",
+      "responseFields": "jsonrpc, id, result (or error {code, message})",
+      "pagination": "Method-specific (e.g. block ranges for eth_getLogs); none generic",
+      "freshness": "Real-time (chain head); Full Archive Data included on all tiers per pricing page"
+    },
+    {
+      "name": "Transfers API — alchemy_getAssetTransfers",
+      "httpMethod": "POST (JSON-RPC)",
+      "path": "https://{network}.g.alchemy.com/v2/{apiKey} with method alchemy_getAssetTransfers",
+      "keyParams": "Required: fromAddress or toAddress (at least one). Optional: fromBlock, toBlock (supports 'latest' or 'indexed' tags), category (external, internal, erc20, erc721, erc1155, specialnft), maxCount (HEX string, default '0x3e8' = 1000), pageKey, order ('asc' default | 'desc'), withMetadata (block timestamps), excludeZeroValue (default true), contractAddresses[]",
+      "responseFields": "pageKey (string for next page; blank when none) and transfers[]: category, blockNum (hex string), from, to (nullable), value (number, nullable), hash, uniqueId, tokenId, erc721TokenId (deprecated), erc1155Metadata[] {tokenId, value} (nullable), asset (ETH or token symbol, nullable), rawContract {value hex nullable, address nullable, decimal hex nullable}, metadata.blockTimestamp (ISO; Ethereum/Base/Polygon/Arbitrum/Optimism only). Supported networks: Ethereum, Base, Polygon, Arbitrum, Optimism (internal category limited to Ethereum + Polygon mainnet)",
+      "pagination": "pageKey cursor; documented TTL of 10 minutes",
+      "freshness": "Indexed historical data; 'indexed' toBlock tag implies an indexing pipeline distinct from chain head — lag not quantified in docs"
+    },
+    {
+      "name": "Token API — alchemy_getTokenBalances",
+      "httpMethod": "POST (JSON-RPC)",
+      "path": "https://{network}.g.alchemy.com/v2/{apiKey} with method alchemy_getTokenBalances",
+      "keyParams": "Required: owner wallet address; token contract address(es) array",
+      "responseFields": "address, tokenBalances[] {contractAddress, tokenBalance, error}",
+      "pagination": "Not documented in quickstart",
+      "freshness": "Current on-chain state (real-time as of queried block)"
+    },
+    {
+      "name": "Token API — alchemy_getTokenMetadata",
+      "httpMethod": "POST (JSON-RPC)",
+      "path": "https://{network}.g.alchemy.com/v2/{apiKey} with method alchemy_getTokenMetadata",
+      "keyParams": "Required: token contract address",
+      "responseFields": "decimals, logo, name, symbol",
+      "pagination": "Not applicable",
+      "freshness": "Metadata; update cadence not documented"
+    },
+    {
+      "name": "Utility API — alchemy_getTransactionReceipts",
+      "httpMethod": "POST (JSON-RPC)",
+      "path": "https://{network}.g.alchemy.com/v2/{apiKey} with method alchemy_getTransactionReceipts",
+      "keyParams": "Block number or block hash",
+      "responseFields": "All transaction receipts for the block (per overview; full field list not shown in overview page)",
+      "pagination": "Not documented",
+      "freshness": "Real-time (per-block)",
+      "notes": "Documented as cheaper in Compute Units than individual eth_getTransactionReceipt calls. Supported networks listed: Ethereum mainnet/testnets, Polygon, Optimism, Arbitrum."
+    },
+    {
+      "name": "Portfolio API — Tokens By Wallet",
+      "httpMethod": "POST",
+      "path": "https://api.g.alchemy.com/data/v1/{apiKey}/assets/tokens/by-address",
+      "keyParams": "Required: addresses[] (wallet address + networks to query; max 2 addresses per request, max 5 networks per address). Optional: withMetadata (default true), withPrices (default true), includeNativeTokens (default true), includeErc20Tokens (default true). Network identifiers verified 2026-07-17: eth-mainnet, base-mainnet, matic-mainnet (Polygon), arb-mainnet, opt-mainnet, solana-mainnet",
+      "responseFields": "data.tokens[] {address, network, tokenAddress (null for native), tokenBalance (decimal string of raw base units), tokenMetadata {name, symbol, decimals (int), logo}, tokenPrices[] {currency, value (string), lastUpdatedAt (ISO 8601)}, error (null or string)}, data.pageKey",
+      "pagination": "pageKey cursor",
+      "freshness": "Balances current; embedded price freshness not documented"
+    },
+    {
+      "name": "Portfolio API — NFTs By Wallet",
+      "httpMethod": "POST",
+      "path": "https://api.g.alchemy.com/data/v1/{apiKey}/assets/nfts/by-address",
+      "keyParams": "Required: addresses[] {address, networks[], optional excludeFilters/includeFilters ['SPAM','AIRDROPS'], spamConfidenceLevel VERY_HIGH|HIGH|MEDIUM|LOW}; max 2 addresses, max 15 networks per address. Optional: withMetadata (default true), pageKey, pageSize (default 100), orderBy ('transferTime'), sortOrder ('asc'|'desc')",
+      "responseFields": "data.ownedNfts[], data.totalCount, data.pageKey",
+      "pagination": "pageKey cursor",
+      "freshness": "Current holdings; NFT metadata is cached (refresh endpoints exist)"
+    },
+    {
+      "name": "Portfolio API — Transactions By Wallet (Beta)",
+      "httpMethod": "POST",
+      "path": "https://api.g.alchemy.com/data/v1/{apiKey}/transactions/history/by-address",
+      "keyParams": "Required: addresses[] (limit 1 address, max 2 networks; eth-mainnet and base-mainnet only). Optional: before, after, limit (default 25, max 50), pageKey",
+      "responseFields": "before, after, totalCount, transactions[] (with metadata, logs, internal transactions)",
+      "pagination": "Cursor-based via before/after/pageKey",
+      "freshness": "Historical/indexed",
+      "notes": "Documented as Beta and 'scheduled for removal'; docs recommend migrating to alchemy_getAssetTransfers. Do not build production dependencies on this endpoint."
+    },
+    {
+      "name": "Prices API — Token Prices By Symbol",
+      "httpMethod": "GET",
+      "path": "https://api.g.alchemy.com/prices/v1/tokens/by-symbol (GET; Authorization: Bearer {apiKey} verified in quickstart 2026-07-17)",
+      "keyParams": "Required: symbols (comma-separated, e.g. ETH,BTC,USDT)",
+      "responseFields": "envelope {data: [...]}; per token: symbol, prices[] {currency, value (STRING), lastUpdatedAt (ISO 8601)}, error (null on success)",
+      "pagination": "Not documented",
+      "freshness": "Documented as current/real-time-oriented; exact update frequency NOT documented. Volume-weighted average across 10+ CEXes and 100+ DEXes."
+    },
+    {
+      "name": "Prices API — Token Prices By Address",
+      "httpMethod": "POST",
+      "path": "https://api.g.alchemy.com/prices/v1/tokens/by-address",
+      "keyParams": "POST body: {addresses: [{network, address}]} (network identifier e.g. eth-mainnet); Authorization: Bearer {apiKey} verified in quickstart 2026-07-17",
+      "responseFields": "envelope {data: [...]}; per token: symbol, prices[] {currency, value (STRING), lastUpdatedAt (ISO 8601)}, error (null on success)",
+      "pagination": "Not documented",
+      "freshness": "DEX-sourced only; update frequency not documented"
+    },
+    {
+      "name": "Prices API — Historical Token Prices",
+      "httpMethod": "POST",
+      "path": "https://api.g.alchemy.com/prices/v1/{apiKey}/tokens/historical",
+      "keyParams": "Identify token by symbol OR by network+address. Required time range: startTime, endTime (ISO 8601). interval (e.g. '1d'), withMarketData (boolean; adds marketCap, totalVolume)",
+      "responseFields": "symbol, currency, data[] {value, timestamp, marketCap, totalVolume}",
+      "pagination": "Not documented",
+      "freshness": "Historical; maximum lookback depth and full interval list NOT documented"
+    },
+    {
+      "name": "NFT API — getNFTsForOwner",
+      "httpMethod": "GET",
+      "path": "https://{network}.g.alchemy.com/nft/v3/{apiKey}/getNFTsForOwner",
+      "keyParams": "owner (required), pageSize, pageKey",
+      "responseFields": "ownedNfts[], totalCount, validAt, pageKey",
+      "pagination": "pageKey cursor",
+      "freshness": "Indexed; validAt field indicates data-as-of point"
+    },
+    {
+      "name": "NFT API — getNFTMetadata",
+      "httpMethod": "GET",
+      "path": "https://{network}.g.alchemy.com/nft/v3/{apiKey}/getNFTMetadata",
+      "keyParams": "contractAddress (required), tokenId (required), tokenType (optional)",
+      "responseFields": "contract info, tokenId, name, image, timeLastUpdated, collection, mint data",
+      "pagination": "Not applicable",
+      "freshness": "Cached metadata; timeLastUpdated exposes staleness; refreshNftMetadata/invalidateContract endpoints exist to force refresh"
+    },
+    {
+      "name": "NFT API — getFloorPrice",
+      "httpMethod": "GET (per NFT API v3 REST pattern; method not explicitly shown on the endpoints index page)",
+      "path": "https://{network}.g.alchemy.com/nft/v3/{apiKey}/getFloorPrice",
+      "keyParams": "Documented description: 'Retrieve the floor price of a NFT collection by marketplace'; full parameter list not captured from index page",
+      "responseFields": "Not captured from index page",
+      "pagination": "Not documented",
+      "freshness": "Marketplace-sourced; cadence not documented"
+    },
+    {
+      "name": "NFT API — getNFTSales",
+      "httpMethod": "GET (per NFT API v3 REST pattern; method not explicitly shown on the endpoints index page)",
+      "path": "https://{network}.g.alchemy.com/nft/v3/{apiKey}/getNFTSales",
+      "keyParams": "Documented description: 'Retrieve NFT sales data across marketplaces'; full parameter list not captured from index page",
+      "responseFields": "Not captured from index page",
+      "pagination": "Not documented on index page",
+      "freshness": "Historical sales across marketplaces"
+    },
+    {
+      "name": "Webhooks (Notify) — event subscriptions",
+      "httpMethod": "Managed via dashboard or createWebhook management endpoint (exact management URL not shown in quickstart excerpt)",
+      "path": "Webhook types: Address Activity (< 100K wallets per webhook), NFT Activity, Custom Webhooks",
+      "keyParams": "Auth Token from webhooks dashboard for management; per-webhook signing key",
+      "responseFields": "Push payloads signed with X-Alchemy-Signature (HMAC SHA-256)",
+      "pagination": "Not applicable (push)",
+      "freshness": "Real-time push on on-chain events; docs root cites webhook support on 80+ chains"
+    }
+  ],
+  "coverage": {
+    "assetClasses": "Crypto/on-chain data ONLY: native coins, ERC-20 tokens, NFTs (ERC-721/1155 and special non-standard collections), on-chain transactions/transfers, token/NFT prices. NO equities, fixed income, FX, commodities, funds, or macro data.",
+    "chains": "Docs root claims 100+ blockchains (webhooks on 80+). Chains page names 44+ individually: EVM L1s (Ethereum, BNB Smart Chain, Avalanche, Fantom, Gnosis, Rootstock), optimistic rollups (Arbitrum, OP Mainnet, Base), ZK rollups (Polygon zkEVM, zkSync, Scroll, Linea, Starknet), other L2s/sidechains (Polygon PoS, Mantle, Metis, Blast, Mode, Zora, Ink, Shape, Unichain, World Chain, Abstract, Soneium), alt L1s (Solana, Aptos, Sui, Celo, Bitcoin, Flow, Berachain, Monad, Sei), plus emerging networks and testnets (Astar, Hyperliquid, Lens, opBNB, Plasma, Rise, Ronin, Sonic).",
+    "featureByChain": "Feature availability varies per chain; the authoritative matrix is the docs 'feature support by chain' page / Chains dashboard (table is dynamically rendered and could not be extracted in this review). Data APIs are documented for 'Ethereum, Base, Polygon, Arbitrum, Optimism, and dozens of other chains'; alchemy_getTransactionReceipts lists Ethereum, Polygon, Optimism, Arbitrum.",
+    "markets": "Prices sourced from 10+ CEXes (Binance, Coinbase, Crypto.com, Kraken, OKX, Bybit, KuCoin named) and 100+ DEXes (Uniswap, Curve, Pancakeswap, Raydium named). No traditional exchanges.",
+    "instrumentTypes": "Native tokens, ERC-20, NFTs (ERC-721, ERC-1155, specialnft e.g. CryptoPunks/CryptoKitties), smart-contract events/logs, account-abstraction operations.",
+    "tokenPriceCoverage": "By Symbol: 1000+ tokens by market cap (CEX+DEX volume-weighted). By Address: 10K+ tokens from leading DEXes (DEX-only)."
+  },
+  "freshness": {
+    "nodeChainApis": "Real-time chain-head access via JSON-RPC and WebSockets; full archive data included on all plan tiers.",
+    "transfersApi": "Indexed historical data; toBlock supports an 'indexed' tag distinct from 'latest', implying an indexing pipeline whose lag is not quantified in docs.",
+    "pricesApi": "Positioned as current + historical; per-price lastUpdatedAt timestamps returned; refresh/update frequency NOT documented.",
+    "portfolioApi": "Balances reflect current state; embedded price/metadata freshness not documented; NFT responses include validAt.",
+    "webhooks": "Real-time push on on-chain events.",
+    "nftMetadata": "Cached with timeLastUpdated; explicit refresh endpoints (refreshNftMetadata, invalidateContract) indicate metadata can be stale."
+  },
+  "historicalDepth": {
+    "nodeArchive": "Full Archive Data listed as included on the Free tier and above (pricing page), i.e., full-chain historical state access for supported chains.",
+    "transfers": "Historical transfers queryable by block range; earliest depth (genesis?) not explicitly stated in the quickstart — not documented.",
+    "prices": "Historical prices endpoint accepts arbitrary startTime/endTime with intervals (example '1d'); maximum lookback and complete interval list NOT documented.",
+    "nftSales": "Sales across marketplaces; depth not documented."
+  },
+  "pagination": {
+    "dataApis": "Cursor-based via pageKey (Portfolio tokens/NFTs, NFT API v3, Transfers API).",
+    "transfersApiTtl": "Transfers API pageKey has a documented TTL of 10 minutes.",
+    "transactionHistoryBeta": "Cursor-based via before/after/pageKey with limit (default 25, max 50).",
+    "jsonRpc": "No generic pagination; block-range windowing for log/transfer queries."
+  },
+  "rateLimits": {
+    "model": "Usage metered in Compute Units (CUs); throughput metered in Compute Units Per Second (CUPS). Throughput is configured at the ACCOUNT level (no longer per app). Example documented CU costs: eth_blockNumber 10 CU, eth_call 26 CU, eth_getLogs 75 CU.",
+    "tiers": {
+      "free": "30M CUs/month included; 500 CUPS throughput; 5 apps; 5 webhooks; Prices API 300 requests/hour.",
+      "payg": "Pay As You Go: $0.45 per 1M CUs up to 300M, $0.40/M above; 10,000 CUPS; 30 apps; 100 webhooks; Prices API 10,000 requests/hour.",
+      "enterprise": "Custom CUs/CUPS/quotas; unlimited apps; 500 webhooks; Prices API without separate hourly cap (subject to account throughput)."
+    },
+    "elasticity": "Docs state apps may exceed dedicated throughput when spare capacity exists ('elastic demand') — not guaranteed; retries recommended.",
+    "onExceed": "HTTP 429 (Too Many Requests); over WebSockets a JSON-RPC error with code 429 and message 'Your app has exceeded its compute units per second capacity...'.",
+    "backoffGuidance": "Official guidance: honor Retry-After header on HTTP 429; simple retries with random 1000-1250 ms wait up to a max attempt count; or exponential backoff min(((2^n)+random_jitter_ms), maximum_backoff) with jitter <= 1000 ms and maximum_backoff typically 32-64 s."
+  },
+  "errors": {
+    "httpStatusCodes": {
+      "200": "Request received/processed; may still carry a JSON-RPC error (e.g., execution reverted code 3) — MUST check error field even on 200.",
+      "400": "Invalid request format (JSON-RPC -32700, -32602, -32600, -32521, -32500).",
+      "401": "Missing/invalid API authentication.",
+      "403": "Forbidden — capacity/allowlist rejection.",
+      "413": "Payload too large — 2.6 MB request limit; split batches.",
+      "429": "Rate limited — exceeded compute units/concurrency.",
+      "500": "Server error / unprocessed block.",
+      "503": "Service unavailable."
+    },
+    "jsonRpcErrorSchema": "{ \"jsonrpc\": \"2.0\", \"error\": { \"code\": <int>, \"message\": <string> } } — success responses omit the error field.",
+    "jsonRpcCodes": {
+      "-32700": "Parse error (invalid JSON)",
+      "-32600": "Invalid Request",
+      "-32601": "Unsupported method",
+      "-32602": "Invalid params",
+      "-32603": "Internal error",
+      "-32000..-32099": "Implementation-defined server errors",
+      "3": "Execution reverted (check error data field)",
+      "20-63": "Starknet-specific errors"
+    },
+    "notableMessages": "'already known' (duplicate pending tx), 'filter not found' (filters expire after 5 minutes), 'transaction underpriced'.",
+    "retryGuidance": "Retry 429 with backoff (see rateLimits.backoffGuidance); retry 500/503 after checking status page; keep-alive connection pools recommended against ECONNRESET."
+  },
+  "entitlements": {
+    "free": "Node API, Full Archive Data, Token API, NFT API, Transfers API, Transaction Simulation, Smart WebSockets, JavaScript SDK, Analytics & Reporting, Email Support; 5 apps, 5 webhooks; Prices API at 300 req/hr.",
+    "payg": "Everything in Free plus Debug API, Trace API, Gas-optimized transactions, Gas Manager (8% admin fee); 30 apps, 100 webhooks; Prices API at 10K req/hr; higher CUPS (10,000).",
+    "enterprise": "Custom quotas/CUPS, devoted support channels, access to engineering/PM teams, custom SLAs, roadmap priority, volume discounts, custom Gas Manager admin fee; unlimited apps, 500 webhooks.",
+    "note": "Trace/Debug APIs are the clearest tier-gated capabilities (PAYG+). Data APIs (Token/NFT/Transfers/Portfolio/Prices) are available from the Free tier subject to CU/CUPS and Prices-API hourly caps."
+  },
+  "sdks": [
+    {
+      "name": "alchemy-sdk (Alchemy SDK for JavaScript/TypeScript)",
+      "language": "JavaScript/TypeScript",
+      "status": "Official; actively documented (SDK Surface Overview + examples in docs). Built as a superset of the Ethers.js provider surface (1:1 mapping for AlchemyProvider/WebSocketProvider) with access to Enhanced APIs, NFT APIs, robust WebSockets, and automated retries. Types documented via tsdoc.",
+      "source": "https://www.alchemy.com/docs/reference/alchemy-sdk-api-surface-overview"
+    },
+    {
+      "name": "Other languages (Python, Go, etc.)",
+      "language": "n/a",
+      "status": "No official non-JavaScript SDK found in current docs; pricing page lists only 'JavaScript SDK' as a plan feature. Treat other-language wrappers as unofficial.",
+      "source": "https://www.alchemy.com/docs/reference/pricing-plans"
+    }
+  ],
+  "licensing": {
+    "governingDocument": "Alchemy Terms of Service v2.0, effective June 27, 2025, via legal.alchemy.com",
+    "licenseScope": "Services usable 'solely for your internal business purposes in accordance with, and subject to, the Licensed Volume'; license is limited, non-exclusive, non-sublicenseable, non-transferable.",
+    "redistribution": "Prohibited without authorization: 'frame, mirror, sell, resell, rent or lease use of the Services to any other Third Party'. Redistributing Alchemy-served data as a product to third parties is not permitted under the standard license — enterprise agreement required for anything beyond internal use.",
+    "storageCaching": "No explicit documented prohibition on caching responses was found in the docs reviewed; ToS defines 'Your Data' as user-owned. 'Restricted Data' (payment card data, ITAR, regulated data) must not be stored/transmitted through the service. Treat long-term storage/re-serving of Alchemy-derived datasets as requiring legal review against the 'internal business purposes' and no-resale clauses.",
+    "attribution": "No end-user display attribution requirement documented for data; users must 'maintain and not remove or obscure any copyright, trademark, logos, or other proprietary notices'.",
+    "platformData": "Alchemy retains rights to deidentified aggregated usage metrics ('Platform Data') for service improvement."
+  },
+  "limitations": [
+    "Crypto/on-chain only: no coverage of equities, fixed income, FX, commodities, funds, fundamentals, corporate actions, or news — cannot serve traditional-asset research functions.",
+    "Prices API update frequency, historical lookback depth, and full interval list are NOT documented; per-price lastUpdatedAt must be inspected at runtime. Do not represent Prices API output as exchange-grade real-time market data.",
+    "Prices By Symbol is a volume-weighted average across 10+ CEXes and 100+ DEXes — a composite, not a regulated benchmark; By Address is DEX-only. Methodology detail beyond 'averaged, volume-weighted' is not published.",
+    "Token price coverage is bounded: ~1000+ tokens by symbol, ~10K+ by address; long-tail tokens may be missing (docs say new tokens appear 'as soon as they're published to CEXes or DEXes'; extra coverage requires contacting support).",
+    "Portfolio 'Transactions By Wallet' endpoint is Beta, limited to eth-mainnet + base-mainnet, max 1 address / 2 networks / 50 items per page, and is explicitly 'scheduled for removal' — unsuitable for production; use alchemy_getAssetTransfers instead.",
+    "Transfers API pageKey expires after 10 minutes; long pagination jobs must complete within the TTL window or restart.",
+    "Transfers 'internal' category excludes zero-value transfers, delegatecalls, and miner rewards; 'toBlock: indexed' implies indexing lag vs chain head (lag not quantified). Transfer category support varies by chain.",
+    "NFT metadata is cached (timeLastUpdated / refresh endpoints); floor prices are marketplace-sourced with undocumented cadence — stale-metadata risk for NFT analytics.",
+    "Feature availability varies significantly by chain; the authoritative feature-support-by-chain matrix is rendered dynamically and must be checked per chain before relying on a Data API there (e.g., Data APIs are strongest on Ethereum/Base/Polygon/Arbitrum/Optimism).",
+    "Throughput is elastic but not guaranteed above your CUPS; HTTP 429s are expected under burst and clients MUST implement retry/backoff per Alchemy's guidance.",
+    "HTTP 200 responses can still contain JSON-RPC errors — error handling must inspect the JSON-RPC error field, not just HTTP status.",
+    "Request payloads capped at 2.6 MB (HTTP 413); eth_newFilter filters expire after 5 minutes.",
+    "No formal published API versioning/deprecation policy document; versioning is per-product in the URL path (v2 node, v3 NFT, v1 data/prices) with a changelog — deprecations (e.g. the Beta transaction-history endpoint) are announced in-page.",
+    "Standard license restricts use to internal business purposes and prohibits resale/sublicensing — redistribution of Alchemy-sourced data to platform clients requires an enterprise agreement/legal review.",
+    "Symbol-based price lookups carry symbol-collision risk inherent to crypto tickers; address+network lookups are the unambiguous identifier path (docs offer both endpoints but do not document a symbol-disambiguation mechanism)."
+  ],
+  "institutionalFit": {
+    "primaryFor": [
+      "On-chain data infrastructure across 40+ named chains (EVM + Solana + other alt-L1s): node JSON-RPC with full archive access, logs, receipts, traces (PAYG+).",
+      "Wallet/entity holdings and flow analysis: Portfolio API (multi-chain token + NFT balances), Token API balances/metadata, alchemy_getAssetTransfers for historical transfer/flow reconstruction.",
+      "Real-time on-chain event monitoring: webhooks (address activity, NFT activity, custom) on 80+ chains with HMAC-signed payloads.",
+      "NFT market research: ownership, metadata, floor prices, cross-marketplace sales history, spam filtering."
+    ],
+    "fallbackFor": [
+      "Crypto token spot pricing and daily historical price series (Prices API) — usable as a secondary/fallback source given composite methodology, undocumented refresh cadence, undocumented historical depth, and ~1K-10K token coverage; a dedicated market-data vendor should remain primary for institutional-grade crypto pricing.",
+      "Token reference/metadata (name/symbol/decimals/logo) — convenient but should be cross-validated for research-grade symbology."
+    ],
+    "notSuitableFor": [
+      "Any traditional asset class (equities, fixed income, FX, commodities, funds, derivatives).",
+      "Regulated benchmark pricing, best-execution analysis, or exchange-attributed tick data.",
+      "Redistribution of raw data to external clients under the standard (non-enterprise) license."
+    ],
+    "hardConstraints": [
+      "Prices must never be presented as exchange-grade real-time; surface lastUpdatedAt and label as composite CEX/DEX (by-symbol) or DEX-only (by-address).",
+      "The Beta transactions/history/by-address endpoint is scheduled for removal — must not enter production paths.",
+      "License limits use to internal business purposes; no resale/sublicense/mirror — client-facing redistribution needs enterprise terms.",
+      "Account-level CUPS budget shared across all apps — a runaway research job can rate-limit every platform function using Alchemy; enforce client-side budgets and the documented backoff.",
+      "Per-chain feature support must be verified against the official feature-support matrix before enabling a dataset on a new chain."
+    ]
+  },
+  "sourcesConsulted": [
+    { "url": "https://www.alchemy.com/docs", "whatItVerified": "Official docs root; product taxonomy (Chain APIs, Data APIs, Wallets); 100+ chains claim; webhooks on 80+ chains; links to pricing-plans and feature-support-by-chain; llms.txt index." },
+    { "url": "https://www.alchemy.com/docs/reference/pricing-plans", "whatItVerified": "Plan tiers (Free / PAYG / Enterprise), 30M CU + 500 CUPS free, PAYG $0.45/M then $0.40/M CU + 10,000 CUPS, entitlements per tier (archive/node/NFT/transfers/token/simulation/websockets/JS SDK free; Debug/Trace/Gas Manager PAYG; enterprise SLAs), app limits 5/30/unlimited, webhook limits 5/100/500." },
+    { "url": "https://www.alchemy.com/docs/reference/throughput", "whatItVerified": "CUPS scaling by tier, 500 CU/s free example, HTTP 429 + WebSocket 429 error behavior, Retry-After header, simple-retry (1000-1250 ms) and exponential-backoff formula, account-level throughput." },
+    { "url": "https://www.alchemy.com/docs/reference/compute-units", "whatItVerified": "Compute unit model; example CU costs (eth_blockNumber 10, eth_call 26, eth_getLogs 75); CUPS definition; elastic throughput above limits." },
+    { "url": "https://www.alchemy.com/docs/data", "whatItVerified": "Data API catalog: Portfolio, Token, Transfers, Prices, NFT, Webhooks, Custom Webhooks, Simulation, Utility; multi-chain support statement; Prices API real-time + historical positioning." },
+    { "url": "https://www.alchemy.com/docs/ethereum", "whatItVerified": "Auth = API key in URL path; base URL template https://eth-mainnet.g.alchemy.com/v2/YOUR_ALCHEMY_API_KEY." },
+    { "url": "https://www.alchemy.com/docs/reference/portfolio-apis", "whatItVerified": "Portfolio API endpoint set: Tokens By Wallet, NFTs By Wallet, Transaction History." },
+    { "url": "https://www.alchemy.com/docs/data/portfolio-apis/portfolio-api-endpoints/portfolio-api-endpoints/get-tokens-by-address", "whatItVerified": "POST https://api.g.alchemy.com/data/v1/{apiKey}/assets/tokens/by-address; params (addresses, withMetadata, withPrices, includeNativeTokens, includeErc20Tokens); limits (2 addresses, 5 networks); response data.tokens/pageKey." },
+    { "url": "https://www.alchemy.com/docs/data/portfolio-apis/portfolio-api-endpoints/portfolio-api-endpoints/get-nfts-by-address", "whatItVerified": "POST .../assets/nfts/by-address; params incl. spam filters and spamConfidenceLevel; limits (2 addresses, 15 networks); pageSize default 100; response ownedNfts/totalCount/pageKey." },
+    { "url": "https://www.alchemy.com/docs/data/portfolio-apis/portfolio-api-endpoints/portfolio-api-endpoints/get-transaction-history-by-address", "whatItVerified": "Beta POST .../transactions/history/by-address; 1 address / 2 networks; eth-mainnet + base-mainnet only; limit default 25 max 50; cursor pagination; 'scheduled for removal' with migration to alchemy_getAssetTransfers." },
+    { "url": "https://www.alchemy.com/docs/reference/prices-api-quickstart", "whatItVerified": "Prices endpoints by-symbol (GET) and by-address (POST) at api.g.alchemy.com/prices/v1; Bearer-token Authorization header; response fields symbol/prices{currency,value,lastUpdatedAt}/error; CEX+DEX vs DEX-only sourcing." },
+    { "url": "https://www.alchemy.com/docs/data/prices-api/prices-api-endpoints/prices-api-endpoints/get-historical-token-prices", "whatItVerified": "POST https://api.g.alchemy.com/prices/v1/{apiKey}/tokens/historical; params symbol OR network+address, startTime, endTime, interval (example 1d), withMarketData; response data[]{value,timestamp,marketCap,totalVolume}." },
+    { "url": "https://www.alchemy.com/docs/reference/prices-api-faq", "whatItVerified": "Price sources (10+ CEXes, 100+ DEXes, named venues), volume-weighted averaging, coverage (1000+ by symbol, 10K+ by address), Prices API rate limits (300/hr free, 10K/hr PAYG, enterprise uncapped), new-token onboarding; update frequency and historical depth NOT documented." },
+    { "url": "https://www.alchemy.com/docs/reference/transfers-api-quickstart", "whatItVerified": "alchemy_getAssetTransfers params (fromBlock/toBlock incl. 'indexed' tag, category values external/internal/erc20/erc721/erc1155/specialnft, maxCount default 1000, order asc/desc, withMetadata), pageKey TTL 10 minutes, internal-transfer exclusions." },
+    { "url": "https://www.alchemy.com/docs/reference/token-api-quickstart", "whatItVerified": "alchemy_getTokenBalances and alchemy_getTokenMetadata methods, params, and response fields." },
+    { "url": "https://www.alchemy.com/docs/reference/nft-api-quickstart", "whatItVerified": "NFT API v3 base URL https://eth-mainnet.g.alchemy.com/nft/v3/{apiKey}/; getNFTsForOwner (owner, pageSize; ownedNfts/totalCount/validAt/pageKey) and getNFTMetadata (contractAddress, tokenId, tokenType) as GET endpoints." },
+    { "url": "https://www.alchemy.com/docs/reference/nft-api-endpoints", "whatItVerified": "Full NFT API v3 endpoint catalog incl. getFloorPrice, getNFTSales, getOwnersForNFT, getContractMetadata, batch endpoints, rarity/attribute-summary, spam endpoints, metadata refresh endpoints." },
+    { "url": "https://www.alchemy.com/docs/reference/error-reference", "whatItVerified": "HTTP status codes 200/400/401/403/413/429/500/503 with meanings; 2.6 MB payload limit; JSON-RPC error schema {code,message}; codes -32700..-32000 range, execution-reverted code 3, Starknet 20-63; 5-minute filter expiry; retry guidance." },
+    { "url": "https://www.alchemy.com/docs/reference/notify-api-quickstart", "whatItVerified": "Webhook types (Address Activity <100K wallets, NFT Activity, Custom Webhooks); creation via dashboard or createWebhook; dashboard Auth Token for management; X-Alchemy-Signature HMAC SHA-256 payload validation." },
+    { "url": "https://www.alchemy.com/docs/chains", "whatItVerified": "Named chain coverage: 44+ chains across EVM L1s, optimistic/ZK rollups, sidechains, and alt-L1s (Solana, Aptos, Sui, Bitcoin, etc.)." },
+    { "url": "https://www.alchemy.com/docs/reference/solana-api-quickstart", "whatItVerified": "Solana base URL https://solana-devnet.g.alchemy.com/v2/{apiKey}; standard Solana JSON-RPC methods (getSlot, getBalance, getAccountInfo); method categories incl. historical/archival." },
+    { "url": "https://www.alchemy.com/docs/reference/feature-support-by-chain", "whatItVerified": "Existence of the authoritative per-chain feature matrix (table is dynamically rendered; contents could not be extracted in this review — flagged as open question)." },
+    { "url": "https://www.alchemy.com/docs/reference/utility-api-overview", "whatItVerified": "alchemy_getTransactionReceipts (all receipts for a block by number/hash; supported on Ethereum, Polygon, Optimism, Arbitrum; cheaper in CUs than per-tx receipt calls)." },
+    { "url": "https://legal.alchemy.com/", "whatItVerified": "Terms of Service v2.0 (effective 2025-06-27): internal-business-purpose license, non-sublicenseable/non-transferable, no frame/mirror/sell/resell/rent/lease to third parties, proprietary-notice preservation, Restricted Data prohibition, Platform Data rights." },
+    { "url": "https://www.alchemy.com/docs/reference/alchemy-sdk-api-surface-overview", "whatItVerified": "Official alchemy-sdk (JS/TS): Ethers.js-compatible provider surface, Enhanced/NFT API access, robust WebSockets, automated retries, tsdoc-documented." },
+    { "url": "https://www.alchemy.com/docs/data/transfers-api/transfers-endpoints/alchemy-get-asset-transfers", "whatItVerified": "Adapter build 2026-07-17: alchemy_getAssetTransfers full request schema (maxCount is a HEX string, default 0x3e8; excludeZeroValue default true; pageKey default '0x0') and per-transfer response fields (category, blockNum hex, from, to, value, hash, uniqueId, tokenId, erc721TokenId deprecated, erc1155Metadata, asset, rawContract {value, address, decimal}, metadata.blockTimestamp); supported networks Ethereum/Base/Polygon/Arbitrum/Optimism; internal category limited to Ethereum + Polygon mainnet; pageKey blank when no further pages." },
+    { "url": "https://www.alchemy.com/docs/data/portfolio-apis/portfolio-api-endpoints/portfolio-api-endpoints/get-tokens-by-address", "whatItVerified": "Adapter build 2026-07-17 re-verification: request body {addresses:[{address, networks[]}], withMetadata, withPrices, includeNativeTokens, includeErc20Tokens}; network identifiers eth-mainnet, base-mainnet, matic-mainnet, arb-mainnet, opt-mainnet, solana-mainnet; response data.tokens[] subfields incl. tokenBalance as decimal string of raw base units, tokenMetadata {name, symbol, decimals, logo}, tokenPrices[] {currency, value string, lastUpdatedAt ISO}, error null-or-string; data.pageKey." },
+    { "url": "https://www.alchemy.com/docs/reference/prices-api-quickstart", "whatItVerified": "Adapter build 2026-07-17 re-verification: by-symbol GET and by-address POST both authenticate with Authorization: Bearer {apiKey}; by-address body {addresses:[{network, address}]}; response envelope {data:[{symbol, prices[]{currency, value (string), lastUpdatedAt}, error}]}." },
+    { "url": "https://www.alchemy.com/docs/reference/polygon-pos-api-quickstart", "whatItVerified": "Polygon PoS mainnet JSON-RPC base URL https://polygon-mainnet.g.alchemy.com/v2/{apiKey}." },
+    { "url": "https://www.alchemy.com/docs/reference/arbitrum-api-quickstart", "whatItVerified": "Arbitrum mainnet JSON-RPC base URL https://arb-mainnet.g.alchemy.com/v2/{apiKey}." },
+    { "url": "https://www.alchemy.com/docs/reference/optimism-api-quickstart", "whatItVerified": "OP Mainnet JSON-RPC base URL https://opt-mainnet.g.alchemy.com/v2/{apiKey}." },
+    { "url": "https://www.alchemy.com/docs/reference/base-api-quickstart", "whatItVerified": "Base mainnet JSON-RPC base URL https://base-mainnet.g.alchemy.com/v2/{apiKey}." }
+  ],
+  "confidence": "medium",
+  "openQuestions": [
+    "Per-chain feature matrix: the feature-support-by-chain table is dynamically rendered and could not be extracted; each dataset/chain pairing must be confirmed there (or in the Chains dashboard) before production use.",
+    "Prices API refresh cadence and maximum historical lookback are not documented anywhere found — must be confirmed with Alchemy (enterprise conversation) before any freshness-sensitive use.",
+    "Full parameter/response schemas for getFloorPrice and getNFTSales were not captured (index page only lists names/descriptions); consult their individual reference pages before implementation.",
+    "Earliest historical depth of the Transfers API index (genesis coverage per chain?) is not stated in the quickstart.",
+    "Exact management-API URL and auth header name for programmatic webhook CRUD (createWebhook) were not shown in the quickstart excerpt; dashboard Auth Token usage confirmed, header name (e.g. X-Alchemy-Token) unverified.",
+    "Whether the Prices API by-symbol/by-address endpoints also accept key-in-path (as the historical endpoint does) vs Bearer-only was not fully disambiguated across doc pages.",
+    "No formal SLA/uptime commitment is published for non-enterprise tiers ('Support and Service Commitment' exists in the legal center but was not reviewed in detail).",
+    "Whether caching/persisting Alchemy-served data for internal research archives is expressly permitted needs legal review of the full ToS text (only the license-scope and no-resale clauses were confirmed)."
+  ]
+}

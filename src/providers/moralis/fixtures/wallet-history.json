@@ -1,0 +1,98 @@
+{
+  "_fixture": {
+    "note": "constructed from official docs field definitions (see docs/research/providers/moralis.json), not captured live data",
+    "docsUrl": "https://docs.moralis.com/data-api/evm/wallet/wallet-history.md"
+  },
+  "page": 1,
+  "page_size": 100,
+  "cursor": "eyJwYWdlIjoyfQ",
+  "result": [
+    {
+      "hash": "0x1111111111111111111111111111111111111111111111111111111111111111",
+      "nonce": "42",
+      "transaction_index": "12",
+      "from_address": "0x2222222222222222222222222222222222222222",
+      "from_address_label": null,
+      "to_address": "0x1111111111111111111111111111111111111111",
+      "to_address_label": null,
+      "value": "0",
+      "gas": "21000",
+      "gas_price": "12000000000",
+      "block_timestamp": "2026-07-16T09:30:00.000Z",
+      "block_number": "23456700",
+      "block_hash": "0x3333333333333333333333333333333333333333333333333333333333333333",
+      "receipt_cumulative_gas_used": "8500000",
+      "receipt_gas_used": "65000",
+      "receipt_status": "1",
+      "receipt_contract_address": null,
+      "transaction_fee": "0.00078",
+      "category": "token receive",
+      "summary": "Received 1,250 USDC and 0.05 ETH",
+      "method_label": null,
+      "possible_spam": false,
+      "internal_transactions": [],
+      "contract_interactions": null,
+      "nft_transfers": [],
+      "erc20_transfers": [
+        {
+          "token_name": "USD Coin",
+          "token_symbol": "USDC",
+          "token_logo": "https://example.invalid/logos/usdc.png",
+          "token_decimals": "6",
+          "address": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+          "from_address": "0x2222222222222222222222222222222222222222",
+          "to_address": "0x1111111111111111111111111111111111111111",
+          "value": "1250000000",
+          "value_formatted": "1250",
+          "log_index": 7,
+          "possible_spam": false,
+          "verified_contract": true,
+          "block_timestamp": "2026-07-16T09:30:00.000Z"
+        }
+      ],
+      "native_transfers": [
+        {
+          "from_address": "0x2222222222222222222222222222222222222222",
+          "to_address": "0x1111111111111111111111111111111111111111",
+          "value": "50000000000000000",
+          "value_formatted": "0.05",
+          "direction": "receive",
+          "internal_transaction": false,
+          "token_symbol": "ETH",
+          "token_logo": "https://example.invalid/logos/eth.png"
+        }
+      ],
+      "logs": []
+    },
+    {
+      "hash": "0x4444444444444444444444444444444444444444444444444444444444444444",
+      "nonce": "43",
+      "transaction_index": "3",
+      "from_address": "0x1111111111111111111111111111111111111111",
+      "from_address_label": null,
+      "to_address": "0x5555555555555555555555555555555555555555",
+      "to_address_label": null,
+      "value": "10000000000000000",
+      "gas": "21000",
+      "gas_price": "11000000000",
+      "block_timestamp": "2026-07-15T18:05:12.000Z",
+      "block_number": "23450000",
+      "block_hash": "0x6666666666666666666666666666666666666666666666666666666666666666",
+      "receipt_cumulative_gas_used": "4200000",
+      "receipt_gas_used": "21000",
+      "receipt_status": "1",
+      "receipt_contract_address": null,
+      "transaction_fee": "0.000231",
+      "category": "send",
+      "summary": "Sent 0.01 ETH",
+      "method_label": null,
+      "possible_spam": false,
+      "internal_transactions": [],
+      "contract_interactions": null,
+      "nft_transfers": [],
+      "erc20_transfers": [],
+      "native_transfers": [],
+      "logs": []
+    }
+  ]
+}

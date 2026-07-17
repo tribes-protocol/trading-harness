@@ -1,0 +1,45 @@
+{
+  "_fixture": {
+    "note": "constructed from official docs field definitions (see docs/research/providers/helius.json), not captured live data",
+    "docsUrl": "https://www.helius.dev/docs/rpc/gettransfersbyaddress.md"
+  },
+  "jsonrpc": "2.0",
+  "id": "pi-getTransfersByAddress",
+  "result": {
+    "data": [
+      {
+        "signature": "5h6xBEauJ3PK6SWCZ1PGjBvj8vDdWG3KpwATGy1ARAXFSDwt8GFXM7W5Ncn16wmqRYdtRAyeSNMifPEToRuw2kNa",
+        "slot": 312345600,
+        "blockTime": 1752700000,
+        "type": "transfer",
+        "fromUserAccount": "86xCnPeV69n6t3DnyGvkKobf9FdN2H9oiVDdaMpo2MMY",
+        "toUserAccount": "GLtAGLxi9RdBQZUCGF7VnbdvPXwSFsCUCG4RRRWhkPPn",
+        "fromTokenAccount": "9xAG8sFDGeyeqPDL2FaLLtoCr4bqPKuNBHW6VMLRHNqB",
+        "toTokenAccount": "5m8bLbTfWkVzUqxdLt5RH4s2wTLZYtCS7GLBv3PDXXbS",
+        "mint": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+        "amount": "2500000",
+        "decimals": 6,
+        "uiAmount": "2.5",
+        "confirmationStatus": "finalized",
+        "transactionIdx": 12,
+        "instructionIdx": 2
+      },
+      {
+        "signature": "2XbSLcrL1p8XSXH8makFwHavukhScFVgcoNCUvNC9BZ1QrdEPTGRcgFpDD9nKBGmKD3KJyGVGBnEyF16F9j64bDq",
+        "slot": 312345100,
+        "blockTime": 1752690000,
+        "type": "transfer",
+        "fromUserAccount": "GLtAGLxi9RdBQZUCGF7VnbdvPXwSFsCUCG4RRRWhkPPn",
+        "toUserAccount": "86xCnPeV69n6t3DnyGvkKobf9FdN2H9oiVDdaMpo2MMY",
+        "mint": "So11111111111111111111111111111111111111111",
+        "amount": "1000000000",
+        "decimals": 9,
+        "uiAmount": "1",
+        "confirmationStatus": "finalized",
+        "transactionIdx": 4,
+        "instructionIdx": 0
+      }
+    ],
+    "paginationToken": "312345100:4"
+  }
+}

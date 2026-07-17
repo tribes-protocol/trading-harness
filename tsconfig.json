@@ -1,24 +1,25 @@
 {
   "compilerOptions": {
-    "target": "ESNext",
+    "target": "ES2022",
     "module": "ESNext",
-    "lib": ["ESNext", "DOM"],
-    "strict": true,
     "moduleResolution": "bundler",
-    "esModuleInterop": true,
-    "skipLibCheck": true,
-    "resolveJsonModule": true,
-    "noImplicitAny": true,
-    "types": ["node"],
     "baseUrl": ".",
     "paths": { "@/*": ["./src/*"] },
-    "allowImportingTsExtensions": true,
-    "noEmit": true,
+    "lib": ["ES2022"],
+    "types": ["node"],
+    "strict": true,
     "noUncheckedIndexedAccess": true,
     "noImplicitOverride": true,
     "noFallthroughCasesInSwitch": true,
-    "forceConsistentCasingInFileNames": true
+    "forceConsistentCasingInFileNames": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "resolveJsonModule": true,
+    "declaration": true,
+    "sourceMap": true,
+    "outDir": "dist",
+    "rootDir": "."
   },
-  "include": ["src/**/*.ts", ".pi/extensions/**/*.ts"],
-  "exclude": ["node_modules", "runtime", "dist", "src/**/*.test.ts"]
+  "include": ["src/**/*.ts", "tests/**/*.ts", "scripts/**/*.ts"],
+  "exclude": ["node_modules", "dist"]
 }

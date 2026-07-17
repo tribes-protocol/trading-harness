@@ -1,0 +1,48 @@
+{
+  "_fixture": {
+    "note": "constructed from official docs field definitions (see docs/research/providers/birdeye.json), not captured live data",
+    "docsUrl": "https://docs.birdeye.so/reference/get-defi-v3-ohlcv"
+  },
+  "success": true,
+  "data": {
+    "is_scaled_ui_token": false,
+    "items": [
+      {
+        "o": 158.72,
+        "h": 161.94,
+        "l": 158.11,
+        "c": 160.87,
+        "v": 182345.21,
+        "v_usd": 29184201.77,
+        "unix_time": 1784268000,
+        "address": "So11111111111111111111111111111111111111112",
+        "type": "1H",
+        "currency": "usd"
+      },
+      {
+        "o": 160.87,
+        "h": 162.4,
+        "l": 160.02,
+        "c": 161.55,
+        "v": 143220.08,
+        "v_usd": 23090114.6,
+        "unix_time": 1784271600,
+        "address": "So11111111111111111111111111111111111111112",
+        "type": "1H",
+        "currency": "usd"
+      },
+      {
+        "o": 161.55,
+        "h": 161.81,
+        "l": 160.66,
+        "c": 161.24,
+        "v": 98110.44,
+        "v_usd": 15822046.9,
+        "unix_time": 1784275200,
+        "address": "So11111111111111111111111111111111111111112",
+        "type": "1H",
+        "currency": "usd"
+      }
+    ]
+  }
+}

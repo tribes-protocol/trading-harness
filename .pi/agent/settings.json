@@ -1,7 +1,0 @@
-{
-  "defaultThinkingLevel": "high",
-  "defaultProvider": "tribes-llm-proxy",
-  "defaultModel": "deepseek-v4-pro",
-  "packages": ["npm:pi-subagents", "npm:pi-prompt-template-model"],
-  "theme": "light/dark"
-}

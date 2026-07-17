@@ -1,0 +1,85 @@
+{
+  "_fixture": {
+    "note": "constructed from official docs field definitions (see docs/research/providers/moralis.json), not captured live data",
+    "docsUrl": "https://docs.moralis.com/data-api/evm/token/swaps/token-pairs.md"
+  },
+  "page": 1,
+  "page_size": 25,
+  "cursor": null,
+  "pairs": [
+    {
+      "exchange_address": "0x1f98431c8ad98523631ae4a59f267346ea31f984",
+      "exchange_name": "Uniswap v3",
+      "exchange_logo": "https://example.invalid/logos/uniswap.png",
+      "pair_label": "WETH/USDC",
+      "pair_address": "0x88e6a0c2ddd26feeb64f039a2c41296fcb3f5640",
+      "usd_price": 3521.42,
+      "usd_price_24hr": 3566.01,
+      "usd_price_24hr_percent_change": -1.25,
+      "usd_price_24hr_usd_change": -44.59,
+      "liquidity_usd": 145678901.23,
+      "inactive_pair": false,
+      "base_token": "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2",
+      "quote_token": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+      "volume_24h_native": 12345.67,
+      "volume_24h_usd": 43467890.12,
+      "pair": [
+        {
+          "token_address": "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2",
+          "token_name": "Wrapped Ether",
+          "token_symbol": "WETH",
+          "token_logo": "https://example.invalid/logos/weth.png",
+          "token_decimals": "18",
+          "pair_token_type": "token0",
+          "liquidity_usd": "72839450.61"
+        },
+        {
+          "token_address": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+          "token_name": "USD Coin",
+          "token_symbol": "USDC",
+          "token_logo": "https://example.invalid/logos/usdc.png",
+          "token_decimals": "6",
+          "pair_token_type": "token1",
+          "liquidity_usd": "72839450.62"
+        }
+      ]
+    },
+    {
+      "exchange_address": "0x5c69bee701ef814a2b6a3edd4b1652cb9cc5aa6f",
+      "exchange_name": "Uniswap v2",
+      "exchange_logo": "https://example.invalid/logos/uniswap.png",
+      "pair_label": "WETH/DAI",
+      "pair_address": "0xa478c2975ab1ea89e8196811f51a7b7ade33eb11",
+      "usd_price": 3498.1,
+      "usd_price_24hr": 3498.1,
+      "usd_price_24hr_percent_change": 0,
+      "usd_price_24hr_usd_change": 0,
+      "liquidity_usd": 15230.5,
+      "inactive_pair": true,
+      "base_token": "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2",
+      "quote_token": "0x6b175474e89094c44da98b954eedeac495271d0f",
+      "volume_24h_native": 0,
+      "volume_24h_usd": 0,
+      "pair": [
+        {
+          "token_address": "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2",
+          "token_name": "Wrapped Ether",
+          "token_symbol": "WETH",
+          "token_logo": "https://example.invalid/logos/weth.png",
+          "token_decimals": "18",
+          "pair_token_type": "token0",
+          "liquidity_usd": "7615.25"
+        },
+        {
+          "token_address": "0x6b175474e89094c44da98b954eedeac495271d0f",
+          "token_name": "Dai Stablecoin",
+          "token_symbol": "DAI",
+          "token_logo": "https://example.invalid/logos/dai.png",
+          "token_decimals": "18",
+          "pair_token_type": "token1",
+          "liquidity_usd": "7615.25"
+        }
+      ]
+    }
+  ]
+}
