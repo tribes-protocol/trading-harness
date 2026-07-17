@@ -16,7 +16,7 @@ allowed-tools: bash read
 Playbook layered on `tribes-cli hyperliquid`: enforce the desk risk policy on open perp
 positions — review them, protect them with stops, adjust leverage and margin, and close cleanly.
 Requires: an auth token (run `tribes-cli login` once if commands fail with auth errors) and
-`evmWalletId` + EVM address from `wallet` — the address is `--address` on reads and `--from` on
+`evmWalletId` + EVM address from `zipbox-wallet` — the address is `--address` on reads and `--from` on
 signed commands.
 
 ## When to use
