@@ -14,6 +14,10 @@ interface Column {
   readonly align: 'left' | 'right'
 }
 
+type ColumnDefinition = Omit<Column, 'width'>
+
+const COLUMN_GAP = '  '
+
 const CHAIN_LABELS: Readonly<Record<number, string>> = {
   1: 'Ethereum',
   10: 'Optimism',
@@ -71,8 +75,7 @@ function tokenUrl(asset: WalletAsset): string | null {
 }
 
 function assetLabel(asset: WalletAsset, width: number): string {
-  const unverified = asset.verified === 'verified' ? '' : ' ◌'
-  const label = truncateToWidth(`${asset.symbol}${unverified}`, width, '…')
+  const label = truncateToWidth(asset.symbol, width, '…')
   const url = tokenUrl(asset)
   return url === null ? label : hyperlink(label, url)
 }
@@ -84,12 +87,6 @@ function changeLabel(asset: WalletAsset, theme: Theme): string {
   return change >= 0 ? theme.fg('success', label) : theme.fg('error', label)
 }
 
-function allocationRail(asset: WalletAsset, totalUsd: number): string {
-  const share = totalUsd > 0 ? Math.max(0, Math.min(1, asset.balanceUsd / totalUsd)) : 0
-  const filled = share > 0 ? Math.max(1, Math.round(share * 5)) : 0
-  return `${'█'.repeat(filled)}${'░'.repeat(5 - filled)}`
-}
-
 function cell(value: string, width: number, align: 'left' | 'right'): string {
   const clipped = truncateToWidth(value, width, '…')
   const padding = Math.max(0, width - visibleWidth(clipped))
@@ -97,45 +94,43 @@ function cell(value: string, width: number, align: 'left' | 'right'): string {
 }
 
 function columnsForWidth(contentWidth: number): readonly Column[] {
+  let definitions: readonly ColumnDefinition[]
   if (contentWidth >= 112) {
-    return [
-      { key: 'asset', label: 'Asset', width: 18, align: 'left' },
-      { key: 'network', label: 'Network', width: 10, align: 'left' },
-      { key: 'balance', label: 'Balance', width: 14, align: 'right' },
-      { key: 'price', label: 'Price', width: 12, align: 'right' },
-      { key: 'change', label: '24h', width: 9, align: 'right' },
-      { key: 'value', label: 'Value / Share', width: 22, align: 'right' },
-      { key: 'wallet', label: 'Wallet', width: 12, align: 'left' }
+    definitions = [
+      { key: 'asset', label: 'Asset', align: 'left' },
+      { key: 'network', label: 'Network', align: 'left' },
+      { key: 'balance', label: 'Balance', align: 'right' },
+      { key: 'price', label: 'Price', align: 'right' },
+      { key: 'change', label: '24h', align: 'right' },
+      { key: 'value', label: 'Value', align: 'right' },
+      { key: 'wallet', label: 'Wallet', align: 'left' }
+    ]
+  } else if (contentWidth >= 82) {
+    definitions = [
+      { key: 'asset', label: 'Asset', align: 'left' },
+      { key: 'network', label: 'Network', align: 'left' },
+      { key: 'balance', label: 'Balance', align: 'right' },
+      { key: 'change', label: '24h', align: 'right' },
+      { key: 'value', label: 'Value', align: 'right' }
+    ]
+  } else if (contentWidth >= 54) {
+    definitions = [
+      { key: 'asset', label: 'Asset', align: 'left' },
+      { key: 'balance', label: 'Balance', align: 'right' },
+      { key: 'value', label: 'Value', align: 'right' }
+    ]
+  } else {
+    definitions = [
+      { key: 'asset', label: 'Asset', align: 'left' },
+      { key: 'value', label: 'Value', align: 'right' }
     ]
   }
-  if (contentWidth >= 82) {
-    return [
-      { key: 'asset', label: 'Asset', width: 18, align: 'left' },
-      { key: 'network', label: 'Network', width: 10, align: 'left' },
-      { key: 'balance', label: 'Balance', width: 14, align: 'right' },
-      { key: 'change', label: '24h', width: 9, align: 'right' },
-      { key: 'value', label: 'Value / Share', width: 22, align: 'right' }
-    ]
-  }
-  if (contentWidth >= 54) {
-    return [
-      { key: 'asset', label: 'Asset', width: 16, align: 'left' },
-      { key: 'balance', label: 'Balance', width: 14, align: 'right' },
-      { key: 'value', label: 'Value', width: 18, align: 'right' }
-    ]
-  }
-  return [
-    { key: 'asset', label: 'Asset', width: Math.max(10, contentWidth - 16), align: 'left' },
-    { key: 'value', label: 'Value', width: 14, align: 'right' }
-  ]
+  const gapsWidth = COLUMN_GAP.length * (definitions.length - 1)
+  const columnWidth = Math.max(1, Math.floor((contentWidth - gapsWidth) / definitions.length))
+  return definitions.map((definition) => ({ ...definition, width: columnWidth }))
 }
 
-function valueForColumn(
-  asset: WalletAsset,
-  column: Column,
-  status: WalletStatus,
-  theme: Theme
-): string {
+function valueForColumn(asset: WalletAsset, column: Column, theme: Theme): string {
   switch (column.key) {
     case 'asset':
       return assetLabel(asset, column.width)
@@ -148,9 +143,7 @@ function valueForColumn(
     case 'change':
       return changeLabel(asset, theme)
     case 'value':
-      return column.label.includes('Share')
-        ? `${fmtUsd(asset.balanceUsd)}  ${allocationRail(asset, status.totalUsd)}`
-        : fmtUsd(asset.balanceUsd)
+      return fmtUsd(asset.balanceUsd)
     case 'wallet':
       return shortWallet(asset.wallet)
   }
@@ -171,16 +164,14 @@ function renderBalances(
   const lines = [
     theme.fg(
       'dim',
-      columns.map((column) => cell(column.label, column.width, column.align)).join(' ')
+      columns.map((column) => cell(column.label, column.width, column.align)).join(COLUMN_GAP)
     )
   ]
   for (const asset of page) {
     lines.push(
       columns
-        .map((column) =>
-          cell(valueForColumn(asset, column, status, theme), column.width, column.align)
-        )
-        .join(' ')
+        .map((column) => cell(valueForColumn(asset, column, theme), column.width, column.align))
+        .join(COLUMN_GAP)
     )
   }
   if (assets.length > MAX_WALLET_ROWS) {

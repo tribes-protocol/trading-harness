@@ -22,7 +22,7 @@ export function renderStatusViewRail(
       ? theme.fg('accent', theme.bold(panelLabel('hyperliquid', activePanel)))
       : theme.fg('dim', panelLabel('hyperliquid', activePanel))
   const rail = hyperliquid + theme.fg('dim', '  ·  ') + wallet
-  const hint = theme.fg('dim', 'ctrl+alt+w · /tribes:view')
+  const hint = theme.fg('dim', 'ctrl+alt+←/→ · /tribes:view')
   const gap = contentWidth - visibleWidth(rail) - visibleWidth(hint)
   return gap >= 2
     ? rail + ' '.repeat(gap) + hint

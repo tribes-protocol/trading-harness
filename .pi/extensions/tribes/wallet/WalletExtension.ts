@@ -187,8 +187,15 @@ export function registerWalletExtension(pi: ExtensionAPI): void {
     }
   })
 
-  pi.registerShortcut('ctrl+alt+w', {
-    description: 'Switch Wallet and Hyperliquid panels',
+  pi.registerShortcut('ctrl+alt+left', {
+    description: 'Previous account panel',
+    handler: async (ctx) => {
+      await setPanelState(ctx, selectStatusPanel(panelState))
+    }
+  })
+
+  pi.registerShortcut('ctrl+alt+right', {
+    description: 'Next account panel',
     handler: async (ctx) => {
       await setPanelState(ctx, selectStatusPanel(panelState))
     }
