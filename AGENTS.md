@@ -322,6 +322,15 @@ Config is resolved in `@/common/Env`. When `NODE_ENV` is unset, empty, or `produ
 - The `runtime/` directory is generated and is gitignored / lint-ignored.
 - `.pi/settings.json` excludes `prompts/tribes/login.md` from Pi's prompt scan. The `tribes/login.md` command file is kept for non-Pi clients (they read it via symlinks), but its basename `login` is a reserved command name in the `pi-prompt-template-model` extension, which would warn on every boot. Pi itself registers `/tribes:login` from the `tribes` extension, so excluding the file from Pi's scan silences the warning without removing the command. Do not delete this exclude unless the login command file is renamed off the reserved word `login`.
 
+## Notifying the user
+
+`tribes-cli notify "<message>"` (or `tribes-cli notify --title <t> --body <b>`) writes an OSC 9 /
+OSC 777 terminal-notification escape to stdout. The zipbox web terminal parses this into a bell
+and an OS push notification, so the user can be alerted without watching the terminal — use it
+when you finish a long-running task or need the user's input/permission while they're away. A
+`session_shutdown` hook already fires one automatically when a session ends; call it yourself for
+anything mid-session.
+
 ## Showing tokens, pools & perps
 
 When you show an ETH or SOL address for a token, liquidity pool, or Hyperliquid perp, always render it as a clickable Markdown link to its tribes.xyz page — never a bare address:
