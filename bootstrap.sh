@@ -116,26 +116,13 @@ else
   echo "[bootstrap] could not link pi into /usr/local/bin (still on PATH via node_modules/.bin)"
 fi
 
-# Pre-install the Pi extensions this agent declares in .pi/agent/settings.json
-# (pi-subagents plus the pi-prompt-template-model companion) so the npm fetch is
-# paid here at boot rather than on the first `pi` session. `pi install` is
-# idempotent against the committed `packages` list and writes each package under
-# .pi/agent/npm (gitignored). Keep it non-fatal: a registry hiccup must not block
-# the trading harness from starting, and Pi will auto-install any still-missing
-# declared package on launch.
+# NOTE: this agent declares NO npm Pi packages in .pi/agent/settings.json — it
+# runs vanilla Pi plus the two LOCAL extensions in .pi/extensions (hyperliquid,
+# tribes), which need no registry fetch. Do not re-add a `packages` list or an
+# install loop here: every declared npm package is also auto-installed by Pi at
+# LAUNCH time, where a registry transport failure is fatal and bricks the box
+# (P0 #2273 — pi-subagents returned a zero-byte body → EINTEGRITY at launch).
 #
-# NOTE: do NOT add pi-intercom here. The pinned pi-subagents already registers an
-# `intercom` tool internally, so installing the standalone pi-intercom companion
-# conflicts on that tool name and Pi refuses to load any extension at boot.
-echo "[bootstrap] installing declared pi extensions (pi-subagents + companions)…"
-for ext in pi-subagents pi-prompt-template-model; do
-  if pi install "npm:$ext"; then
-    echo "[bootstrap] installed $ext"
-  else
-    echo "[bootstrap] could not install $ext now; pi will retry it on first launch"
-  fi
-done
-
 # NOTE: do NOT run `pi update` here. This repo PINS pi (@earendil-works/
 # pi-coding-agent + pi-tui at 0.79.8) and the .pi extensions are written against
 # that exact API. Updating pi out from under them desyncs the runtime from the
