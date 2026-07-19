@@ -25,7 +25,7 @@ SKILL.md.
 ## Paths B and C: convert with the spot-trading skill
 
 Run the swap/bridge exactly as the `spot-trading` skill documents (quote, broadcast through the
-`transaction` skill, poll status until success) — do not improvise that loop here. Quote with
+`zipbox-wallet` skill, poll status until success) — do not improvise that loop here. Quote with
 these targets:
 
 ```bash

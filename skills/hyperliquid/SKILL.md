@@ -8,7 +8,7 @@ description: >-
   security and commodity perp trades route here. NOT for: opening a new position end-to-end with pre/post checks (use
   trade-execution); protecting, resizing, or closing existing positions (use
   position-management); on-chain DEX swaps or bridges — "spot" here means Hyperliquid's own spot
-  exchange only (use spot-trading); wallet IDs, addresses, or cross-chain balances (use wallet);
+  exchange only (use spot-trading); wallet IDs, addresses, or cross-chain balances (use zipbox-wallet);
   net worth or PnL history (use wallet-analyst); CEX/derivatives research (use exchange-analyst).
 allowed-tools: bash read
 ---
@@ -17,7 +17,7 @@ allowed-tools: bash read
 
 Backing command group: `tribes-cli hyperliquid` — market discovery, account state, and live
 execution on the Hyperliquid venue. Requires: an auth token (run `tribes-cli login` once if
-commands fail with auth errors) and `evmWalletId` + EVM address from `wallet` for signed commands.
+commands fail with auth errors) and `evmWalletId` + EVM address from `zipbox-wallet` for signed commands.
 
 ## When to use
 
@@ -28,7 +28,7 @@ commands fail with auth errors) and `evmWalletId` + EVM address from `wallet` fo
 - Trade a security or commodity — find the exact hosting dex and coin through
   `list-assets --all-dexes`, then `trade-perp --dex <name>`.
 - NOT for on-chain DEX swaps or cross-chain bridges — use `spot-trading`.
-- NOT for wallet IDs, addresses, or cross-chain token balances — use `wallet`.
+- NOT for wallet IDs, addresses, or cross-chain token balances — use `zipbox-wallet`.
 - NOT for net worth over time, PnL, or transaction history — use `wallet-analyst`.
 - NOT for the end-to-end trade playbook with pre/post checks — use `trade-execution`.
 
@@ -53,7 +53,7 @@ commands fail with auth errors) and `evmWalletId` + EVM address from `wallet` fo
 
 ## Wallet setup (before any signed command)
 
-Run `tribes-cli wallet list` (`wallet` skill). From its JSON output use:
+Run `tribes-cli wallet list` (`zipbox-wallet` skill). From its JSON output use:
 
 - `evmWalletId` (for example `wxyz1abcd2efgh3ijkl4mnop`) → `--wallet-id`.
 - `evmWalletAddress` (for example `0x1111111111111111111111111111111111111111`) → `--from` on
@@ -286,9 +286,8 @@ tribes-cli hyperliquid withdraw \
 
 ## Related skills
 
-- `wallet` — `evmWalletId` and addresses; run before any signed command.
+- `zipbox-wallet` — `evmWalletId` and addresses (run before any signed command); broadcasts the conversion transactions inside the funding flow.
 - `spot-trading` — on-chain DEX swaps/bridges, including converting funds to Arbitrum USDC.
-- `transaction` — broadcasts the conversion transactions inside the funding flow.
 - `position-management` — stops, leverage policy, liquidation distance, closing positions.
 
 ## Before you finish

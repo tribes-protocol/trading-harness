@@ -8,6 +8,7 @@ EXPECTED="zipbox-browser
 zipbox-caddy
 zipbox-dns
 zipbox-email
+zipbox-wallet
 zipbox-websearch"
 
 fail() {

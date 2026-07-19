@@ -17,12 +17,13 @@ import { describe, expect, it } from 'vitest'
 
 const REPO_ROOT = join(__dirname, '..', '..')
 const MANIFEST_PATH = join(REPO_ROOT, 'skills', '.synced.json')
-const EXPECTED_UPSTREAM_SHA = '0857af0c1de5d480be2233eac4c58dfbe2577452'
+const EXPECTED_UPSTREAM_SHA = 'f437e0308115697249fb0c8738db964dd31ed072'
 const EXPECTED_SHARED_FILES = [
   'skills/zipbox-browser/SKILL.md',
   'skills/zipbox-caddy/SKILL.md',
   'skills/zipbox-dns/SKILL.md',
   'skills/zipbox-email/SKILL.md',
+  'skills/zipbox-wallet/SKILL.md',
   'skills/zipbox-websearch/SKILL.md'
 ]
 

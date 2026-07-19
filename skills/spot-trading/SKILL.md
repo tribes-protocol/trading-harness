@@ -3,18 +3,18 @@ name: spot-trading
 description: >-
   On-chain DEX swaps and cross-chain bridges on EVM chains and Solana. Handles: quoting with
   `tribes-cli spot-trading quote`, symbol-to-address resolution with `tribes-cli token search`,
-  and broadcasting the quoted transactions through the transaction skill. Call when the user
+  and broadcasting the quoted transactions through the zipbox-wallet skill. Call when the user
   wants to swap or bridge tokens on-chain. NOT for: Hyperliquid perp or HL-spot orders (use
   hyperliquid); stock trades (use hyperliquid — stocks are Hyperliquid perps); plain transfers
-  of a token the user already holds (use wallet + transaction).
+  of a token the user already holds (use zipbox-wallet).
 allowed-tools: bash read
 ---
 
 # Spot Trading
 
 Backing command group: `tribes-cli spot-trading`. Quotes on-chain swaps and bridges; the
-`transaction` skill broadcasts the result. Canonical home of `tribes-cli token search`.
-Requires: wallet addresses and Privy wallet IDs from `tribes-cli wallet list` (`wallet` skill).
+`zipbox-wallet` skill broadcasts the result. Canonical home of `tribes-cli token search`.
+Requires: wallet addresses and Privy wallet IDs from `tribes-cli wallet list` (`zipbox-wallet` skill).
 
 ## When to use
 
@@ -22,7 +22,7 @@ Requires: wallet addresses and Privy wallet IDs from `tribes-cli wallet list` (`
 - Bridge a token between supported chains (EVM ↔ EVM, EVM ↔ Solana).
 - Resolve a token symbol or name to a contract address or mint — `tribes-cli token search`.
 - NOT for any Hyperliquid order or stock trade — use `hyperliquid` (stocks are Hyperliquid perps).
-- NOT for sending a token the user already holds — use `wallet` + `transaction`.
+- NOT for sending a token the user already holds — use `zipbox-wallet`.
 
 ## Hard rules
 
@@ -130,7 +130,7 @@ the minimum received (`toAmountMin` as decimal). NEVER show raw addresses, calld
 
 Split EVM `transactionRequests[]` into contiguous same-`chainId` runs: a run of 2+ goes through
 one `sendCalls`, a run of 1 through `sendEthTransaction`; the full batching algorithm lives in
-the `transaction` skill. `--wallet-id` is the `evmWalletId` / `solWalletId` from step 1.
+AGENTS.md. `--wallet-id` is the `evmWalletId` / `solWalletId` from step 1.
 
 Single EVM request (`--value` is a decimal wei string like `1000000000000000000`, never hex):
 
@@ -186,8 +186,7 @@ tribes-cli transaction getTransactionStatus \
 
 ## Related skills
 
-- `wallet` — run first: addresses, wallet IDs, and pre-trade balances.
-- `transaction` — broadcasts the quoted transactions; owns the full batching algorithm.
+- `zipbox-wallet` — run first for addresses, wallet IDs, and pre-trade balances; broadcasts the quoted transactions.
 - `hyperliquid` — Hyperliquid perp/spot orders and all stock trades.
 - `trade-execution` — end-to-end trade playbook with pre/post checks.
 
