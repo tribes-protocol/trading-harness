@@ -10,12 +10,13 @@ import { Connection, PublicKey, SystemProgram, Transaction } from '@solana/web3.
 import { encodeFunctionData, erc20Abi } from 'viem'
 
 import { API_BASE_URL, API_BEARER_TOKEN } from '@/common/Env'
+import { fetchTerminalApi } from '@/helpers/TerminalApiRequest'
 import { WALLET_SNAPSHOT_PATH } from '@/helpers/WalletSnapshot'
 import type { AgentWalletSnapshot } from '@/types/Privy'
 import { AgentWalletSnapshotSchema } from '@/types/Privy'
 import { NATIVE_MINT, type SolInstruction, SolInstructionSchema } from '@/types/Solana'
 import { type Tx, TxSchema } from '@/types/Tx'
-import { type AssetBalance, AssetBalanceSchema } from '@/types/Wallet'
+import { type UserAssetsWithPnlResponse, UserAssetsWithPnlResponseSchema } from '@/types/Wallet'
 import type {
   BuildEthTransferParams,
   BuildSolTransferParams,
@@ -63,13 +64,23 @@ export class WalletService {
     return wallets
   }
 
-  async listAssets(params: ListWalletAssetsParams): Promise<AssetBalance[]> {
+  async listAssets(params: ListWalletAssetsParams): Promise<UserAssetsWithPnlResponse> {
     const { walletAddresses, chainIds } = params
     if (walletAddresses.length === 0) {
-      return []
+      return UserAssetsWithPnlResponseSchema.parse({
+        assets: [],
+        summary: {
+          pnl: {
+            realized_profit_usd: 0,
+            unrealized_usd: 0,
+            total_usd: 0
+          }
+        }
+      })
     }
     const searchQuery = new URLSearchParams({
-      userAddresses: walletAddresses.join(',')
+      userAddresses: walletAddresses.join(','),
+      pnl: 'true'
     })
     const areSolanaOnlyWalletAddresses = walletAddresses.every((walletAddress) =>
       isSolanaWalletAddress(walletAddress)
@@ -77,18 +88,22 @@ export class WalletService {
     if (!isNullish(chainIds) && chainIds.length > 0 && !areSolanaOnlyWalletAddresses) {
       searchQuery.set('chainIds', chainIds.join(','))
     }
-    const response = await fetch(new URL(`/user/assets?${searchQuery.toString()}`, API_BASE_URL), {
-      method: 'GET',
-      headers: {
-        Accept: 'application/json',
-        Authorization: `Bearer ${API_BEARER_TOKEN}`
-      }
+    const response = await fetchTerminalApi({
+      apiBaseUrl: API_BASE_URL,
+      path: `/user/assets?${searchQuery.toString()}`,
+      init: {
+        method: 'GET',
+        headers: {
+          Accept: 'application/json'
+        }
+      },
+      apiBearerToken: API_BEARER_TOKEN
     })
     if (!response.ok) {
-      throw new Error(`User assets fetch failed: ${response.status} ${response.statusText}`)
+      throw new Error(`Agent assets fetch failed: ${response.status} ${response.statusText}`)
     }
     const data: unknown = await response.json()
-    return AssetBalanceSchema.array().parse(data)
+    return UserAssetsWithPnlResponseSchema.parse(data)
   }
 
   buildEthTransfer(params: BuildEthTransferParams): Tx {

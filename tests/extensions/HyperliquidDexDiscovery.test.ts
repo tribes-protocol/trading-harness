@@ -3,7 +3,7 @@ import { describe, expect, test } from 'vitest'
 import {
   FALLBACK_PERP_DEXES,
   resolvePerpDexes
-} from '../../.pi/extensions/hyperliquid/DexDiscovery.ts'
+} from '../../.pi/extensions/tribes/hyperliquid/DexDiscovery.ts'
 
 describe('Hyperliquid perp dex discovery', () => {
   test('includes main and every discovered named dex exactly once', () => {

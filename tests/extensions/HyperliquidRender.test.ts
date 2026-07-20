@@ -4,8 +4,11 @@ import { describe, expect, test } from 'vitest'
 import {
   fmtLeverage,
   renderHyperliquidPositionsWidget
-} from '../../.pi/extensions/hyperliquid/Render.ts'
-import type { HlTab, HyperliquidStatus } from '../../.pi/extensions/hyperliquid/StatusTypes.ts'
+} from '../../.pi/extensions/tribes/hyperliquid/Render.ts'
+import type {
+  HlTab,
+  HyperliquidStatus
+} from '../../.pi/extensions/tribes/hyperliquid/StatusTypes.ts'
 
 const theme = {
   fg: (_color: string, value: string) => value,
@@ -79,6 +82,9 @@ describe('Hyperliquid widget balances', () => {
   test('keeps the header to one total instead of a per-dex balance line', () => {
     const output = render('positions')
 
+    expect(output).toContain('Wallet')
+    expect(output).toContain('▎Hyperliquid')
+    expect(output).toContain('/tribes:view')
     expect(output).toContain('total $113.38')
     expect(output).not.toContain('main eq')
     expect(output).not.toContain('xyz eq')
