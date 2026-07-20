@@ -15,7 +15,7 @@ allowed-tools: bash read
 
 This skill is a playbook, not a command group: it sequences `tribes-cli wallet` and
 `tribes-cli hyperliquid` commands in a fixed order and adds mandatory post-trade verification.
-Requires: the `wallet` and `hyperliquid` skills (full flag lists and sizing rules live there).
+Requires: the `zipbox-wallet` and `hyperliquid` skills (full flag lists and sizing rules live there).
 
 ## When to use
 
@@ -69,7 +69,7 @@ tribes-cli wallet list
 ```
 
 Take `evmWalletId` → `--wallet-id`, and `evmWalletAddress` → `--from` on signed commands and
-`--address` on account queries (`wallet` skill).
+`--address` on account queries (`zipbox-wallet` skill).
 
 ### 3. Funding
 
@@ -166,7 +166,7 @@ TP/SL line only if the user explicitly waived exits.
 ## Related skills
 
 - `hyperliquid` — every command this playbook runs; funding paths, order types, margin rules.
-- `wallet` — `evmWalletId` and addresses (step 2).
+- `zipbox-wallet` — `evmWalletId` and addresses (step 2).
 - `position-management` — stop-loss/leverage defaults (step 5) and everything after the entry.
 - `spot-trading` — the user wants an on-chain DEX swap or bridge instead of a Hyperliquid order.
 - `strategize` — market briefing and trade ideas before there is a trade to execute.

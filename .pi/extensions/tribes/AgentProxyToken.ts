@@ -5,11 +5,10 @@
  *
  * This token authorizes EVERY proxy call the agent makes — the LLM proxy AND the
  * wallet/transaction backend — so it is the single credential the whole harness
- * runs on. It is the static per-sandbox API key the control plane injects into
- * the VM env as TRIBES_API_KEY (opaque, no expiry; the proxy verifies it by hash
- * and revokes it on shutdown). No minting, no 24h refresh — the key arrives
- * ready-to-use. Falls back to API_BEARER_TOKEN for local dev where no static key
- * is injected.
+ * runs on. It is an ES256 JWT the harness mints from the in-VM P-256 agent key
+ * (getApiBearerToken); the tribes extension refreshes it into .env every 24h.
+ * Prefers a token already materialized in API_BEARER_TOKEN, otherwise mints one
+ * on demand from the agent key.
  *
  * Extension-only infra (not a `tribes-cli` command): the tribes extension runs it
  * directly via bun — Provider wires it as the proxy apiKey `!command`, and
@@ -19,12 +18,6 @@
 import { getApiBearerToken } from '@/helpers/Jwt'
 
 async function main(): Promise<void> {
-  const injectedToken = process.env.TRIBES_API_KEY
-  if (injectedToken) {
-    process.stdout.write(injectedToken)
-    return
-  }
-
   const fromEnv = process.env.API_BEARER_TOKEN
   if (fromEnv) {
     process.stdout.write(fromEnv)

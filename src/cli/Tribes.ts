@@ -16,6 +16,7 @@ import { buildHyperliquidCommand } from '@/cli/Hyperliquid'
 import { buildLoginCommand } from '@/cli/Login'
 import { buildMacrosCommand } from '@/cli/Macros'
 import { buildNewsCommand } from '@/cli/News'
+import { buildNotifyCommand } from '@/cli/Notify'
 import { buildPredictionCommand } from '@/cli/Prediction'
 import { buildSpotTradingCommand } from '@/cli/SpotTrading'
 import { buildTokenCommand } from '@/cli/Token'
@@ -52,6 +53,10 @@ function buildTribesCli(): Command {
   }
 
   program.addCommand(buildLoginCommand())
+  program.addCommand(buildNotifyCommand())
+
+  // Desktop notifications (no network, no auth).
+  program.addCommand(buildNotifyCommand())
 
   return program
 }
