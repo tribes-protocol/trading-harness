@@ -162,6 +162,7 @@ Pick the skill with these tie-breaker rules, in order:
 | Broadcast a prepared transaction, check tx status                                 | `zipbox-wallet`        |
 | General web lookup or read one URL                                                | `web-search`           |
 | JS-gated or fetch-blocked pages, UI automation                                    | `browser`              |
+| Alert the human: long job finished, needs attention                               | `notify`               |
 
 <!-- BEGIN synced skill routes (managed by .github/workflows/sync-harness-skills.yml) -->
 
@@ -330,12 +331,20 @@ Config is resolved in `@/common/Env`. When `NODE_ENV` is unset, empty, or `produ
 
 ## Notifying the user
 
-`tribes-cli notify "<message>"` (or `tribes-cli notify --title <t> --body <b>`) writes an OSC 9 /
-OSC 777 terminal-notification escape to stdout. The zipbox web terminal parses this into a bell
-and an OS push notification, so the user can be alerted without watching the terminal — use it
-when you finish a long-running task or need the user's input/permission while they're away. A
-`session_shutdown` hook already fires one automatically when a session ends; call it yourself for
-anything mid-session.
+`tribes-cli notify "<message>"` (or `tribes-cli notify --title <t> --body <b>`) sends a
+notification through the first available backend: `terminal-notifier`, `osascript`, `notify-send`,
+then `osc`. On a desktop that means a real OS banner; inside a cloud microVM no notifier binary
+exists, so it falls through to `osc` and writes a terminal-notification escape — OSC 9 for a bare
+message, OSC 777 when a title or subtitle is set, both BEL-terminated. The escape goes to the
+controlling terminal (`/dev/tty` and friends), falling back to stdout when none can be opened.
+The zipbox web terminal parses it into a bell and an OS push notification, so the user can be
+alerted without watching the terminal — use it when you finish a long-running task or need the
+user's input/permission while they're away.
+
+`--doctor` prints what this machine detected and sends a test notification; `--list-backends`
+prints each backend and whether it is available here. Exit codes: 0 sent, 1 usage error, 2 no
+usable backend, 3 backend failed. A `session_shutdown` hook already fires one automatically when a
+session ends; call it yourself for anything mid-session.
 
 ## Showing tokens, pools & perps
 
