@@ -14,6 +14,7 @@ import {
 import { ensureJsonTreeString, isNullish } from '@/utils/Lang'
 
 const TOKEN_TTL = '7d'
+const LOGIN_PROOF_TTL = '5m'
 const TOKEN_REFRESH_BUFFER_SECONDS = 60
 const TOKEN_CACHE_PATH = resolve(process.cwd(), '.tribes/jwt-token-cache.json')
 
@@ -109,6 +110,23 @@ async function mintTokenCache(key: AgentAuthorizationKey): Promise<JwtTokenCache
     createdAt: nowIso,
     updatedAt: nowIso
   })
+}
+
+interface SignLoginProofParams {
+  readonly privateKeyPem: string
+  readonly requestId: string
+}
+
+// Proof-of-possession for the login-result poll: an ES256 JWT signed with the
+// login's own private key, with `sub` bound to the login requestId. The server
+// (verifyRemoteLoginProof) verifies it against the stored agentPublicKey.
+export async function signLoginProof(params: SignLoginProofParams): Promise<string> {
+  const privateKey = await importPKCS8(params.privateKeyPem, 'ES256')
+  return new SignJWT({})
+    .setProtectedHeader({ alg: 'ES256' })
+    .setSubject(params.requestId)
+    .setExpirationTime(LOGIN_PROOF_TTL)
+    .sign(privateKey)
 }
 
 export async function getApiBearerToken(): Promise<string> {

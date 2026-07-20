@@ -7,7 +7,7 @@ import { API_BASE_URL, WEB_BASE_URL } from '@/common/Env'
 import { retry } from '@/helpers/AsyncControl'
 import { writeAgentAuthorizationKey } from '@/helpers/AuthKey'
 import { writeCliLoginKey } from '@/helpers/CliLoginKey'
-import { getApiBearerToken } from '@/helpers/Jwt'
+import { getApiBearerToken, signLoginProof } from '@/helpers/Jwt'
 import { openUrlInBrowser } from '@/helpers/OpenUrlInBrowser'
 import { clearWalletSnapshot } from '@/helpers/WalletSnapshot'
 import { type CliLoginPollResponse, CliLoginPollResponseSchema } from '@/types/CliLogin'
@@ -71,17 +71,22 @@ export class LoginService {
     await writeFile(ENV_PATH, `${body}\n`, { mode: 0o600 })
   }
 
-  private async pollLoginResult(requestId: string): Promise<CliLoginPollResponse> {
+  private async pollLoginResult(
+    requestId: string,
+    privateKeyPem: string
+  ): Promise<CliLoginPollResponse> {
     const resultUrl = new URL('/agent/remote/login/result', API_BASE_URL)
     resultUrl.searchParams.set('id', requestId)
 
     try {
       return await retry<CliLoginPollResponse>({
         fn: async (): Promise<CliLoginPollResponse> => {
+          const proof = await signLoginProof({ privateKeyPem, requestId })
           const response = await fetch(resultUrl, {
             method: 'GET',
             headers: {
-              Accept: 'application/json'
+              Accept: 'application/json',
+              'X-Agent-Login-Proof': proof
             }
           })
 
@@ -179,7 +184,10 @@ export class LoginService {
   }
 
   private async finalizeLogin(loginRequest: LoginRequestContext): Promise<void> {
-    const pollResult = await this.pollLoginResult(loginRequest.requestId)
+    const pollResult = await this.pollLoginResult(
+      loginRequest.requestId,
+      loginRequest.privateKeyPem
+    )
 
     await writeAgentAuthorizationKey({
       schema: 'agent-authorization-key.v1',
