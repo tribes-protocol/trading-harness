@@ -79,7 +79,8 @@ export class WalletService {
       })
     }
     const searchQuery = new URLSearchParams({
-      userAddresses: walletAddresses.join(',')
+      userAddresses: walletAddresses.join(','),
+      pnl: 'true'
     })
     const areSolanaOnlyWalletAddresses = walletAddresses.every((walletAddress) =>
       isSolanaWalletAddress(walletAddress)
@@ -89,7 +90,7 @@ export class WalletService {
     }
     const response = await fetchTerminalApi({
       apiBaseUrl: API_BASE_URL,
-      path: `/agent/assets?${searchQuery.toString()}`,
+      path: `/user/assets?${searchQuery.toString()}`,
       init: {
         method: 'GET',
         headers: {

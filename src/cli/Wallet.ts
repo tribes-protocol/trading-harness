@@ -35,7 +35,7 @@ export function buildWalletCommand(): Command {
 
   program
     .command('assets')
-    .description('List wallet balances and PnL from /agent/assets')
+    .description('List wallet balances and PnL from /user/assets')
     .requiredOption(
       '--wallet-addresses <addresses...>',
       'Wallet addresses (space-separated, EVM and/or Solana)'

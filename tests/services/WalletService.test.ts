@@ -153,7 +153,8 @@ describe('WalletService', () => {
     }
 
     const headers = new Headers(capturedInit?.headers)
-    expect(capturedUrl).toContain('/agent/assets?')
+    expect(capturedUrl).toContain('/user/assets?')
+    expect(capturedUrl).toContain('pnl=true')
     expect(headers.get('Accept')).toBe('application/json')
     expect(headers.get('Authorization')).toBe('Bearer token-from-env')
   })
