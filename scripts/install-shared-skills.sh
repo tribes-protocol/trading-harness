@@ -7,7 +7,7 @@ set -u
 REPO_ROOT="$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)"
 SOURCE_DIR="$REPO_ROOT/skills"
 SHARED_DIR="/root/skills"
-EXPECTED_SKILLS="zipbox-browser zipbox-caddy zipbox-dns zipbox-email zipbox-websearch"
+EXPECTED_SKILLS="zipbox-browser zipbox-caddy zipbox-dns zipbox-email zipbox-wallet zipbox-websearch"
 
 TMP="$(mktemp -d 2>/dev/null || true)"
 if [ -z "$TMP" ]; then
@@ -85,5 +85,5 @@ for slug in $EXPECTED_SKILLS; do
   ln -s "$SHARED_DIR/$slug" "$SOURCE_DIR/$slug" 2>/dev/null || true
 done
 
-printf '%s\n' '[shared-skills] installed 5 read-only zipbox skills under /root/skills'
+printf '%s\n' '[shared-skills] installed 6 read-only zipbox skills under /root/skills'
 exit 0

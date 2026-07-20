@@ -112,6 +112,13 @@ export default async function tribes(pi: TribesApi): Promise<void> {
   pi.on('session_shutdown', async () => {
     if (authRefreshTimer) clearInterval(authRefreshTimer)
     authRefreshTimer = undefined
+
+    // Let the user know the agent's done without them having to watch the
+    // terminal. `tribes-cli notify` isn't reachable here (jiti-loaded
+    // extension, no subprocess spawn), so write the same OSC 9 escape
+    // directly — the zipbox web terminal parses it into a bell + OS push
+    // either way.
+    process.stdout.write('\x1b]9;Trading agent session ended\x07')
   })
 
   pi.registerCommand('tribes:login', {

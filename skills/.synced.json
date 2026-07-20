@@ -1,10 +1,11 @@
 {
-  "upstreamSha": "0857af0c1de5d480be2233eac4c58dfbe2577452",
+  "upstreamSha": "f437e0308115697249fb0c8738db964dd31ed072",
   "files": {
     "skills/zipbox-browser/SKILL.md": "4e9a07c592b72a4ea07fb9c23e95aee2ee8d9bc4fbbe22d88e8094265fc11c94",
     "skills/zipbox-caddy/SKILL.md": "4ef8227d0bb4a73cb5bf8b5544b5649d615e0e6b5c7c486f38e8581eee4278ef",
     "skills/zipbox-dns/SKILL.md": "abdc44ffd4174691b841dc8f0a5dab0b26c82ea52e83606f46531b286f075bbe",
     "skills/zipbox-email/SKILL.md": "6b08c17e7c2d0573328ac1304490f51cd5f12e5ef9639d2f7ca67dc94c86641e",
+    "skills/zipbox-wallet/SKILL.md": "2a26338a4383077109c712a61357ceac3402d044512a358895bb880b6fecaed8",
     "skills/zipbox-websearch/SKILL.md": "c576a7babbe094ffc18d1892e99589191400261042a3b325bcf375d3269c75a0"
   }
 }

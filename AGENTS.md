@@ -120,9 +120,9 @@ Pick the skill with these tie-breaker rules, in order:
 - **R1 — Execution vs information.** Moving funds or placing orders routes ONLY to
   `hyperliquid` (Hyperliquid perps/spot, deposits, withdrawals, transfers, all security and commodity perp trades),
   `spot-trading` (on-chain DEX swaps and bridges), the `trade-execution` playbook, or
-  `position-management` (reduce-only exits, stop/TP changes, margin). Run `wallet` first when a
-  wallet ID or address is needed. NEVER route trade intent to `transaction` — it is the
-  low-level broadcaster used inside those flows.
+  `position-management` (reduce-only exits, stop/TP changes, margin). Run `zipbox-wallet` first
+  when a wallet ID or address is needed; it also broadcasts prepared transactions, but NEVER route
+  raw trade intent to it — it is the low-level wallet/broadcast layer used inside those flows.
 - **R2 — Asset class.** Securities/stock data → `stock-analyst`; security/stock trading →
   `hyperliquid` (they are Hyperliquid perps). Commodities → `commodity-analyst` for the research
   path, then `hyperliquid` for the venue-quality check and execution. Crypto → the table below.
@@ -153,13 +153,13 @@ Pick the skill with these tie-breaker rules, in order:
 | Deep finance research, ENS resolution                                             | `research-analyst`     |
 | Full market briefing (macro + news + odds + ideas)                                | `strategize`           |
 | What to trade / is this trade worth taking (bull-bear debate)                     | `thesis`               |
-| Wallet addresses, wallet IDs, raw balances (pre-trade)                            | `wallet`               |
+| Wallet addresses, wallet IDs, raw balances (pre-trade)                            | `zipbox-wallet`        |
 | Net worth over time, PnL, transfer/transaction history                            | `wallet-analyst`       |
 | Hyperliquid markets, perp/HL-spot orders, deposits, all security/commodity trades | `hyperliquid`          |
 | End-to-end trade with pre/post checks                                             | `trade-execution`      |
 | Stops, leverage, liquidation distance, closing positions                          | `position-management`  |
 | On-chain DEX swap or cross-chain bridge                                           | `spot-trading`         |
-| Broadcast a prepared transaction, check tx status                                 | `transaction`          |
+| Broadcast a prepared transaction, check tx status                                 | `zipbox-wallet`        |
 | General web lookup or read one URL                                                | `web-search`           |
 | JS-gated or fetch-blocked pages, UI automation                                    | `browser`              |
 
@@ -169,6 +169,7 @@ Pick the skill with these tie-breaker rules, in order:
 - `zipbox-caddy` — Safely add or remove HTTPS reverse-proxy sites in this sandbox's in-VM Caddy with the baked tribes-caddy CLI — never hand-edit the Caddyfile, because a bad config kills all browser access to the machine.
 - `zipbox-dns` — Manage DNS records under this sandbox's own public hostname with the baked tribes-dns CLI — expose subdomains and set, list, or delete server-pinned A/AAAA records below the apex.
 - `zipbox-email` — Read, organize, delete, mark as junk, and send this sandbox's zbox.sh email through the baked tribes-email CLI and its agent-scoped control-plane API.
+- `zipbox-wallet` — Wallet and transaction capability for this sandbox's bound Privy wallet (EVM + Solana), through the baked tribes-wallet CLI.
 - `zipbox-websearch` — Search the open web and extract readable text from a known public URL through the sandbox-authenticated Tribes search endpoint.
 
 <!-- END synced skill routes -->
@@ -180,8 +181,9 @@ These are canonical here; skills restate them in at most one line.
 - **Gas is sponsored.** No transaction ever needs native gas (ETH, SOL). NEVER run a gas
   preflight, never bridge or swap to fund gas, never ask the user to deposit gas.
 - **Contiguous same-chain batching.** Never reorder multi-transaction broadcasts across chain
-  boundaries; batch contiguous same-chain runs. The canonical algorithm lives in the
-  `transaction` skill.
+  boundaries. Walk them in order, extend a run while the chain id is unchanged, and when it changes
+  close the run: send each run of 2+ calls with one `sendCalls`, each single call with
+  `sendEthTransaction` (Solana never batches). Broadcast commands live in the `zipbox-wallet` skill.
 - **Slow calls need generous timeouts.** Analyst `ask` commands and `news fetch` poll a backend
   agent and can run for minutes. MUST set a bash timeout of at least 120 seconds (prefer 300)
   when running them.
@@ -245,6 +247,8 @@ bun run lint           # eslint, --max-warnings 0 (zero-tolerance)
 bun run lint:fix       # eslint --fix
 bun run format         # prettier --write
 bun run knip           # dead-code / unused-export detection
+bun run setup:dev      # rebuild tribes-cli against localhost (needs PRIVY_APP_ID in .env)
+bun run setup:prod     # rebuild tribes-cli against tribes.xyz (the default backend)
 ```
 
 `bun run test` is only a typecheck. To run the actual unit tests:
@@ -314,13 +318,24 @@ Prettier: no semicolons, single quotes, no trailing commas, width 100. TypeScrip
 
 ## Environment
 
-Config is resolved in `@/common/Env`. When `NODE_ENV` is unset, empty, or `production` (the default), `API_BASE_URL` and `PRIVY_APP_ID` are hardcoded to their production values — neither needs to be set. `PRIVY_APP_ID` is only read from (and required in) the env under a non-production `NODE_ENV`; `API_BASE_URL` is never read from the env. The one thing a run needs is a bearer token: `API_BEARER_TOKEN` (or the sandbox-injected `TRIBES_API_KEY`). It is typically auto-minted by the Tribes extension; if it is missing, run `tribes-cli login` first so a fresh token is fetched and persisted before other `tribes-cli` actions. Wallet private keys live in Privy, never locally. `.env*` and `.tribes/*.json` snapshots are gitignored.
+Config is resolved in `@/common/Env`. When `NODE_ENV` is unset, empty, or `production` (the default), `API_BASE_URL` and `PRIVY_APP_ID` are hardcoded to their production values — neither needs to be set. Under a non-production `NODE_ENV` the URLs point at localhost (`http://localhost:8787` API, `http://localhost:3000` web) and `PRIVY_APP_ID` is read from (and required in) the env; `API_BASE_URL` is never read from the env. The one thing a run needs is a bearer token: `API_BEARER_TOKEN`, the ES256 JWT the Tribes extension mints from the in-VM agent key. It is typically auto-minted; if it is missing, run `tribes-cli login` first so a fresh token is fetched and persisted before other `tribes-cli` actions. Wallet private keys live in Privy, never locally. `.env*` and `.tribes/*.json` snapshots are gitignored.
+
+**Production is the default; development is opt-in.** `bun build --compile` inlines `NODE_ENV` at build time, so the environment is fixed when the binary is compiled — editing `.env` afterwards does not change an already-compiled binary. `bootstrap.sh` compiles with `NODE_ENV=production`, so a fresh clone always targets `tribes.xyz`. To point the local `tribes-cli` at a localhost stack, run `bun run setup:dev` (it requires `PRIVY_APP_ID` in `.env` and fails with an explanation if it is missing); `bun run setup:prod` rebuilds back to production.
 
 ## Gotchas
 
 - Do not run `pi update`. Pi (`@earendil-works/pi-coding-agent` + `pi-tui`) is pinned at a specific version and the `.pi/` extensions are written against that exact API. Updating it can desync the runtime and break the `session_start` hook that writes `.env`.
 - The `runtime/` directory is generated and is gitignored / lint-ignored.
 - `.pi/settings.json` excludes `prompts/tribes/login.md` from Pi's prompt scan. The `tribes/login.md` command file is kept for non-Pi clients (they read it via symlinks), but its basename `login` is a reserved command name in the `pi-prompt-template-model` extension, which would warn on every boot. Pi itself registers `/tribes:login` from the `tribes` extension, so excluding the file from Pi's scan silences the warning without removing the command. Do not delete this exclude unless the login command file is renamed off the reserved word `login`.
+
+## Notifying the user
+
+`tribes-cli notify "<message>"` (or `tribes-cli notify --title <t> --body <b>`) writes an OSC 9 /
+OSC 777 terminal-notification escape to stdout. The zipbox web terminal parses this into a bell
+and an OS push notification, so the user can be alerted without watching the terminal — use it
+when you finish a long-running task or need the user's input/permission while they're away. A
+`session_shutdown` hook already fires one automatically when a session ends; call it yourself for
+anything mid-session.
 
 ## Showing tokens, pools & perps
 

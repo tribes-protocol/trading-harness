@@ -5,7 +5,7 @@ description: >-
   realized and unrealized PnL (overall and per-token), balance changes, transfer tracking, and
   transaction history. Call when the question is how a wallet performed or what happened in it —
   the agent's own or any third-party address. NOT for: wallet addresses/IDs or raw pre-trade
-  balances (use wallet); live Hyperliquid positions, orders, or perp/spot balances (use
+  balances (use zipbox-wallet); live Hyperliquid positions, orders, or perp/spot balances (use
   hyperliquid).
 allowed-tools: bash read
 ---
@@ -23,7 +23,7 @@ Requires: an auth token (run `tribes-cli login` once if commands fail with auth 
 - Transfer activity, transaction history, balance changes.
 - Attribution: why a wallet's value changed over a period.
 - NOT for the agent's addresses, wallet IDs, or a raw balance snapshot before a trade — use
-  `wallet`.
+  `zipbox-wallet`.
 - NOT for Hyperliquid positions, open orders, or perp/spot balances — use `hyperliquid`.
 
 ## Hard rules
@@ -85,6 +85,5 @@ tribes-cli wallet-analyst ask \
 
 ## Related skills
 
-- `wallet` — addresses, wallet IDs, and raw balance JSON needed before execution.
+- `zipbox-wallet` — addresses, wallet IDs, raw balance JSON, and broadcasting prepared transactions.
 - `hyperliquid` — live Hyperliquid balances, positions, and open orders.
-- `transaction` — broadcast prepared transactions and check a transaction's status.
