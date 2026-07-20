@@ -17,11 +17,11 @@ Authored 2026-07-20 by the planning subagent; executed on branch `merge/pr51-not
 
 ### Conflict 1 — `.pi/skills` (file/directory): a LAYOUT INVERSION, and it is trivial
 
-| | `.pi/skills` | `skills/` |
-|---|---|---|
-| merge-base `56bd096` | real directory | symlink → `.pi/skills` |
-| `origin/main` | symlink → `../skills` (mode 120000) | real directory |
-| `pr51` | real directory (mode 040000) | — |
+|                      | `.pi/skills`                        | `skills/`              |
+| -------------------- | ----------------------------------- | ---------------------- |
+| merge-base `56bd096` | real directory                      | symlink → `.pi/skills` |
+| `origin/main`        | symlink → `../skills` (mode 120000) | real directory         |
+| `pr51`               | real directory (mode 040000)        | —                      |
 
 `git diff --name-status 56bd096 pr51 -- .pi/skills` returns exactly **one line**:
 `A .pi/skills/notify/SKILL.md`. Everything else under pr51's `.pi/skills/` is the stale
@@ -38,14 +38,14 @@ read-only-drive delivery path (#1914, `install-skills.sh`) — while the diff st
 
 ### Conflict 2 — `src/cli/Notify.ts` (add/add): main's 55 lines are NOT a subset of pr51's 191
 
-|  | `origin/main` (from #76) | `pr51` |
-|---|---|---|
-| Terminator | **BEL** `\x07` | **ST** `\x1b\\` (`src/utils/Osc.ts`) |
-| OSC 9 bare-message form | **emitted** | **never emitted** |
-| Write target | `process.stdout` | `/dev/tty` → `TRIBES_TTY` → ancestor-pty walk → stdout last |
-| CLI flags | `--title`, `--body` | `-t/--title`, `-s/--subtitle`, `--sound`, `--sound-name`, `-b/--backend`, `--doctor`, `--list-backends`, stdin |
-| Sanitisation | clamp 200 only | strips control/ESC/BEL, `;`→`,`, title 64 / body 200 |
-| Backends | OSC only | terminal-notifier, osascript, notify-send, bell, osc |
+|                         | `origin/main` (from #76) | `pr51`                                                                                                         |
+| ----------------------- | ------------------------ | -------------------------------------------------------------------------------------------------------------- |
+| Terminator              | **BEL** `\x07`           | **ST** `\x1b\\` (`src/utils/Osc.ts`)                                                                           |
+| OSC 9 bare-message form | **emitted**              | **never emitted**                                                                                              |
+| Write target            | `process.stdout`         | `/dev/tty` → `TRIBES_TTY` → ancestor-pty walk → stdout last                                                    |
+| CLI flags               | `--title`, `--body`      | `-t/--title`, `-s/--subtitle`, `--sound`, `--sound-name`, `-b/--backend`, `--doctor`, `--list-backends`, stdin |
+| Sanitisation            | clamp 200 only           | strips control/ESC/BEL, `;`→`,`, title 64 / body 200                                                           |
+| Backends                | OSC only                 | terminal-notifier, osascript, notify-send, bell, osc                                                           |
 
 pr51 is a capability superset **except** for three regressions: BEL→ST, OSC 9 dropped,
 `--body` removed. `--body` is a documented breaking change (`AGENTS.md:333`).
@@ -88,8 +88,8 @@ from step 4 onward is strictly ordered.
 
 1. **Re-verify starting state.** `git status --porcelain && git rev-parse origin/main pr51 && git merge-base origin/main pr51` → empty porcelain; `2afddca…`, `bf68774…`, `56bd0963…`. Non-empty porcelain → STOP. Do not stash.
 2. **Install deps.** `bun install --frozen-lockfile` → exit 0. (CI pins bun 1.3.10.)
-3. *(concurrent with 2)* **Locate the OSC parser.** `find ~/Developer -name 'TerminalNotification.ts' -not -path '*/node_modules/*'`. Already checked: it is Zod schemas only. If no real parser is found, record that and proceed with BEL per the ruling. Do not block.
-4. **Baseline the test count on main.** `git checkout -B merge/pr51-notify-onto-main origin/main && bunx vitest run` → expect `Test Files 16 passed (16)`, `Tests 162 passed (162)`, vitest v4.1.3. If different, record ACTUALS and use them — the *rise* is what matters.
+3. _(concurrent with 2)_ **Locate the OSC parser.** `find ~/Developer -name 'TerminalNotification.ts' -not -path '*/node_modules/*'`. Already checked: it is Zod schemas only. If no real parser is found, record that and proceed with BEL per the ruling. Do not block.
+4. **Baseline the test count on main.** `git checkout -B merge/pr51-notify-onto-main origin/main && bunx vitest run` → expect `Test Files 16 passed (16)`, `Tests 162 passed (162)`, vitest v4.1.3. If different, record ACTUALS and use them — the _rise_ is what matters.
 5. **Start the merge.** `git merge --no-commit --no-ff pr51` → non-zero exit; exactly the two conflicts above; `AGENTS.md` and `src/cli/Tribes.ts` auto-merge. Any third conflict → STOP.
 6. **Resolve `.pi/skills`.** `git checkout origin/main -- .pi/skills && mkdir -p skills/notify && git show pr51:.pi/skills/notify/SKILL.md > skills/notify/SKILL.md && git rm -r --cached --ignore-unmatch '.pi/skills~origin_main' && rm -rf '.pi/skills~origin_main' && git add .pi/skills skills/notify/SKILL.md`. Verify: `.pi/skills -> ../skills`; `skills/notify/SKILL.md` present; `.pi/skills~origin_main` gone.
 7. **Take pr51's `Notify.ts` as the base.** `git checkout pr51 -- src/cli/Notify.ts && git add src/cli/Notify.ts` → `wc -l` = 191. Starting point only; steps 8/10 patch it.
