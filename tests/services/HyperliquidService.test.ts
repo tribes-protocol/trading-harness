@@ -168,3 +168,71 @@ describe('HyperliquidService asset inventory', () => {
     })
   })
 })
+
+describe('HyperliquidService order book', () => {
+  function createBookService(infoClient: Pick<InfoClient, 'l2Book'>) {
+    const params: HyperliquidServiceParams = {
+      transaction: {} as HyperliquidServiceParams['transaction'],
+      infoClient: infoClient as InfoClient
+    }
+    return new HyperliquidService(params)
+  }
+
+  const BOOK = {
+    coin: 'BTC',
+    time: 1784560000000,
+    levels: [
+      [
+        { px: '104490', sz: '1.5', n: 12 },
+        { px: '104480', sz: '3.1', n: 7 },
+        { px: '104470', sz: '0.4', n: 2 }
+      ],
+      [
+        { px: '104500', sz: '2.2', n: 9 },
+        { px: '104510', sz: '5.0', n: 15 },
+        { px: '104520', sz: '1.1', n: 3 }
+      ]
+    ]
+  }
+
+  test('trims both sides of the book to the requested depth', async () => {
+    const l2Book = vi.fn().mockResolvedValue(BOOK)
+    const service = createBookService({ l2Book })
+
+    const result = await service.getOrderBook({ coin: 'BTC', depth: 2, dex: null })
+
+    expect(l2Book).toHaveBeenCalledWith({ coin: 'BTC' })
+    expect(result).toEqual({
+      coin: 'BTC',
+      bids: [
+        { px: '104490', sz: '1.5', n: 12 },
+        { px: '104480', sz: '3.1', n: 7 }
+      ],
+      asks: [
+        { px: '104500', sz: '2.2', n: 9 },
+        { px: '104510', sz: '5.0', n: 15 }
+      ]
+    })
+  })
+
+  test('prefixes the coin with the dex for HIP-3 books', async () => {
+    const l2Book = vi.fn().mockResolvedValue({ ...BOOK, coin: 'xyz:TSLA' })
+    const service = createBookService({ l2Book })
+
+    const result = await service.getOrderBook({ coin: 'TSLA', depth: 10, dex: 'xyz' })
+
+    expect(l2Book).toHaveBeenCalledWith({ coin: 'xyz:TSLA' })
+    expect(result.coin).toBe('xyz:TSLA')
+    expect(result.bids).toHaveLength(3)
+    expect(result.asks).toHaveLength(3)
+  })
+
+  test('throws for an unknown market', async () => {
+    const l2Book = vi.fn().mockResolvedValue(null)
+    const service = createBookService({ l2Book })
+
+    await expect(service.getOrderBook({ coin: 'NOPE', depth: 10, dex: null })).rejects.toThrow(
+      'unknown coin NOPE on dex main'
+    )
+  })
+})
