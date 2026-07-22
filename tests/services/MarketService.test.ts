@@ -295,7 +295,14 @@ describe('MarketService', () => {
     const result = await makeService().getTrending()
 
     expect(result.coins).toEqual([
-      { id: 'render', symbol: 'rndr', name: 'Render', rank: 32, price_usd: 9.87, change_24h_pct: 6.5 }
+      {
+        id: 'render',
+        symbol: 'rndr',
+        name: 'Render',
+        rank: 32,
+        price_usd: 9.87,
+        change_24h_pct: 6.5
+      }
     ])
   })
 

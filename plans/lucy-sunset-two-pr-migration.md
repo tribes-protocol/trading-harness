@@ -24,18 +24,18 @@ runner, and tests. `MarketService` / `tribes-cli market` (this branch) is the te
 
 ## PR 1 — analyst cutovers (this repo), in order
 
-| Analyst | Providers to build | Status |
-| --- | --- | --- |
-| market-strategist | CoinGecko Pro (global, defi, history, top, movers, categories, new, price, search, trending) | DONE on this branch |
-| fundamentals-analyst | CoinGecko Pro coin deep-dive (history, ohlc, supply, tickers, contract data, exchange rates) | open |
-| defi-analyst | CoinGecko onchain/GeckoTerminal (pools, trades, pool OHLCV, trending/top/new pools, dex lists) | open |
-| token-analyst | BirdEye (price/overview/holders/trades, Solana) + Nansen (flows, PnL) + token security | open |
-| alpha-scout | Nansen smart-money (netflow, holdings, DEX/perp trades, DCAs) + BirdEye trending/new listings | open |
-| wallet-analyst | Nansen wallet (balances, labels, counterparties, transfers) + BirdEye Solana PnL | open |
-| exchange-analyst | CoinGecko exchanges/derivatives/treasury + Nansen perp screener + Hyperliquid order book | open |
-| stock-analyst | Marketstack (candles/details/search) + NBBO/movers/status/news via apps/api `/stocks/*` (decision below) | open |
-| research-analyst | web search/extract via apps/api `/agent/web` (Tavily must stay proxied — see MITM) + ENS (Alchemy RPC + subgraph) + depth-crawl replacement | open |
-| technical-analyst | net-new: indicator/backtest compute over unified OHLCV (BirdEye/Marketstack/Hyperliquid) | open — largest gap |
+| Analyst              | Providers to build                                                                                                                          | Status              |
+| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- | ------------------- |
+| market-strategist    | CoinGecko Pro (global, defi, history, top, movers, categories, new, price, search, trending)                                                | DONE on this branch |
+| fundamentals-analyst | CoinGecko Pro coin deep-dive (history, ohlc, supply, tickers, contract data, exchange rates)                                                | open                |
+| defi-analyst         | CoinGecko onchain/GeckoTerminal (pools, trades, pool OHLCV, trending/top/new pools, dex lists)                                              | open                |
+| token-analyst        | BirdEye (price/overview/holders/trades, Solana) + Nansen (flows, PnL) + token security                                                      | open                |
+| alpha-scout          | Nansen smart-money (netflow, holdings, DEX/perp trades, DCAs) + BirdEye trending/new listings                                               | open                |
+| wallet-analyst       | Nansen wallet (balances, labels, counterparties, transfers) + BirdEye Solana PnL                                                            | open                |
+| exchange-analyst     | CoinGecko exchanges/derivatives/treasury + Nansen perp screener + Hyperliquid order book                                                    | open                |
+| stock-analyst        | Marketstack (candles/details/search) + NBBO/movers/status/news via apps/api `/stocks/*` (decision below)                                    | open                |
+| research-analyst     | web search/extract via apps/api `/agent/web` (Tavily must stay proxied — see MITM) + ENS (Alchemy RPC + subgraph) + depth-crawl replacement | open                |
+| technical-analyst    | net-new: indicator/backtest compute over unified OHLCV (BirdEye/Marketstack/Hyperliquid)                                                    | open — largest gap  |
 
 Finale: delete `src/common/Analysts.ts`, `src/helpers/AnalystCli.ts`, `src/helpers/Analyst.ts`,
 and `src/types/Analyst.ts` once the last proxy entry is gone.
