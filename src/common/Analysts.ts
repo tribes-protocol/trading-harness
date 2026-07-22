@@ -37,13 +37,6 @@ export const ANALYSTS = {
     errorLabel: 'Stock analyst',
     askDescription: 'Send a query to the stock_analyst specialist agent endpoint'
   },
-  marketStrategist: {
-    cliName: 'market-strategist-cli',
-    description: 'Expert on the big-picture crypto market.',
-    endpointPath: '/agent/lucy/market-strategist',
-    errorLabel: 'Market strategist',
-    askDescription: 'Send a query to the market_strategist specialist agent endpoint'
-  },
   researchAnalyst: {
     cliName: 'research-analyst-cli',
     description: 'Expert on ENS identity resolution and web-based financial research.',
