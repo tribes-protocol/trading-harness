@@ -32,10 +32,10 @@ commands fail with auth errors).
 
 1. An unscoped briefing MUST include crypto, securities, and commodities. Skip a class only when
    the user explicitly scoped the request.
-2. MUST set a bash timeout of at least 120 seconds (prefer 300) for every analyst `ask` and
-   `news fetch` leg.
-3. Analyst legs take ONLY `--query` — no `--out`, no filter flags; encode chain, time window,
-   and filters inside the query text. Output is one free-text analysis string on stdout.
+2. MUST set a bash timeout of at least 120 seconds (prefer 300) for the `news fetch` leg — it
+   polls a backend pipeline.
+3. Data legs print structured JSON — parse it and do the interpretation yourself, per each
+   owning skill; never screen-scrape prose.
 4. Evidence gate: NEVER open or increase a position from a single signal — odds alone, one
    indicator, or one headline is never enough. Require at least two independent supporting
    signals and the user's explicit go-ahead. A coherent conditional idea can be shown with a
@@ -81,22 +81,24 @@ the legs return because it needs the complete candidate list.
    supply disruptions). Cite the leading outcome and probability only when the market is active
    and relevant; odds are supporting evidence, never a stand-alone trade signal.
 
-4. Crypto ideas (`market` is structured JSON — interpret the numbers yourself, per the
-   market-strategist skill; timeout rule 2 applies to the `ask` leg only):
+4. Crypto ideas (structured JSON — interpret the numbers yourself, per the market-strategist
+   and alpha-scout skills):
 
    ```bash
    tribes-cli market movers --duration 24h
    tribes-cli market global
    tribes-cli market categories --limit 30
-   timeout 300 tribes-cli alpha-scout ask \
-     --query "Trending tokens and smart-money accumulation over the last 24 hours"
+   tribes-cli smart-money netflow --limit 20
+   tribes-cli token-data trending
    ```
 
-5. Securities ideas (timeout rule 2 applies):
+5. Securities ideas (per the stock-analyst skill — movers have no native command, so derive
+   them from the market narrative in leg 2 plus quotes on candidate tickers):
 
    ```bash
-   timeout 300 tribes-cli stock-analyst ask \
-     --query "Biggest US stock and listed-security movers today with their catalysts"
+   tribes-cli stocks search --query "{CANDIDATE_NAME}"
+   tribes-cli stocks quote --symbol {TICKER}
+   tribes-cli stocks candles --symbol {TICKER} --limit 30
    ```
 
 6. Commodity ideas (`commodity-analyst` skill):

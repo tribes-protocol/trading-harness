@@ -54,15 +54,19 @@ When you're missing a decision (how much to risk, which asset, whether to procee
 
 ## Refine analyst answers before finishing
 
-The analyst specialists (`alpha-scout`, `token-analyst`, `defi-analyst`, and the other `tribes-cli` analysts) often end a reply with follow-up suggestions like "want me to rank these by evidence / chain-specific?". Treat those suggestions as a TODO list for **you**, not a menu you hand to the user. A specialist suggesting a next step is a signal that the current answer is not yet decision-grade.
+The analyst skills (`alpha-scout`, `token-analyst`, `defi-analyst`, and the rest) are data
+commands plus **your** interpretation — there is no backend specialist to finish the thinking
+for you. A first pass that merely reprints one command's JSON is not decision-grade.
 
-Before ending your turn, run the refinements that would make the answer better serve the user's **original** question, then report the sharpened result — not the intermediate one. Concretely:
+Before ending your turn, run the extra pulls that would make the answer better serve the
+user's **original** question, then report the sharpened result — not the intermediate one.
+Concretely:
 
-- **Self-refine, don't ask, when** the next step clearly serves the original ask and is a cheap, read-only analyst call (re-rank, tighten a filter, cross-check one signal against another, narrow by chain/liquidity/market cap, drop noisy/wash-trade entries). Just do it behind the scenes.
+- **Self-refine, don't ask, when** the next step clearly serves the original ask and is a cheap, read-only data call (re-rank, tighten a filter, cross-check one signal against another source, narrow by chain/liquidity/market cap, drop noisy/wash-trade entries). Just do it behind the scenes.
 - **Stop and present when** results have converged, further passes only add noise, or the next step is a genuine user judgment call (how much to risk, which of several equally valid directions to pursue, whether to place a trade). That kind of choice is the user's — ask it plainly.
-- **Keep it bounded.** Do at most one or two refinement passes; analyst calls are slow and you should not loop indefinitely. If two passes have not produced a clean answer, present what you have plus the open question rather than calling again.
+- **Keep it bounded.** Do at most one or two refinement passes; do not loop indefinitely. If two passes have not produced a clean answer, present what you have plus the open question rather than pulling more data.
 
-The goal: the user receives a refined, actionable answer to what they actually asked, instead of a first-pass result that quietly stops at the specialist's "if you want, I can go deeper" line.
+The goal: the user receives a refined, actionable answer to what they actually asked, instead of a first-pass result that quietly stops at raw JSON.
 
 ## Multi-candidate comparison guardrail (hard rule)
 
@@ -142,7 +146,7 @@ Pick the skill with these tie-breaker rules, in order:
 | One coin: profile, links, supply, historical charts, where listed                 | `fundamentals-analyst` |
 | Trending tokens, new listings, smart-money flows                                  | `alpha-scout`          |
 | Global caps, dominance, rankings, crypto top movers                               | `market-strategist`    |
-| Stock or security prices, quotes, candles, movers, market status                  | `stock-analyst`        |
+| Stock or security prices, quotes, candles, issuer detail                          | `stock-analyst`        |
 | Commodity candidate research, macro drivers, and venue-quality scan               | `commodity-analyst`    |
 | Indicators, signals, backtests (any asset)                                        | `technical-analyst`    |
 | Liquidity pools, DEX pairs, TVL                                                   | `defi-analyst`         |
@@ -154,7 +158,7 @@ Pick the skill with these tie-breaker rules, in order:
 | Full market briefing (macro + news + odds + ideas)                                | `strategize`           |
 | What to trade / is this trade worth taking (bull-bear debate)                     | `thesis`               |
 | Wallet addresses, wallet IDs, raw balances (pre-trade)                            | `zipbox-wallet`        |
-| Net worth over time, PnL, transfer/transaction history                            | `wallet-analyst`       |
+| Third-party wallet balances, PnL, transaction/counterparty history                | `wallet-analyst`       |
 | Hyperliquid markets, perp/HL-spot orders, deposits, all security/commodity trades | `hyperliquid`          |
 | End-to-end trade with pre/post checks                                             | `trade-execution`      |
 | Stops, leverage, liquidation distance, closing positions                          | `position-management`  |
@@ -283,17 +287,17 @@ cli/        Commander builders. Parse argv, validate with a zod schema from type
             call a service, write output via helpers/WriteOutput. No business logic here.
 services/   Business logic + external I/O (Hyperliquid SDK, Privy, RPCs, the Tribes API).
 helpers/    Cross-cutting machinery (JWT, auth keys, Privy CLI wrapper, EvmRegistry,
-            TerminalApiRequest, output writing, analyst-CLI factory).
-common/     Foundation: Env, Constants, Web3, Analysts registry.
+            TerminalApiRequest, output writing).
+common/     Foundation: Env, Constants, Web3.
 utils/      Pure helpers (Lang, Chain, Solana, News parsing). No side effects.
 types/      zod schemas + inferred TS types. One concern per file, PascalCase filename.
 ```
 
 Services are dependency-injected by hand. A CLI builder constructs the services it needs using env constants from `@/common/Env`.
 
-### Adding a new analyst
+### Adding a new provider-backed capability
 
-The 10 analyst commands are data-driven, not hand-written. Add an entry to `ANALYSTS` in `src/common/Analysts.ts` with `cliName`, `endpointPath`, `description`, etc. `Tribes.ts` loops over the registry and `buildAnalystCommand` generates the command. They all proxy to `/agent/lucy/*` endpoints.
+Each data capability is a direct-provider slice: a PascalCase service in `src/services` (named-params ctor taking `{ apiKey }` for keyed providers, private fetch, zod-parsed compact snake_case output), schemas in `src/types`, a `build…Command()` builder in `src/cli` composed into `Tribes.ts` (every subcommand structured JSON + `--out`), tests in `tests/services`, and a doc-only `SKILL.md` under `skills/<slug>/` plus a routing-map row here. `MarketService` / `tribes-cli market` is the reference slice. Provider key env-var names must match the control plane's egress billing entries so in-VM placeholder injection works.
 
 ### Pi extensions
 
