@@ -12,17 +12,26 @@
 
 import { Command } from 'commander'
 
+import { buildTokenDataCommand } from '@/cli/BirdeyeData'
+import { buildCoinCommand } from '@/cli/Coin'
+import { buildEnsCommand } from '@/cli/Ens'
+import { buildExchangesCommand } from '@/cli/Exchanges'
 import { buildHyperliquidCommand } from '@/cli/Hyperliquid'
 import { buildLoginCommand } from '@/cli/Login'
 import { buildMacrosCommand } from '@/cli/Macros'
 import { buildMarketCommand } from '@/cli/Market'
 import { buildNewsCommand } from '@/cli/News'
 import { buildNotifyCommand } from '@/cli/Notify'
+import { buildOnchainCommand } from '@/cli/Onchain'
 import { buildPredictionCommand } from '@/cli/Prediction'
+import { buildSmartMoneyCommand } from '@/cli/SmartMoney'
 import { buildSpotTradingCommand } from '@/cli/SpotTrading'
+import { buildStocksCommand } from '@/cli/Stocks'
+import { buildTaCommand } from '@/cli/Ta'
 import { buildTokenCommand } from '@/cli/Token'
 import { buildTransactionCommand } from '@/cli/Transaction'
 import { buildWalletCommand } from '@/cli/Wallet'
+import { buildWalletDataCommand } from '@/cli/WalletData'
 import { buildWebSearchCommand } from '@/cli/WebSearch'
 import { ANALYSTS } from '@/common/Analysts'
 import { buildAnalystCommand } from '@/helpers/AnalystCli'
@@ -45,6 +54,15 @@ function buildTribesCli(): Command {
   program.addCommand(buildNewsCommand())
   program.addCommand(buildMacrosCommand())
   program.addCommand(buildMarketCommand())
+  program.addCommand(buildCoinCommand())
+  program.addCommand(buildOnchainCommand())
+  program.addCommand(buildExchangesCommand())
+  program.addCommand(buildTokenDataCommand())
+  program.addCommand(buildSmartMoneyCommand())
+  program.addCommand(buildWalletDataCommand())
+  program.addCommand(buildStocksCommand())
+  program.addCommand(buildEnsCommand())
+  program.addCommand(buildTaCommand())
   program.addCommand(buildTokenCommand())
   program.addCommand(buildWebSearchCommand())
   program.addCommand(buildPredictionCommand())
