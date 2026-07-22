@@ -3,27 +3,31 @@ name: exchange-analyst
 description: >-
   Expert on centralized exchanges, derivatives markets, and institutional crypto holdings.
   Handles: exchange rankings and volume trends, individual exchange profiles and tickers,
-  derivatives/futures tickers and open interest, derivatives exchange rankings, and public
-  treasury data (which companies hold crypto and their transactions). Call when the EXCHANGE or
-  derivatives market is the subject. NOT for: which exchanges list a specific coin (use
-  fundamentals-analyst); what is tradable on Hyperliquid or your own positions/orders (use
-  hyperliquid); DEX pools and pairs (use defi-analyst).
+  derivatives/futures tickers and open interest, derivatives exchange rankings, public
+  treasury holdings (which companies hold BTC or ETH and how much), and Hyperliquid order-book
+  depth. Call when the EXCHANGE or derivatives market is the subject. NOT for: which exchanges
+  list a specific coin (use fundamentals-analyst); what is tradable on Hyperliquid or your own
+  positions/orders (use hyperliquid); DEX pools and pairs (use defi-analyst).
 allowed-tools: bash read
 ---
 
 # Exchange Analyst
 
-Backing command group: `tribes-cli exchange-analyst`. Sends one natural-language question to the
-exchange/derivatives specialist and prints one free-text analysis string to stdout.
-Requires: an auth token (run `tribes-cli login` once if commands fail with auth errors).
+Backing command group: `tribes-cli exchanges` — CoinGecko-Pro-backed exchange, derivatives, and
+treasury data as structured JSON, answering in seconds. Plus `tribes-cli hyperliquid order-book`
+for Hyperliquid depth. YOU are the analyst: pull the numbers with the subcommands below and do
+the interpretation — venue comparisons, open-interest reads, treasury trends — yourself.
 
 ## When to use
 
-- Rank or compare centralized exchanges by volume, trust, or market coverage.
-- Profile one exchange: its tickers, volume trend, listed markets.
-- Derivatives market context: futures/perp tickers, open interest, funding across venues.
-- Rank derivatives exchanges by open interest or volume.
-- Track public treasuries: which companies hold crypto, holdings size, transaction history.
+- Rank or compare centralized exchanges by trust score or 24h BTC volume (`list`).
+- Profile one exchange: trust, volume, top tickers (`detail`), its listed pairs (`tickers`),
+  volume trend over time (`volume-chart`).
+- Derivatives market context: futures/perp tickers with open interest, volume, and funding
+  across venues (`derivatives`).
+- Rank derivatives venues by open interest (`derivatives-exchanges`).
+- Public treasuries: which companies hold BTC or ETH and their holdings size (`treasury`).
+- Hyperliquid L2 depth for a perp coin (`hyperliquid order-book`).
 - NOT for which exchanges list a specific coin (coin is the subject) — use `fundamentals-analyst`.
 - NOT for tradable Hyperliquid markets or your own positions/orders/balances — use `hyperliquid`.
 - NOT for DEX pools, pairs, or on-chain liquidity — use `defi-analyst`.
@@ -31,53 +35,73 @@ Requires: an auth token (run `tribes-cli login` once if commands fail with auth 
 
 ## Hard rules
 
-1. MUST set a bash timeout of at least 120 seconds for this command — it polls a backend agent
-   and can run for minutes (see AGENTS.md).
-2. The ONLY flag is `--query`; there is no `--out` and no filter flags — encode venue, scope
-   (spot exchange, derivatives, treasury), and time window inside the natural-language query
-   text. Output is one free-text analysis string on stdout, not JSON.
-3. The CLI calls the API itself — NEVER call the endpoint or curl directly.
-4. MAX 2 passes per question: one broad ask, then at most one narrowed follow-up ask. Then
-   report what you have.
-5. Findings here are research only — verify Hyperliquid tradability via the `hyperliquid` skill
-   before presenting any asset as an actionable trade idea (see AGENTS.md).
+1. Every subcommand prints structured JSON on stdout — parse it, never screen-scrape prose.
+   All subcommands accept `--out <file>` to also write the JSON to a file.
+2. Exchange ids are CoinGecko exchange ids (`binance`, not "Binance") — resolve unknown venues
+   from the `list` output first.
+3. Findings here are research only — verify Hyperliquid tradability via the `hyperliquid` skill
+   (`hyperliquid list-assets --all-dexes`) before presenting any asset as an actionable trade
+   idea, and split actionable, watchlist-only, and not-tradable markets (see AGENTS.md).
+4. `treasury` covers `bitcoin` and `ethereum` only, and reports current holdings — it has no
+   transaction history.
+5. If a command reports the provider key is not set, the capability is unavailable on this box —
+   report that plainly instead of retrying or working around it.
 
 ## Command reference
 
-| Subcommand | Purpose                                              | Required flags | Read-only or signed |
-| ---------- | ---------------------------------------------------- | -------------- | ------------------- |
-| `ask`      | Ask the exchange/derivatives specialist one question | `--query`      | read-only           |
+All under `tribes-cli exchanges` unless noted; every subcommand accepts `--out <file>`. All
+read-only.
+
+| Subcommand               | Purpose                                                        | Required flags   | Useful flags                         |
+| ------------------------ | -------------------------------------------------------------- | ---------------- | ------------------------------------ |
+| `list`                   | Ranked exchanges: trust score, trust rank, 24h BTC volume      | none             | `--limit` 1-250 (default 50)         |
+| `detail`                 | One exchange: trust, 24h BTC volume, top tickers               | `--id`           |                                      |
+| `tickers`                | Tickers on one exchange: pair, USD price/volume, spread, trust | `--id`           | `--limit` 1-100 (default 50)         |
+| `volume-chart`           | Exchange BTC volume time series                                | `--id`, `--days` | `--days 1\|7\|14\|30\|90\|180\|365`  |
+| `derivatives`            | Derivatives tickers: symbol, price, OI, volume, funding        | none             | `--limit` 1-500 (default 50)         |
+| `derivatives-exchanges`  | Derivatives venues ranked by open interest                     | none             | `--limit` 1-250 (default 50)         |
+| `treasury`               | Public companies holding BTC or ETH in treasury                | `--coin`         | `--coin bitcoin\|ethereum`           |
+| `hyperliquid order-book` | L2 order book snapshot for a perp coin                         | `--coin`         | `--depth` 1-20 (default 10), `--dex` |
 
 ## Examples
 
-### Rank centralized exchanges
+### Rank and profile centralized exchanges
 
 ```bash
-tribes-cli exchange-analyst ask \
-  --query "rank the top 10 spot exchanges by 24h volume and trust score"
+tribes-cli exchanges list --limit 10
+tribes-cli exchanges detail --id binance
+tribes-cli exchanges tickers --id binance --limit 50
+tribes-cli exchanges volume-chart --id binance --days 30
 ```
 
-### Compare derivatives open interest and funding
+Synthesize: trust and volume ranking from `list`, venue depth and pair quality from `detail`
+and `tickers`, volume trend from `volume-chart`.
+
+### Derivatives open interest and funding across venues
 
 ```bash
-tribes-cli exchange-analyst ask \
-  --query "open interest and funding rates for BTC futures across Binance, Bybit, and OKX"
+tribes-cli exchanges derivatives --limit 200
+tribes-cli exchanges derivatives-exchanges --limit 20
 ```
 
-### Track public treasury holdings
+Filter the `derivatives` tickers yourself by symbol (for example BTC perps) to compare open
+interest and funding across Binance, Bybit, OKX, and the rest.
+
+### Treasury holdings and Hyperliquid depth
 
 ```bash
-tribes-cli exchange-analyst ask \
-  --query "which public companies hold the most BTC, and their latest treasury transactions"
+tribes-cli exchanges treasury --coin bitcoin
+tribes-cli hyperliquid order-book --coin BTC --depth 20
 ```
 
 ## Error recovery
 
-| Symptom                                  | Action                                                                         |
-| ---------------------------------------- | ------------------------------------------------------------------------------ |
-| Auth error (unauthorized, expired token) | Run `tribes-cli login`, retry the original command once, then stop and report. |
-| Any other API failure                    | Retry the same command once; if it fails again, stop and report the error.     |
-| Command exceeds your bash timeout        | Re-run once with a 300-second timeout; if it times out again, stop and report. |
+| Symptom               | Action                                                                       |
+| --------------------- | ---------------------------------------------------------------------------- |
+| Key-not-set error     | Provider unconfigured on this box — report it; do not retry or work around.  |
+| Unknown option error  | Drop the extra flag — see the command reference for each subcommand's flags. |
+| Unknown exchange id   | Run `exchanges list` and match the venue name to its CoinGecko id.           |
+| Any other API failure | Retry the same command once; if it fails again, stop and report the error.   |
 
 ## Related skills
 

@@ -2,84 +2,132 @@
 name: token-analyst
 description: >-
   Deep-dives into ONE identified token using real-time on-chain data. Handles: live and
-  historical on-chain prices, security and rug-risk audits, on-chain trades and volume,
-  transfers, holder concentration, tokenomics (mint/burn, exit liquidity), and name-to-address
-  resolution. Call for any question about a specific token's price, safety, trades, or holders.
-  NOT for: coin profiles, supply trends, or exchange listings (use fundamentals-analyst);
-  trending or new-token discovery (use alpha-scout); market-wide rankings or multi-coin prices
-  (use market-strategist); pool or DEX analysis (use defi-analyst).
+  historical on-chain prices and OHLCV candles, security and rug-risk audits (owner/creator,
+  mint/freeze authority, top-holder concentration), on-chain trades and volume, holder tables,
+  smart-money and whale flow on the token, wallet portfolios, contract-to-CoinGecko mapping,
+  and name-to-address resolution. Call for any question about a specific token's price, safety,
+  trades, holders, or flows. NOT for: coin profiles, supply trends, or exchange listings (use
+  fundamentals-analyst); trending or new-token discovery (use alpha-scout); market-wide
+  rankings or multi-coin CoinGecko prices (use market-strategist); pool or DEX analysis (use
+  defi-analyst).
 allowed-tools: bash read
 ---
 
 # Token Analyst
 
-Backing command group: `tribes-cli token-analyst`. Sends one natural-language question to the
-token_analyst specialist and prints a plain-text on-chain analysis of one token to stdout.
-Requires: an auth token (run `tribes-cli login` once if commands fail with auth errors).
+Backing command groups: `tribes-cli token-data` (BirdEye per-token and wallet data), plus
+`tribes-cli coin contract` (map a contract address to its CoinGecko profile) and
+`tribes-cli smart-money flow-intelligence` (Nansen per-cohort flows on one token) — all
+structured JSON, answering in seconds. YOU are the analyst: pull the numbers with the
+subcommands below and do the interpretation — safety verdict, flow read, price narrative —
+yourself. There is no backend specialist behind this skill.
 
 ## When to use
 
-- Current price, liquidity, and volume snapshot for one identified token.
-- Security and rug-risk audit (honeypot, ownership, mint authority) before touching a token.
-- On-chain trade flow, whale buys/sells, transfers, holder concentration, and tokenomics.
+- Current price, liquidity, and volume snapshot for one identified token (`overview`, `price`).
+- Security and rug-risk audit before touching a token (`security` + `holders` + `coin contract`).
+- On-chain trade flow and whale/smart-money buys and sells (`trades` +
+  `smart-money flow-intelligence`); a specific wallet's holdings (`wallet-portfolio`).
+- Historical candles for one token (`ohlcv`), chained into `ta` for indicator math.
 - NOT for coin profiles, supply trends, or exchange listings — use `fundamentals-analyst`.
-- NOT for trending tokens, new listings, or smart-money discovery — use `alpha-scout`.
-- NOT for market-wide rankings, top movers, or multi-coin price tables — use `market-strategist`.
+- NOT for trending tokens, new listings, or smart-money discovery — use `alpha-scout`
+  (`token-data trending` and `new-listings` exist here, but discovery workflows live there).
+- NOT for market-wide rankings, top movers, or multi-coin CoinGecko price tables — use
+  `market-strategist`.
 - NOT for pool, pair, or DEX questions — use `defi-analyst`.
 
 ## Hard rules
 
-1. The ONLY flag on `ask` is `--query` — no `--out`, no filter flags; encode chain, contract
-   address, and time window inside the query text.
-2. Output is one free-text analysis string on stdout, not JSON; use shell redirection for a file.
-3. MUST set a bash timeout of at least 120 seconds for `ask` — specialist calls are slow.
-4. The CLI calls the API itself — NEVER call the endpoint or curl directly.
-5. IF the symbol is ambiguous or the chain is unknown, THEN run `tribes-cli token search` first,
-   put the resolved chain + address into the `ask` query, and check the answer matches that token.
-6. Render token addresses as tribes.xyz Markdown links, never bare addresses (see AGENTS.md).
-7. Specialist follow-up suggestions are YOUR TODOs, not a user menu — at most 2 refinement passes.
-8. Verify Hyperliquid tradability before presenting a trade idea as actionable (AGENTS.md).
+1. Every subcommand prints structured JSON on stdout — parse it, never screen-scrape prose.
+   All subcommands accept `--out <file>` to also write the JSON to a file.
+2. `token-data` takes contract ADDRESSES, not symbols, and defaults to `--chain solana` — pass
+   `--chain` explicitly for anything not on Solana. IF the symbol is ambiguous or the chain is
+   unknown, THEN resolve first with `tribes-cli token search --query "<name or symbol>"` and
+   check the result matches the intended token.
+3. Chain flags differ per group: `token-data` uses BirdEye chain names (`--chain`, e.g.
+   `solana|ethereum|base`); `coin contract` uses a CoinGecko asset platform id (`--platform`);
+   `smart-money flow-intelligence` requires `--chain` (no `all`).
+4. Render token addresses as tribes.xyz Markdown links, never bare addresses (see AGENTS.md).
+5. Verify Hyperliquid tradability with `hyperliquid list-assets --all-dexes` before presenting
+   a trade idea as actionable (see AGENTS.md).
+6. If a command reports the provider key is not set, the capability is unavailable on this box —
+   report that plainly instead of retrying or working around it.
 
 ## Command reference
 
-| Subcommand | Purpose                            | Required flags | Read-only or signed |
-| ---------- | ---------------------------------- | -------------- | ------------------- |
-| `ask`      | Query the token_analyst specialist | `--query`      | read-only           |
+Under `tribes-cli token-data`; every subcommand accepts `--out <file>` and (unless noted)
+`--chain <chain>` (default `solana`). All read-only.
 
-Deterministic name→address resolution uses `tribes-cli token search --query "<name or symbol>"`
-(JSON output, accepts `--out <file>`; full docs live in the `spot-trading` skill).
+| Subcommand         | Purpose                                          | Required flags                                         | Useful flags                    |
+| ------------------ | ------------------------------------------------ | ------------------------------------------------------ | ------------------------------- |
+| `price`            | Multi-token prices with 24h change and liquidity | `--addresses` (comma-separated)                        |                                 |
+| `overview`         | Price, mcap, liquidity, volume, holders, trades  | `--address`                                            |                                 |
+| `security`         | Top-holder %, owner/creator, mint/freeze flags   | `--address`                                            |                                 |
+| `holders`          | Top token holders                                | `--address`                                            | `--limit` 1-100 (default 20)    |
+| `trades`           | Recent swaps for a token, newest first           | `--address`                                            | `--limit` 1-50 (default 20)     |
+| `trending`         | Trending tokens ranked by BirdEye                | none                                                   | `--limit` 1-20 (default 20)     |
+| `new-listings`     | Newly listed tokens with initial liquidity       | none                                                   | `--limit` 1-20 (default 10)     |
+| `ohlcv`            | OHLCV candles (t in epoch ms)                    | `--address`, `--timeframe 1m\|5m\|15m\|1H\|4H\|1D\|1W` | `--from`/`--to` (epoch seconds) |
+| `wallet-portfolio` | Wallet token balances with USD values            | `--wallet`                                             |                                 |
+
+Companion commands (same JSON + `--out` contract):
+
+| Command                                    | Purpose                                                    | Required flags            | Useful flags                                       |
+| ------------------------------------------ | ---------------------------------------------------------- | ------------------------- | -------------------------------------------------- |
+| `tribes-cli coin contract`                 | Resolve a contract address to a coin id + core market data | `--platform`, `--address` |                                                    |
+| `tribes-cli smart-money flow-intelligence` | Per-cohort netflows (smart traders, whales, exchanges)     | `--token`, `--chain`      | `--timeframe 5m\|1h\|6h\|12h\|1d\|7d` (default 1d) |
+| `tribes-cli token search`                  | Resolve a name/symbol to chain + address                   | `--query`                 | full docs in the `spot-trading` skill              |
 
 ## Examples
 
-### Price snapshot and whale flow (chain named, no address needed)
+### Price snapshot and whale flow (address known, Solana)
 
 ```bash
-timeout 300 tribes-cli token-analyst ask \
-  --query "current price, liquidity, 24h volume, and net whale buy/sell flow over the last 24 hours for WIF on solana"
+tribes-cli token-data overview --address EKpQGSJtjMFqKZ9KQanSqYXRcF8fBopzLHYxdM65zcjm
+tribes-cli token-data trades --address EKpQGSJtjMFqKZ9KQanSqYXRcF8fBopzLHYxdM65zcjm --limit 50
+tribes-cli smart-money flow-intelligence \
+  --token EKpQGSJtjMFqKZ9KQanSqYXRcF8fBopzLHYxdM65zcjm --chain solana --timeframe 1d
 ```
 
-### Security / rug-risk audit (contract address known)
+Synthesize: level and liquidity from `overview`, tape from `trades`, and who is buying or
+selling (smart traders vs whales vs exchanges) from `flow-intelligence`.
+
+### Security / rug-risk audit (contract address known, Ethereum)
 
 ```bash
-timeout 300 tribes-cli token-analyst ask \
-  --query "security audit for PEPE 0x6982508145454ce325ddbe47a25d4ec3d2311933 on ethereum: honeypot flags, ownership, mint authority, exit-liquidity risk"
+tribes-cli token-data security --address 0x6982508145454ce325ddbe47a25d4ec3d2311933 --chain ethereum
+tribes-cli token-data holders --address 0x6982508145454ce325ddbe47a25d4ec3d2311933 --chain ethereum --limit 50
+tribes-cli coin contract --platform ethereum --address 0x6982508145454ce325ddbe47a25d4ec3d2311933
 ```
 
-### Ambiguous symbol — resolve first, then ask
+Combine mint/freeze flags and owner/creator from `security`, concentration from `holders`, and
+the CoinGecko identity check from `coin contract` into one verdict.
+
+### Ambiguous symbol — resolve first, then pull data
 
 ```bash
 tribes-cli token search --query "MOG"
-timeout 300 tribes-cli token-analyst ask \
-  --query "tokenomics, mint/burn history, and top-holder concentration for MOG <evm-address> on ethereum"
+tribes-cli token-data overview --address <resolved-address> --chain ethereum
 ```
+
+### Candles into technical analysis
+
+```bash
+tribes-cli token-data ohlcv --address <address> --timeframe 4H --chain solana --out /tmp/candles.json
+tribes-cli ta indicators --candles-file /tmp/candles.json
+```
+
+`ohlcv --out` writes the candle contract that `ta` consumes — indicator math, levels, and
+backtests live in the `technical-analyst` skill.
 
 ## Error recovery
 
-| Symptom                                  | Action                                                                               |
-| ---------------------------------------- | ------------------------------------------------------------------------------------ |
-| Auth error (unauthorized, expired token) | Run `tribes-cli login`, retry the original command once, then stop and report.       |
-| Answer covers the wrong token            | Re-run `ask` with the exact chain + contract address from `tribes-cli token search`. |
-| Any other API failure                    | Retry the same command once; if it fails again, stop and report the error.           |
+| Symptom                  | Action                                                                                 |
+| ------------------------ | -------------------------------------------------------------------------------------- |
+| Key-not-set error        | Provider unconfigured on this box — report it; do not retry or work around.            |
+| Unknown option error     | Drop the extra flag — see the command reference for each subcommand's flags.           |
+| Empty/wrong-token result | Re-run with the exact chain + address from `tribes-cli token search`; check `--chain`. |
+| Any other API failure    | Retry the same command once; if it fails again, stop and report the error.             |
 
 ## Related skills
 
@@ -87,4 +135,5 @@ timeout 300 tribes-cli token-analyst ask \
 - `alpha-scout` — discovery before a specific token is chosen.
 - `market-strategist` — market-wide aggregates, rankings, and movers.
 - `defi-analyst` — pools, pairs, and DEX activity.
-- `technical-analyst` — indicator math and backtests on candles.
+- `technical-analyst` — indicator math, levels, and backtests on `ohlcv --out` candle files.
+- `hyperliquid` — all-dex tradability check before trade ideas.
