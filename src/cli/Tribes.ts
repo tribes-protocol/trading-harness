@@ -15,6 +15,7 @@ import { Command } from 'commander'
 import { buildHyperliquidCommand } from '@/cli/Hyperliquid'
 import { buildLoginCommand } from '@/cli/Login'
 import { buildMacrosCommand } from '@/cli/Macros'
+import { buildMarketCommand } from '@/cli/Market'
 import { buildNewsCommand } from '@/cli/News'
 import { buildNotifyCommand } from '@/cli/Notify'
 import { buildPredictionCommand } from '@/cli/Prediction'
@@ -43,6 +44,7 @@ function buildTribesCli(): Command {
   // Market data + research.
   program.addCommand(buildNewsCommand())
   program.addCommand(buildMacrosCommand())
+  program.addCommand(buildMarketCommand())
   program.addCommand(buildTokenCommand())
   program.addCommand(buildWebSearchCommand())
   program.addCommand(buildPredictionCommand())
