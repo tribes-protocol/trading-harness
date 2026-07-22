@@ -33,8 +33,6 @@ import { buildTransactionCommand } from '@/cli/Transaction'
 import { buildWalletCommand } from '@/cli/Wallet'
 import { buildWalletDataCommand } from '@/cli/WalletData'
 import { buildWebSearchCommand } from '@/cli/WebSearch'
-import { ANALYSTS } from '@/common/Analysts'
-import { buildAnalystCommand } from '@/helpers/AnalystCli'
 
 const VERSION = '1.0.0'
 
@@ -66,11 +64,6 @@ function buildTribesCli(): Command {
   program.addCommand(buildTokenCommand())
   program.addCommand(buildWebSearchCommand())
   program.addCommand(buildPredictionCommand())
-
-  // Specialist analyst agents (alpha-scout, defi-analyst, … wallet-analyst).
-  for (const config of Object.values(ANALYSTS)) {
-    program.addCommand(buildAnalystCommand(config))
-  }
 
   program.addCommand(buildLoginCommand())
   program.addCommand(buildNotifyCommand())
