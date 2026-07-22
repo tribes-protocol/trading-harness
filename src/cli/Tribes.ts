@@ -53,7 +53,6 @@ function buildTribesCli(): Command {
   }
 
   program.addCommand(buildLoginCommand())
-  program.addCommand(buildNotifyCommand())
 
   // Desktop notifications (no network, no auth).
   program.addCommand(buildNotifyCommand())
