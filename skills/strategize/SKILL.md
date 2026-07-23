@@ -92,12 +92,11 @@ the legs return because it needs the complete candidate list.
    tribes-cli token-data trending
    ```
 
-5. Securities ideas (per the stock-analyst skill — movers have no native command, so derive
-   them from the market narrative in leg 2 plus quotes on candidate tickers):
+5. Securities ideas (per the stock-analyst skill — movers and quotes have no native command,
+   so derive them from the market narrative in leg 2 plus daily candles on candidate tickers):
 
    ```bash
    tribes-cli stocks search --query "{CANDIDATE_NAME}"
-   tribes-cli stocks quote --symbol {TICKER}
    tribes-cli stocks candles --symbol {TICKER} --limit 30
    ```
 

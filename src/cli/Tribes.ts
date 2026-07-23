@@ -23,11 +23,9 @@ import { buildMarketCommand } from '@/cli/Market'
 import { buildNewsCommand } from '@/cli/News'
 import { buildNotifyCommand } from '@/cli/Notify'
 import { buildOnchainCommand } from '@/cli/Onchain'
-import { buildOptionsCommand } from '@/cli/Options'
 import { buildPredictionCommand } from '@/cli/Prediction'
 import { buildSmartMoneyCommand } from '@/cli/SmartMoney'
 import { buildSpotTradingCommand } from '@/cli/SpotTrading'
-import { buildStockFundamentalsCommand } from '@/cli/StockFundamentals'
 import { buildStocksCommand } from '@/cli/Stocks'
 import { buildTaCommand } from '@/cli/Ta'
 import { buildTokenCommand } from '@/cli/Token'
@@ -61,8 +59,6 @@ function buildTribesCli(): Command {
   program.addCommand(buildSmartMoneyCommand())
   program.addCommand(buildWalletDataCommand())
   program.addCommand(buildStocksCommand())
-  program.addCommand(buildStockFundamentalsCommand())
-  program.addCommand(buildOptionsCommand())
   program.addCommand(buildEnsCommand())
   program.addCommand(buildTaCommand())
   program.addCommand(buildTokenCommand())

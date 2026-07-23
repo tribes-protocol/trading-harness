@@ -146,9 +146,7 @@ Pick the skill with these tie-breaker rules, in order:
 | One coin: profile, links, supply, historical charts, where listed                 | `fundamentals-analyst` |
 | Trending tokens, new listings, smart-money flows                                  | `alpha-scout`          |
 | Global caps, dominance, rankings, crypto top movers                               | `market-strategist`    |
-| Stock or security prices, quotes, candles, issuer detail                          | `stock-analyst`        |
-| Stock fundamentals: financial statements, ratios, short interest, SEC filings     | `stock-fundamentals`   |
-| Options chains, contracts, greeks/IV, options trades and quotes                   | `options`              |
+| Stock or security prices, candles, issuer detail                                  | `stock-analyst`        |
 | Commodity candidate research, macro drivers, and venue-quality scan               | `commodity-analyst`    |
 | Indicators, signals, backtests (any asset)                                        | `technical-analyst`    |
 | Liquidity pools, DEX pairs, TVL                                                   | `defi-analyst`         |
