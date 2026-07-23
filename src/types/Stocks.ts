@@ -42,6 +42,22 @@ export const MarketstackTickersResponseSchema = z.object({
 })
 export type MarketstackTickersResponse = z.infer<typeof MarketstackTickersResponseSchema>
 
+// GET /v2/stockprice — real-time price; the docs example returns price as a
+// numeric string, so both forms are accepted and coalesced at mapping time.
+export const MarketstackStockPriceResponseSchema = z.object({
+  data: z
+    .array(
+      z.object({
+        ticker: z.string().nullish(),
+        price: z.union([z.number(), z.string()]).nullish(),
+        currency: z.string().nullish(),
+        trade_last: z.string().nullish()
+      })
+    )
+    .nullish()
+})
+export type MarketstackStockPriceResponse = z.infer<typeof MarketstackStockPriceResponseSchema>
+
 // ---------------------------------------------------------------------------
 // Agent-facing output shapes printed by `tribes-cli stocks`.
 // ---------------------------------------------------------------------------
@@ -61,6 +77,15 @@ export const StocksCandlesSchema = z.object({
   candles: z.array(StockCandleSchema)
 })
 export type StocksCandles = z.infer<typeof StocksCandlesSchema>
+
+export const StocksPriceSchema = z.object({
+  source: z.literal('marketstack'),
+  symbol: z.string(),
+  price: z.number().nullish(),
+  currency: z.string().nullish(),
+  trade_last: z.string().nullish()
+})
+export type StocksPrice = z.infer<typeof StocksPriceSchema>
 
 export const StocksDetailSchema = z.object({
   source: z.literal('marketstack'),
