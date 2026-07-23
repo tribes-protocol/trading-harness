@@ -16,11 +16,18 @@ Run:
 
 ```
 tribes-cli macros market
-timeout 300 tribes-cli research-analyst ask --query "Research {ASSET} supply, demand, inventories, policy, weather or geopolitical drivers, and scheduled catalysts over the next {HORIZON}. Explain what supports or invalidates a {SIDE} thesis and cite primary or industry sources."
 tribes-cli web-search search --query "{ASSET} supply demand inventories policy weather geopolitics news {HORIZON}"
-timeout 300 tribes-cli technical-analyst ask --query "Analyze Hyperliquid {DEX}:{ASSET} daily, 4h, and 1h for a {SIDE} over {HORIZON}: trend, ATR, support/resistance, entry, target, and invalidation."
+tribes-cli web-search extract --url "{PRIMARY_OR_INDUSTRY_SOURCE_URL}"
+tribes-cli stocks candles --symbol {ETF_PROXY} --limit 200 --out /tmp/{ASSET}-candles.json
+tribes-cli ta indicators --candles-file /tmp/{ASSET}-candles.json --set ema,rsi,macd,atr
+tribes-cli ta levels --candles-file /tmp/{ASSET}-candles.json
 tribes-cli hyperliquid list-assets --all-dexes
 ```
+
+Search + extract own the supply/demand and catalyst research — synthesize it yourself with
+cited sources (per the research-analyst skill). For structure, use a liquid ETF proxy of the
+commodity for candles (GLD gold, USO oil, …; per the technical-analyst skill) and derive
+trend, entry, target, and invalidation from the indicator and level JSON.
 
 Commodity news has no `news fetch` kind, so the targeted web search is the documented news
 fallback. Retain dated, attributable sources and treat blocked sources as gaps unless the browser

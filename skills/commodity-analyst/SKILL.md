@@ -66,9 +66,14 @@ macro series as a stated gap; do not replace it with a stale value.
 ### 3. Research supply, demand, and the catalyst calendar
 
 ```bash
-timeout 300 tribes-cli research-analyst ask \
-  --query "Research the current supply, demand, inventories, policy, weather or geopolitical drivers, and scheduled catalysts for {COMMODITY} over the next {HORIZON}. Use primary or industry sources where possible and cite URLs. Explain what would support or invalidate a {SIDE} thesis."
+tribes-cli web-search search \
+  --query "{COMMODITY} supply demand inventories policy weather geopolitical drivers scheduled catalysts {HORIZON}"
+tribes-cli web-search extract --url "{PRIMARY_OR_INDUSTRY_SOURCE_URL}"
 ```
+
+Extract the 1–3 most primary or industry sources from the results, keep the URL for each claim,
+and state yourself what would support or invalidate a {SIDE} thesis (the `research-analyst`
+composition pattern).
 
 This is the source-backed structural leg. It is not a price or venue-data substitute.
 
@@ -85,13 +90,19 @@ paywall, CAPTCHA, or access control.
 
 ### 5. Check structure and levels
 
+Pull candles for a liquid proxy of the commodity (an ETF proxy via `stocks candles` — e.g.
+GLD for gold, USO for oil; see the technical-analyst skill) and compute the structure
+yourself:
+
 ```bash
-timeout 300 tribes-cli technical-analyst ask \
-  --query "Analyze Hyperliquid {DEX}:{COIN} daily, 4h, and 1h for a {SIDE} over {HORIZON}: trend, RSI, MACD, ATR, support/resistance, proposed entry, target, and invalidation. State whether the move is feasible relative to normal range."
+tribes-cli stocks candles --symbol {PROXY_TICKER} --limit 200 --out /tmp/{COIN}-candles.json
+tribes-cli ta indicators --candles-file /tmp/{COIN}-candles.json --set ema,rsi,macd,atr
+tribes-cli ta levels --candles-file /tmp/{COIN}-candles.json
 ```
 
-The target and invalidation must come from structure and volatility, not a fixed percentage
-bracket.
+Derive trend, support/resistance, a proposed entry, target, and invalidation from the
+indicator and level JSON. The target and invalidation must come from structure and
+volatility (ATR), not a fixed percentage bracket.
 
 ### 6. Run the final venue-quality review
 

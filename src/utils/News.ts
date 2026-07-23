@@ -1,7 +1,7 @@
 import { type AssetIdentity } from '@/types/AssetIdentity'
 import { normalizeHyperliquidCoin } from '@/types/Hyperliquid'
-import { normalizeMassiveStocksTicker } from '@/types/MassiveStocks'
 import type { FetchNewsCommandOptions } from '@/types/News'
+import { normalizeStockTicker } from '@/types/StockTicker'
 import { isNullish } from '@/utils/Lang'
 
 export function toAssetIdentity(options: FetchNewsCommandOptions): AssetIdentity {
@@ -31,7 +31,7 @@ export function toAssetIdentity(options: FetchNewsCommandOptions): AssetIdentity
       }
       return {
         kind: 'stock',
-        ticker: normalizeMassiveStocksTicker(options.ticker)
+        ticker: normalizeStockTicker(options.ticker)
       }
     }
   }

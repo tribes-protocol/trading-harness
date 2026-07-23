@@ -19,6 +19,7 @@ import {
 import { formatPrice, formatSize } from '@nktkas/hyperliquid/utils'
 import BigNumber from 'bignumber.js'
 import { encodeFunctionData, erc20Abi, parseUnits } from 'viem'
+import { z } from 'zod'
 
 import { TransactionService } from '@/services/TransactionService'
 import {
@@ -32,6 +33,7 @@ import {
   type HyperliquidBalancesResult,
   HyperliquidBalancesResultSchema,
   type HyperliquidCancelOrderCommandOptions,
+  HyperliquidCoinSchema,
   type HyperliquidDepositParams,
   type HyperliquidDepositResult,
   HyperliquidDepositResultSchema,
@@ -111,6 +113,38 @@ const ARBITRUM_USDC_ADDRESS = '0xaf88d065e77c8cC2239327C5EDb3A432268e5831'
 const HYPERLIQUID_MAINNET_SIGNATURE_CHAIN_ID = '0xa4b1'
 const MIN_HYPERLIQUID_ORDER_NOTIONAL_USD = 10
 const HYPERLIQUID_TWAP_INTERVAL_SECONDS = 30
+
+// L2 order book snapshot via the info endpoint ({type: 'l2Book', coin}).
+// https://hyperliquid.gitbook.io/hyperliquid-docs/for-developers/api/info-endpoint#l2-book-snapshot
+export const HyperliquidOrderBookLevelSchema = z.object({
+  px: z.string(),
+  sz: z.string(),
+  n: z.number().int()
+})
+export type HyperliquidOrderBookLevel = z.infer<typeof HyperliquidOrderBookLevelSchema>
+
+export const HyperliquidOrderBookResultSchema = z.object({
+  coin: z.string(),
+  bids: z.array(HyperliquidOrderBookLevelSchema),
+  asks: z.array(HyperliquidOrderBookLevelSchema)
+})
+export type HyperliquidOrderBookResult = z.infer<typeof HyperliquidOrderBookResultSchema>
+
+export const HyperliquidOrderBookCommandOptionsSchema = z.object({
+  coin: HyperliquidCoinSchema,
+  depth: z.number().int().min(1).max(20).nullish(),
+  dex: z.string().trim().min(1).nullish(),
+  out: z.string().nullish()
+})
+export type HyperliquidOrderBookCommandOptions = z.infer<
+  typeof HyperliquidOrderBookCommandOptionsSchema
+>
+
+export interface HyperliquidOrderBookParams {
+  readonly coin: string
+  readonly depth: number
+  readonly dex: string | null | undefined
+}
 
 export class HyperliquidService {
   private readonly transaction: TransactionService
@@ -1143,6 +1177,24 @@ export class HyperliquidService {
     }
 
     return HyperliquidSpotAssetsResultSchema.parse({ market: 'spot', assets })
+  }
+
+  async getOrderBook(params: HyperliquidOrderBookParams): Promise<HyperliquidOrderBookResult> {
+    const dex = this.normalizeDex(params.dex)
+    const coin =
+      dex.length > 0 && !params.coin.includes(':') ? `${dex}:${params.coin}` : params.coin
+    const book = await this.infoClient.l2Book({ coin })
+    if (isNullish(book)) {
+      throw new Error(`unknown coin ${params.coin} on dex ${this.formatDexName(dex)}`)
+    }
+    const [bids, asks] = book.levels
+    return HyperliquidOrderBookResultSchema.parse({
+      coin: book.coin,
+      bids: bids
+        .slice(0, params.depth)
+        .map((level) => ({ px: level.px, sz: level.sz, n: level.n })),
+      asks: asks.slice(0, params.depth).map((level) => ({ px: level.px, sz: level.sz, n: level.n }))
+    })
   }
 
   private directionToPerpFlag(direction: HyperliquidUsdClassDirection): boolean {
