@@ -119,3 +119,21 @@ Use placeholders such as `<staging-url>`, `<sandbox-id>`, and `<timestamp>` in d
 Do not paste credentials, tokens, cookies, secret names paired with values, raw provider payloads,
 or full billable URLs. Every reported conclusion must distinguish `CONFIRMED`, `FAIL`, and
 `ARM VOID`.
+
+## Attempt receipt — 2026-07-23
+
+Outcome: **`ARM VOID`**. Exact-main CI
+[30052308071](https://github.com/tribes-protocol/trading-harness/actions/runs/30052308071)
+passed for `7a48145b61736a2e212af526ef782f080f834f97`, but no valid non-production
+subject was available.
+
+The repository-designated development API and both documented staging UI tunnel names returned
+HTTP 404 with ngrok `ERR_NGROK_3200`. The authenticated read-only host-list request reached the same
+tunnel-level response before returning any host inventory. The executor was a production-connected
+guest and was rejected; it also had no KVM, local Postgres, ngrok, Wrangler, or authenticated
+intercom client from which to construct the required isolated fleet.
+
+No sandbox, provider, database, fleet, production, or QA mutation occurred. All provider-routing,
+billing, wallet, missing-placeholder, and no-Lucy assertions are `NOT RUN`; no staging resource
+exists to clean up. The durable evidence and exact unblock condition are recorded on
+[issue 87](https://github.com/tribes-protocol/trading-harness/issues/87#issuecomment-5064495008).
