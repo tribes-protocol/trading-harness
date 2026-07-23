@@ -1,5 +1,5 @@
-import { mkdir, readFile, writeFile } from 'node:fs/promises'
-import { dirname, resolve } from 'node:path'
+import { readFile } from 'node:fs/promises'
+import { resolve } from 'node:path'
 
 import { decodeJwt, importPKCS8, SignJWT } from 'jose'
 
@@ -12,6 +12,8 @@ import {
   JwtTokenClaimsSchema
 } from '@/types/JwtAuth'
 import { ensureJsonTreeString, isNullish } from '@/utils/Lang'
+
+import { writePrivateFileAtomic } from './AtomicPrivateFile'
 
 const TOKEN_TTL = '7d'
 const TOKEN_REFRESH_BUFFER_SECONDS = 60
@@ -76,11 +78,7 @@ async function readDiskCache(): Promise<JwtTokenCache | null> {
 }
 
 async function writeDiskCache(params: WriteDiskCacheParams): Promise<void> {
-  await mkdir(dirname(TOKEN_CACHE_PATH), { recursive: true })
-  await writeFile(TOKEN_CACHE_PATH, ensureJsonTreeString(params.cache), {
-    encoding: 'utf8',
-    mode: 0o600
-  })
+  await writePrivateFileAtomic(TOKEN_CACHE_PATH, ensureJsonTreeString(params.cache))
 }
 
 async function mintTokenCache(key: AgentAuthorizationKey): Promise<JwtTokenCache> {
@@ -111,13 +109,13 @@ async function mintTokenCache(key: AgentAuthorizationKey): Promise<JwtTokenCache
   })
 }
 
-export async function getApiBearerToken(): Promise<string> {
+export async function getApiBearerToken(options: { force?: boolean } = {}): Promise<string> {
   const key = await readAgentAuthorizationKey()
   if (isNullish(key)) {
     throw new Error('Authorization key missing')
   }
 
-  if (!isNullish(memoryCache)) {
+  if (!options.force && !isNullish(memoryCache)) {
     const reusableMemoryCache = isReusableCache({
       key,
       cache: memoryCache
@@ -127,7 +125,7 @@ export async function getApiBearerToken(): Promise<string> {
     }
   }
 
-  const diskCache = await readDiskCache()
+  const diskCache = options.force ? null : await readDiskCache()
   if (!isNullish(diskCache)) {
     const reusableDiskCache = isReusableCache({
       key,

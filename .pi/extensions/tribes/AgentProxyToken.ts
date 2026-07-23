@@ -3,36 +3,34 @@
 /**
  * Prints the agent's Tribes API bearer token to stdout.
  *
- * This token authorizes EVERY proxy call the agent makes — the LLM proxy AND the
- * wallet/transaction backend — so it is the single credential the whole harness
- * runs on. It is the static per-sandbox API key the control plane injects into
- * the VM env as TRIBES_API_KEY (opaque, no expiry; the proxy verifies it by hash
- * and revokes it on shutdown). No minting, no 24h refresh — the key arrives
- * ready-to-use. Falls back to API_BEARER_TOKEN for local dev where no static key
- * is injected.
- *
- * Extension-only infra (not a `tribes-cli` command): the tribes extension runs it
- * directly via bun — Provider wires it as the proxy apiKey `!command`, and
- * AuthBootstrap runs it to (re)write .env so the CLIs share the one token.
+ * Extension-only infra: the tribes extension runs this helper directly. The
+ * launcher-owned wallet runtime is the source of token minting and cache policy.
  */
 
-import { getApiBearerToken } from '@/helpers/Jwt'
+import { resolve } from 'node:path'
+import { pathToFileURL } from 'node:url'
+
+type JwtHelper = {
+  getApiBearerToken(options?: { force?: boolean }): Promise<string>
+}
+
+async function loadJwtHelper(): Promise<JwtHelper> {
+  const launcherRoot = process.env.ORG_LAUNCHER_ROOT?.trim()
+  if (!launcherRoot) throw new Error('ORG_LAUNCHER_ROOT is required to resolve the Tribes token helper')
+  const helper = resolve(launcherRoot, '.pi/skills/wallet/runtime/src/helpers/Jwt.ts')
+  return (await import(pathToFileURL(helper).href)) as JwtHelper
+}
 
 async function main(): Promise<void> {
-  const injectedToken = process.env.TRIBES_API_KEY
-  if (injectedToken) {
-    process.stdout.write(injectedToken)
-    return
-  }
-
+  const force = process.argv.includes('--force')
   const fromEnv = process.env.API_BEARER_TOKEN
-  if (fromEnv) {
+  if (fromEnv && !force) {
     process.stdout.write(fromEnv)
     return
   }
 
-  const token = await getApiBearerToken()
-  // No trailing newline: the value is used verbatim as a Bearer token.
+  const { getApiBearerToken } = await loadJwtHelper()
+  const token = await getApiBearerToken({ force })
   process.stdout.write(token)
 }
 

@@ -1,7 +1,8 @@
 import { execFile, spawn } from 'node:child_process'
-import { copyFileSync, existsSync, mkdirSync } from 'node:fs'
-import { readFile, writeFile } from 'node:fs/promises'
-import { dirname, resolve } from 'node:path'
+import { randomUUID } from 'node:crypto'
+import { chmodSync, copyFileSync, existsSync, mkdirSync, renameSync, writeFileSync } from 'node:fs'
+import { readFile } from 'node:fs/promises'
+import { basename, dirname, join, resolve } from 'node:path'
 import { promisify } from 'node:util'
 
 import { ExtensionCommandContext } from '@earendil-works/pi-coding-agent'
@@ -88,8 +89,20 @@ async function autoSelectTribesModel(
 export function installAgentKey(cwd: string): void {
   const keyPath = resolve(cwd, '.tribes/agent-authorization-key.json')
   try {
-    mkdirSync(dirname(keyPath), { recursive: true })
-    copyFileSync(HOST_KEY_PATH, keyPath)
+    mkdirSync(dirname(keyPath), { recursive: true, mode: 0o700 })
+    chmodSync(dirname(keyPath), 0o700)
+    if (!existsSync(HOST_KEY_PATH)) {
+      if (existsSync(keyPath)) chmodSync(keyPath, 0o600)
+      return
+    }
+    const temporary = join(
+      dirname(keyPath),
+      `.${basename(keyPath)}.${process.pid}.${randomUUID()}.tmp`
+    )
+    copyFileSync(HOST_KEY_PATH, temporary)
+    chmodSync(temporary, 0o600)
+    renameSync(temporary, keyPath)
+    chmodSync(keyPath, 0o600)
   } catch {
     // No host key here; rely on whatever already exists at keyPath.
   }
@@ -129,10 +142,18 @@ export async function writeAuthEnv(cwd: string): Promise<void> {
     const value = process.env[name]
     if (value) env.set(name, value)
   }
-  env.set('API_BEARER_TOKEN', stdout.trim())
+  const token = stdout.trim()
+  if (!token) throw new Error('Token helper returned an empty bearer token')
+  process.env.API_BEARER_TOKEN = token
+  env.set('API_BEARER_TOKEN', token)
 
-  const body = [...env].map(([key, value]) => `${key}=${value}`).join('\n')
-  await writeFile(resolve(cwd, '.env'), `${body}\n`, { mode: 0o600 })
+  const path = resolve(cwd, '.env')
+  const temporary = join(dirname(path), `.${basename(path)}.${process.pid}.${randomUUID()}.tmp`)
+  writeFileSync(temporary, `${[...env].map(([key, value]) => `${key}=${value}`).join('\n')}\n`, {
+    mode: 0o600
+  })
+  renameSync(temporary, path)
+  chmodSync(path, 0o600)
 }
 
 /**
