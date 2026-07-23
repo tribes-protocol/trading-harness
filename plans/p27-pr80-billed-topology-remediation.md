@@ -313,6 +313,15 @@ Merge exact `76c4d85fa4f42e93b5f9ee11786c845bb567c427` additively with `--no-ff`
 conflict and its resolution, and rerun the billed-egress contract, CLI smoke, format, lint,
 TypeScript, full Vitest, and diff gates before PR creation.
 
+Receipt: merge `eb36bb965637d20c972a316101697ae4c44aa5a8` has exact parents
+`d81383b6ad5fe7e3a91a89122a44d821dd7aca19` and
+`76c4d85fa4f42e93b5f9ee11786c845bb567c427`, with zero textual conflicts. The two main-only auth
+blobs are byte-identical to current main. Git recognized the `src/cli/Tribes.ts` duplicate-notify
+removal as already present, while all imported native analyst registrations remain. Current main
+is an ancestor of the candidate. The post-merge billed contract (4 / 4), CLI smoke, Prettier,
+ESLint, TypeScript, full Vitest (398 / 398), clean-root shared-skills test, and diff gates all
+passed at low priority.
+
 ## Exact non-overlap with terminal #2613
 
 There is zero repository/path overlap: this branch changes only
