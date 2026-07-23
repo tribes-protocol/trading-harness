@@ -12,6 +12,7 @@
 
 import { Command } from 'commander'
 
+import { buildAssetCommand } from '@/cli/Asset'
 import { buildTokenDataCommand } from '@/cli/BirdeyeData'
 import { buildCoinCommand } from '@/cli/Coin'
 import { buildEnsCommand } from '@/cli/Ens'
@@ -49,6 +50,7 @@ function buildTribesCli(): Command {
   program.addCommand(buildSpotTradingCommand())
 
   // Market data + research.
+  program.addCommand(buildAssetCommand())
   program.addCommand(buildNewsCommand())
   program.addCommand(buildMacrosCommand())
   program.addCommand(buildMarketCommand())
