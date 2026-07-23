@@ -175,6 +175,31 @@ TEST-BOUND	tests/utils/Ta.test.ts
 The manifest must equal the exact sorted 93-path PR #80 diff with no omission, duplicate, or extra
 before implementation starts.
 
+## Additive-import receipt and bounded scope amendment
+
+The old head was imported as merge
+`d2493fdd56be0c5186c3ddf28e01d94d3bfce56c`, with exact parents
+`17a587202c1c7efbfccaac2b8a339f9276a15c7d` and
+`66b4c5d289f70bd343356c05987498147af1df42`.
+
+| Import disposition        | Exact result                                                                      |
+| ------------------------- | --------------------------------------------------------------------------------- |
+| Imported paths            | 93 / 93 manifest paths                                                            |
+| Sorted-path SHA-256       | `5d9cb29f2c77e43fb4f409ca3a9bf0afca7bc3dd498a11579d4aa0165ecd0ccf`                |
+| Textual conflicts         | 0                                                                                 |
+| Current-main preservation | The exact current-main plan checkpoint remains first parent                       |
+| PR #74 ancestry           | Excluded; neither PR #74 commit is a merge parent                                 |
+| Stale doctrine            | Imported only as historical source; not accepted until the remediation gates pass |
+
+One new regression path is now authorized:
+`tests/services/EgressBillingContract.test.ts` (`TEST-BOUND`). It binds the four exact provider
+environment names, catalog origins and credential placements, fail-closed empty-placeholder
+behavior, error redaction, and the billed explicit-proxy/transparent-MITM doctrine. Product
+remediation otherwise stays inside the original 93-path manifest. The terminal release
+changelog, permanent suite, release delta, QA plan, certification plan, and #2067 decision record
+remain the authoritative release accounting and are updated only after the external merge receipt
+exists.
+
 ## Implementation sequence
 
 1. **Plan and ownership gate**
