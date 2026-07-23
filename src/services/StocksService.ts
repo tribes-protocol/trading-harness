@@ -1,10 +1,23 @@
-import type { StocksCandles, StocksDetail, StocksQuote, StocksSearchResults } from '@/types/Stocks'
+import type {
+  StocksCandles,
+  StocksDetail,
+  StocksMarketStatus,
+  StocksMoverRow,
+  StocksMovers,
+  StocksMoversDirection,
+  StocksQuote,
+  StocksSearchResults
+} from '@/types/Stocks'
 import {
   MarketstackEodResponseSchema,
   MarketstackTickerSchema,
   MarketstackTickersResponseSchema,
+  MassiveStocksMarketStatusSchema,
+  MassiveStocksTopMoversResponseSchema,
   StocksCandlesSchema,
   StocksDetailSchema,
+  StocksMarketStatusSchema,
+  StocksMoversSchema,
   StocksProxySnapshotSchema,
   StocksQuoteSchema,
   StocksSearchResultsSchema
@@ -13,6 +26,7 @@ import { compactMap, isNullish } from '@/utils/Lang'
 
 type StocksServiceParams = {
   readonly apiKey: string
+  readonly massiveApiKey: string
   readonly apiBaseUrl: string
   readonly apiBearerToken: string
 }
@@ -37,11 +51,21 @@ type GetQuoteParams = {
   readonly symbol: string
 }
 
+type GetMoversParams = {
+  readonly direction: StocksMoversDirection
+  readonly limit: number
+}
+
 const MARKETSTACK_BASE_URL = 'https://api.marketstack.com/'
+// market-status and movers have no Tribes proxy route, so they call Massive
+// directly with MASSIVE_API_KEY (same split as OptionsService).
+const MASSIVE_BASE_URL = 'https://api.massive.com/'
 const ERROR_BODY_MAX_CHARS = 300
 
 export class StocksService {
   private readonly apiKey: string
+
+  private readonly massiveApiKey: string
 
   private readonly apiBaseUrl: string
 
@@ -49,6 +73,7 @@ export class StocksService {
 
   constructor(params: StocksServiceParams) {
     this.apiKey = params.apiKey
+    this.massiveApiKey = params.massiveApiKey
     this.apiBaseUrl = params.apiBaseUrl
     this.apiBearerToken = params.apiBearerToken
   }
@@ -140,6 +165,73 @@ export class StocksService {
       exchange: snapshot.primaryExchange,
       updated_at: snapshot.updated
     })
+  }
+
+  async getMarketStatus(): Promise<StocksMarketStatus> {
+    const raw = await this.fetchMassive('v1/marketstatus/now', {})
+    const parsed = MassiveStocksMarketStatusSchema.parse(raw)
+    return StocksMarketStatusSchema.parse({
+      source: 'massive',
+      market: parsed.market,
+      server_time: parsed.serverTime,
+      after_hours: parsed.afterHours,
+      early_hours: parsed.earlyHours
+    })
+  }
+
+  async getMovers(params: GetMoversParams): Promise<StocksMovers> {
+    const [gainers, losers] = await Promise.all([
+      params.direction === 'losers' ? null : this.fetchMovers('gainers', params.limit),
+      params.direction === 'gainers' ? null : this.fetchMovers('losers', params.limit)
+    ])
+    return StocksMoversSchema.parse({
+      source: 'massive',
+      direction: params.direction,
+      gainers,
+      losers
+    })
+  }
+
+  private async fetchMovers(
+    direction: 'gainers' | 'losers',
+    limit: number
+  ): Promise<StocksMoverRow[]> {
+    const raw = await this.fetchMassive(`v2/snapshot/locale/us/markets/stocks/${direction}`, {})
+    const parsed = MassiveStocksTopMoversResponseSchema.parse(raw)
+    return (parsed.tickers ?? []).slice(0, limit).map((row) => ({
+      symbol: row.ticker,
+      price: row.lastTrade?.p ?? row.day?.c,
+      change: row.todaysChange,
+      change_pct: row.todaysChangePerc,
+      volume: row.day?.v
+    }))
+  }
+
+  private async fetchMassive(path: string, searchParams: Record<string, string>): Promise<unknown> {
+    if (this.massiveApiKey === '') {
+      throw new Error(
+        'MASSIVE_API_KEY is not set — `stocks market-status` and `stocks movers` are unavailable on this box'
+      )
+    }
+    const url = new URL(path, MASSIVE_BASE_URL)
+    for (const [key, value] of Object.entries(searchParams)) {
+      url.searchParams.set(key, value)
+    }
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: {
+        Accept: 'application/json',
+        Authorization: `Bearer ${this.massiveApiKey}`
+      }
+    })
+    if (!response.ok) {
+      const body = await response.text().catch(() => '')
+      throw new Error(
+        `Massive /${path} failed: ${response.status} ${response.statusText} ${body.slice(0, ERROR_BODY_MAX_CHARS)}`
+      )
+    }
+    const data: unknown = await response.json()
+    return data
   }
 
   private async fetchMarketstack(
