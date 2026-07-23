@@ -306,6 +306,102 @@ describe('MarketService', () => {
     ])
   })
 
+  it('shapes asset platforms and trims to the limit', async () => {
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      jsonResponse([
+        {
+          id: 'ethereum',
+          chain_identifier: 1,
+          name: 'Ethereum',
+          shortname: 'eth',
+          native_coin_id: 'ethereum'
+        },
+        { id: 'polygon-pos', chain_identifier: 137, name: 'Polygon POS' },
+        { id: 'solana', name: 'Solana', native_coin_id: 'solana' }
+      ])
+    )
+
+    const result = await makeService().getPlatforms({ limit: 2 })
+
+    expect(result).toEqual({
+      source: 'coingecko',
+      platforms: [
+        {
+          id: 'ethereum',
+          name: 'Ethereum',
+          chain_id: 1,
+          shortname: 'eth',
+          native_coin_id: 'ethereum'
+        },
+        { id: 'polygon-pos', name: 'Polygon POS', chain_id: 137 }
+      ]
+    })
+
+    const requestUrl = new URL(String(fetchSpy.mock.calls[0]?.[0]))
+    expect(requestUrl.pathname).toBe('/api/v3/asset_platforms')
+  })
+
+  it('trims platform token lists to identity fields and reports the full count', async () => {
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      jsonResponse({
+        name: 'CoinGecko',
+        timestamp: '2026-07-22T00:00:00.000Z',
+        version: { major: 1, minor: 2, patch: 3 },
+        tokens: [
+          {
+            address: '0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48',
+            symbol: 'USDC',
+            name: 'USD Coin',
+            decimals: 6,
+            chainId: 1,
+            logoURI: 'https://example.com/usdc.png'
+          },
+          {
+            address: '0xdac17f958d2ee523a2206206994597c13d831ec7',
+            symbol: 'USDT',
+            name: 'Tether',
+            decimals: 6,
+            chainId: 1
+          }
+        ]
+      })
+    )
+
+    const result = await makeService().getPlatformTokens({ platform: 'ethereum', limit: 1 })
+
+    expect(result).toEqual({
+      source: 'coingecko',
+      platform: 'ethereum',
+      list_name: 'CoinGecko',
+      updated_at: '2026-07-22T00:00:00.000Z',
+      total_tokens: 2,
+      tokens: [
+        {
+          address: '0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48',
+          symbol: 'USDC',
+          name: 'USD Coin',
+          decimals: 6
+        }
+      ]
+    })
+
+    const requestUrl = new URL(String(fetchSpy.mock.calls[0]?.[0]))
+    expect(requestUrl.pathname).toBe('/api/v3/token_lists/ethereum/all.json')
+  })
+
+  it('lists supported vs currencies', async () => {
+    const fetchSpy = vi
+      .spyOn(globalThis, 'fetch')
+      .mockResolvedValue(jsonResponse(['usd', 'eur', 'btc']))
+
+    const result = await makeService().getSupportedCurrencies()
+
+    expect(result).toEqual({ source: 'coingecko', currencies: ['usd', 'eur', 'btc'] })
+
+    const requestUrl = new URL(String(fetchSpy.mock.calls[0]?.[0]))
+    expect(requestUrl.pathname).toBe('/api/v3/simple/supported_vs_currencies')
+  })
+
   it('throws the unavailable message without calling fetch when the key is unset', async () => {
     const fetchSpy = vi.spyOn(globalThis, 'fetch')
 

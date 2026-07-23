@@ -36,11 +36,12 @@ is no backend specialist behind this skill and no free-text query subcommand.
    All subcommands accept `--out <file>` to also write the JSON to a file.
 2. There are no free-text filters — encode filters with the exact flags in the reference below
    and apply any remaining filtering (e.g. excluding stablecoins) yourself on the JSON.
-3. Mind the chain defaults: `smart-money` defaults to `--chain all` (except `token-list`, which
-   defaults to `ethereum` and does not accept `all`); `token-data` defaults to `--chain solana`.
-   Pass `--chain` explicitly when the user scopes a chain.
-4. `--token` is a token ADDRESS for `netflow`, `holdings`, `dex-trades`, `flow-intelligence`,
-   and `pnl-leaderboard`; it is a SYMBOL for `perp-trades` and `dcas`.
+3. Mind the chain defaults: `smart-money` defaults to `--chain all` (except `token-list`,
+   `screener`, and `historical-holdings`, which default to `ethereum` and do not accept `all`);
+   `token-data` defaults to `--chain solana`. Pass `--chain` explicitly when the user scopes a
+   chain.
+4. `--token` is a SYMBOL for `perp-trades`, `dcas`, and `perp-leaderboard`; it is a token
+   ADDRESS for every other subcommand that takes it.
 5. Before presenting discoveries as actionable trade ideas, verify Hyperliquid tradability with
    `hyperliquid list-assets --all-dexes` and split actionable, watchlist-only, and not-tradable
    markets (see AGENTS.md).
@@ -55,16 +56,24 @@ Every subcommand accepts `--out <file>`. All read-only.
 
 ### `tribes-cli smart-money` (Nansen)
 
-| Subcommand          | Purpose                                                                 | Required flags                 | Useful flags                                                                                               |
-| ------------------- | ----------------------------------------------------------------------- | ------------------------------ | ---------------------------------------------------------------------------------------------------------- |
-| `netflow`           | Token netflows by smart money, largest 24h inflow first                 | none                           | `--chain` (default all), `--limit` (1-100, default 20), `--token <address>`                                |
-| `holdings`          | Tokens smart money currently holds, largest USD value first             | none                           | `--chain` (default all), `--limit`, `--token <address>`                                                    |
-| `dex-trades`        | Latest smart-money DEX trades                                           | none                           | `--chain` (default all), `--limit`, `--token <address>` (bought token)                                     |
-| `perp-trades`       | Latest smart-money Hyperliquid perp trades                              | none                           | `--limit`, `--token <symbol>` (e.g. BTC)                                                                   |
-| `dcas`              | Latest smart-money DCA orders (Solana), newest first                    | none                           | `--limit`, `--token <symbol>` (accumulated token)                                                          |
-| `token-list`        | Token screener restricted to smart-money activity, highest volume first | none                           | `--chain` (default ethereum, no all), `--limit`, `--timeframe 5m\|10m\|1h\|6h\|24h\|7d\|30d` (default 24h) |
-| `flow-intelligence` | Per-cohort netflows (smart traders, whales, exchanges) for one token    | `--token <address>`, `--chain` | `--timeframe 5m\|1h\|6h\|12h\|1d\|7d` (default 1d)                                                         |
-| `pnl-leaderboard`   | Top trader PnL leaderboard for one token over the last 30 days          | `--token <address>`, `--chain` | `--limit` (1-100, default 20)                                                                              |
+| Subcommand            | Purpose                                                                     | Required flags                 | Useful flags                                                                                               |
+| --------------------- | --------------------------------------------------------------------------- | ------------------------------ | ---------------------------------------------------------------------------------------------------------- |
+| `netflow`             | Token netflows by smart money, largest 24h inflow first                     | none                           | `--chain` (default all), `--limit` (1-100, default 20), `--token <address>`                                |
+| `holdings`            | Tokens smart money currently holds, largest USD value first                 | none                           | `--chain` (default all), `--limit`, `--token <address>`                                                    |
+| `dex-trades`          | Latest smart-money DEX trades                                               | none                           | `--chain` (default all), `--limit`, `--token <address>` (bought token)                                     |
+| `perp-trades`         | Latest smart-money Hyperliquid perp trades                                  | none                           | `--limit`, `--token <symbol>` (e.g. BTC)                                                                   |
+| `dcas`                | Latest smart-money DCA orders (Solana), newest first                        | none                           | `--limit`, `--token <symbol>` (accumulated token)                                                          |
+| `token-list`          | Token screener restricted to smart-money activity, highest volume first     | none                           | `--chain` (default ethereum, no all), `--limit`, `--timeframe 5m\|10m\|1h\|6h\|24h\|7d\|30d` (default 24h) |
+| `flow-intelligence`   | Per-cohort netflows (smart traders, whales, exchanges) for one token        | `--token <address>`, `--chain` | `--timeframe 5m\|1h\|6h\|12h\|1d\|7d` (default 1d)                                                         |
+| `pnl-leaderboard`     | Top trader PnL leaderboard for one token over the last 30 days              | `--token <address>`, `--chain` | `--limit` (1-100, default 20)                                                                              |
+| `screener`            | General token screener across all traders (not smart-money-only)            | none                           | `--chain` (default ethereum, no all), `--limit`, `--timeframe 5m\|10m\|1h\|6h\|24h\|7d\|30d` (default 24h) |
+| `flows`               | Daily token flow time series (inflows/outflows, DEX vs CEX), newest first   | `--token <address>`, `--chain` | `--timeframe 1d\|7d\|30d` (default 30d)                                                                    |
+| `who-bought-sold`     | Top buyers and sellers of a token over the last 30 days by trade volume     | `--token <address>`, `--chain` | `--limit` (1-100, default 20)                                                                              |
+| `signals`             | Nansen risk and reward indicator scores for one token                       | `--token <address>`, `--chain` |                                                                                                            |
+| `transfers`           | Recent transfers of a token (last 30 days), newest first                    | `--token <address>`, `--chain` | `--limit` (1-100, default 20)                                                                              |
+| `historical-holdings` | Daily smart-money holdings snapshots over the last 30 days, newest first    | none                           | `--chain ethereum\|base\|bnb\|monad\|solana` (default ethereum, no all), `--limit`, `--token <address>`    |
+| `perp-leaderboard`    | Hyperliquid perp trader PnL leaderboard for one token over the last 30 days | `--token <symbol>` (e.g. BTC)  | `--limit` (1-100, default 20)                                                                              |
+| `address-leaderboard` | Hyperliquid address leaderboard by total PnL over the last 30 days          | none                           | `--limit` (1-100, default 20)                                                                              |
 
 ### Discovery subcommands from other groups
 

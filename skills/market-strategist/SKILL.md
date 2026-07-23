@@ -48,18 +48,21 @@ yourself. There is no backend specialist behind this skill and no `ask` subcomma
 
 All under `tribes-cli market`; every subcommand accepts `--out <file>`. All read-only.
 
-| Subcommand   | Purpose                                               | Required flags | Useful flags                                |
-| ------------ | ----------------------------------------------------- | -------------- | ------------------------------------------- |
-| `global`     | Global market cap, 24h volume, BTC/ETH dominance      | none           |                                             |
-| `defi`       | DeFi market cap, 24h volume, dominance, top coin      | none           |                                             |
-| `history`    | Total market cap + volume time series                 | `--days`       | `1\|7\|14\|30\|90\|180\|365\|max`           |
-| `top`        | Ranked coin table with 1h/24h/7d change               | none           | `--limit` (default 50)                      |
-| `movers`     | Top gainers and losers vs usd                         | none           | `--duration 1h\|24h\|7d\|14d\|30d\|60d\|1y` |
-| `categories` | Category table: mcap, 24h change, volume, top-3 coins | none           | `--limit` (default 50)                      |
-| `new`        | Recently added coins, newest first                    | none           | `--limit` (default 50)                      |
-| `price`      | Quick multi-coin prices + mcap + 24h change           | `--ids`        |                                             |
-| `search`     | Resolve names/symbols to CoinGecko ids                | `--query`      |                                             |
-| `trending`   | Trending coins by search popularity                   | none           |                                             |
+| Subcommand        | Purpose                                                               | Required flags               | Useful flags                                |
+| ----------------- | --------------------------------------------------------------------- | ---------------------------- | ------------------------------------------- |
+| `global`          | Global market cap, 24h volume, BTC/ETH dominance                      | none                         |                                             |
+| `defi`            | DeFi market cap, 24h volume, dominance, top coin                      | none                         |                                             |
+| `history`         | Total market cap + volume time series                                 | `--days`                     | `1\|7\|14\|30\|90\|180\|365\|max`           |
+| `top`             | Ranked coin table with 1h/24h/7d change                               | none                         | `--limit` (default 50)                      |
+| `movers`          | Top gainers and losers vs usd                                         | none                         | `--duration 1h\|24h\|7d\|14d\|30d\|60d\|1y` |
+| `categories`      | Category table: mcap, 24h change, volume, top-3 coins                 | none                         | `--limit` (default 50)                      |
+| `new`             | Recently added coins, newest first                                    | none                         | `--limit` (default 50)                      |
+| `price`           | Quick multi-coin prices + mcap + 24h change                           | `--ids`                      |                                             |
+| `search`          | Resolve names/symbols to CoinGecko ids                                | `--query`                    |                                             |
+| `trending`        | Trending coins by search popularity                                   | none                         |                                             |
+| `platforms`       | Asset platforms (blockchains) with ids for token and contract lookups | none                         | `--limit` 1-500 (default 100)               |
+| `platform-tokens` | Token list for an asset platform: symbol, name, address, decimals     | `--platform` e.g. `ethereum` | `--limit` 1-1000 (default 100)              |
+| `currencies`      | Quote currencies supported by CoinGecko pricing endpoints             | none                         |                                             |
 
 ## Examples
 

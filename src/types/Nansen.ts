@@ -253,6 +253,175 @@ export const NansenPnlSummaryResponseSchema = z.object({
 })
 export type NansenPnlSummaryResponse = z.infer<typeof NansenPnlSummaryResponseSchema>
 
+const NansenFlowRowSchema = z.object({
+  date: z.string(),
+  price_usd: NansenDecimalSchema.nullish(),
+  value_usd: NansenDecimalSchema.nullish(),
+  holders_count: z.number().nullish(),
+  total_inflows_count: z.number().nullish(),
+  total_outflows_count: z.number().nullish(),
+  total_inflows_dex: z.number().nullish(),
+  total_outflows_dex: z.number().nullish(),
+  total_inflows_cex: z.number().nullish(),
+  total_outflows_cex: z.number().nullish()
+})
+
+export const NansenFlowsResponseSchema = z.object({
+  data: z.array(NansenFlowRowSchema).nullish()
+})
+export type NansenFlowsResponse = z.infer<typeof NansenFlowsResponseSchema>
+
+const NansenWhoBoughtSoldRowSchema = z.object({
+  address: z.string(),
+  address_label: z.string().nullish(),
+  bought_token_volume: z.number().nullish(),
+  sold_token_volume: z.number().nullish(),
+  bought_volume_usd: NansenDecimalSchema.nullish(),
+  sold_volume_usd: NansenDecimalSchema.nullish(),
+  trade_volume_usd: NansenDecimalSchema.nullish()
+})
+
+export const NansenWhoBoughtSoldResponseSchema = z.object({
+  data: z.array(NansenWhoBoughtSoldRowSchema).nullish()
+})
+export type NansenWhoBoughtSoldResponse = z.infer<typeof NansenWhoBoughtSoldResponseSchema>
+
+const NansenIndicatorRowSchema = z.object({
+  indicator_type: z.string(),
+  score: z.string().nullish(),
+  signal: z.number().nullish(),
+  last_trigger_on: z.string().nullish()
+})
+
+export const NansenIndicatorsResponseSchema = z.object({
+  token_address: z.string().nullish(),
+  chain: z.string().nullish(),
+  risk_indicators: z.array(NansenIndicatorRowSchema).nullish(),
+  reward_indicators: z.array(NansenIndicatorRowSchema).nullish()
+})
+export type NansenIndicatorsResponse = z.infer<typeof NansenIndicatorsResponseSchema>
+
+const NansenTransferRowSchema = z.object({
+  block_timestamp: z.string().nullish(),
+  transaction_hash: z.string().nullish(),
+  from_address: z.string().nullish(),
+  to_address: z.string().nullish(),
+  from_address_label: z.string().nullish(),
+  to_address_label: z.string().nullish(),
+  transfer_amount: z.number().nullish(),
+  transfer_value_usd: NansenDecimalSchema.nullish()
+})
+
+export const NansenTransfersResponseSchema = z.object({
+  data: z.array(NansenTransferRowSchema).nullish()
+})
+export type NansenTransfersResponse = z.infer<typeof NansenTransfersResponseSchema>
+
+const NansenHistoricalHoldingRowSchema = z.object({
+  date: z.string().nullish(),
+  chain: z.string().nullish(),
+  token_address: z.string(),
+  token_symbol: z.string().nullish(),
+  balance: z.number().nullish(),
+  value_usd: NansenDecimalSchema.nullish(),
+  holders_count: z.number().nullish(),
+  share_of_holdings_percent: z.number().nullish(),
+  market_cap_usd: NansenDecimalSchema.nullish()
+})
+
+export const NansenHistoricalHoldingsResponseSchema = z.object({
+  data: z.array(NansenHistoricalHoldingRowSchema).nullish()
+})
+export type NansenHistoricalHoldingsResponse = z.infer<
+  typeof NansenHistoricalHoldingsResponseSchema
+>
+
+const NansenPerpPnlLeaderboardRowSchema = z.object({
+  trader_address: z.string(),
+  trader_address_label: z.string().nullish(),
+  pnl_usd_realised: NansenDecimalSchema.nullish(),
+  pnl_usd_unrealised: NansenDecimalSchema.nullish(),
+  pnl_usd_total: NansenDecimalSchema.nullish(),
+  roi_percent_total: z.number().nullish(),
+  position_value_usd: NansenDecimalSchema.nullish(),
+  nof_trades: z.number().nullish()
+})
+
+export const NansenPerpPnlLeaderboardResponseSchema = z.object({
+  data: z.array(NansenPerpPnlLeaderboardRowSchema).nullish()
+})
+export type NansenPerpPnlLeaderboardResponse = z.infer<
+  typeof NansenPerpPnlLeaderboardResponseSchema
+>
+
+const NansenAddressLeaderboardRowSchema = z.object({
+  trader_address: z.string(),
+  trader_address_label: z.string().nullish(),
+  total_pnl: NansenDecimalSchema.nullish(),
+  roi: z.number().nullish(),
+  account_value: NansenDecimalSchema.nullish()
+})
+
+export const NansenAddressLeaderboardResponseSchema = z.object({
+  data: z.array(NansenAddressLeaderboardRowSchema).nullish()
+})
+export type NansenAddressLeaderboardResponse = z.infer<
+  typeof NansenAddressLeaderboardResponseSchema
+>
+
+const NansenHistoricalBalanceRowSchema = z.object({
+  block_timestamp: z.string().nullish(),
+  chain: z.string().nullish(),
+  token_address: z.string(),
+  token_symbol: z.string().nullish(),
+  token_amount: z.number().nullish(),
+  value_usd: NansenDecimalSchema.nullish()
+})
+
+export const NansenHistoricalBalancesResponseSchema = z.object({
+  data: z.array(NansenHistoricalBalanceRowSchema).nullish()
+})
+export type NansenHistoricalBalancesResponse = z.infer<
+  typeof NansenHistoricalBalancesResponseSchema
+>
+
+const NansenDefiTokenRowSchema = z.object({
+  symbol: z.string().nullish(),
+  position_type: z.string().nullish(),
+  amount: z.number().nullish(),
+  value_usd: NansenDecimalSchema.nullish()
+})
+
+const NansenDefiProtocolRowSchema = z.object({
+  protocol_name: z.string().nullish(),
+  chain: z.string().nullish(),
+  total_value_usd: NansenDecimalSchema.nullish(),
+  total_assets_usd: NansenDecimalSchema.nullish(),
+  total_debts_usd: NansenDecimalSchema.nullish(),
+  total_rewards_usd: NansenDecimalSchema.nullish(),
+  tokens: z.array(NansenDefiTokenRowSchema).nullish()
+})
+
+export const NansenDefiHoldingsResponseSchema = z.object({
+  summary: z
+    .object({
+      total_value_usd: NansenDecimalSchema.nullish(),
+      total_assets_usd: NansenDecimalSchema.nullish(),
+      total_debts_usd: NansenDecimalSchema.nullish(),
+      total_rewards_usd: NansenDecimalSchema.nullish(),
+      protocol_count: z.number().nullish(),
+      token_count: z.number().nullish()
+    })
+    .nullish(),
+  protocols: z.array(NansenDefiProtocolRowSchema).nullish()
+})
+export type NansenDefiHoldingsResponse = z.infer<typeof NansenDefiHoldingsResponseSchema>
+
+export const NansenEntitySearchResponseSchema = z.object({
+  data: z.array(z.object({ entity_name: z.string() })).nullish()
+})
+export type NansenEntitySearchResponse = z.infer<typeof NansenEntitySearchResponseSchema>
+
 // ---------------------------------------------------------------------------
 // Agent-facing output shapes printed by `tribes-cli smart-money` and
 // `tribes-cli wallet-data`.
@@ -263,6 +432,9 @@ export type NansenTokenListTimeframe = z.infer<typeof NansenTokenListTimeframeSc
 
 export const NansenFlowTimeframeSchema = z.enum(['5m', '1h', '6h', '12h', '1d', '7d'])
 export type NansenFlowTimeframe = z.infer<typeof NansenFlowTimeframeSchema>
+
+export const NansenFlowsWindowSchema = z.enum(['1d', '7d', '30d'])
+export type NansenFlowsWindow = z.infer<typeof NansenFlowsWindowSchema>
 
 const SmartMoneyNetflowTokenSchema = z.object({
   chain: z.string().nullish(),
@@ -540,6 +712,186 @@ export const WalletPnlSummarySchema = z.object({
 })
 export type WalletPnlSummary = z.infer<typeof WalletPnlSummarySchema>
 
+const TokenFlowRowSchema = z.object({
+  date: z.string(),
+  price_usd: z.number().nullish(),
+  value_usd: z.number().nullish(),
+  holders_count: z.number().nullish(),
+  inflows_count: z.number().nullish(),
+  outflows_count: z.number().nullish(),
+  inflows_dex: z.number().nullish(),
+  outflows_dex: z.number().nullish(),
+  inflows_cex: z.number().nullish(),
+  outflows_cex: z.number().nullish()
+})
+
+export const TokenFlowsSchema = z.object({
+  source: z.literal('nansen'),
+  chain: z.string(),
+  token: z.string(),
+  timeframe: NansenFlowsWindowSchema,
+  flows: z.array(TokenFlowRowSchema)
+})
+export type TokenFlows = z.infer<typeof TokenFlowsSchema>
+
+const TokenWhoBoughtSoldRowSchema = z.object({
+  address: z.string(),
+  label: z.string().nullish(),
+  bought_amount: z.number().nullish(),
+  sold_amount: z.number().nullish(),
+  bought_usd: z.number().nullish(),
+  sold_usd: z.number().nullish(),
+  trade_usd: z.number().nullish()
+})
+
+export const TokenWhoBoughtSoldSchema = z.object({
+  source: z.literal('nansen'),
+  chain: z.string(),
+  token: z.string(),
+  traders: z.array(TokenWhoBoughtSoldRowSchema)
+})
+export type TokenWhoBoughtSold = z.infer<typeof TokenWhoBoughtSoldSchema>
+
+const TokenSignalRowSchema = z.object({
+  indicator: z.string(),
+  score: z.string().nullish(),
+  signal: z.number().nullish(),
+  last_trigger_on: z.string().nullish()
+})
+
+export const TokenSignalsSchema = z.object({
+  source: z.literal('nansen'),
+  chain: z.string(),
+  token: z.string(),
+  risk: z.array(TokenSignalRowSchema),
+  reward: z.array(TokenSignalRowSchema)
+})
+export type TokenSignals = z.infer<typeof TokenSignalsSchema>
+
+const TokenTransferRowSchema = z.object({
+  time: z.string().nullish(),
+  tx_hash: z.string().nullish(),
+  from: z.string().nullish(),
+  from_label: z.string().nullish(),
+  to: z.string().nullish(),
+  to_label: z.string().nullish(),
+  amount: z.number().nullish(),
+  value_usd: z.number().nullish()
+})
+
+export const TokenTransfersSchema = z.object({
+  source: z.literal('nansen'),
+  chain: z.string(),
+  token: z.string(),
+  transfers: z.array(TokenTransferRowSchema)
+})
+export type TokenTransfers = z.infer<typeof TokenTransfersSchema>
+
+const SmartMoneyHistoricalHoldingRowSchema = z.object({
+  date: z.string().nullish(),
+  chain: z.string().nullish(),
+  address: z.string(),
+  symbol: z.string().nullish(),
+  balance: z.number().nullish(),
+  value_usd: z.number().nullish(),
+  holders_count: z.number().nullish(),
+  share_of_holdings_pct: z.number().nullish(),
+  market_cap_usd: z.number().nullish()
+})
+
+export const SmartMoneyHistoricalHoldingsSchema = z.object({
+  source: z.literal('nansen'),
+  chain: z.string(),
+  holdings: z.array(SmartMoneyHistoricalHoldingRowSchema)
+})
+export type SmartMoneyHistoricalHoldings = z.infer<typeof SmartMoneyHistoricalHoldingsSchema>
+
+const TokenPerpPnlLeaderboardRowSchema = z.object({
+  address: z.string(),
+  label: z.string().nullish(),
+  pnl_total_usd: z.number().nullish(),
+  pnl_realized_usd: z.number().nullish(),
+  pnl_unrealized_usd: z.number().nullish(),
+  roi_total_pct: z.number().nullish(),
+  position_value_usd: z.number().nullish(),
+  trade_count: z.number().nullish()
+})
+
+export const TokenPerpPnlLeaderboardSchema = z.object({
+  source: z.literal('nansen'),
+  token: z.string(),
+  traders: z.array(TokenPerpPnlLeaderboardRowSchema)
+})
+export type TokenPerpPnlLeaderboard = z.infer<typeof TokenPerpPnlLeaderboardSchema>
+
+const HyperliquidAddressLeaderboardRowSchema = z.object({
+  address: z.string(),
+  label: z.string().nullish(),
+  total_pnl_usd: z.number().nullish(),
+  roi_pct: z.number().nullish(),
+  account_value_usd: z.number().nullish()
+})
+
+export const HyperliquidAddressLeaderboardSchema = z.object({
+  source: z.literal('nansen'),
+  traders: z.array(HyperliquidAddressLeaderboardRowSchema)
+})
+export type HyperliquidAddressLeaderboard = z.infer<typeof HyperliquidAddressLeaderboardSchema>
+
+const WalletHistoricalBalanceRowSchema = z.object({
+  time: z.string().nullish(),
+  chain: z.string().nullish(),
+  token_address: z.string(),
+  symbol: z.string().nullish(),
+  amount: z.number().nullish(),
+  value_usd: z.number().nullish()
+})
+
+export const WalletHistoricalBalancesSchema = z.object({
+  source: z.literal('nansen'),
+  wallet: z.string(),
+  chain: z.string(),
+  balances: z.array(WalletHistoricalBalanceRowSchema)
+})
+export type WalletHistoricalBalances = z.infer<typeof WalletHistoricalBalancesSchema>
+
+const WalletDefiTokenSchema = z.object({
+  symbol: z.string().nullish(),
+  position_type: z.string().nullish(),
+  amount: z.number().nullish(),
+  value_usd: z.number().nullish()
+})
+
+const WalletDefiProtocolRowSchema = z.object({
+  protocol: z.string().nullish(),
+  chain: z.string().nullish(),
+  value_usd: z.number().nullish(),
+  assets_usd: z.number().nullish(),
+  debts_usd: z.number().nullish(),
+  rewards_usd: z.number().nullish(),
+  tokens: z.array(WalletDefiTokenSchema)
+})
+
+export const WalletDefiHoldingsSchema = z.object({
+  source: z.literal('nansen'),
+  wallet: z.string(),
+  total_value_usd: z.number().nullish(),
+  total_assets_usd: z.number().nullish(),
+  total_debts_usd: z.number().nullish(),
+  total_rewards_usd: z.number().nullish(),
+  protocol_count: z.number().nullish(),
+  token_count: z.number().nullish(),
+  protocols: z.array(WalletDefiProtocolRowSchema)
+})
+export type WalletDefiHoldings = z.infer<typeof WalletDefiHoldingsSchema>
+
+export const WalletEntitySearchSchema = z.object({
+  source: z.literal('nansen'),
+  query: z.string(),
+  entities: z.array(z.string())
+})
+export type WalletEntitySearch = z.infer<typeof WalletEntitySearchSchema>
+
 // ---------------------------------------------------------------------------
 // `tribes-cli smart-money` and `tribes-cli wallet-data` command options.
 // ---------------------------------------------------------------------------
@@ -596,6 +948,41 @@ export const WalletDataCommandOptionsSchema = z.object({
 })
 export type WalletDataCommandOptions = z.infer<typeof WalletDataCommandOptionsSchema>
 
+export const SmartMoneyFlowsCommandOptionsSchema = z.object({
+  token: z.string().min(1),
+  chain: z.string().min(1),
+  timeframe: NansenFlowsWindowSchema.nullish(),
+  out: z.string().nullish()
+})
+export type SmartMoneyFlowsCommandOptions = z.infer<typeof SmartMoneyFlowsCommandOptionsSchema>
+
+export const SmartMoneyTokenChainCommandOptionsSchema = z.object({
+  token: z.string().min(1),
+  chain: z.string().min(1),
+  limit: z.number().int().min(1).max(100).nullish(),
+  out: z.string().nullish()
+})
+export type SmartMoneyTokenChainCommandOptions = z.infer<
+  typeof SmartMoneyTokenChainCommandOptionsSchema
+>
+
+export const SmartMoneyPerpLeaderboardCommandOptionsSchema = z.object({
+  token: z.string().min(1),
+  limit: z.number().int().min(1).max(100).nullish(),
+  out: z.string().nullish()
+})
+export type SmartMoneyPerpLeaderboardCommandOptions = z.infer<
+  typeof SmartMoneyPerpLeaderboardCommandOptionsSchema
+>
+
+export const SmartMoneyAddressLeaderboardCommandOptionsSchema = z.object({
+  limit: z.number().int().min(1).max(100).nullish(),
+  out: z.string().nullish()
+})
+export type SmartMoneyAddressLeaderboardCommandOptions = z.infer<
+  typeof SmartMoneyAddressLeaderboardCommandOptionsSchema
+>
+
 export const WalletDataListCommandOptionsSchema = z.object({
   wallet: z.string().min(1),
   chain: z.string().min(1).nullish(),
@@ -603,3 +990,11 @@ export const WalletDataListCommandOptionsSchema = z.object({
   out: z.string().nullish()
 })
 export type WalletDataListCommandOptions = z.infer<typeof WalletDataListCommandOptionsSchema>
+
+export const WalletDataEntitySearchCommandOptionsSchema = z.object({
+  query: z.string().min(2),
+  out: z.string().nullish()
+})
+export type WalletDataEntitySearchCommandOptions = z.infer<
+  typeof WalletDataEntitySearchCommandOptionsSchema
+>

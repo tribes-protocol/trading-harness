@@ -58,17 +58,23 @@ yourself. There is no backend specialist behind this skill.
 Under `tribes-cli token-data`; every subcommand accepts `--out <file>` and (unless noted)
 `--chain <chain>` (default `solana`). All read-only.
 
-| Subcommand         | Purpose                                          | Required flags                                         | Useful flags                    |
-| ------------------ | ------------------------------------------------ | ------------------------------------------------------ | ------------------------------- |
-| `price`            | Multi-token prices with 24h change and liquidity | `--addresses` (comma-separated)                        |                                 |
-| `overview`         | Price, mcap, liquidity, volume, holders, trades  | `--address`                                            |                                 |
-| `security`         | Top-holder %, owner/creator, mint/freeze flags   | `--address`                                            |                                 |
-| `holders`          | Top token holders                                | `--address`                                            | `--limit` 1-100 (default 20)    |
-| `trades`           | Recent swaps for a token, newest first           | `--address`                                            | `--limit` 1-50 (default 20)     |
-| `trending`         | Trending tokens ranked by BirdEye                | none                                                   | `--limit` 1-20 (default 20)     |
-| `new-listings`     | Newly listed tokens with initial liquidity       | none                                                   | `--limit` 1-20 (default 10)     |
-| `ohlcv`            | OHLCV candles (t in epoch ms)                    | `--address`, `--timeframe 1m\|5m\|15m\|1H\|4H\|1D\|1W` | `--from`/`--to` (epoch seconds) |
-| `wallet-portfolio` | Wallet token balances with USD values            | `--wallet`                                             |                                 |
+| Subcommand         | Purpose                                                                | Required flags                                         | Useful flags                                                                                                |
+| ------------------ | ---------------------------------------------------------------------- | ------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------- |
+| `price`            | Multi-token prices with 24h change and liquidity                       | `--addresses` (comma-separated)                        |                                                                                                             |
+| `overview`         | Price, mcap, liquidity, volume, holders, trades                        | `--address`                                            |                                                                                                             |
+| `security`         | Top-holder %, owner/creator, mint/freeze flags                         | `--address`                                            |                                                                                                             |
+| `holders`          | Top token holders                                                      | `--address`                                            | `--limit` 1-100 (default 20)                                                                                |
+| `trades`           | Recent swaps for a token, newest first                                 | `--address`                                            | `--limit` 1-50 (default 20)                                                                                 |
+| `trending`         | Trending tokens ranked by BirdEye                                      | none                                                   | `--limit` 1-20 (default 20)                                                                                 |
+| `new-listings`     | Newly listed tokens with initial liquidity                             | none                                                   | `--limit` 1-20 (default 10)                                                                                 |
+| `ohlcv`            | OHLCV candles (t in epoch ms)                                          | `--address`, `--timeframe 1m\|5m\|15m\|1H\|4H\|1D\|1W` | `--from`/`--to` (epoch seconds)                                                                             |
+| `wallet-portfolio` | Wallet token balances with USD values                                  | `--wallet`                                             |                                                                                                             |
+| `mint-burn`        | Mint/burn transactions for supply-change analysis, newest first        | `--address`                                            | `--limit` 1-100 (default 20)                                                                                |
+| `creation-info`    | Creation info: creator, deploy tx, creation time                       | `--address`                                            |                                                                                                             |
+| `exit-liquidity`   | Estimated exit liquidity for multiple tokens                           | `--addresses` (comma-separated)                        | `--chain` (default `base`; endpoint is Base-only)                                                           |
+| `trade-history`    | Windowed trade-activity totals: buys/sells and USD volumes             | `--address`                                            | `--time-frame` `1m\|5m\|30m\|1h\|2h\|4h\|8h\|24h\|3d\|7d\|14d\|30d\|90d\|180d\|1y\|alltime` (default `24h`) |
+| `trade-data`       | Aggregated 24h trade metrics for multiple tokens                       | `--addresses` (comma-separated)                        |                                                                                                             |
+| `transfer-total`   | Aggregate transfer totals over all history (Solana only; no `--chain`) | `--address`                                            |                                                                                                             |
 
 Companion commands (same JSON + `--out` contract):
 

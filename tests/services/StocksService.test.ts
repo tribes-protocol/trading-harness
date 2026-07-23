@@ -4,6 +4,7 @@ import { StocksService } from '@/services/StocksService'
 import { ensureJsonTreeString } from '@/utils/Lang'
 
 const TEST_MARKETSTACK_KEY = 'test-marketstack-key'
+const TEST_MASSIVE_KEY = 'test-massive-key'
 const TEST_API_BASE = 'https://api.tribes.test'
 const TEST_BEARER_TOKEN = 'test-bearer-token'
 
@@ -17,9 +18,13 @@ function jsonResponse(payload: unknown, status = 200): Response {
   })
 }
 
-function makeService(apiKey = TEST_MARKETSTACK_KEY): StocksService {
+function makeService(
+  apiKey = TEST_MARKETSTACK_KEY,
+  massiveApiKey = TEST_MASSIVE_KEY
+): StocksService {
   return new StocksService({
     apiKey,
+    massiveApiKey,
     apiBaseUrl: TEST_API_BASE,
     apiBearerToken: TEST_BEARER_TOKEN
   })
@@ -253,6 +258,138 @@ describe('StocksService', () => {
     if (error instanceof Error) {
       expect(error.message).toContain('Stocks proxy /stocks/snapshot/NOPE failed: 404 Not Found')
       expect(error.message).not.toContain(TEST_BEARER_TOKEN)
+    }
+  })
+
+  it('shapes the market status and sends the Massive bearer key', async () => {
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      jsonResponse({
+        market: 'extended-hours',
+        serverTime: '2026-07-23T08:12:00-04:00',
+        earlyHours: true,
+        afterHours: false,
+        exchanges: { nasdaq: 'extended-hours', nyse: 'extended-hours', otc: 'closed' },
+        currencies: { fx: 'open', crypto: 'open' }
+      })
+    )
+
+    const result = await makeService().getMarketStatus()
+
+    expect(result).toEqual({
+      source: 'massive',
+      market: 'extended-hours',
+      server_time: '2026-07-23T08:12:00-04:00',
+      after_hours: false,
+      early_hours: true
+    })
+
+    const requestUrl = new URL(String(fetchSpy.mock.calls[0]?.[0]))
+    expect(requestUrl.origin).toBe('https://api.massive.com')
+    expect(requestUrl.pathname).toBe('/v1/marketstatus/now')
+    expect(fetchSpy.mock.calls[0]?.[1]?.headers).toMatchObject({
+      Authorization: `Bearer ${TEST_MASSIVE_KEY}`
+    })
+  })
+
+  it('fetches both directions for movers, trims rows, and applies the limit', async () => {
+    const gainer = (ticker: string, change: number) => ({
+      ticker,
+      todaysChange: change,
+      todaysChangePerc: change / 2,
+      updated: 1784560000000000000,
+      day: { o: 1, h: 2, l: 0.5, c: 1.5, v: 1000 },
+      lastTrade: { p: 1.6, s: 10 },
+      prevDay: { c: 1.0 }
+    })
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockImplementation((input) => {
+      const url = new URL(String(input))
+      const direction = url.pathname.endsWith('/gainers') ? 'GUP' : 'LDN'
+      return Promise.resolve(
+        jsonResponse({
+          status: 'OK',
+          tickers: [
+            gainer(`${direction}1`, 4),
+            gainer(`${direction}2`, 3),
+            gainer(`${direction}3`, 2)
+          ]
+        })
+      )
+    })
+
+    const result = await makeService().getMovers({ direction: 'both', limit: 2 })
+
+    expect(result).toEqual({
+      source: 'massive',
+      direction: 'both',
+      gainers: [
+        { symbol: 'GUP1', price: 1.6, change: 4, change_pct: 2, volume: 1000 },
+        { symbol: 'GUP2', price: 1.6, change: 3, change_pct: 1.5, volume: 1000 }
+      ],
+      losers: [
+        { symbol: 'LDN1', price: 1.6, change: 4, change_pct: 2, volume: 1000 },
+        { symbol: 'LDN2', price: 1.6, change: 3, change_pct: 1.5, volume: 1000 }
+      ]
+    })
+
+    const paths = fetchSpy.mock.calls.map((call) => new URL(String(call[0])).pathname).sort()
+    expect(paths).toEqual([
+      '/v2/snapshot/locale/us/markets/stocks/gainers',
+      '/v2/snapshot/locale/us/markets/stocks/losers'
+    ])
+    expect(fetchSpy.mock.calls[0]?.[1]?.headers).toMatchObject({
+      Authorization: `Bearer ${TEST_MASSIVE_KEY}`
+    })
+  })
+
+  it('fetches a single direction for movers and falls back to the day close price', async () => {
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      jsonResponse({
+        status: 'OK',
+        tickers: [
+          { ticker: 'DOWN', todaysChange: -5.2, todaysChangePerc: -12.4, day: { c: 36.7, v: 900 } }
+        ]
+      })
+    )
+
+    const result = await makeService().getMovers({ direction: 'losers', limit: 10 })
+
+    expect(result).toEqual({
+      source: 'massive',
+      direction: 'losers',
+      gainers: null,
+      losers: [{ symbol: 'DOWN', price: 36.7, change: -5.2, change_pct: -12.4, volume: 900 }]
+    })
+    expect(fetchSpy).toHaveBeenCalledTimes(1)
+    expect(new URL(String(fetchSpy.mock.calls[0]?.[0])).pathname).toBe(
+      '/v2/snapshot/locale/us/markets/stocks/losers'
+    )
+  })
+
+  it('throws the Massive unavailable message without calling fetch when the key is unset', async () => {
+    const fetchSpy = vi.spyOn(globalThis, 'fetch')
+
+    await expect(makeService(TEST_MARKETSTACK_KEY, '').getMarketStatus()).rejects.toThrow(
+      'MASSIVE_API_KEY is not set — `stocks market-status` and `stocks movers` are unavailable on this box'
+    )
+    await expect(
+      makeService(TEST_MARKETSTACK_KEY, '').getMovers({ direction: 'both', limit: 10 })
+    ).rejects.toThrow('MASSIVE_API_KEY is not set')
+    expect(fetchSpy).not.toHaveBeenCalled()
+  })
+
+  it('throws on Massive errors without leaking the key', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response('{"status":"NOT_AUTHORIZED"}', { status: 401, statusText: 'Unauthorized' })
+    )
+
+    const error = await makeService()
+      .getMarketStatus()
+      .catch((caught: unknown) => caught)
+
+    expect(error).toBeInstanceOf(Error)
+    if (error instanceof Error) {
+      expect(error.message).toContain('Massive /v1/marketstatus/now failed: 401 Unauthorized')
+      expect(error.message).not.toContain(TEST_MASSIVE_KEY)
     }
   })
 })

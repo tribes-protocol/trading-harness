@@ -1,46 +1,77 @@
 import type {
+  HyperliquidAddressLeaderboard,
+  NansenFlowsWindow,
   NansenFlowTimeframe,
   NansenTokenListTimeframe,
   SmartMoneyDcas,
   SmartMoneyDexTrades,
+  SmartMoneyHistoricalHoldings,
   SmartMoneyHoldings,
   SmartMoneyNetflows,
   SmartMoneyPerpTrades,
   SmartMoneyTokenList,
   TokenFlowIntelligence,
+  TokenFlows,
+  TokenPerpPnlLeaderboard,
   TokenPnlLeaderboard,
+  TokenSignals,
+  TokenTransfers,
+  TokenWhoBoughtSold,
   WalletBalances,
   WalletCounterparties,
+  WalletDefiHoldings,
+  WalletEntitySearch,
+  WalletHistoricalBalances,
   WalletLabels,
   WalletPnlSummary,
   WalletRelatedWallets,
   WalletTransactions
 } from '@/types/Nansen'
 import {
+  HyperliquidAddressLeaderboardSchema,
+  NansenAddressLeaderboardResponseSchema,
   NansenBalancesResponseSchema,
   NansenCounterpartiesResponseSchema,
   NansenDcasResponseSchema,
+  NansenDefiHoldingsResponseSchema,
   NansenDexTradesResponseSchema,
+  NansenEntitySearchResponseSchema,
   NansenFlowIntelligenceResponseSchema,
+  NansenFlowsResponseSchema,
+  NansenHistoricalBalancesResponseSchema,
+  NansenHistoricalHoldingsResponseSchema,
   NansenHoldingsResponseSchema,
+  NansenIndicatorsResponseSchema,
   NansenLabelsResponseSchema,
   NansenNetflowResponseSchema,
+  NansenPerpPnlLeaderboardResponseSchema,
   NansenPerpTradesResponseSchema,
   NansenPnlLeaderboardResponseSchema,
   NansenPnlSummaryResponseSchema,
   NansenRelatedWalletsResponseSchema,
   NansenTokenScreenerResponseSchema,
   NansenTransactionsResponseSchema,
+  NansenTransfersResponseSchema,
+  NansenWhoBoughtSoldResponseSchema,
   SmartMoneyDcasSchema,
   SmartMoneyDexTradesSchema,
+  SmartMoneyHistoricalHoldingsSchema,
   SmartMoneyHoldingsSchema,
   SmartMoneyNetflowsSchema,
   SmartMoneyPerpTradesSchema,
   SmartMoneyTokenListSchema,
   TokenFlowIntelligenceSchema,
+  TokenFlowsSchema,
+  TokenPerpPnlLeaderboardSchema,
   TokenPnlLeaderboardSchema,
+  TokenSignalsSchema,
+  TokenTransfersSchema,
+  TokenWhoBoughtSoldSchema,
   WalletBalancesSchema,
   WalletCounterpartiesSchema,
+  WalletDefiHoldingsSchema,
+  WalletEntitySearchSchema,
+  WalletHistoricalBalancesSchema,
   WalletLabelsSchema,
   WalletPnlSummarySchema,
   WalletRelatedWalletsSchema,
@@ -130,11 +161,70 @@ type GetPnlSummaryParams = {
   readonly chain: string
 }
 
+type GetScreenerParams = {
+  readonly chain: string
+  readonly limit: number
+  readonly timeframe: NansenTokenListTimeframe
+}
+
+type GetFlowsParams = {
+  readonly chain: string
+  readonly tokenAddress: string
+  readonly timeframe: NansenFlowsWindow
+}
+
+type GetWhoBoughtSoldParams = {
+  readonly chain: string
+  readonly tokenAddress: string
+  readonly limit: number
+}
+
+type GetSignalsParams = {
+  readonly chain: string
+  readonly tokenAddress: string
+}
+
+type GetTransfersParams = {
+  readonly chain: string
+  readonly tokenAddress: string
+  readonly limit: number
+}
+
+type GetHistoricalHoldingsParams = {
+  readonly chain: string
+  readonly limit: number
+  readonly tokenAddress: string | null
+}
+
+type GetPerpPnlLeaderboardParams = {
+  readonly tokenSymbol: string
+  readonly limit: number
+}
+
+type GetAddressLeaderboardParams = {
+  readonly limit: number
+}
+
+type GetHistoricalBalancesParams = {
+  readonly wallet: string
+  readonly chain: string
+  readonly limit: number
+}
+
+type GetDefiHoldingsParams = {
+  readonly wallet: string
+}
+
+type GetEntitySearchParams = {
+  readonly query: string
+}
+
 const NANSEN_BASE_URL = 'https://api.nansen.ai'
 const NANSEN_KEY_HEADER = 'apiKey'
 const ERROR_BODY_MAX_CHARS = 300
 const LOOKBACK_DAYS = 30
 const MS_PER_DAY = 24 * 60 * 60 * 1000
+const FLOWS_WINDOW_DAYS: Record<NansenFlowsWindow, number> = { '1d': 1, '7d': 7, '30d': 30 }
 
 export class NansenService {
   private readonly apiKey: string
@@ -517,6 +607,289 @@ export class NansenService {
     })
   }
 
+  async getScreener(params: GetScreenerParams): Promise<SmartMoneyTokenList> {
+    const raw = await this.post('/api/v1/token-screener', {
+      chains: [params.chain],
+      timeframe: params.timeframe,
+      pagination: { page: 1, per_page: params.limit },
+      order_by: [{ field: 'volume', direction: 'DESC' }]
+    })
+    const parsed = NansenTokenScreenerResponseSchema.parse(raw)
+    return SmartMoneyTokenListSchema.parse({
+      source: 'nansen',
+      chain: params.chain,
+      timeframe: params.timeframe,
+      tokens: (parsed.data ?? []).map((row) => ({
+        chain: row.chain,
+        address: row.token_address,
+        symbol: row.token_symbol,
+        price_usd: this.asFiniteNumber(row.price_usd),
+        price_change_pct: row.price_change,
+        market_cap_usd: this.asFiniteNumber(row.market_cap_usd),
+        liquidity_usd: row.liquidity,
+        volume_usd: row.volume,
+        buy_volume_usd: row.buy_volume,
+        sell_volume_usd: row.sell_volume,
+        netflow_usd: row.netflow,
+        traders: row.nof_traders,
+        buyers: row.nof_buyers,
+        sellers: row.nof_sellers,
+        token_age_days: row.token_age_days
+      }))
+    })
+  }
+
+  async getFlows(params: GetFlowsParams): Promise<TokenFlows> {
+    const raw = await this.post('/api/v1/tgm/flows', {
+      chain: params.chain,
+      token_address: params.tokenAddress,
+      date: this.lookbackRange(FLOWS_WINDOW_DAYS[params.timeframe]),
+      order_by: [{ field: 'date', direction: 'DESC' }]
+    })
+    const parsed = NansenFlowsResponseSchema.parse(raw)
+    return TokenFlowsSchema.parse({
+      source: 'nansen',
+      chain: params.chain,
+      token: params.tokenAddress,
+      timeframe: params.timeframe,
+      flows: (parsed.data ?? []).map((row) => ({
+        date: row.date,
+        price_usd: this.asFiniteNumber(row.price_usd),
+        value_usd: this.asFiniteNumber(row.value_usd),
+        holders_count: row.holders_count,
+        inflows_count: row.total_inflows_count,
+        outflows_count: row.total_outflows_count,
+        inflows_dex: row.total_inflows_dex,
+        outflows_dex: row.total_outflows_dex,
+        inflows_cex: row.total_inflows_cex,
+        outflows_cex: row.total_outflows_cex
+      }))
+    })
+  }
+
+  async getWhoBoughtSold(params: GetWhoBoughtSoldParams): Promise<TokenWhoBoughtSold> {
+    const raw = await this.post('/api/v1/tgm/who-bought-sold', {
+      chain: params.chain,
+      token_address: params.tokenAddress,
+      date: this.lookbackDateRange(),
+      pagination: { page: 1, per_page: params.limit },
+      order_by: [{ field: 'trade_volume_usd', direction: 'DESC' }]
+    })
+    const parsed = NansenWhoBoughtSoldResponseSchema.parse(raw)
+    return TokenWhoBoughtSoldSchema.parse({
+      source: 'nansen',
+      chain: params.chain,
+      token: params.tokenAddress,
+      traders: (parsed.data ?? []).map((row) => ({
+        address: row.address,
+        label: row.address_label,
+        bought_amount: row.bought_token_volume,
+        sold_amount: row.sold_token_volume,
+        bought_usd: this.asFiniteNumber(row.bought_volume_usd),
+        sold_usd: this.asFiniteNumber(row.sold_volume_usd),
+        trade_usd: this.asFiniteNumber(row.trade_volume_usd)
+      }))
+    })
+  }
+
+  async getSignals(params: GetSignalsParams): Promise<TokenSignals> {
+    const raw = await this.post('/api/v1/tgm/indicators', {
+      chain: params.chain,
+      token_address: params.tokenAddress
+    })
+    const parsed = NansenIndicatorsResponseSchema.parse(raw)
+    const toSignal = (row: {
+      indicator_type: string
+      score?: string | null
+      signal?: number | null
+      last_trigger_on?: string | null
+    }): Record<string, unknown> => ({
+      indicator: row.indicator_type,
+      score: row.score,
+      signal: row.signal,
+      last_trigger_on: row.last_trigger_on
+    })
+    return TokenSignalsSchema.parse({
+      source: 'nansen',
+      chain: params.chain,
+      token: params.tokenAddress,
+      risk: (parsed.risk_indicators ?? []).map(toSignal),
+      reward: (parsed.reward_indicators ?? []).map(toSignal)
+    })
+  }
+
+  async getTransfers(params: GetTransfersParams): Promise<TokenTransfers> {
+    const raw = await this.post('/api/v1/tgm/transfers', {
+      chain: params.chain,
+      token_address: params.tokenAddress,
+      date: this.lookbackDateRange(),
+      pagination: { page: 1, per_page: params.limit },
+      order_by: [{ field: 'block_timestamp', direction: 'DESC' }]
+    })
+    const parsed = NansenTransfersResponseSchema.parse(raw)
+    return TokenTransfersSchema.parse({
+      source: 'nansen',
+      chain: params.chain,
+      token: params.tokenAddress,
+      transfers: (parsed.data ?? []).map((row) => ({
+        time: row.block_timestamp,
+        tx_hash: row.transaction_hash,
+        from: row.from_address,
+        from_label: row.from_address_label,
+        to: row.to_address,
+        to_label: row.to_address_label,
+        amount: row.transfer_amount,
+        value_usd: this.asFiniteNumber(row.transfer_value_usd)
+      }))
+    })
+  }
+
+  async getHistoricalHoldings(
+    params: GetHistoricalHoldingsParams
+  ): Promise<SmartMoneyHistoricalHoldings> {
+    const body: Record<string, unknown> = {
+      chains: [params.chain],
+      date_range: this.lookbackDateRange(),
+      pagination: { page: 1, per_page: params.limit },
+      order_by: [{ field: 'date', direction: 'DESC' }]
+    }
+    if (!isNullish(params.tokenAddress)) {
+      body.filters = { token_address: params.tokenAddress }
+    }
+    const raw = await this.post('/api/v1/smart-money/historical-holdings', body)
+    const parsed = NansenHistoricalHoldingsResponseSchema.parse(raw)
+    return SmartMoneyHistoricalHoldingsSchema.parse({
+      source: 'nansen',
+      chain: params.chain,
+      holdings: (parsed.data ?? []).map((row) => ({
+        date: row.date,
+        chain: row.chain,
+        address: row.token_address,
+        symbol: row.token_symbol,
+        balance: row.balance,
+        value_usd: this.asFiniteNumber(row.value_usd),
+        holders_count: row.holders_count,
+        share_of_holdings_pct: row.share_of_holdings_percent,
+        market_cap_usd: this.asFiniteNumber(row.market_cap_usd)
+      }))
+    })
+  }
+
+  async getPerpPnlLeaderboard(
+    params: GetPerpPnlLeaderboardParams
+  ): Promise<TokenPerpPnlLeaderboard> {
+    const raw = await this.post('/api/v1/tgm/perp-pnl-leaderboard', {
+      token_symbol: params.tokenSymbol,
+      date: this.lookbackDateRange(),
+      pagination: { page: 1, per_page: params.limit },
+      order_by: [{ field: 'pnl_usd_total', direction: 'DESC' }]
+    })
+    const parsed = NansenPerpPnlLeaderboardResponseSchema.parse(raw)
+    return TokenPerpPnlLeaderboardSchema.parse({
+      source: 'nansen',
+      token: params.tokenSymbol,
+      traders: (parsed.data ?? []).map((row) => ({
+        address: row.trader_address,
+        label: row.trader_address_label,
+        pnl_total_usd: this.asFiniteNumber(row.pnl_usd_total),
+        pnl_realized_usd: this.asFiniteNumber(row.pnl_usd_realised),
+        pnl_unrealized_usd: this.asFiniteNumber(row.pnl_usd_unrealised),
+        roi_total_pct: row.roi_percent_total,
+        position_value_usd: this.asFiniteNumber(row.position_value_usd),
+        trade_count: row.nof_trades
+      }))
+    })
+  }
+
+  async getAddressLeaderboard(
+    params: GetAddressLeaderboardParams
+  ): Promise<HyperliquidAddressLeaderboard> {
+    const raw = await this.post('/api/v1/perp-leaderboard', {
+      date: this.lookbackDateRange(),
+      pagination: { page: 1, per_page: params.limit },
+      order_by: [{ field: 'total_pnl', direction: 'DESC' }]
+    })
+    const parsed = NansenAddressLeaderboardResponseSchema.parse(raw)
+    return HyperliquidAddressLeaderboardSchema.parse({
+      source: 'nansen',
+      traders: (parsed.data ?? []).map((row) => ({
+        address: row.trader_address,
+        label: row.trader_address_label,
+        total_pnl_usd: this.asFiniteNumber(row.total_pnl),
+        roi_pct: row.roi,
+        account_value_usd: this.asFiniteNumber(row.account_value)
+      }))
+    })
+  }
+
+  async getHistoricalBalances(
+    params: GetHistoricalBalancesParams
+  ): Promise<WalletHistoricalBalances> {
+    const raw = await this.post('/api/v1/profiler/address/historical-balances', {
+      address: params.wallet,
+      chain: params.chain,
+      date: this.lookbackDateRange(),
+      filters: { hide_spam_tokens: true },
+      pagination: { page: 1, per_page: params.limit },
+      order_by: [{ field: 'block_timestamp', direction: 'DESC' }]
+    })
+    const parsed = NansenHistoricalBalancesResponseSchema.parse(raw)
+    return WalletHistoricalBalancesSchema.parse({
+      source: 'nansen',
+      wallet: params.wallet,
+      chain: params.chain,
+      balances: (parsed.data ?? []).map((row) => ({
+        time: row.block_timestamp,
+        chain: row.chain,
+        token_address: row.token_address,
+        symbol: row.token_symbol,
+        amount: row.token_amount,
+        value_usd: this.asFiniteNumber(row.value_usd)
+      }))
+    })
+  }
+
+  async getDefiHoldings(params: GetDefiHoldingsParams): Promise<WalletDefiHoldings> {
+    const raw = await this.post('/api/v1/portfolio/defi-holdings', {
+      wallet_address: params.wallet
+    })
+    const parsed = NansenDefiHoldingsResponseSchema.parse(raw)
+    return WalletDefiHoldingsSchema.parse({
+      source: 'nansen',
+      wallet: params.wallet,
+      total_value_usd: this.asFiniteNumber(parsed.summary?.total_value_usd),
+      total_assets_usd: this.asFiniteNumber(parsed.summary?.total_assets_usd),
+      total_debts_usd: this.asFiniteNumber(parsed.summary?.total_debts_usd),
+      total_rewards_usd: this.asFiniteNumber(parsed.summary?.total_rewards_usd),
+      protocol_count: parsed.summary?.protocol_count,
+      token_count: parsed.summary?.token_count,
+      protocols: (parsed.protocols ?? []).map((row) => ({
+        protocol: row.protocol_name,
+        chain: row.chain,
+        value_usd: this.asFiniteNumber(row.total_value_usd),
+        assets_usd: this.asFiniteNumber(row.total_assets_usd),
+        debts_usd: this.asFiniteNumber(row.total_debts_usd),
+        rewards_usd: this.asFiniteNumber(row.total_rewards_usd),
+        tokens: (row.tokens ?? []).map((token) => ({
+          symbol: token.symbol,
+          position_type: token.position_type,
+          amount: token.amount,
+          value_usd: this.asFiniteNumber(token.value_usd)
+        }))
+      }))
+    })
+  }
+
+  async getEntitySearch(params: GetEntitySearchParams): Promise<WalletEntitySearch> {
+    const raw = await this.post('/api/v1/search/entity-name', { search_query: params.query })
+    const parsed = NansenEntitySearchResponseSchema.parse(raw)
+    return WalletEntitySearchSchema.parse({
+      source: 'nansen',
+      query: params.query,
+      entities: (parsed.data ?? []).map((row) => row.entity_name)
+    })
+  }
+
   private async post(path: string, body: Record<string, unknown>): Promise<unknown> {
     if (this.apiKey === '') {
       throw new Error(
@@ -549,6 +922,14 @@ export class NansenService {
     const now = Date.now()
     return {
       from: new Date(now - LOOKBACK_DAYS * MS_PER_DAY).toISOString().slice(0, 10),
+      to: new Date(now).toISOString().slice(0, 10)
+    }
+  }
+
+  private lookbackRange(days: number): { from: string; to: string } {
+    const now = Date.now()
+    return {
+      from: new Date(now - days * MS_PER_DAY).toISOString().slice(0, 10),
       to: new Date(now).toISOString().slice(0, 10)
     }
   }

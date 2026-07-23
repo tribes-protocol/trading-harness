@@ -4,15 +4,21 @@ import { COIN_GECKO_PRO_API_KEY } from '@/common/Env'
 import { writeOutput } from '@/helpers/WriteOutput'
 import { OnchainService } from '@/services/OnchainService'
 import {
+  OnchainCategoriesCommandOptionsSchema,
   OnchainDexesCommandOptionsSchema,
+  OnchainMegafilterCommandOptionsSchema,
   OnchainNetworksCommandOptionsSchema,
   OnchainNewPoolsCommandOptionsSchema,
+  OnchainPairOhlcvCommandOptionsSchema,
   OnchainPoolCommandOptionsSchema,
   OnchainPoolOhlcvCommandOptionsSchema,
+  OnchainPoolsByCategoryCommandOptionsSchema,
   OnchainPoolTradesCommandOptionsSchema,
+  OnchainRecentlyUpdatedCommandOptionsSchema,
   OnchainSearchCommandOptionsSchema,
   OnchainTopPoolsCommandOptionsSchema,
-  OnchainTrendingPoolsCommandOptionsSchema
+  OnchainTrendingPoolsCommandOptionsSchema,
+  OnchainTrendingSearchCommandOptionsSchema
 } from '@/types/Onchain'
 import { ensureJsonTreeString } from '@/utils/Lang'
 
@@ -23,6 +29,9 @@ const DEFAULT_DEXES_LIMIT = 50
 const DEFAULT_POOLS_LIMIT = 20
 const DEFAULT_OHLCV_LIMIT = 100
 const DEFAULT_TRADES_LIMIT = 50
+const DEFAULT_CATEGORIES_LIMIT = 50
+const DEFAULT_TRENDING_SEARCH_LIMIT = 10
+const DEFAULT_RECENT_TOKENS_LIMIT = 50
 
 export function buildOnchainCommand(): Command {
   const service = new OnchainService({ apiKey: COIN_GECKO_PRO_API_KEY })
@@ -184,6 +193,118 @@ export function buildOnchainCommand(): Command {
         output: ensureJsonTreeString(results),
         outPath: request.out ?? undefined
       })
+    })
+
+  program
+    .command('megafilter')
+    .description('Screen pools by FDV, liquidity, and volume floors across networks and DEXes')
+    .option('--networks <networks>', 'Comma-separated network ids, e.g. eth,base')
+    .option('--dexes <dexes>', 'Comma-separated DEX ids, e.g. uniswap_v3')
+    .option('--min-fdv <usd>', 'Minimum fully diluted valuation in USD', (value) => Number(value))
+    .option('--min-liquidity <usd>', 'Minimum pool reserve in USD', (value) => Number(value))
+    .option('--min-volume <usd>', 'Minimum 24h volume in USD', (value) => Number(value))
+    .option('--sort <sort>', 'Sort expression, e.g. h24_volume_usd_desc')
+    .option('--limit <n>', 'Pools to return, 1-20 (default 20)', (value) => Number(value))
+    .option('--out <file>', 'Write output JSON to file')
+    .action(async (options: unknown): Promise<void> => {
+      const request = OnchainMegafilterCommandOptionsSchema.parse(options)
+      const pools = await service.getMegafilterPools({
+        networks: request.networks ?? null,
+        dexes: request.dexes ?? null,
+        minFdv: request.minFdv ?? null,
+        minLiquidity: request.minLiquidity ?? null,
+        minVolume: request.minVolume ?? null,
+        sort: request.sort ?? null,
+        limit: request.limit ?? DEFAULT_POOLS_LIMIT
+      })
+      await writeOutput({ output: ensureJsonTreeString(pools), outPath: request.out ?? undefined })
+    })
+
+  program
+    .command('categories')
+    .description('Onchain pool categories with 24h volume, reserve, FDV, and tx counts')
+    .option('--limit <n>', 'Categories to return, 1-100 (default 50)', (value) => Number(value))
+    .option('--out <file>', 'Write output JSON to file')
+    .action(async (options: unknown): Promise<void> => {
+      const request = OnchainCategoriesCommandOptionsSchema.parse(options)
+      const categories = await service.getCategories({
+        limit: request.limit ?? DEFAULT_CATEGORIES_LIMIT
+      })
+      await writeOutput({
+        output: ensureJsonTreeString(categories),
+        outPath: request.out ?? undefined
+      })
+    })
+
+  program
+    .command('pools-by-category')
+    .description('Pools in one onchain category (id from `onchain categories`)')
+    .requiredOption('--category <category>', 'Category id, e.g. meme, cat-themed')
+    .option('--limit <n>', 'Pools to return, 1-20 (default 20)', (value) => Number(value))
+    .option('--out <file>', 'Write output JSON to file')
+    .action(async (options: unknown): Promise<void> => {
+      const request = OnchainPoolsByCategoryCommandOptionsSchema.parse(options)
+      const pools = await service.getPoolsByCategory({
+        category: request.category,
+        limit: request.limit ?? DEFAULT_POOLS_LIMIT
+      })
+      await writeOutput({ output: ensureJsonTreeString(pools), outPath: request.out ?? undefined })
+    })
+
+  program
+    .command('trending-search')
+    .description('Most-searched pools on GeckoTerminal right now')
+    .option('--limit <n>', 'Pools to return, 1-10 (default 10)', (value) => Number(value))
+    .option('--out <file>', 'Write output JSON to file')
+    .action(async (options: unknown): Promise<void> => {
+      const request = OnchainTrendingSearchCommandOptionsSchema.parse(options)
+      const pools = await service.getTrendingSearchPools({
+        limit: request.limit ?? DEFAULT_TRENDING_SEARCH_LIMIT
+      })
+      await writeOutput({ output: ensureJsonTreeString(pools), outPath: request.out ?? undefined })
+    })
+
+  program
+    .command('pair-ohlcv')
+    .description('Base/quote pair OHLCV candles: base token priced in quote token (t in epoch ms)')
+    .requiredOption('--network <network>', 'Network id, e.g. eth, solana, base')
+    .requiredOption('--pool <address>', 'Pool address')
+    .requiredOption('--base <address>', 'Base token address')
+    .requiredOption('--quote <address>', 'Quote token address (denominates candle prices)')
+    .requiredOption('--timeframe <timeframe>', 'Candle timeframe: minute|hour|day')
+    .option('--aggregate <n>', 'Periods per candle, e.g. 5 for 5m or 4 for 4h', (value) =>
+      Number(value)
+    )
+    .option('--limit <n>', 'Candles to return, 1-1000 (default 100)', (value) => Number(value))
+    .option('--out <file>', 'Write output JSON to file')
+    .action(async (options: unknown): Promise<void> => {
+      const request = OnchainPairOhlcvCommandOptionsSchema.parse(options)
+      const candles = await service.getPairOhlcv({
+        network: request.network,
+        pool: request.pool,
+        base: request.base,
+        quote: request.quote,
+        timeframe: request.timeframe,
+        aggregate: request.aggregate ?? null,
+        limit: request.limit ?? DEFAULT_OHLCV_LIMIT
+      })
+      await writeOutput({
+        output: ensureJsonTreeString(candles),
+        outPath: request.out ?? undefined
+      })
+    })
+
+  program
+    .command('recently-updated')
+    .description('Tokens whose GeckoTerminal metadata was updated most recently')
+    .option('--limit <n>', 'Tokens to return, 1-100 (default 50)', (value) => Number(value))
+    .option('--out <file>', 'Write output JSON to file')
+    .action(async (options: unknown): Promise<void> => {
+      const request = OnchainRecentlyUpdatedCommandOptionsSchema.parse(options)
+      const tokens = await service.getRecentlyUpdatedTokens({
+        limit: request.limit ?? DEFAULT_RECENT_TOKENS_LIMIT
+      })
+      await writeOutput({ output: ensureJsonTreeString(tokens), outPath: request.out ?? undefined })
     })
 
   return program

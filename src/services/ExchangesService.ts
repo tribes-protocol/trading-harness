@@ -9,24 +9,38 @@ import type {
   ExchangeTickerRow,
   ExchangeTickers,
   ExchangeVolumeChart,
-  PublicTreasury
+  PublicTreasury,
+  TreasuryChartDays,
+  TreasuryEntities,
+  TreasuryEntityHoldings,
+  TreasuryHistory,
+  TreasuryHoldingChart
 } from '@/types/Exchanges'
 import {
   CoinGeckoDerivativeRowSchema,
   CoinGeckoDerivativesExchangeRowSchema,
+  CoinGeckoEntityRowSchema,
   CoinGeckoExchangeDetailResponseSchema,
   CoinGeckoExchangeRowSchema,
   CoinGeckoExchangeTickersResponseSchema,
   CoinGeckoExchangeVolumeChartResponseSchema,
+  CoinGeckoTreasuryEntityResponseSchema,
+  CoinGeckoTreasuryHoldingChartResponseSchema,
   CoinGeckoTreasuryResponseSchema,
+  CoinGeckoTreasuryTransactionHistoryResponseSchema,
   DerivativesExchangesSchema,
   DerivativesTickersSchema,
   ExchangeDetailSchema,
   ExchangesListSchema,
   ExchangeTickersSchema,
   ExchangeVolumeChartSchema,
-  PublicTreasurySchema
+  PublicTreasurySchema,
+  TreasuryEntitiesSchema,
+  TreasuryEntityHoldingsSchema,
+  TreasuryHistorySchema,
+  TreasuryHoldingChartSchema
 } from '@/types/Exchanges'
+import { isNullish } from '@/utils/Lang'
 
 type ExchangesServiceParams = {
   readonly apiKey: string
@@ -60,6 +74,26 @@ type DerivativesExchangesParams = {
 
 type TreasuryParams = {
   readonly coin: ExchangesTreasuryCoin
+}
+
+type TreasuryEntitiesParams = {
+  readonly limit: number
+}
+
+type TreasuryEntityParams = {
+  readonly entity: string
+  readonly coin: string | null
+}
+
+type TreasuryChartParams = {
+  readonly entity: string
+  readonly coin: string
+  readonly days: TreasuryChartDays
+}
+
+type TreasuryHistoryParams = {
+  readonly entity: string
+  readonly limit: number
 }
 
 const COINGECKO_PRO_BASE_URL = 'https://pro-api.coingecko.com/'
@@ -193,6 +227,91 @@ export class ExchangesService {
         entry_value_usd: company.total_entry_value_usd,
         current_value_usd: company.total_current_value_usd,
         pct_of_total_supply: company.percentage_of_total_supply
+      }))
+    })
+  }
+
+  async treasuryEntities(params: TreasuryEntitiesParams): Promise<TreasuryEntities> {
+    const raw = await this.fetch('api/v3/entities/list', {
+      per_page: String(params.limit),
+      page: '1'
+    })
+    const rows = CoinGeckoEntityRowSchema.array().parse(raw)
+    return TreasuryEntitiesSchema.parse({
+      source: 'coingecko',
+      entities: rows.map((row) => ({
+        id: row.id,
+        name: row.name,
+        symbol: row.symbol,
+        country: row.country
+      }))
+    })
+  }
+
+  async treasuryEntity(params: TreasuryEntityParams): Promise<TreasuryEntityHoldings> {
+    const raw = await this.fetch(`api/v3/public_treasury/${encodeURIComponent(params.entity)}`, {})
+    const parsed = CoinGeckoTreasuryEntityResponseSchema.parse(raw)
+    // The endpoint has no coin filter, so --coin narrows holdings client-side.
+    const holdings = (parsed.holdings ?? []).filter(
+      (holding) => isNullish(params.coin) || holding.coin_id === params.coin
+    )
+    return TreasuryEntityHoldingsSchema.parse({
+      source: 'coingecko',
+      entity: params.entity,
+      name: parsed.name,
+      type: parsed.type,
+      symbol: parsed.symbol,
+      country: parsed.country,
+      total_value_usd: parsed.total_treasury_value_usd,
+      unrealized_pnl_usd: parsed.unrealized_pnl,
+      holdings: holdings.map((holding) => ({
+        coin_id: holding.coin_id,
+        amount: holding.amount,
+        current_value_usd: holding.current_value_usd,
+        entry_value_usd: holding.total_entry_value_usd,
+        avg_entry_value_usd: holding.average_entry_value_usd,
+        pct_of_total_supply: holding.percentage_of_total_supply,
+        unrealized_pnl_usd: holding.unrealized_pnl
+      }))
+    })
+  }
+
+  async treasuryChart(params: TreasuryChartParams): Promise<TreasuryHoldingChart> {
+    const raw = await this.fetch(
+      `api/v3/public_treasury/${encodeURIComponent(params.entity)}/${encodeURIComponent(params.coin)}/holding_chart`,
+      { days: params.days }
+    )
+    const parsed = CoinGeckoTreasuryHoldingChartResponseSchema.parse(raw)
+    return TreasuryHoldingChartSchema.parse({
+      source: 'coingecko',
+      entity: params.entity,
+      coin: params.coin,
+      days: params.days,
+      holdings: (parsed.holdings ?? []).map((point) => ({ t: point[0], amount: point[1] })),
+      value_usd: (parsed.holding_value_in_usd ?? []).map((point) => ({
+        t: point[0],
+        usd: point[1]
+      }))
+    })
+  }
+
+  async treasuryHistory(params: TreasuryHistoryParams): Promise<TreasuryHistory> {
+    const raw = await this.fetch(
+      `api/v3/public_treasury/${encodeURIComponent(params.entity)}/transaction_history`,
+      { per_page: String(params.limit), page: '1' }
+    )
+    const parsed = CoinGeckoTreasuryTransactionHistoryResponseSchema.parse(raw)
+    return TreasuryHistorySchema.parse({
+      source: 'coingecko',
+      entity: params.entity,
+      transactions: (parsed.transactions ?? []).map((transaction) => ({
+        date: transaction.date,
+        coin_id: transaction.coin_id,
+        type: transaction.type,
+        net_change: transaction.holding_net_change,
+        value_usd: transaction.transaction_value_usd,
+        balance: transaction.holding_balance,
+        avg_entry_value_usd: transaction.average_entry_value_usd
       }))
     })
   }
