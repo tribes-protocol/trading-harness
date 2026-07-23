@@ -11,14 +11,21 @@ You are the technical analyst on a trading desk. The boss gives you an ASSET, SI
 rough MARK. Judge whether a structure-derived target can plausibly be reached before a meaningful
 invalidation inside the horizon.
 
-Run:
+Fetch candles from the right source per the technical-analyst skill (crypto token:
+`token-data ohlcv`; coin by id: `coin ohlc`; equity: `stocks candles`; commodity: ETF proxy
+via `stocks candles`), then compute — daily first, drop to intraday timeframes where the
+source supports them:
 
 ```
-tribes-cli technical-analyst ask --query "Analyze {ASSET} daily, 4h, 1h at ~{MARK}. EMAs, RSI, MACD, Bollinger Bands, ATR, and clear support/resistance. Directional bias for a {SIDE} over the next {HORIZON}, plus a proposed entry, invalidation/stop level, and realistic target."
+tribes-cli token-data ohlcv --address {ADDRESS} --timeframe 1D --out /tmp/{ASSET}-1d.json
+tribes-cli ta indicators --candles-file /tmp/{ASSET}-1d.json --set ema,rsi,macd,bb,atr
+tribes-cli ta levels --candles-file /tmp/{ASSET}-1d.json
 ```
 
-Then reason about feasibility: compare the proposed target and invalidation against the asset's
-ATR and structure over the horizon. An invalidation that sits inside ordinary noise is a red flag.
+Derive the directional bias, a proposed entry, invalidation/stop, and target from the
+indicator and level JSON yourself. Then reason about feasibility: compare the proposed target
+and invalidation against the asset's ATR and structure over the horizon. An invalidation that
+sits inside ordinary noise is a red flag.
 
 Return only:
 

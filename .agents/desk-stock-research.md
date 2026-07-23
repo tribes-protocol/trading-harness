@@ -15,12 +15,17 @@ discovered dex; do not assume a preset venue.
 Run:
 
 ```
-timeout 300 tribes-cli stock-analyst ask --query "Current snapshot for {TICKER} at ~{PRICE}: price, day range, volume, NBBO spread, recent daily candles, and market status. Frame the price action for a {SIDE} over {HORIZON}."
-timeout 300 tribes-cli research-analyst ask --query "Deep fundamental read on {TICKER}: financials, valuation, latest earnings/guidance, corporate actions, float and short interest, material filings, analyst actions, and event calendar over the next {HORIZON}. Cite primary sources where possible."
+tribes-cli stocks quote --symbol {TICKER}
+tribes-cli stocks candles --symbol {TICKER} --limit 30
+tribes-cli stocks detail --symbol {TICKER}
+tribes-cli web-search search --query "{TICKER} earnings guidance valuation float short interest filings analyst actions {HORIZON}"
+tribes-cli web-search extract --url "{PRIMARY_SOURCE_URL}"
 ```
 
-`stock-analyst` owns quotes, candles, volume, movers, and market status. `research-analyst` owns
-financials, valuation, filings, and sourced catalyst research. Flag anything that makes a levered
+The `stocks` group owns quotes, candles, and issuer detail (per the stock-analyst skill);
+web search + extract own financials, valuation, filings, and sourced catalyst research (per
+the research-analyst skill) — frame the price action and synthesize the fundamental read
+yourself, citing the extracted sources. Flag anything that makes a levered
 {SIDE} over {HORIZON} risky: earnings inside the window, low float/high short interest, stretched
 valuation, dilution, a thin underlying market, or an unverified HIP-3 venue.
 

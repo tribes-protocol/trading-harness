@@ -1,90 +1,131 @@
 ---
 name: defi-analyst
 description: >-
-  Expert on DEX activity and liquidity pools. Handles: pool discovery, trending and new pools,
-  pool metrics (TVL, volume, fees), pool OHLCV charts, pool trade activity, pair analysis, DEX
-  rankings by network, threshold-filtered discovery by FDV/liquidity/volume, and pool
-  categories. Call when the pool, pair, or DEX is the subject. NOT for: one token's own price,
-  safety, or trades (use token-analyst); trending-token discovery (use alpha-scout); CEX or
-  derivatives volume (use exchange-analyst); market-wide caps/rankings (use market-strategist).
+  Expert on DEX activity and liquidity pools. Handles: pool discovery and search, trending and
+  new pools, pool metrics (TVL, volume, fees, FDV), pool OHLCV candles, pool trade activity,
+  pair analysis, DEX listings per network, and supported-network lookups. Call when the pool,
+  pair, or DEX is the subject. NOT for: one token's own price, safety, or trades (use
+  token-analyst); trending-token discovery (use alpha-scout); CEX or derivatives volume (use
+  exchange-analyst); market-wide caps/rankings (use market-strategist).
 allowed-tools: bash read
 ---
 
 # Defi Analyst
 
-Backing command group: `tribes-cli defi-analyst`. Sends one natural-language question to the
-DeFi specialist and returns a prose analysis of pools, pairs, and DEX activity.
-Requires: an auth token (run `tribes-cli login` once if commands fail with auth errors).
+Backing command group: `tribes-cli onchain` — CoinGecko Pro / GeckoTerminal DEX and pool data
+as structured JSON, answering in seconds. YOU are the analyst: pull the numbers with the
+subcommands below and do the interpretation — pool quality, liquidity depth, volume trends —
+yourself. There is no backend specialist behind this skill and no `ask` subcommand.
 
 ## When to use
 
-- The subject is a liquidity pool, trading pair, or DEX — details, metrics, charts, trades.
-- Ranking or discovering pools and DEXes by TVL, volume, fees, FDV, or category on a network.
+- The subject is a liquidity pool, trading pair, or DEX — details (`pool`), candles
+  (`pool-ohlcv`), trades (`pool-trades`).
+- Discovering pools: trending (`trending-pools`), newest (`new-pools`), ranked per network or
+  DEX (`top-pools`), by token name/symbol/address (`search`), most-searched right now
+  (`trending-search`), by category (`categories` then `pools-by-category`).
+- Threshold questions (liquidity above $X, FDV below $Y): screen server-side with `megafilter`
+  (`--min-fdv`, `--min-liquidity`, `--min-volume`).
+- Listing DEXes on a network (`dexes`) or supported networks (`networks`).
 - NOT for one token's price, security, or holders — use `token-analyst`.
 - NOT for trending tokens or smart-money discovery — use `alpha-scout`.
 
 ## Hard rules
 
-1. The ONLY flag is `--query` — no `--out`, `--network`, `--limit`, or filter flags. Encode
-   network, DEX, pool address, timeframe, and every TVL/volume/FDV threshold in the query text.
-2. Output is one free-text analysis string on stdout, not JSON.
-3. MUST set a bash timeout of at least 120 seconds (prefer 300) for `ask` (see AGENTS.md).
-4. The CLI calls the API itself — NEVER call the endpoint or curl directly.
-5. Run at most 1–2 refinement `ask` calls when a follow-up serves the original ask (see AGENTS.md).
-6. IF multiple pools match, THEN pick highest TVL with 24h volume above $100k, else ask to re-rank.
-7. Render pool and token addresses shown to the user as tribes.xyz Markdown links (see AGENTS.md).
-8. Before presenting pool findings as trade ideas, apply the Hyperliquid tradability guardrail
+1. Every subcommand prints structured JSON on stdout — parse it, never screen-scrape prose.
+   All subcommands accept `--out <file>` to also write the JSON to a file.
+2. Network ids are GeckoTerminal ids (`eth`, `solana`, `base`) and DEX ids use underscores
+   (`uniswap_v3`) — resolve with `networks` / `dexes` when unsure.
+3. IF multiple pools match, THEN pick highest TVL with 24h volume above $100k, else ask to re-rank.
+4. Render pool and token addresses shown to the user as tribes.xyz Markdown links (see AGENTS.md).
+5. Before presenting pool findings as trade ideas, apply the Hyperliquid tradability guardrail
    (see AGENTS.md).
+6. If a command reports the provider key is not set, the capability is unavailable on this box —
+   report that plainly instead of retrying or working around it.
 
 ## Command reference
 
-| Subcommand | Purpose                                       | Required flags | Read-only or signed |
-| ---------- | --------------------------------------------- | -------------- | ------------------- |
-| `ask`      | Natural-language query to the DeFi specialist | `--query`      | read-only           |
+All under `tribes-cli onchain`; every subcommand accepts `--out <file>`. All read-only.
+
+| Subcommand          | Purpose                                                                     | Required flags                                                              | Useful flags                                                                                                                                                   |
+| ------------------- | --------------------------------------------------------------------------- | --------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `networks`          | Supported onchain networks                                                  | none                                                                        | `--limit` 1-100 (default 50)                                                                                                                                   |
+| `dexes`             | DEXes on a network                                                          | `--network`                                                                 | `--limit` 1-100 (default 50)                                                                                                                                   |
+| `trending-pools`    | Trending pools, all networks or one                                         | none                                                                        | `--network`, `--limit` 1-20 (default 20)                                                                                                                       |
+| `top-pools`         | Top pools on a network, optionally one DEX                                  | `--network`                                                                 | `--dex`, `--limit` 1-20 (default 20)                                                                                                                           |
+| `new-pools`         | Newest pools, all networks or one                                           | none                                                                        | `--network`, `--limit` 1-20 (default 20)                                                                                                                       |
+| `pool`              | One pool: price, FDV, reserve, volume, changes, tx counts                   | `--network`, `--address`                                                    |                                                                                                                                                                |
+| `pool-ohlcv`        | Pool OHLCV candles (t in epoch ms)                                          | `--network`, `--address`, `--timeframe minute\|hour\|day`                   | `--aggregate`, `--limit` 1-1000 (default 100)                                                                                                                  |
+| `pool-trades`       | Recent trades in a pool                                                     | `--network`, `--address`                                                    | `--limit` 1-300 (default 50)                                                                                                                                   |
+| `search`            | Search pools by token name, symbol, or address                              | `--query`                                                                   | `--network`                                                                                                                                                    |
+| `megafilter`        | Screen pools by FDV, liquidity, and volume floors across networks and DEXes | none                                                                        | `--networks`/`--dexes` (comma-separated), `--min-fdv`/`--min-liquidity`/`--min-volume` (USD), `--sort` e.g. `h24_volume_usd_desc`, `--limit` 1-20 (default 20) |
+| `categories`        | Onchain pool categories with 24h volume, reserve, FDV, tx counts            | none                                                                        | `--limit` 1-100 (default 50)                                                                                                                                   |
+| `pools-by-category` | Pools in one onchain category (id from `categories`)                        | `--category` e.g. `meme`                                                    | `--limit` 1-20 (default 20)                                                                                                                                    |
+| `trending-search`   | Most-searched pools on GeckoTerminal right now                              | none                                                                        | `--limit` 1-10 (default 10)                                                                                                                                    |
+| `pair-ohlcv`        | Base/quote pair OHLCV candles: base priced in quote (t in epoch ms)         | `--network`, `--pool`, `--base`, `--quote`, `--timeframe minute\|hour\|day` | `--aggregate`, `--limit` 1-1000 (default 100)                                                                                                                  |
+| `recently-updated`  | Tokens whose GeckoTerminal metadata was updated most recently               | none                                                                        | `--limit` 1-100 (default 50)                                                                                                                                   |
 
 ## Examples
 
 ### Pool details by address
 
 ```bash
-tribes-cli defi-analyst ask --query "Details for pool 0x88e6a0c2ddd26feeb64f039a2c41296fcb3f5640 on uniswap-v3 ethereum: TVL, 24h volume, fees, token composition"
+tribes-cli onchain pool --network eth --address 0x88e6a0c2ddd26feeb64f039a2c41296fcb3f5640
 ```
 
 ### Top pools for a token
 
 ```bash
-tribes-cli defi-analyst ask --query "Top 5 SOL pools on solana by liquidity and 24h volume; compare fee tiers"
+tribes-cli onchain search --query "SOL" --network solana
+tribes-cli onchain pool --network solana --address <top-match-address>
 ```
+
+Pick per hard rule 3, then compare liquidity, 24h volume, and fee/volume ratio yourself.
 
 ### Trending or new pools with thresholds
 
 ```bash
-tribes-cli defi-analyst ask --query "Trending pools on base in the last 24h with liquidity above $500k and FDV below $50M"
+tribes-cli onchain trending-pools --network base --limit 20
+tribes-cli onchain new-pools --network base --limit 20
+tribes-cli onchain megafilter --networks base --min-liquidity 100000 --min-volume 50000 --sort h24_volume_usd_desc
 ```
+
+`megafilter` applies FDV/liquidity/volume floors server-side; use it instead of hand-filtering
+the trending/new lists when thresholds are the question.
 
 ### DEX rankings by network
 
 ```bash
-tribes-cli defi-analyst ask --query "Rank DEXes on arbitrum by 24h volume and list the top 3 pools of the leader"
+tribes-cli onchain dexes --network arbitrum-one
+tribes-cli onchain top-pools --network arbitrum-one --dex uniswap_v3 --limit 10
 ```
+
+Rank DEXes by summing their top pools' volumes; drill into the leader with `--dex`.
 
 ### Pair OHLCV and recent trades
 
 ```bash
-tribes-cli defi-analyst ask --query "Hourly OHLCV for the WETH/USDC 0.05% pool on uniswap-v3 ethereum over the last 3 days, plus notable recent trades"
+tribes-cli onchain pool-ohlcv --network eth --address 0x88e6a0c2ddd26feeb64f039a2c41296fcb3f5640 --timeframe hour --limit 72
+tribes-cli onchain pool-trades --network eth --address 0x88e6a0c2ddd26feeb64f039a2c41296fcb3f5640 --limit 50
 ```
+
+For indicator work on a pool, chain `pool-ohlcv --out candles.json` — or `pair-ohlcv --out`
+for candles denominated in a specific quote token — into `tribes-cli ta`; both write the
+candle contract `ta` consumes. See the `technical-analyst` skill.
 
 ## Error recovery
 
-| Symptom                                  | Action                                                                                              |
-| ---------------------------------------- | --------------------------------------------------------------------------------------------------- |
-| Auth error (unauthorized, expired token) | Run `tribes-cli login`, retry the original command once, then stop and report.                      |
-| Any other API failure                    | Retry the same command once; if it fails again, stop and report the error.                          |
-| Empty or off-topic answer                | Re-ask once with a tighter query (add network, DEX, pool address, timeframe); then stop and report. |
+| Symptom               | Action                                                                                                |
+| --------------------- | ----------------------------------------------------------------------------------------------------- |
+| Key-not-set error     | Provider unconfigured on this box — report it; do not retry or work around.                           |
+| Unknown option error  | Drop the extra flag — see the command reference for each subcommand's flags.                          |
+| Empty results         | Retry once with a broader scope (drop `--network` or `--dex`, widen `--query`); then stop and report. |
+| Any other API failure | Retry the same command once; if it fails again, stop and report the error.                            |
 
 ## Related skills
 
 - `token-analyst` — one token's price, security, trades, holders.
 - `alpha-scout` — trending tokens, new listings, smart-money discovery.
 - `market-strategist` — market-wide caps, dominance, rankings, movers.
-- `technical-analyst` — indicator computation and backtests on OHLCV candles.
+- `technical-analyst` — indicator computation and backtests on OHLCV candles (feed it `pool-ohlcv --out` or `pair-ohlcv --out`).
+- `hyperliquid` — all-dex tradability and venue-quality check before trade ideas.

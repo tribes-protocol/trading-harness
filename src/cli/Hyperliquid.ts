@@ -2,7 +2,10 @@ import { Command } from 'commander'
 
 import { API_BASE_URL, API_BEARER_TOKEN, PRIVY_APP_ID } from '@/common/Env'
 import { writeOutput } from '@/helpers/WriteOutput'
-import { HyperliquidService } from '@/services/HyperliquidService'
+import {
+  HyperliquidOrderBookCommandOptionsSchema,
+  HyperliquidService
+} from '@/services/HyperliquidService'
 import { TransactionService } from '@/services/TransactionService'
 import {
   HyperliquidAdjustMarginCommandOptionsSchema,
@@ -33,6 +36,8 @@ import {
 import { ensureJsonTreeString } from '@/utils/Lang'
 
 const VERSION = '1.0.0'
+
+const DEFAULT_ORDER_BOOK_DEPTH = 10
 
 export function buildHyperliquidCommand(): Command {
   const transactionService = new TransactionService({
@@ -168,6 +173,27 @@ export function buildHyperliquidCommand(): Command {
           : request.allDexes
             ? await hyperliquidService.listAllPerpAssets()
             : await hyperliquidService.listPerpAssets(request.dex)
+      const output = ensureJsonTreeString(response)
+      await writeOutput({
+        output,
+        outPath: request.out ?? undefined
+      })
+    })
+
+  program
+    .command('order-book')
+    .description('L2 order book snapshot for a perp coin')
+    .requiredOption('--coin <coin>', 'Perp symbol (for example: BTC, ETH)')
+    .option('--depth <levels>', 'Levels per side, 1-20 (default 10)', (value) => Number(value))
+    .option('--dex <dex>', 'Perp dex name (main by default)')
+    .option('--out <file>', 'Write output JSON to file')
+    .action(async (options: unknown): Promise<void> => {
+      const request = HyperliquidOrderBookCommandOptionsSchema.parse(options)
+      const response = await hyperliquidService.getOrderBook({
+        coin: request.coin,
+        depth: request.depth ?? DEFAULT_ORDER_BOOK_DEPTH,
+        dex: request.dex
+      })
       const output = ensureJsonTreeString(response)
       await writeOutput({
         output,
