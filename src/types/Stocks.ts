@@ -42,30 +42,21 @@ export const MarketstackTickersResponseSchema = z.object({
 })
 export type MarketstackTickersResponse = z.infer<typeof MarketstackTickersResponseSchema>
 
-// ---------------------------------------------------------------------------
-// Raw control-plane stocks proxy payload (GET /stocks/snapshot/:ticker on the
-// Tribes API, Massive-backed). The API serializes BigNumber fields through
-// toJsonTree, so numeric fields arrive as decimal strings.
-// ---------------------------------------------------------------------------
-
-const StocksProxyNumberSchema = z.union([z.number(), z.string()]).nullish()
-
-export const StocksProxySnapshotSchema = z.object({
-  ticker: z.string(),
-  name: z.string().nullish(),
-  price: StocksProxyNumberSchema,
-  change: StocksProxyNumberSchema,
-  changePercent: StocksProxyNumberSchema,
-  volume: StocksProxyNumberSchema,
-  dayOpen: StocksProxyNumberSchema,
-  dayHigh: StocksProxyNumberSchema,
-  dayLow: StocksProxyNumberSchema,
-  prevClose: StocksProxyNumberSchema,
-  marketCap: StocksProxyNumberSchema,
-  primaryExchange: z.string().nullish(),
-  updated: z.number().nullish()
+// GET /v2/stockprice — real-time price; the docs example returns price as a
+// numeric string, so both forms are accepted and coalesced at mapping time.
+export const MarketstackStockPriceResponseSchema = z.object({
+  data: z
+    .array(
+      z.object({
+        ticker: z.string().nullish(),
+        price: z.union([z.number(), z.string()]).nullish(),
+        currency: z.string().nullish(),
+        trade_last: z.string().nullish()
+      })
+    )
+    .nullish()
 })
-export type StocksProxySnapshot = z.infer<typeof StocksProxySnapshotSchema>
+export type MarketstackStockPriceResponse = z.infer<typeof MarketstackStockPriceResponseSchema>
 
 // ---------------------------------------------------------------------------
 // Agent-facing output shapes printed by `tribes-cli stocks`.
@@ -86,6 +77,15 @@ export const StocksCandlesSchema = z.object({
   candles: z.array(StockCandleSchema)
 })
 export type StocksCandles = z.infer<typeof StocksCandlesSchema>
+
+export const StocksPriceSchema = z.object({
+  source: z.literal('marketstack'),
+  symbol: z.string(),
+  price: z.number().nullish(),
+  currency: z.string().nullish(),
+  trade_last: z.string().nullish()
+})
+export type StocksPrice = z.infer<typeof StocksPriceSchema>
 
 export const StocksDetailSchema = z.object({
   source: z.literal('marketstack'),
@@ -113,24 +113,6 @@ export const StocksSearchResultsSchema = z.object({
   results: z.array(StocksSearchRowSchema)
 })
 export type StocksSearchResults = z.infer<typeof StocksSearchResultsSchema>
-
-export const StocksQuoteSchema = z.object({
-  source: z.literal('massive'),
-  symbol: z.string(),
-  name: z.string().nullish(),
-  price: z.number().nullish(),
-  change: z.number().nullish(),
-  change_pct: z.number().nullish(),
-  volume: z.number().nullish(),
-  day_open: z.number().nullish(),
-  day_high: z.number().nullish(),
-  day_low: z.number().nullish(),
-  prev_close: z.number().nullish(),
-  market_cap: z.number().nullish(),
-  exchange: z.string().nullish(),
-  updated_at: z.number().nullish()
-})
-export type StocksQuote = z.infer<typeof StocksQuoteSchema>
 
 // ---------------------------------------------------------------------------
 // `tribes-cli stocks` command options.
@@ -160,9 +142,3 @@ export const StocksSearchCommandOptionsSchema = z.object({
   out: z.string().nullish()
 })
 export type StocksSearchCommandOptions = z.infer<typeof StocksSearchCommandOptionsSchema>
-
-export const StocksQuoteCommandOptionsSchema = z.object({
-  symbol: z.string().min(1),
-  out: z.string().nullish()
-})
-export type StocksQuoteCommandOptions = z.infer<typeof StocksQuoteCommandOptionsSchema>

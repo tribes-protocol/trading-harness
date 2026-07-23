@@ -59,6 +59,11 @@ All under `tribes-cli coin`; every subcommand accepts `--out <file>`. All read-o
 | `supply`   | Circulating supply time series                               | `--id`, `--days`          | same `--days` windows                    |
 | `rates`    | BTC-relative fiat and crypto exchange rates                  | none                      |                                          |
 
+For candles feeding a `ta` chain — especially cross-asset work mixing contract addresses, coin
+ids, and stock tickers — prefer `tribes-cli asset candles` (generic router, see `asset-data`):
+it accepts any identifier form and writes the same candle contract. `coin ohlc`/`coin chart`
+remain the direct CoinGecko path for research deliverables.
+
 ## Examples
 
 ### Full coin profile with supply trend

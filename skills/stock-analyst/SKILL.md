@@ -1,26 +1,34 @@
 ---
 name: stock-analyst
 description: >-
-  Expert on stock market DATA. Handles: live snapshot quotes (price, change, day range, volume,
-  market cap), daily OHLCV candles, ticker profiles (name, sector, industry, exchange), and
-  company/ticker search. Call for any stock/equity data question. NOT for: indicator values,
-  signals, or backtests (use technical-analyst); stock news, catalysts, and sentiment (use
-  news); executing stock trades (use hyperliquid — stocks are Hyperliquid perps); crypto movers
-  or rankings (use market-strategist).
+  Expert on stock market DATA. Handles: daily OHLCV candles, ticker profiles (name, sector,
+  industry, exchange), and company/ticker search. NO live quotes, movers, or market open/closed
+  status — the freshest price is the latest daily close from candles; say so plainly. Call for
+  any stock/equity data question. NOT for: indicator values, signals, or backtests (use
+  technical-analyst); stock news, catalysts, and sentiment (use news); executing stock trades
+  (use hyperliquid — stocks are Hyperliquid perps); crypto movers or rankings (use
+  market-strategist).
 allowed-tools: bash read
 ---
 
 # Stock Analyst
 
-Backing command group: `tribes-cli stocks` — Marketstack and the Tribes stocks proxy as
-structured JSON, answering in seconds. YOU are the analyst: pull the numbers with the
-subcommands below and do the interpretation — trend reads, day-move context, comparisons —
-yourself. There is no backend specialist behind this skill and no `ask` subcommand.
+Backing command group: `tribes-cli stocks` — Marketstack as structured JSON, answering in
+seconds. YOU are the analyst: pull the numbers with the subcommands below and do the
+interpretation — trend reads, day-move context, comparisons — yourself. There is no backend
+specialist behind this skill and no `ask` subcommand.
 
 ## When to use
 
-- Live snapshot quote for a ticker (`quote`), daily OHLCV history (`candles`), ticker
-  profile (`detail`), resolving a company name to a ticker (`search`).
+- Daily OHLCV history for a ticker (`candles`), ticker profile (`detail`), resolving a
+  company name to a ticker (`search`).
+- There is NO top-movers or market open/closed command, and no live quote in this group.
+  The freshest figure here is the latest daily close from `candles` — relay it as such,
+  never as a live quote. A near-live single-symbol price IS available via
+  `tribes-cli asset price --ticker <SYMBOL>` (generic router, see `asset-data`); its
+  upstream is rate-limited, and when throttled it falls back to the latest daily close
+  marked `stale: true` — relay staleness either way. That is the only extra: for movers or
+  market-status questions, still say the data is not available here.
 - NOT for indicator values, signals, backtests, or any indicator math — use
   `technical-analyst`: run `stocks candles --out <file>` here, then feed the file to
   `tribes-cli ta`.
@@ -34,8 +42,8 @@ yourself. There is no backend specialist behind this skill and no `ask` subcomma
    All subcommands accept `--out <file>` to also write the JSON to a file.
 2. Symbols are stock tickers (`AAPL`, not "Apple") — resolve company names with
    `stocks search` first when unsure.
-3. Candles are daily EOD only (`--interval` supports only `1d`). For intraday questions use
-   `quote` and say the granularity you actually have.
+3. Candles are daily EOD only (`--interval` supports only `1d`). There is no intraday
+   candle data — always state that candle figures are end-of-day closes.
 4. Relay exact figures with the timeframe and direction of change, never approximations.
 5. For unscoped movers/discovery requests, also run crypto via `market-strategist` and
    commodities via `commodity-analyst` (cross-asset guardrail, see AGENTS.md).
@@ -49,22 +57,24 @@ yourself. There is no backend specialist behind this skill and no `ask` subcomma
 
 All under `tribes-cli stocks`; every subcommand accepts `--out <file>`. All read-only.
 
-| Subcommand | Purpose                                                     | Required flags | Useful flags                                                                           | Source              |
-| ---------- | ----------------------------------------------------------- | -------------- | -------------------------------------------------------------------------------------- | ------------------- |
-| `candles`  | Daily OHLCV candles for a symbol                            | `--symbol`     | `--from`/`--to` (YYYY-MM-DD), `--limit` 1-1000 (default 100), `--interval` (only `1d`) | Marketstack         |
-| `detail`   | Ticker profile: name, sector, industry, exchange            | `--symbol`     |                                                                                        | Marketstack         |
-| `search`   | Resolve company names/symbols to stock tickers              | `--query`      | `--limit` 1-100 (default 20)                                                           | Marketstack         |
-| `quote`    | Live snapshot: price, change, day range, volume, market cap | `--symbol`     |                                                                                        | Tribes stocks proxy |
+| Subcommand | Purpose                                          | Required flags | Useful flags                                                                           | Source      |
+| ---------- | ------------------------------------------------ | -------------- | -------------------------------------------------------------------------------------- | ----------- |
+| `candles`  | Daily OHLCV candles for a symbol                 | `--symbol`     | `--from`/`--to` (YYYY-MM-DD), `--limit` 1-1000 (default 100), `--interval` (only `1d`) | Marketstack |
+| `detail`   | Ticker profile: name, sector, industry, exchange | `--symbol`     |                                                                                        | Marketstack |
+| `search`   | Resolve company names/symbols to stock tickers   | `--query`      | `--limit` 1-100 (default 20)                                                           | Marketstack |
 
 ## Examples
 
-### Price and day-move check
+### Latest price check (daily close)
 
 ```bash
-tribes-cli stocks quote --symbol AAPL
+tribes-cli stocks candles --symbol AAPL --limit 2
 ```
 
-Relay price, change and change %, day range, volume, and market cap with direction.
+Relay the latest close, the change vs the prior close, and the date of that close — state
+explicitly it is an end-of-day figure, not a live quote. For a near-live figure use
+`tribes-cli asset price --ticker AAPL` instead (rate-limited upstream; falls back to the
+latest daily close marked `stale: true`).
 
 ### Candles over a timeframe
 
@@ -88,16 +98,17 @@ tribes-cli stocks candles --symbol MSFT --limit 200 --out /tmp/msft-candles.json
 tribes-cli ta indicators --candles-file /tmp/msft-candles.json --set rsi,macd,ema
 ```
 
-For signals, levels, or backtests on the same file, use `technical-analyst`.
+`tribes-cli asset candles --ticker MSFT --out /tmp/msft-candles.json` is the equivalent
+generic-router fetch — same candle contract, same downstream `ta` use. For signals, levels,
+or backtests on the same file, use `technical-analyst`.
 
 ## Error recovery
 
-| Symptom                              | Action                                                                         |
-| ------------------------------------ | ------------------------------------------------------------------------------ |
-| `MARKETSTACK_API_KEY is not set`     | Provider unconfigured on this box — report it; do not retry or work around.    |
-| Auth error on `quote` (stocks proxy) | Run `tribes-cli login`, retry the original command once, then stop and report. |
-| Unknown option error                 | Drop the extra flag — see the command reference for each subcommand's flags.   |
-| Any other API failure                | Retry the same command once; if it fails again, stop and report the error.     |
+| Symptom                          | Action                                                                       |
+| -------------------------------- | ---------------------------------------------------------------------------- |
+| `MARKETSTACK_API_KEY is not set` | Provider unconfigured on this box — report it; do not retry or work around.  |
+| Unknown option error             | Drop the extra flag — see the command reference for each subcommand's flags. |
+| Any other API failure            | Retry the same command once; if it fails again, stop and report the error.   |
 
 ## Related skills
 

@@ -1,12 +1,11 @@
 import { Command } from 'commander'
 
-import { API_BASE_URL, API_BEARER_TOKEN, MARKETSTACK_API_KEY } from '@/common/Env'
+import { MARKETSTACK_API_KEY } from '@/common/Env'
 import { writeOutput } from '@/helpers/WriteOutput'
 import { StocksService } from '@/services/StocksService'
 import {
   StocksCandlesCommandOptionsSchema,
   StocksDetailCommandOptionsSchema,
-  StocksQuoteCommandOptionsSchema,
   StocksSearchCommandOptionsSchema
 } from '@/types/Stocks'
 import { ensureJsonTreeString } from '@/utils/Lang'
@@ -17,16 +16,10 @@ const DEFAULT_CANDLES_LIMIT = 100
 const DEFAULT_SEARCH_LIMIT = 20
 
 export function buildStocksCommand(): Command {
-  const service = new StocksService({
-    apiKey: MARKETSTACK_API_KEY,
-    apiBaseUrl: API_BASE_URL,
-    apiBearerToken: API_BEARER_TOKEN
-  })
+  const service = new StocksService({ apiKey: MARKETSTACK_API_KEY })
 
   const program = new Command('stocks')
-  program
-    .description('Stock market data from Marketstack and the Tribes stocks proxy (structured JSON)')
-    .version(VERSION)
+  program.description('Stock market data from Marketstack (structured JSON)').version(VERSION)
 
   program
     .command('candles')
@@ -78,17 +71,6 @@ export function buildStocksCommand(): Command {
         output: ensureJsonTreeString(results),
         outPath: request.out ?? undefined
       })
-    })
-
-  program
-    .command('quote')
-    .description('Live snapshot quote: price, day range, change, volume')
-    .requiredOption('--symbol <symbol>', 'Stock ticker, e.g. AAPL')
-    .option('--out <file>', 'Write output JSON to file')
-    .action(async (options: unknown): Promise<void> => {
-      const request = StocksQuoteCommandOptionsSchema.parse(options)
-      const quote = await service.getQuote({ symbol: request.symbol })
-      await writeOutput({ output: ensureJsonTreeString(quote), outPath: request.out ?? undefined })
     })
 
   return program

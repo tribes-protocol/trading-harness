@@ -116,6 +116,37 @@ export const CoinGeckoSearchResponseSchema = z.object({
 })
 export type CoinGeckoSearchResponse = z.infer<typeof CoinGeckoSearchResponseSchema>
 
+export const CoinGeckoAssetPlatformRowSchema = z.object({
+  id: z.string(),
+  chain_identifier: z.number().nullish(),
+  name: z.string().nullish(),
+  shortname: z.string().nullish(),
+  native_coin_id: z.string().nullish()
+})
+export type CoinGeckoAssetPlatformRow = z.infer<typeof CoinGeckoAssetPlatformRowSchema>
+
+// tokenlists.org format served from /token_lists/{asset_platform_id}/all.json.
+export const CoinGeckoTokenListResponseSchema = z.object({
+  name: z.string().nullish(),
+  timestamp: z.string().nullish(),
+  tokens: z
+    .array(
+      z.object({
+        address: z.string().nullish(),
+        symbol: z.string().nullish(),
+        name: z.string().nullish(),
+        decimals: z.number().nullish()
+      })
+    )
+    .nullish()
+})
+export type CoinGeckoTokenListResponse = z.infer<typeof CoinGeckoTokenListResponseSchema>
+
+export const CoinGeckoSupportedCurrenciesResponseSchema = z.array(z.string())
+export type CoinGeckoSupportedCurrenciesResponse = z.infer<
+  typeof CoinGeckoSupportedCurrenciesResponseSchema
+>
+
 export const CoinGeckoTrendingResponseSchema = z.object({
   coins: z
     .array(
@@ -265,6 +296,22 @@ export const MarketPricesSchema = z.object({
 })
 export type MarketPrices = z.infer<typeof MarketPricesSchema>
 
+const MarketTokenPriceRowSchema = z.object({
+  address: z.string(),
+  price_usd: z.number().nullish(),
+  market_cap_usd: z.number().nullish(),
+  volume_24h_usd: z.number().nullish(),
+  change_24h_pct: z.number().nullish(),
+  updated_at: z.number().nullish()
+})
+
+export const MarketTokenPricesSchema = z.object({
+  source: z.literal('coingecko'),
+  platform: z.string(),
+  prices: z.array(MarketTokenPriceRowSchema)
+})
+export type MarketTokenPrices = z.infer<typeof MarketTokenPricesSchema>
+
 const MarketSearchCoinSchema = z.object({
   id: z.string(),
   symbol: z.string().nullish(),
@@ -293,6 +340,43 @@ export const MarketTrendingSchema = z.object({
   coins: z.array(MarketTrendingCoinSchema)
 })
 export type MarketTrending = z.infer<typeof MarketTrendingSchema>
+
+const MarketPlatformRowSchema = z.object({
+  id: z.string(),
+  name: z.string().nullish(),
+  chain_id: z.number().nullish(),
+  shortname: z.string().nullish(),
+  native_coin_id: z.string().nullish()
+})
+
+export const MarketPlatformsSchema = z.object({
+  source: z.literal('coingecko'),
+  platforms: z.array(MarketPlatformRowSchema)
+})
+export type MarketPlatforms = z.infer<typeof MarketPlatformsSchema>
+
+const MarketPlatformTokenRowSchema = z.object({
+  symbol: z.string().nullish(),
+  name: z.string().nullish(),
+  address: z.string().nullish(),
+  decimals: z.number().nullish()
+})
+
+export const MarketPlatformTokensSchema = z.object({
+  source: z.literal('coingecko'),
+  platform: z.string(),
+  list_name: z.string().nullish(),
+  updated_at: z.string().nullish(),
+  total_tokens: z.number(),
+  tokens: z.array(MarketPlatformTokenRowSchema)
+})
+export type MarketPlatformTokens = z.infer<typeof MarketPlatformTokensSchema>
+
+export const MarketSupportedCurrenciesSchema = z.object({
+  source: z.literal('coingecko'),
+  currencies: z.array(z.string())
+})
+export type MarketSupportedCurrencies = z.infer<typeof MarketSupportedCurrenciesSchema>
 
 // ---------------------------------------------------------------------------
 // `tribes-cli market` command options.
@@ -344,3 +428,23 @@ export const MarketSearchCommandOptionsSchema = z.object({
   out: z.string().nullish()
 })
 export type MarketSearchCommandOptions = z.infer<typeof MarketSearchCommandOptionsSchema>
+
+export const MarketPlatformsCommandOptionsSchema = z.object({
+  limit: z.number().int().min(1).max(500).nullish(),
+  out: z.string().nullish()
+})
+export type MarketPlatformsCommandOptions = z.infer<typeof MarketPlatformsCommandOptionsSchema>
+
+export const MarketPlatformTokensCommandOptionsSchema = z.object({
+  platform: z.string().min(1),
+  limit: z.number().int().min(1).max(1000).nullish(),
+  out: z.string().nullish()
+})
+export type MarketPlatformTokensCommandOptions = z.infer<
+  typeof MarketPlatformTokensCommandOptionsSchema
+>
+
+export const MarketCurrenciesCommandOptionsSchema = z.object({
+  out: z.string().nullish()
+})
+export type MarketCurrenciesCommandOptions = z.infer<typeof MarketCurrenciesCommandOptionsSchema>

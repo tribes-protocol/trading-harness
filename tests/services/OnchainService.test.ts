@@ -355,6 +355,438 @@ describe('OnchainService', () => {
     expect(requestUrl.searchParams.get('network')).toBe('polygon_pos')
   })
 
+  it('maps megafilter floors to CoinGecko param names and shapes pools', async () => {
+    const fetchSpy = vi
+      .spyOn(globalThis, 'fetch')
+      .mockResolvedValue(jsonResponse({ data: [poolPayload()] }))
+
+    const result = await makeService().getMegafilterPools({
+      networks: 'eth,base',
+      dexes: 'uniswap_v3',
+      minFdv: 1000000,
+      minLiquidity: 500000,
+      minVolume: 250000,
+      sort: 'h24_volume_usd_desc',
+      limit: 20
+    })
+
+    expect(result.source).toBe('geckoterminal')
+    expect(result.pools[0]?.address).toBe('0xa374094527e1673a86de625aa59517c5de346d32')
+
+    const requestUrl = new URL(String(fetchSpy.mock.calls[0]?.[0]))
+    expect(requestUrl.pathname).toBe('/api/v3/onchain/pools/megafilter')
+    expect(requestUrl.searchParams.get('networks')).toBe('eth,base')
+    expect(requestUrl.searchParams.get('dexes')).toBe('uniswap_v3')
+    expect(requestUrl.searchParams.get('fdv_usd_min')).toBe('1000000')
+    expect(requestUrl.searchParams.get('reserve_in_usd_min')).toBe('500000')
+    expect(requestUrl.searchParams.get('h24_volume_usd_min')).toBe('250000')
+    expect(requestUrl.searchParams.get('sort')).toBe('h24_volume_usd_desc')
+  })
+
+  it('omits unset megafilter params', async () => {
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(jsonResponse({ data: [] }))
+
+    await makeService().getMegafilterPools({
+      networks: null,
+      dexes: null,
+      minFdv: null,
+      minLiquidity: null,
+      minVolume: null,
+      sort: null,
+      limit: 20
+    })
+
+    const requestUrl = new URL(String(fetchSpy.mock.calls[0]?.[0]))
+    expect([...requestUrl.searchParams.keys()]).toEqual([])
+  })
+
+  it('shapes onchain categories with decimal-string metrics', async () => {
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      jsonResponse({
+        data: [
+          {
+            id: 'meme',
+            type: 'category',
+            attributes: {
+              name: 'Meme',
+              h24_volume_usd: '1200000.5',
+              reserve_in_usd: '890000000.25',
+              fdv_usd: '31000000000',
+              h24_tx_count: 145230
+            }
+          },
+          { id: 'ai', type: 'category', attributes: { name: 'AI' } }
+        ]
+      })
+    )
+
+    const result = await makeService().getCategories({ limit: 1 })
+
+    expect(result).toEqual({
+      source: 'geckoterminal',
+      categories: [
+        {
+          id: 'meme',
+          name: 'Meme',
+          volume_24h_usd: 1200000.5,
+          reserve_usd: 890000000.25,
+          fdv_usd: 31000000000,
+          tx_24h: 145230
+        }
+      ]
+    })
+
+    const requestUrl = new URL(String(fetchSpy.mock.calls[0]?.[0]))
+    expect(requestUrl.pathname).toBe('/api/v3/onchain/categories')
+  })
+
+  it('routes pools-by-category and echoes the category', async () => {
+    const fetchSpy = vi
+      .spyOn(globalThis, 'fetch')
+      .mockResolvedValue(jsonResponse({ data: [poolPayload()] }))
+
+    const result = await makeService().getPoolsByCategory({ category: 'meme', limit: 20 })
+
+    expect(result.category).toBe('meme')
+    expect(result.pools[0]?.dex).toBe('uniswap_v3')
+
+    const requestUrl = new URL(String(fetchSpy.mock.calls[0]?.[0]))
+    expect(requestUrl.pathname).toBe('/api/v3/onchain/categories/meme/pools')
+  })
+
+  it('requests trending-search pools with the pools count param', async () => {
+    const fetchSpy = vi
+      .spyOn(globalThis, 'fetch')
+      .mockResolvedValue(jsonResponse({ data: [poolPayload()] }))
+
+    const result = await makeService().getTrendingSearchPools({ limit: 5 })
+
+    expect(result.pools).toHaveLength(1)
+
+    const requestUrl = new URL(String(fetchSpy.mock.calls[0]?.[0]))
+    expect(requestUrl.pathname).toBe('/api/v3/onchain/pools/trending_search')
+    expect(requestUrl.searchParams.get('pools')).toBe('5')
+  })
+
+  it('prices pair-ohlcv in the quote token and emits the shared candle contract', async () => {
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      jsonResponse({
+        data: {
+          id: 'ohlcv',
+          type: 'ohlcv_request_response',
+          attributes: {
+            ohlcv_list: [[1712880000, 0.021, 0.023, 0.0205, 0.0225, 152000.4]]
+          }
+        }
+      })
+    )
+
+    const result = await makeService().getPairOhlcv({
+      network: 'eth',
+      pool: '0xpool',
+      base: '0xbase',
+      quote: '0xquote',
+      timeframe: 'hour',
+      aggregate: 4,
+      limit: 100
+    })
+
+    expect(result).toEqual({
+      source: 'geckoterminal',
+      candles: [{ t: 1712880000000, o: 0.021, h: 0.023, l: 0.0205, c: 0.0225, v: 152000.4 }]
+    })
+
+    const requestUrl = new URL(String(fetchSpy.mock.calls[0]?.[0]))
+    expect(requestUrl.pathname).toBe('/api/v3/onchain/networks/eth/pools/0xpool/ohlcv/hour')
+    expect(requestUrl.searchParams.get('token')).toBe('0xbase')
+    expect(requestUrl.searchParams.get('currency')).toBe('token')
+    expect(requestUrl.searchParams.get('aggregate')).toBe('4')
+    expect(requestUrl.searchParams.get('limit')).toBe('100')
+  })
+
+  it('shapes recently updated tokens with a network parsed off the id', async () => {
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      jsonResponse({
+        data: [
+          {
+            id: 'polygon_pos_0xtoken',
+            type: 'token',
+            attributes: {
+              address: '0xtoken',
+              name: 'Example',
+              symbol: 'EXM',
+              coingecko_coin_id: 'example',
+              gt_score: 71.5,
+              metadata_updated_at: '2026-07-22T10:00:00Z'
+            }
+          },
+          { id: 'eth_0xother', type: 'token', attributes: { symbol: 'OTH' } }
+        ]
+      })
+    )
+
+    const result = await makeService().getRecentlyUpdatedTokens({ limit: 1 })
+
+    expect(result).toEqual({
+      source: 'geckoterminal',
+      tokens: [
+        {
+          network: 'polygon_pos',
+          address: '0xtoken',
+          name: 'Example',
+          symbol: 'EXM',
+          coingecko_id: 'example',
+          gt_score: 71.5,
+          updated_at: '2026-07-22T10:00:00Z'
+        }
+      ]
+    })
+
+    const requestUrl = new URL(String(fetchSpy.mock.calls[0]?.[0]))
+    expect(requestUrl.pathname).toBe('/api/v3/onchain/tokens/info_recently_updated')
+  })
+
+  it('keeps simple token price rows in request order and drops unknown addresses', async () => {
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      jsonResponse({
+        data: {
+          id: 'simple-token-price',
+          type: 'simple_token_price',
+          attributes: {
+            token_prices: { '0xtoken': '3454.61', '0xother': '0.5212' },
+            market_cap_usd: { '0xtoken': '415000000000' },
+            h24_volume_usd: { '0xtoken': '9800000000.5' },
+            h24_price_change_percentage: { '0xtoken': '-1.41' }
+          }
+        }
+      })
+    )
+
+    const result = await makeService().getSimpleTokenPrices({
+      network: 'eth',
+      addresses: ['0xToken', '0xother', '0xmissing']
+    })
+
+    expect(result).toEqual({
+      source: 'geckoterminal',
+      network: 'eth',
+      prices: [
+        {
+          address: '0xToken',
+          price_usd: 3454.61,
+          market_cap_usd: 415000000000,
+          volume_24h_usd: 9800000000.5,
+          change_24h_pct: -1.41
+        },
+        {
+          address: '0xother',
+          price_usd: 0.5212,
+          market_cap_usd: null,
+          volume_24h_usd: null,
+          change_24h_pct: null
+        }
+      ]
+    })
+
+    const requestUrl = new URL(String(fetchSpy.mock.calls[0]?.[0]))
+    expect(requestUrl.pathname).toBe(
+      '/api/v3/onchain/simple/networks/eth/token_price/0xToken,0xother,0xmissing'
+    )
+    expect(requestUrl.searchParams.get('include_market_cap')).toBe('true')
+    expect(requestUrl.searchParams.get('include_24hr_vol')).toBe('true')
+    expect(requestUrl.searchParams.get('include_24hr_price_change')).toBe('true')
+    expect(fetchSpy.mock.calls[0]?.[1]?.headers).toMatchObject({
+      'x-cg-pro-api-key': TEST_API_KEY
+    })
+  })
+
+  it('maps token ohlcv rows into the shared candle contract with epoch-ms timestamps', async () => {
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      jsonResponse({
+        data: {
+          id: 'ohlcv',
+          type: 'ohlcv_request_response',
+          attributes: {
+            ohlcv_list: [
+              [1712880000, 3454.61, 3660.85, 3417.91, 3660.85, 306823.277],
+              [1712793600, 3401.12, 3470.0, 3388.5, 3454.61, 281004.9]
+            ]
+          }
+        }
+      })
+    )
+
+    const result = await makeService().getTokenOhlcv({
+      network: 'eth',
+      address: '0xtoken',
+      timeframe: 'day',
+      aggregate: 1,
+      limit: 2,
+      beforeTimestamp: 1712966400
+    })
+
+    expect(result).toEqual({
+      source: 'geckoterminal',
+      candles: [
+        { t: 1712880000000, o: 3454.61, h: 3660.85, l: 3417.91, c: 3660.85, v: 306823.277 },
+        { t: 1712793600000, o: 3401.12, h: 3470.0, l: 3388.5, c: 3454.61, v: 281004.9 }
+      ]
+    })
+
+    const requestUrl = new URL(String(fetchSpy.mock.calls[0]?.[0]))
+    expect(requestUrl.pathname).toBe('/api/v3/onchain/networks/eth/tokens/0xtoken/ohlcv/day')
+    expect(requestUrl.searchParams.get('aggregate')).toBe('1')
+    expect(requestUrl.searchParams.get('limit')).toBe('2')
+    expect(requestUrl.searchParams.get('before_timestamp')).toBe('1712966400')
+    expect(fetchSpy.mock.calls[0]?.[1]?.headers).toMatchObject({
+      'x-cg-pro-api-key': TEST_API_KEY
+    })
+  })
+
+  it('flattens the token snapshot from JSON:API attributes', async () => {
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      jsonResponse({
+        data: {
+          id: 'eth_0xtoken',
+          type: 'token',
+          attributes: {
+            address: '0xtoken',
+            name: 'Wrapped Ether',
+            symbol: 'WETH',
+            price_usd: '3454.61',
+            fdv_usd: '10400000000',
+            market_cap_usd: '10100000000',
+            volume_usd: { h24: '9800000000.5' },
+            total_reserve_in_usd: '85000000.25'
+          }
+        }
+      })
+    )
+
+    const result = await makeService().getTokenSnapshot({ network: 'eth', address: '0xtoken' })
+
+    expect(result).toEqual({
+      source: 'geckoterminal',
+      network: 'eth',
+      address: '0xtoken',
+      name: 'Wrapped Ether',
+      symbol: 'WETH',
+      price_usd: 3454.61,
+      fdv_usd: 10400000000,
+      market_cap_usd: 10100000000,
+      volume_24h_usd: 9800000000.5,
+      total_reserve_usd: 85000000.25
+    })
+
+    const requestUrl = new URL(String(fetchSpy.mock.calls[0]?.[0]))
+    expect(requestUrl.pathname).toBe('/api/v3/onchain/networks/eth/tokens/0xtoken')
+    expect(fetchSpy.mock.calls[0]?.[1]?.headers).toMatchObject({
+      'x-cg-pro-api-key': TEST_API_KEY
+    })
+  })
+
+  it('shapes token info with socials, compacted websites, and a capped description', async () => {
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      jsonResponse({
+        data: {
+          id: 'eth_0xtoken',
+          type: 'token',
+          attributes: {
+            name: 'Wrapped Ether',
+            symbol: 'WETH',
+            decimals: 18,
+            image_url: 'https://example.com/weth.png',
+            websites: ['https://weth.io', null],
+            description: 'x'.repeat(700),
+            gt_score: 92.1,
+            twitter_handle: 'weth',
+            telegram_handle: null,
+            discord_url: 'https://discord.gg/weth'
+          }
+        }
+      })
+    )
+
+    const result = await makeService().getTokenInfo({ network: 'eth', address: '0xtoken' })
+
+    expect(result).toEqual({
+      source: 'geckoterminal',
+      network: 'eth',
+      address: '0xtoken',
+      name: 'Wrapped Ether',
+      symbol: 'WETH',
+      decimals: 18,
+      image_url: 'https://example.com/weth.png',
+      websites: ['https://weth.io'],
+      socials: { twitter: 'weth', telegram: null, discord: 'https://discord.gg/weth' },
+      description: 'x'.repeat(600),
+      gt_score: 92.1
+    })
+
+    const requestUrl = new URL(String(fetchSpy.mock.calls[0]?.[0]))
+    expect(requestUrl.pathname).toBe('/api/v3/onchain/networks/eth/tokens/0xtoken/info')
+    expect(fetchSpy.mock.calls[0]?.[1]?.headers).toMatchObject({
+      'x-cg-pro-api-key': TEST_API_KEY
+    })
+  })
+
+  it('shapes top holders and sends the holders count param', async () => {
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      jsonResponse({
+        data: {
+          id: 'eth_0xtoken',
+          type: 'token_top_holders',
+          attributes: {
+            holders: [
+              {
+                address: '0xwhale',
+                label: 'Binance: Hot Wallet',
+                amount: '1250000.5',
+                percentage: '12.5',
+                value: '4318262500.25'
+              },
+              { address: '0xminnow', amount: '42.1' }
+            ]
+          }
+        }
+      })
+    )
+
+    const result = await makeService().getTopHolders({
+      network: 'eth',
+      address: '0xtoken',
+      limit: 2
+    })
+
+    expect(result).toEqual({
+      source: 'geckoterminal',
+      network: 'eth',
+      address: '0xtoken',
+      holders: [
+        {
+          address: '0xwhale',
+          label: 'Binance: Hot Wallet',
+          amount: 1250000.5,
+          pct_supply: 12.5,
+          value_usd: 4318262500.25
+        },
+        {
+          address: '0xminnow',
+          amount: 42.1,
+          pct_supply: null,
+          value_usd: null
+        }
+      ]
+    })
+
+    const requestUrl = new URL(String(fetchSpy.mock.calls[0]?.[0]))
+    expect(requestUrl.pathname).toBe('/api/v3/onchain/networks/eth/tokens/0xtoken/top_holders')
+    expect(requestUrl.searchParams.get('holders')).toBe('2')
+    expect(fetchSpy.mock.calls[0]?.[1]?.headers).toMatchObject({
+      'x-cg-pro-api-key': TEST_API_KEY
+    })
+  })
+
   it('throws the unavailable message without calling fetch when the key is unset', async () => {
     const fetchSpy = vi.spyOn(globalThis, 'fetch')
 

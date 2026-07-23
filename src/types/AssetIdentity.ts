@@ -3,7 +3,7 @@ import { z } from 'zod'
 import { ChainIdSchema } from '@/types/ChainId'
 import { TokenIdSchema } from '@/types/CrossChain'
 import { HyperliquidCoinSchema } from '@/types/Hyperliquid'
-import { MassiveStocksTickerSchema } from '@/types/MassiveStocks'
+import { StockTickerSchema } from '@/types/StockTicker'
 
 export const AssetIdentityKindSchema = z.enum(['token', 'perp', 'stock'])
 export type AssetIdentityKind = z.infer<typeof AssetIdentityKindSchema>
@@ -23,7 +23,7 @@ export type PerpAssetIdentity = z.infer<typeof PerpAssetIdentitySchema>
 
 export const StockAssetIdentitySchema = z.object({
   kind: z.literal(AssetIdentityKindSchema.enum.stock),
-  ticker: MassiveStocksTickerSchema
+  ticker: StockTickerSchema
 })
 export type StockAssetIdentity = z.infer<typeof StockAssetIdentitySchema>
 

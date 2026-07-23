@@ -1,20 +1,18 @@
-import type { StocksCandles, StocksDetail, StocksQuote, StocksSearchResults } from '@/types/Stocks'
+import type { StocksCandles, StocksDetail, StocksPrice, StocksSearchResults } from '@/types/Stocks'
 import {
   MarketstackEodResponseSchema,
+  MarketstackStockPriceResponseSchema,
   MarketstackTickerSchema,
   MarketstackTickersResponseSchema,
   StocksCandlesSchema,
   StocksDetailSchema,
-  StocksProxySnapshotSchema,
-  StocksQuoteSchema,
+  StocksPriceSchema,
   StocksSearchResultsSchema
 } from '@/types/Stocks'
 import { compactMap, isNullish } from '@/utils/Lang'
 
 type StocksServiceParams = {
   readonly apiKey: string
-  readonly apiBaseUrl: string
-  readonly apiBearerToken: string
 }
 
 type GetCandlesParams = {
@@ -28,13 +26,13 @@ type GetDetailParams = {
   readonly symbol: string
 }
 
+type GetStockPriceParams = {
+  readonly symbol: string
+}
+
 type SearchParams = {
   readonly query: string
   readonly limit: number
-}
-
-type GetQuoteParams = {
-  readonly symbol: string
 }
 
 const MARKETSTACK_BASE_URL = 'https://api.marketstack.com/'
@@ -43,14 +41,8 @@ const ERROR_BODY_MAX_CHARS = 300
 export class StocksService {
   private readonly apiKey: string
 
-  private readonly apiBaseUrl: string
-
-  private readonly apiBearerToken: string
-
   constructor(params: StocksServiceParams) {
     this.apiKey = params.apiKey
-    this.apiBaseUrl = params.apiBaseUrl
-    this.apiBearerToken = params.apiBearerToken
   }
 
   async getCandles(params: GetCandlesParams): Promise<StocksCandles> {
@@ -71,6 +63,30 @@ export class StocksService {
       })
     ).sort((a, b) => a.t - b.t)
     return StocksCandlesSchema.parse({ source: 'marketstack', symbol: params.symbol, candles })
+  }
+
+  // Marketstack rate-limits /v2/stockprice to 1 call per minute.
+  async getStockPrice(params: GetStockPriceParams): Promise<StocksPrice> {
+    const raw = await this.fetchMarketstack('v2/stockprice', { ticker: params.symbol }).catch(
+      (error: unknown) => {
+        if (error instanceof Error && error.message.includes('failed: 429')) {
+          throw new Error(
+            'Marketstack /v2/stockprice failed: 429 Too Many Requests — the endpoint is rate-limited to 1 call per minute; wait before retrying'
+          )
+        }
+        throw error
+      }
+    )
+    const parsed = MarketstackStockPriceResponseSchema.parse(raw)
+    const row = (parsed.data ?? [])[0]
+    const price = isNullish(row?.price) ? null : Number(row.price)
+    return StocksPriceSchema.parse({
+      source: 'marketstack',
+      symbol: row?.ticker ?? params.symbol,
+      price: price !== null && Number.isFinite(price) ? price : null,
+      currency: row?.currency,
+      trade_last: row?.trade_last
+    })
   }
 
   async getDetail(params: GetDetailParams): Promise<StocksDetail> {
@@ -107,41 +123,6 @@ export class StocksService {
     })
   }
 
-  async getQuote(params: GetQuoteParams): Promise<StocksQuote> {
-    const path = `/stocks/snapshot/${encodeURIComponent(params.symbol)}`
-    const response = await fetch(new URL(path, this.apiBaseUrl), {
-      method: 'GET',
-      headers: {
-        Accept: 'application/json',
-        Authorization: `Bearer ${this.apiBearerToken}`
-      }
-    })
-    if (!response.ok) {
-      const body = await response.text().catch(() => '')
-      throw new Error(
-        `Stocks proxy ${path} failed: ${response.status} ${response.statusText} ${body.slice(0, ERROR_BODY_MAX_CHARS)}`
-      )
-    }
-    const data: unknown = await response.json()
-    const snapshot = StocksProxySnapshotSchema.parse(data)
-    return StocksQuoteSchema.parse({
-      source: 'massive',
-      symbol: snapshot.ticker,
-      name: snapshot.name,
-      price: this.asFiniteNumber(snapshot.price),
-      change: this.asFiniteNumber(snapshot.change),
-      change_pct: this.asFiniteNumber(snapshot.changePercent),
-      volume: this.asFiniteNumber(snapshot.volume),
-      day_open: this.asFiniteNumber(snapshot.dayOpen),
-      day_high: this.asFiniteNumber(snapshot.dayHigh),
-      day_low: this.asFiniteNumber(snapshot.dayLow),
-      prev_close: this.asFiniteNumber(snapshot.prevClose),
-      market_cap: this.asFiniteNumber(snapshot.marketCap),
-      exchange: snapshot.primaryExchange,
-      updated_at: snapshot.updated
-    })
-  }
-
   private async fetchMarketstack(
     path: string,
     searchParams: Record<string, string>
@@ -170,18 +151,5 @@ export class StocksService {
     }
     const data: unknown = await response.json()
     return data
-  }
-
-  // The stocks proxy serializes BigNumber fields as decimal strings; anything
-  // non-finite collapses to null.
-  private asFiniteNumber(value: unknown): number | null {
-    if (typeof value === 'number') {
-      return Number.isFinite(value) ? value : null
-    }
-    if (typeof value === 'string' && value.trim() !== '') {
-      const parsed = Number(value)
-      return Number.isFinite(parsed) ? parsed : null
-    }
-    return null
   }
 }

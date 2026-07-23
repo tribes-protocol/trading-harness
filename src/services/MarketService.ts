@@ -9,12 +9,17 @@ import type {
   MarketMovers,
   MarketMoversDuration,
   MarketNewCoins,
+  MarketPlatforms,
+  MarketPlatformTokens,
   MarketPrices,
   MarketSearchResults,
+  MarketSupportedCurrencies,
+  MarketTokenPrices,
   MarketTopCoins,
   MarketTrending
 } from '@/types/Market'
 import {
+  CoinGeckoAssetPlatformRowSchema,
   CoinGeckoCategoryRowSchema,
   CoinGeckoDefiResponseSchema,
   CoinGeckoGlobalResponseSchema,
@@ -24,6 +29,8 @@ import {
   CoinGeckoNewCoinRowSchema,
   CoinGeckoSearchResponseSchema,
   CoinGeckoSimplePriceResponseSchema,
+  CoinGeckoSupportedCurrenciesResponseSchema,
+  CoinGeckoTokenListResponseSchema,
   CoinGeckoTrendingResponseSchema,
   MarketCapHistorySchema,
   MarketCategoriesSchema,
@@ -31,8 +38,12 @@ import {
   MarketGlobalSnapshotSchema,
   MarketMoversSchema,
   MarketNewCoinsSchema,
+  MarketPlatformsSchema,
+  MarketPlatformTokensSchema,
   MarketPricesSchema,
   MarketSearchResultsSchema,
+  MarketSupportedCurrenciesSchema,
+  MarketTokenPricesSchema,
   MarketTopCoinsSchema,
   MarketTrendingSchema
 } from '@/types/Market'
@@ -66,8 +77,22 @@ type GetPricesParams = {
   readonly ids: string[]
 }
 
+type GetTokenPricesParams = {
+  readonly platform: string
+  readonly addresses: string[]
+}
+
 type SearchParams = {
   readonly query: string
+}
+
+type GetPlatformsParams = {
+  readonly limit: number
+}
+
+type GetPlatformTokensParams = {
+  readonly platform: string
+  readonly limit: number
 }
 
 const COINGECKO_PRO_BASE_URL = 'https://pro-api.coingecko.com/'
@@ -233,6 +258,44 @@ export class MarketService {
     return MarketPricesSchema.parse({ source: 'coingecko', prices })
   }
 
+  // Response keys are contract addresses; EVM keys come back lowercased
+  // regardless of request casing, so lookups fall back to lowercase.
+  async getTokenPrices(params: GetTokenPricesParams): Promise<MarketTokenPrices> {
+    const raw = await this.fetch(
+      `api/v3/simple/token_price/${encodeURIComponent(params.platform)}`,
+      {
+        contract_addresses: params.addresses.join(','),
+        vs_currencies: 'usd',
+        include_market_cap: 'true',
+        include_24hr_vol: 'true',
+        include_24hr_change: 'true',
+        include_last_updated_at: 'true'
+      }
+    )
+    const parsed = CoinGeckoSimplePriceResponseSchema.parse(raw)
+    const prices = compactMap(
+      params.addresses.map((address) => {
+        const entry = parsed[address] ?? parsed[address.toLowerCase()]
+        if (isNullish(entry)) {
+          return null
+        }
+        return {
+          address,
+          price_usd: entry.usd,
+          market_cap_usd: entry.usd_market_cap,
+          volume_24h_usd: entry.usd_24h_vol,
+          change_24h_pct: entry.usd_24h_change,
+          updated_at: entry.last_updated_at
+        }
+      })
+    )
+    return MarketTokenPricesSchema.parse({
+      source: 'coingecko',
+      platform: params.platform,
+      prices
+    })
+  }
+
   async search(params: SearchParams): Promise<MarketSearchResults> {
     const raw = await this.fetch('api/v3/search', { query: params.query })
     const parsed = CoinGeckoSearchResponseSchema.parse(raw)
@@ -262,6 +325,51 @@ export class MarketService {
         change_24h_pct: coin.item.data?.price_change_percentage_24h?.usd
       }))
     })
+  }
+
+  async getPlatforms(params: GetPlatformsParams): Promise<MarketPlatforms> {
+    const raw = await this.fetch('api/v3/asset_platforms', {})
+    const rows = CoinGeckoAssetPlatformRowSchema.array().parse(raw)
+    return MarketPlatformsSchema.parse({
+      source: 'coingecko',
+      platforms: rows.slice(0, params.limit).map((row) => ({
+        id: row.id,
+        name: row.name,
+        chain_id: row.chain_identifier,
+        shortname: row.shortname,
+        native_coin_id: row.native_coin_id
+      }))
+    })
+  }
+
+  // The full token list can run to thousands of entries, so rows are trimmed
+  // to identity fields and capped at the caller's limit.
+  async getPlatformTokens(params: GetPlatformTokensParams): Promise<MarketPlatformTokens> {
+    const raw = await this.fetch(
+      `api/v3/token_lists/${encodeURIComponent(params.platform)}/all.json`,
+      {}
+    )
+    const parsed = CoinGeckoTokenListResponseSchema.parse(raw)
+    const tokens = parsed.tokens ?? []
+    return MarketPlatformTokensSchema.parse({
+      source: 'coingecko',
+      platform: params.platform,
+      list_name: parsed.name,
+      updated_at: parsed.timestamp,
+      total_tokens: tokens.length,
+      tokens: tokens.slice(0, params.limit).map((token) => ({
+        symbol: token.symbol,
+        name: token.name,
+        address: token.address,
+        decimals: token.decimals
+      }))
+    })
+  }
+
+  async getSupportedCurrencies(): Promise<MarketSupportedCurrencies> {
+    const raw = await this.fetch('api/v3/simple/supported_vs_currencies', {})
+    const currencies = CoinGeckoSupportedCurrenciesResponseSchema.parse(raw)
+    return MarketSupportedCurrenciesSchema.parse({ source: 'coingecko', currencies })
   }
 
   private async fetch(path: string, searchParams: Record<string, string>): Promise<unknown> {

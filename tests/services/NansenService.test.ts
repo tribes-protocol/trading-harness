@@ -706,6 +706,525 @@ describe('NansenService', () => {
     expect(date.to).toMatch(DATE_ONLY_REGEX)
   })
 
+  it('runs the general screener without the smart-money-only filter', async () => {
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      jsonResponse({
+        data: [
+          {
+            chain: 'solana',
+            token_address: 'Mint1111111111111111111111111111111111111111',
+            token_symbol: 'WIF',
+            token_age_days: 400,
+            price_usd: '2.15',
+            price_change: -3.4,
+            market_cap_usd: '2100000000',
+            liquidity: 54000000,
+            volume: 310000000,
+            buy_volume: 160000000,
+            sell_volume: 150000000,
+            netflow: 10000000,
+            nof_traders: 9000,
+            nof_buyers: 5000,
+            nof_sellers: 4000
+          }
+        ]
+      })
+    )
+
+    const result = await makeService().getScreener({ chain: 'solana', limit: 20, timeframe: '24h' })
+
+    expect(result.tokens[0]).toMatchObject({
+      chain: 'solana',
+      address: 'Mint1111111111111111111111111111111111111111',
+      symbol: 'WIF',
+      price_usd: 2.15,
+      market_cap_usd: 2100000000,
+      volume_usd: 310000000
+    })
+
+    const requestUrl = new URL(String(fetchSpy.mock.calls[0]?.[0]))
+    expect(requestUrl.pathname).toBe('/api/v1/token-screener')
+    const body = requestBody(fetchSpy)
+    expect(body).toMatchObject({
+      chains: ['solana'],
+      timeframe: '24h',
+      order_by: [{ field: 'volume', direction: 'DESC' }]
+    })
+    expect(body.filters).toBeUndefined()
+  })
+
+  it('shapes daily flows with a timeframe-mapped date range', async () => {
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      jsonResponse({
+        data: [
+          {
+            date: '2026-07-22',
+            price_usd: '1.04',
+            token_amount: 120000,
+            value_usd: '124800.5',
+            holders_count: 5400,
+            total_inflows_count: 310,
+            total_outflows_count: 280,
+            total_inflows_dex: 200,
+            total_outflows_dex: 190,
+            total_inflows_cex: 110,
+            total_outflows_cex: 90
+          }
+        ]
+      })
+    )
+
+    const result = await makeService().getFlows({
+      chain: 'ethereum',
+      tokenAddress: '0xaaa',
+      timeframe: '7d'
+    })
+
+    expect(result).toEqual({
+      source: 'nansen',
+      chain: 'ethereum',
+      token: '0xaaa',
+      timeframe: '7d',
+      flows: [
+        {
+          date: '2026-07-22',
+          price_usd: 1.04,
+          value_usd: 124800.5,
+          holders_count: 5400,
+          inflows_count: 310,
+          outflows_count: 280,
+          inflows_dex: 200,
+          outflows_dex: 190,
+          inflows_cex: 110,
+          outflows_cex: 90
+        }
+      ]
+    })
+
+    const requestUrl = new URL(String(fetchSpy.mock.calls[0]?.[0]))
+    expect(requestUrl.pathname).toBe('/api/v1/tgm/flows')
+    const body = requestBody(fetchSpy)
+    expect(body).toMatchObject({
+      chain: 'ethereum',
+      token_address: '0xaaa',
+      order_by: [{ field: 'date', direction: 'DESC' }]
+    })
+    const date = body.date as { from: string; to: string }
+    expect(date.from).toMatch(DATE_ONLY_REGEX)
+    expect(date.to).toMatch(DATE_ONLY_REGEX)
+    const spanDays = (Date.parse(date.to) - Date.parse(date.from)) / (24 * 60 * 60 * 1000)
+    expect(Math.round(spanDays)).toBe(7)
+  })
+
+  it('shapes who-bought-sold traders ordered by trade volume', async () => {
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      jsonResponse({
+        data: [
+          {
+            address: '0x7777777777777777777777777777777777777777',
+            address_label: 'Smart Trader',
+            bought_token_volume: 90000,
+            sold_token_volume: 20000,
+            token_trade_volume: 110000,
+            bought_volume_usd: '91000.5',
+            sold_volume_usd: 20500,
+            trade_volume_usd: '111501'
+          }
+        ]
+      })
+    )
+
+    const result = await makeService().getWhoBoughtSold({
+      chain: 'ethereum',
+      tokenAddress: '0xbbb',
+      limit: 10
+    })
+
+    expect(result.traders).toEqual([
+      {
+        address: '0x7777777777777777777777777777777777777777',
+        label: 'Smart Trader',
+        bought_amount: 90000,
+        sold_amount: 20000,
+        bought_usd: 91000.5,
+        sold_usd: 20500,
+        trade_usd: 111501
+      }
+    ])
+
+    const requestUrl = new URL(String(fetchSpy.mock.calls[0]?.[0]))
+    expect(requestUrl.pathname).toBe('/api/v1/tgm/who-bought-sold')
+    const body = requestBody(fetchSpy)
+    expect(body).toMatchObject({
+      chain: 'ethereum',
+      token_address: '0xbbb',
+      pagination: { page: 1, per_page: 10 },
+      order_by: [{ field: 'trade_volume_usd', direction: 'DESC' }]
+    })
+    expect((body.date as { from: string }).from).toMatch(DATE_ONLY_REGEX)
+  })
+
+  it('shapes risk and reward indicator signals', async () => {
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      jsonResponse({
+        token_address: '0xccc',
+        chain: 'ethereum',
+        token_info: { market_cap_usd: '1000000', market_cap_group: 'mid', is_stablecoin: false },
+        risk_indicators: [
+          {
+            indicator_type: 'smart_money_selling',
+            score: 'high',
+            signal: 1,
+            signal_percentile: 0.9,
+            last_trigger_on: '2026-07-20'
+          }
+        ],
+        reward_indicators: [
+          { indicator_type: 'smart_money_buying', score: 'low', signal: 0, last_trigger_on: null }
+        ]
+      })
+    )
+
+    const result = await makeService().getSignals({ chain: 'ethereum', tokenAddress: '0xccc' })
+
+    expect(result).toEqual({
+      source: 'nansen',
+      chain: 'ethereum',
+      token: '0xccc',
+      risk: [
+        {
+          indicator: 'smart_money_selling',
+          score: 'high',
+          signal: 1,
+          last_trigger_on: '2026-07-20'
+        }
+      ],
+      reward: [{ indicator: 'smart_money_buying', score: 'low', signal: 0, last_trigger_on: null }]
+    })
+
+    const requestUrl = new URL(String(fetchSpy.mock.calls[0]?.[0]))
+    expect(requestUrl.pathname).toBe('/api/v1/tgm/indicators')
+    expect(requestBody(fetchSpy)).toEqual({ chain: 'ethereum', token_address: '0xccc' })
+  })
+
+  it('shapes token transfers, newest first', async () => {
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      jsonResponse({
+        data: [
+          {
+            block_timestamp: '2026-07-22 12:00:00',
+            transaction_hash: '0x999',
+            from_address: '0xaaa1',
+            to_address: '0xbbb2',
+            from_address_label: 'Binance',
+            to_address_label: null,
+            transaction_type: 'transfer',
+            transfer_amount: 5000,
+            transfer_value_usd: '5100.25'
+          }
+        ]
+      })
+    )
+
+    const result = await makeService().getTransfers({
+      chain: 'ethereum',
+      tokenAddress: '0xddd',
+      limit: 20
+    })
+
+    expect(result.transfers).toEqual([
+      {
+        time: '2026-07-22 12:00:00',
+        tx_hash: '0x999',
+        from: '0xaaa1',
+        from_label: 'Binance',
+        to: '0xbbb2',
+        to_label: null,
+        amount: 5000,
+        value_usd: 5100.25
+      }
+    ])
+
+    const requestUrl = new URL(String(fetchSpy.mock.calls[0]?.[0]))
+    expect(requestUrl.pathname).toBe('/api/v1/tgm/transfers')
+    expect(requestBody(fetchSpy)).toMatchObject({
+      chain: 'ethereum',
+      token_address: '0xddd',
+      order_by: [{ field: 'block_timestamp', direction: 'DESC' }]
+    })
+  })
+
+  it('requests historical holdings with a date_range and optional token filter', async () => {
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      jsonResponse({
+        data: [
+          {
+            date: '2026-07-21',
+            chain: 'ethereum',
+            token_address: '0xeee',
+            token_symbol: 'UNI',
+            token_sectors: ['dex'],
+            smart_money_labels: ['Fund'],
+            balance: 1200000,
+            value_usd: '9600000.5',
+            balance_24h_percent_change: 1.2,
+            holders_count: 61,
+            share_of_holdings_percent: 2.4,
+            token_age_days: 2100,
+            market_cap_usd: '6000000000'
+          }
+        ]
+      })
+    )
+
+    const result = await makeService().getHistoricalHoldings({
+      chain: 'ethereum',
+      limit: 20,
+      tokenAddress: '0xeee'
+    })
+
+    expect(result.holdings).toEqual([
+      {
+        date: '2026-07-21',
+        chain: 'ethereum',
+        address: '0xeee',
+        symbol: 'UNI',
+        balance: 1200000,
+        value_usd: 9600000.5,
+        holders_count: 61,
+        share_of_holdings_pct: 2.4,
+        market_cap_usd: 6000000000
+      }
+    ])
+
+    const requestUrl = new URL(String(fetchSpy.mock.calls[0]?.[0]))
+    expect(requestUrl.pathname).toBe('/api/v1/smart-money/historical-holdings')
+    const body = requestBody(fetchSpy)
+    expect(body).toMatchObject({
+      chains: ['ethereum'],
+      filters: { token_address: '0xeee' },
+      order_by: [{ field: 'date', direction: 'DESC' }]
+    })
+    const dateRange = body.date_range as { from: string; to: string }
+    expect(dateRange.from).toMatch(DATE_ONLY_REGEX)
+    expect(dateRange.to).toMatch(DATE_ONLY_REGEX)
+  })
+
+  it('requests the per-token perp PnL leaderboard by symbol', async () => {
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      jsonResponse({
+        data: [
+          {
+            trader_address: '0x8888888888888888888888888888888888888888',
+            trader_address_label: 'Smart HL Perps Trader',
+            pnl_usd_realised: '310000',
+            pnl_usd_unrealised: -10000,
+            pnl_usd_total: '300000',
+            roi_percent_total: 45.1,
+            position_value_usd: '820000.5',
+            nof_trades: 210
+          }
+        ]
+      })
+    )
+
+    const result = await makeService().getPerpPnlLeaderboard({ tokenSymbol: 'BTC', limit: 10 })
+
+    expect(result).toEqual({
+      source: 'nansen',
+      token: 'BTC',
+      traders: [
+        {
+          address: '0x8888888888888888888888888888888888888888',
+          label: 'Smart HL Perps Trader',
+          pnl_total_usd: 300000,
+          pnl_realized_usd: 310000,
+          pnl_unrealized_usd: -10000,
+          roi_total_pct: 45.1,
+          position_value_usd: 820000.5,
+          trade_count: 210
+        }
+      ]
+    })
+
+    const requestUrl = new URL(String(fetchSpy.mock.calls[0]?.[0]))
+    expect(requestUrl.pathname).toBe('/api/v1/tgm/perp-pnl-leaderboard')
+    const body = requestBody(fetchSpy)
+    expect(body).toMatchObject({
+      token_symbol: 'BTC',
+      pagination: { page: 1, per_page: 10 },
+      order_by: [{ field: 'pnl_usd_total', direction: 'DESC' }]
+    })
+    expect((body.date as { from: string }).from).toMatch(DATE_ONLY_REGEX)
+  })
+
+  it('requests the Hyperliquid address leaderboard ordered by total PnL', async () => {
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      jsonResponse({
+        data: [
+          {
+            trader_address: '0x9999999999999999999999999999999999999999',
+            trader_address_label: 'Fund',
+            total_pnl: '5200000.5',
+            roi: 1.82,
+            account_value: '12000000'
+          }
+        ]
+      })
+    )
+
+    const result = await makeService().getAddressLeaderboard({ limit: 20 })
+
+    expect(result).toEqual({
+      source: 'nansen',
+      traders: [
+        {
+          address: '0x9999999999999999999999999999999999999999',
+          label: 'Fund',
+          total_pnl_usd: 5200000.5,
+          roi_pct: 1.82,
+          account_value_usd: 12000000
+        }
+      ]
+    })
+
+    const requestUrl = new URL(String(fetchSpy.mock.calls[0]?.[0]))
+    expect(requestUrl.pathname).toBe('/api/v1/perp-leaderboard')
+    const body = requestBody(fetchSpy)
+    expect(body).toMatchObject({
+      pagination: { page: 1, per_page: 20 },
+      order_by: [{ field: 'total_pnl', direction: 'DESC' }]
+    })
+    expect((body.date as { from: string }).from).toMatch(DATE_ONLY_REGEX)
+  })
+
+  it('shapes wallet historical balances and hides spam tokens', async () => {
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      jsonResponse({
+        data: [
+          {
+            block_timestamp: '2026-07-20 00:00:00',
+            token_address: '0xfff',
+            chain: 'ethereum',
+            token_amount: 320,
+            value_usd: '4880.5',
+            token_symbol: 'LINK'
+          }
+        ]
+      })
+    )
+
+    const result = await makeService().getHistoricalBalances({
+      wallet: '0xabc',
+      chain: 'ethereum',
+      limit: 20
+    })
+
+    expect(result.balances).toEqual([
+      {
+        time: '2026-07-20 00:00:00',
+        chain: 'ethereum',
+        token_address: '0xfff',
+        symbol: 'LINK',
+        amount: 320,
+        value_usd: 4880.5
+      }
+    ])
+
+    const requestUrl = new URL(String(fetchSpy.mock.calls[0]?.[0]))
+    expect(requestUrl.pathname).toBe('/api/v1/profiler/address/historical-balances')
+    const body = requestBody(fetchSpy)
+    expect(body).toMatchObject({
+      address: '0xabc',
+      chain: 'ethereum',
+      filters: { hide_spam_tokens: true },
+      order_by: [{ field: 'block_timestamp', direction: 'DESC' }]
+    })
+    expect((body.date as { from: string }).from).toMatch(DATE_ONLY_REGEX)
+  })
+
+  it('shapes DeFi holdings with summary totals and protocol token positions', async () => {
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      jsonResponse({
+        summary: {
+          total_value_usd: '150000.5',
+          total_assets_usd: '160000.5',
+          total_debts_usd: 10000,
+          total_rewards_usd: '120.25',
+          token_count: 3,
+          protocol_count: 2
+        },
+        protocols: [
+          {
+            protocol_name: 'aave',
+            chain: 'ethereum',
+            total_value_usd: '90000',
+            total_assets_usd: '100000',
+            total_debts_usd: 10000,
+            total_rewards_usd: '0',
+            tokens: [
+              {
+                address: '0x111',
+                symbol: 'WETH',
+                amount: 25,
+                value_usd: '90000',
+                position_type: 'supplied'
+              }
+            ]
+          }
+        ]
+      })
+    )
+
+    const result = await makeService().getDefiHoldings({ wallet: '0xabc' })
+
+    expect(result).toEqual({
+      source: 'nansen',
+      wallet: '0xabc',
+      total_value_usd: 150000.5,
+      total_assets_usd: 160000.5,
+      total_debts_usd: 10000,
+      total_rewards_usd: 120.25,
+      protocol_count: 2,
+      token_count: 3,
+      protocols: [
+        {
+          protocol: 'aave',
+          chain: 'ethereum',
+          value_usd: 90000,
+          assets_usd: 100000,
+          debts_usd: 10000,
+          rewards_usd: 0,
+          tokens: [{ symbol: 'WETH', position_type: 'supplied', amount: 25, value_usd: 90000 }]
+        }
+      ]
+    })
+
+    const requestUrl = new URL(String(fetchSpy.mock.calls[0]?.[0]))
+    expect(requestUrl.pathname).toBe('/api/v1/portfolio/defi-holdings')
+    expect(requestBody(fetchSpy)).toEqual({ wallet_address: '0xabc' })
+  })
+
+  it('shapes entity search results down to entity names', async () => {
+    const fetchSpy = vi
+      .spyOn(globalThis, 'fetch')
+      .mockResolvedValue(
+        jsonResponse({ data: [{ entity_name: 'Wintermute' }, { entity_name: 'Wintermute: MM' }] })
+      )
+
+    const result = await makeService().getEntitySearch({ query: 'wintermute' })
+
+    expect(result).toEqual({
+      source: 'nansen',
+      query: 'wintermute',
+      entities: ['Wintermute', 'Wintermute: MM']
+    })
+
+    const requestUrl = new URL(String(fetchSpy.mock.calls[0]?.[0]))
+    expect(requestUrl.pathname).toBe('/api/v1/search/entity-name')
+    expect(requestBody(fetchSpy)).toEqual({ search_query: 'wintermute' })
+  })
+
   it('throws the unavailable message without calling fetch when the key is unset', async () => {
     const fetchSpy = vi.spyOn(globalThis, 'fetch')
 

@@ -22,9 +22,10 @@ yourself. There is no backend specialist behind this skill and no `ask` subcomma
 - The subject is a liquidity pool, trading pair, or DEX — details (`pool`), candles
   (`pool-ohlcv`), trades (`pool-trades`).
 - Discovering pools: trending (`trending-pools`), newest (`new-pools`), ranked per network or
-  DEX (`top-pools`), by token name/symbol/address (`search`).
-- Threshold questions (liquidity above $X, FDV below $Y): pull the pool lists and apply the
-  thresholds yourself on the JSON fields — there are no filter flags.
+  DEX (`top-pools`), by token name/symbol/address (`search`), most-searched right now
+  (`trending-search`), by category (`categories` then `pools-by-category`).
+- Threshold questions (liquidity above $X, FDV below $Y): screen server-side with `megafilter`
+  (`--min-fdv`, `--min-liquidity`, `--min-volume`).
 - Listing DEXes on a network (`dexes`) or supported networks (`networks`).
 - NOT for one token's price, security, or holders — use `token-analyst`.
 - NOT for trending tokens or smart-money discovery — use `alpha-scout`.
@@ -46,17 +47,23 @@ yourself. There is no backend specialist behind this skill and no `ask` subcomma
 
 All under `tribes-cli onchain`; every subcommand accepts `--out <file>`. All read-only.
 
-| Subcommand       | Purpose                                                   | Required flags                                            | Useful flags                                  |
-| ---------------- | --------------------------------------------------------- | --------------------------------------------------------- | --------------------------------------------- |
-| `networks`       | Supported onchain networks                                | none                                                      | `--limit` 1-100 (default 50)                  |
-| `dexes`          | DEXes on a network                                        | `--network`                                               | `--limit` 1-100 (default 50)                  |
-| `trending-pools` | Trending pools, all networks or one                       | none                                                      | `--network`, `--limit` 1-20 (default 20)      |
-| `top-pools`      | Top pools on a network, optionally one DEX                | `--network`                                               | `--dex`, `--limit` 1-20 (default 20)          |
-| `new-pools`      | Newest pools, all networks or one                         | none                                                      | `--network`, `--limit` 1-20 (default 20)      |
-| `pool`           | One pool: price, FDV, reserve, volume, changes, tx counts | `--network`, `--address`                                  |                                               |
-| `pool-ohlcv`     | Pool OHLCV candles (t in epoch ms)                        | `--network`, `--address`, `--timeframe minute\|hour\|day` | `--aggregate`, `--limit` 1-1000 (default 100) |
-| `pool-trades`    | Recent trades in a pool                                   | `--network`, `--address`                                  | `--limit` 1-300 (default 50)                  |
-| `search`         | Search pools by token name, symbol, or address            | `--query`                                                 | `--network`                                   |
+| Subcommand          | Purpose                                                                     | Required flags                                                              | Useful flags                                                                                                                                                   |
+| ------------------- | --------------------------------------------------------------------------- | --------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `networks`          | Supported onchain networks                                                  | none                                                                        | `--limit` 1-100 (default 50)                                                                                                                                   |
+| `dexes`             | DEXes on a network                                                          | `--network`                                                                 | `--limit` 1-100 (default 50)                                                                                                                                   |
+| `trending-pools`    | Trending pools, all networks or one                                         | none                                                                        | `--network`, `--limit` 1-20 (default 20)                                                                                                                       |
+| `top-pools`         | Top pools on a network, optionally one DEX                                  | `--network`                                                                 | `--dex`, `--limit` 1-20 (default 20)                                                                                                                           |
+| `new-pools`         | Newest pools, all networks or one                                           | none                                                                        | `--network`, `--limit` 1-20 (default 20)                                                                                                                       |
+| `pool`              | One pool: price, FDV, reserve, volume, changes, tx counts                   | `--network`, `--address`                                                    |                                                                                                                                                                |
+| `pool-ohlcv`        | Pool OHLCV candles (t in epoch ms)                                          | `--network`, `--address`, `--timeframe minute\|hour\|day`                   | `--aggregate`, `--limit` 1-1000 (default 100)                                                                                                                  |
+| `pool-trades`       | Recent trades in a pool                                                     | `--network`, `--address`                                                    | `--limit` 1-300 (default 50)                                                                                                                                   |
+| `search`            | Search pools by token name, symbol, or address                              | `--query`                                                                   | `--network`                                                                                                                                                    |
+| `megafilter`        | Screen pools by FDV, liquidity, and volume floors across networks and DEXes | none                                                                        | `--networks`/`--dexes` (comma-separated), `--min-fdv`/`--min-liquidity`/`--min-volume` (USD), `--sort` e.g. `h24_volume_usd_desc`, `--limit` 1-20 (default 20) |
+| `categories`        | Onchain pool categories with 24h volume, reserve, FDV, tx counts            | none                                                                        | `--limit` 1-100 (default 50)                                                                                                                                   |
+| `pools-by-category` | Pools in one onchain category (id from `categories`)                        | `--category` e.g. `meme`                                                    | `--limit` 1-20 (default 20)                                                                                                                                    |
+| `trending-search`   | Most-searched pools on GeckoTerminal right now                              | none                                                                        | `--limit` 1-10 (default 10)                                                                                                                                    |
+| `pair-ohlcv`        | Base/quote pair OHLCV candles: base priced in quote (t in epoch ms)         | `--network`, `--pool`, `--base`, `--quote`, `--timeframe minute\|hour\|day` | `--aggregate`, `--limit` 1-1000 (default 100)                                                                                                                  |
+| `recently-updated`  | Tokens whose GeckoTerminal metadata was updated most recently               | none                                                                        | `--limit` 1-100 (default 50)                                                                                                                                   |
 
 ## Examples
 
@@ -80,9 +87,11 @@ Pick per hard rule 3, then compare liquidity, 24h volume, and fee/volume ratio y
 ```bash
 tribes-cli onchain trending-pools --network base --limit 20
 tribes-cli onchain new-pools --network base --limit 20
+tribes-cli onchain megafilter --networks base --min-liquidity 100000 --min-volume 50000 --sort h24_volume_usd_desc
 ```
 
-Apply liquidity/FDV thresholds on the returned JSON — there are no filter flags.
+`megafilter` applies FDV/liquidity/volume floors server-side; use it instead of hand-filtering
+the trending/new lists when thresholds are the question.
 
 ### DEX rankings by network
 
@@ -100,8 +109,9 @@ tribes-cli onchain pool-ohlcv --network eth --address 0x88e6a0c2ddd26feeb64f039a
 tribes-cli onchain pool-trades --network eth --address 0x88e6a0c2ddd26feeb64f039a2c41296fcb3f5640 --limit 50
 ```
 
-For indicator work on a pool, chain `pool-ohlcv --out candles.json` into `tribes-cli ta` —
-see the `technical-analyst` skill.
+For indicator work on a pool, chain `pool-ohlcv --out candles.json` — or `pair-ohlcv --out`
+for candles denominated in a specific quote token — into `tribes-cli ta`; both write the
+candle contract `ta` consumes. See the `technical-analyst` skill.
 
 ## Error recovery
 
@@ -117,5 +127,5 @@ see the `technical-analyst` skill.
 - `token-analyst` — one token's price, security, trades, holders.
 - `alpha-scout` — trending tokens, new listings, smart-money discovery.
 - `market-strategist` — market-wide caps, dominance, rankings, movers.
-- `technical-analyst` — indicator computation and backtests on OHLCV candles (feed it `pool-ohlcv --out`).
+- `technical-analyst` — indicator computation and backtests on OHLCV candles (feed it `pool-ohlcv --out` or `pair-ohlcv --out`).
 - `hyperliquid` — all-dex tradability and venue-quality check before trade ideas.

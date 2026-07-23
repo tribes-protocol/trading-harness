@@ -4,8 +4,6 @@ import { StocksService } from '@/services/StocksService'
 import { ensureJsonTreeString } from '@/utils/Lang'
 
 const TEST_MARKETSTACK_KEY = 'test-marketstack-key'
-const TEST_API_BASE = 'https://api.tribes.test'
-const TEST_BEARER_TOKEN = 'test-bearer-token'
 
 const T_JUL_20 = Date.parse('2026-07-20T00:00:00+0000')
 const T_JUL_21 = Date.parse('2026-07-21T00:00:00+0000')
@@ -18,11 +16,7 @@ function jsonResponse(payload: unknown, status = 200): Response {
 }
 
 function makeService(apiKey = TEST_MARKETSTACK_KEY): StocksService {
-  return new StocksService({
-    apiKey,
-    apiBaseUrl: TEST_API_BASE,
-    apiBearerToken: TEST_BEARER_TOKEN
-  })
+  return new StocksService({ apiKey })
 }
 
 describe('StocksService', () => {
@@ -81,6 +75,61 @@ describe('StocksService', () => {
     expect(requestUrl.searchParams.get('date_from')).toBe('2026-07-20')
     expect(requestUrl.searchParams.get('date_to')).toBe('2026-07-21')
     expect(requestUrl.searchParams.get('limit')).toBe('100')
+  })
+
+  it('shapes the real-time stock price and coerces the numeric-string price', async () => {
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      jsonResponse({
+        data: [
+          {
+            exchange_code: 'NASDAQ',
+            exchange_name: 'Nasdaq Stock Market',
+            country: 'United States',
+            ticker: 'AAPL',
+            price: '244.07',
+            currency: 'USD',
+            trade_last: '2026-07-22 15:03:45'
+          }
+        ]
+      })
+    )
+
+    const result = await makeService().getStockPrice({ symbol: 'AAPL' })
+
+    expect(result).toEqual({
+      source: 'marketstack',
+      symbol: 'AAPL',
+      price: 244.07,
+      currency: 'USD',
+      trade_last: '2026-07-22 15:03:45'
+    })
+
+    const requestUrl = new URL(String(fetchSpy.mock.calls[0]?.[0]))
+    expect(requestUrl.pathname).toBe('/v2/stockprice')
+    expect(requestUrl.searchParams.get('ticker')).toBe('AAPL')
+    expect(requestUrl.searchParams.get('access_key')).toBe(TEST_MARKETSTACK_KEY)
+  })
+
+  it('throws the 1-call-per-minute message on stockprice 429 without echoing the access key', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response('{"error":{"code":"rate_limit_reached"}}', {
+        status: 429,
+        statusText: 'Too Many Requests'
+      })
+    )
+
+    const error = await makeService()
+      .getStockPrice({ symbol: 'AAPL' })
+      .catch((caught: unknown) => caught)
+
+    expect(error).toBeInstanceOf(Error)
+    if (error instanceof Error) {
+      expect(error.message).toContain(
+        'Marketstack /v2/stockprice failed: 429 Too Many Requests — the endpoint is rate-limited to 1 call per minute'
+      )
+      expect(error.message).not.toContain(TEST_MARKETSTACK_KEY)
+      expect(error.message).not.toContain('access_key=')
+    }
   })
 
   it('shapes the ticker detail with the exchange fields flattened', async () => {
@@ -152,63 +201,6 @@ describe('StocksService', () => {
     expect(requestUrl.searchParams.get('limit')).toBe('20')
   })
 
-  it('shapes the proxy snapshot quote, parsing string-encoded numbers', async () => {
-    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
-      jsonResponse({
-        ticker: 'AAPL',
-        name: 'Apple Inc.',
-        price: '233.2',
-        change: '2.2',
-        changePercent: '0.95',
-        volume: '51000000',
-        dayOpen: '231.1',
-        dayHigh: '234.5',
-        dayLow: '229.8',
-        prevClose: '231.0',
-        marketCap: '3540000000000',
-        primaryExchange: 'XNAS',
-        updated: 1784560000000000000
-      })
-    )
-
-    const result = await makeService().getQuote({ symbol: 'AAPL' })
-
-    expect(result).toEqual({
-      source: 'massive',
-      symbol: 'AAPL',
-      name: 'Apple Inc.',
-      price: 233.2,
-      change: 2.2,
-      change_pct: 0.95,
-      volume: 51000000,
-      day_open: 231.1,
-      day_high: 234.5,
-      day_low: 229.8,
-      prev_close: 231.0,
-      market_cap: 3540000000000,
-      exchange: 'XNAS',
-      updated_at: 1784560000000000000
-    })
-
-    const requestUrl = new URL(String(fetchSpy.mock.calls[0]?.[0]))
-    expect(requestUrl.origin).toBe(TEST_API_BASE)
-    expect(requestUrl.pathname).toBe('/stocks/snapshot/AAPL')
-    expect(fetchSpy.mock.calls[0]?.[1]?.headers).toMatchObject({
-      Authorization: `Bearer ${TEST_BEARER_TOKEN}`
-    })
-  })
-
-  it('serves proxy quotes even when the Marketstack key is unset', async () => {
-    const fetchSpy = vi
-      .spyOn(globalThis, 'fetch')
-      .mockResolvedValue(jsonResponse({ ticker: 'AAPL', price: 233.2 }))
-
-    const result = await makeService('').getQuote({ symbol: 'AAPL' })
-
-    expect(result.symbol).toBe('AAPL')
-    expect(fetchSpy).toHaveBeenCalledTimes(1)
-  })
-
   it('throws the unavailable message without calling fetch when the key is unset', async () => {
     const fetchSpy = vi.spyOn(globalThis, 'fetch')
 
@@ -237,22 +229,6 @@ describe('StocksService', () => {
       expect(error.message).toContain('Marketstack /v2/eod failed: 401 Unauthorized')
       expect(error.message).not.toContain(TEST_MARKETSTACK_KEY)
       expect(error.message).not.toContain('access_key=')
-    }
-  })
-
-  it('throws on proxy errors without leaking the bearer token', async () => {
-    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
-      new Response('{"error":"Ticker not found"}', { status: 404, statusText: 'Not Found' })
-    )
-
-    const error = await makeService()
-      .getQuote({ symbol: 'NOPE' })
-      .catch((caught: unknown) => caught)
-
-    expect(error).toBeInstanceOf(Error)
-    if (error instanceof Error) {
-      expect(error.message).toContain('Stocks proxy /stocks/snapshot/NOPE failed: 404 Not Found')
-      expect(error.message).not.toContain(TEST_BEARER_TOKEN)
     }
   })
 })

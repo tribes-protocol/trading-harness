@@ -7,7 +7,7 @@ description: >-
   and market-wide search. Call for "how's the market?", crypto rankings, crypto top movers,
   category rotation, or broad trend questions. NOT for: one token's price, chart, or safety (use
   token-analyst); deep single-coin research (use fundamentals-analyst); pool or DEX-level TVL
-  (use defi-analyst); stock movers (use stock-analyst); numeric macro indicators (use macros).
+  (use defi-analyst); stock data (use stock-analyst); numeric macro indicators (use macros).
 allowed-tools: bash read
 ---
 
@@ -27,7 +27,7 @@ yourself. There is no backend specialist behind this skill and no `ask` subcomma
   checks (`price`), market-wide search (`search`), search-popularity trends (`trending`).
 - NOT for a single token or coin — use `token-analyst` (on-chain) or `fundamentals-analyst` (profile).
 - NOT for trending-token discovery (`alpha-scout`), pools/DEXes (`defi-analyst`), CEX/derivatives (`exchange-analyst`).
-- NOT for stock movers (`stock-analyst`) or numeric macro indicators like CPI/VIX/DXY (`macros`).
+- NOT for stock data (`stock-analyst`) or numeric macro indicators like CPI/VIX/DXY (`macros`).
 
 ## Hard rules
 
@@ -48,18 +48,25 @@ yourself. There is no backend specialist behind this skill and no `ask` subcomma
 
 All under `tribes-cli market`; every subcommand accepts `--out <file>`. All read-only.
 
-| Subcommand   | Purpose                                               | Required flags | Useful flags                                |
-| ------------ | ----------------------------------------------------- | -------------- | ------------------------------------------- |
-| `global`     | Global market cap, 24h volume, BTC/ETH dominance      | none           |                                             |
-| `defi`       | DeFi market cap, 24h volume, dominance, top coin      | none           |                                             |
-| `history`    | Total market cap + volume time series                 | `--days`       | `1\|7\|14\|30\|90\|180\|365\|max`           |
-| `top`        | Ranked coin table with 1h/24h/7d change               | none           | `--limit` (default 50)                      |
-| `movers`     | Top gainers and losers vs usd                         | none           | `--duration 1h\|24h\|7d\|14d\|30d\|60d\|1y` |
-| `categories` | Category table: mcap, 24h change, volume, top-3 coins | none           | `--limit` (default 50)                      |
-| `new`        | Recently added coins, newest first                    | none           | `--limit` (default 50)                      |
-| `price`      | Quick multi-coin prices + mcap + 24h change           | `--ids`        |                                             |
-| `search`     | Resolve names/symbols to CoinGecko ids                | `--query`      |                                             |
-| `trending`   | Trending coins by search popularity                   | none           |                                             |
+| Subcommand        | Purpose                                                               | Required flags               | Useful flags                                |
+| ----------------- | --------------------------------------------------------------------- | ---------------------------- | ------------------------------------------- |
+| `global`          | Global market cap, 24h volume, BTC/ETH dominance                      | none                         |                                             |
+| `defi`            | DeFi market cap, 24h volume, dominance, top coin                      | none                         |                                             |
+| `history`         | Total market cap + volume time series                                 | `--days`                     | `1\|7\|14\|30\|90\|180\|365\|max`           |
+| `top`             | Ranked coin table with 1h/24h/7d change                               | none                         | `--limit` (default 50)                      |
+| `movers`          | Top gainers and losers vs usd                                         | none                         | `--duration 1h\|24h\|7d\|14d\|30d\|60d\|1y` |
+| `categories`      | Category table: mcap, 24h change, volume, top-3 coins                 | none                         | `--limit` (default 50)                      |
+| `new`             | Recently added coins, newest first                                    | none                         | `--limit` (default 50)                      |
+| `price`           | Quick multi-coin prices + mcap + 24h change                           | `--ids`                      |                                             |
+| `search`          | Resolve names/symbols to CoinGecko ids                                | `--query`                    |                                             |
+| `trending`        | Trending coins by search popularity                                   | none                         |                                             |
+| `platforms`       | Asset platforms (blockchains) with ids for token and contract lookups | none                         | `--limit` 1-500 (default 100)               |
+| `platform-tokens` | Token list for an asset platform: symbol, name, address, decimals     | `--platform` e.g. `ethereum` | `--limit` 1-1000 (default 100)              |
+| `currencies`      | Quote currencies supported by CoinGecko pricing endpoints             | none                         |                                             |
+
+Quick multi-coin price checks stay on `market price --ids` (batching many coins in one call is
+its strength); a single-asset lookup can equally use `tribes-cli asset price --id <coin-id>`
+(generic router, see `asset-data`).
 
 ## Examples
 
@@ -102,7 +109,7 @@ tribes-cli market search --query "render"
 
 - `token-analyst` — deep dive on one identified token; `fundamentals-analyst` — one coin's profile.
 - `alpha-scout` — trending/new-token and smart-money discovery before a token is chosen.
-- `stock-analyst` — the securities pass for unscoped movers/opportunity questions.
+- `stock-analyst` — the securities pass for unscoped opportunity questions (daily candles).
 - `commodity-analyst` — the commodities pass for unscoped movers/opportunity questions.
 - `hyperliquid` — all-dex tradability and venue-quality check before trade ideas.
 - `strategize` — full market briefing combining macro, news, odds, and ideas.
