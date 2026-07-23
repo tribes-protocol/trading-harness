@@ -297,6 +297,22 @@ Protected-PR CI, external merge SHA, external-main delivery stamp, staging drain
 provider calls, tollbooth charges, wallet settlement, live QA, deployment, production, and
 certification remain **UNBOUND / NOT RUN**. No user-authority question was discovered.
 
+## Pre-PR main advance
+
+Immediately before PR creation, `origin/main` advanced from the execution base to exact
+`76c4d85fa4f42e93b5f9ee11786c845bb567c427` through PR #85. The advance changes exactly three
+paths:
+
+| Main path                                  | Disposition                                                                                                   |
+| ------------------------------------------ | ------------------------------------------------------------------------------------------------------------- |
+| `.pi/extensions/tribes/AgentProxyToken.ts` | Main-only forced-refresh behavior; preserve exactly                                                           |
+| `src/helpers/Jwt.ts`                       | Main-only forced-refresh behavior; preserve exactly                                                           |
+| `src/cli/Tribes.ts`                        | One-path overlap; retain current-main duplicate-notify removal and every imported native analyst registration |
+
+Merge exact `76c4d85fa4f42e93b5f9ee11786c845bb567c427` additively with `--no-ff`, record any textual
+conflict and its resolution, and rerun the billed-egress contract, CLI smoke, format, lint,
+TypeScript, full Vitest, and diff gates before PR creation.
+
 ## Exact non-overlap with terminal #2613
 
 There is zero repository/path overlap: this branch changes only
