@@ -106,6 +106,51 @@ export const CoinGeckoOnchainOhlcvResponseSchema = z.object({
 })
 export type CoinGeckoOnchainOhlcvResponse = z.infer<typeof CoinGeckoOnchainOhlcvResponseSchema>
 
+export const CoinGeckoOnchainCategoriesResponseSchema = z.object({
+  data: z
+    .array(
+      z.object({
+        id: z.string(),
+        attributes: z
+          .object({
+            name: z.string().nullish(),
+            h24_volume_usd: CoinGeckoOnchainDecimalSchema.nullish(),
+            reserve_in_usd: CoinGeckoOnchainDecimalSchema.nullish(),
+            fdv_usd: CoinGeckoOnchainDecimalSchema.nullish(),
+            h24_tx_count: z.number().nullish()
+          })
+          .nullish()
+      })
+    )
+    .nullish()
+})
+export type CoinGeckoOnchainCategoriesResponse = z.infer<
+  typeof CoinGeckoOnchainCategoriesResponseSchema
+>
+
+export const CoinGeckoOnchainTokensInfoResponseSchema = z.object({
+  data: z
+    .array(
+      z.object({
+        id: z.string(),
+        attributes: z
+          .object({
+            address: z.string().nullish(),
+            name: z.string().nullish(),
+            symbol: z.string().nullish(),
+            coingecko_coin_id: z.string().nullish(),
+            gt_score: z.number().nullish(),
+            metadata_updated_at: z.string().nullish()
+          })
+          .nullish()
+      })
+    )
+    .nullish()
+})
+export type CoinGeckoOnchainTokensInfoResponse = z.infer<
+  typeof CoinGeckoOnchainTokensInfoResponseSchema
+>
+
 export const CoinGeckoOnchainTradesResponseSchema = z.object({
   data: z
     .array(
@@ -188,6 +233,44 @@ export const OnchainSearchResultsSchema = z.object({
   pools: z.array(OnchainPoolRowSchema)
 })
 export type OnchainSearchResults = z.infer<typeof OnchainSearchResultsSchema>
+
+export const OnchainCategoriesSchema = z.object({
+  source: z.literal('geckoterminal'),
+  categories: z.array(
+    z.object({
+      id: z.string(),
+      name: z.string().nullish(),
+      volume_24h_usd: z.number().nullish(),
+      reserve_usd: z.number().nullish(),
+      fdv_usd: z.number().nullish(),
+      tx_24h: z.number().nullish()
+    })
+  )
+})
+export type OnchainCategories = z.infer<typeof OnchainCategoriesSchema>
+
+export const OnchainCategoryPoolsSchema = z.object({
+  source: z.literal('geckoterminal'),
+  category: z.string(),
+  pools: z.array(OnchainPoolRowSchema)
+})
+export type OnchainCategoryPools = z.infer<typeof OnchainCategoryPoolsSchema>
+
+export const OnchainRecentTokensSchema = z.object({
+  source: z.literal('geckoterminal'),
+  tokens: z.array(
+    z.object({
+      network: z.string().nullish(),
+      address: z.string().nullish(),
+      name: z.string().nullish(),
+      symbol: z.string().nullish(),
+      coingecko_id: z.string().nullish(),
+      gt_score: z.number().nullish(),
+      updated_at: z.string().nullish()
+    })
+  )
+})
+export type OnchainRecentTokens = z.infer<typeof OnchainRecentTokensSchema>
 
 const OnchainWindowedNumbersSchema = z.object({
   m5: z.number().nullish(),
@@ -326,3 +409,58 @@ export const OnchainSearchCommandOptionsSchema = z.object({
   out: z.string().nullish()
 })
 export type OnchainSearchCommandOptions = z.infer<typeof OnchainSearchCommandOptionsSchema>
+
+export const OnchainMegafilterCommandOptionsSchema = z.object({
+  networks: z.string().min(1).nullish(),
+  dexes: z.string().min(1).nullish(),
+  minFdv: z.number().min(0).nullish(),
+  minLiquidity: z.number().min(0).nullish(),
+  minVolume: z.number().min(0).nullish(),
+  sort: z.string().min(1).nullish(),
+  limit: z.number().int().min(1).max(20).nullish(),
+  out: z.string().nullish()
+})
+export type OnchainMegafilterCommandOptions = z.infer<typeof OnchainMegafilterCommandOptionsSchema>
+
+export const OnchainCategoriesCommandOptionsSchema = z.object({
+  limit: z.number().int().min(1).max(100).nullish(),
+  out: z.string().nullish()
+})
+export type OnchainCategoriesCommandOptions = z.infer<typeof OnchainCategoriesCommandOptionsSchema>
+
+export const OnchainPoolsByCategoryCommandOptionsSchema = z.object({
+  category: z.string().min(1),
+  limit: z.number().int().min(1).max(20).nullish(),
+  out: z.string().nullish()
+})
+export type OnchainPoolsByCategoryCommandOptions = z.infer<
+  typeof OnchainPoolsByCategoryCommandOptionsSchema
+>
+
+export const OnchainTrendingSearchCommandOptionsSchema = z.object({
+  limit: z.number().int().min(1).max(10).nullish(),
+  out: z.string().nullish()
+})
+export type OnchainTrendingSearchCommandOptions = z.infer<
+  typeof OnchainTrendingSearchCommandOptionsSchema
+>
+
+export const OnchainPairOhlcvCommandOptionsSchema = z.object({
+  network: z.string().min(1),
+  pool: z.string().min(1),
+  base: z.string().min(1),
+  quote: z.string().min(1),
+  timeframe: OnchainTimeframeSchema,
+  aggregate: z.number().int().min(1).nullish(),
+  limit: z.number().int().min(1).max(1000).nullish(),
+  out: z.string().nullish()
+})
+export type OnchainPairOhlcvCommandOptions = z.infer<typeof OnchainPairOhlcvCommandOptionsSchema>
+
+export const OnchainRecentlyUpdatedCommandOptionsSchema = z.object({
+  limit: z.number().int().min(1).max(100).nullish(),
+  out: z.string().nullish()
+})
+export type OnchainRecentlyUpdatedCommandOptions = z.infer<
+  typeof OnchainRecentlyUpdatedCommandOptionsSchema
+>

@@ -9,7 +9,11 @@ import {
   ExchangesDetailCommandOptionsSchema,
   ExchangesListCommandOptionsSchema,
   ExchangesTickersCommandOptionsSchema,
+  ExchangesTreasuryChartCommandOptionsSchema,
   ExchangesTreasuryCommandOptionsSchema,
+  ExchangesTreasuryEntitiesCommandOptionsSchema,
+  ExchangesTreasuryEntityCommandOptionsSchema,
+  ExchangesTreasuryHistoryCommandOptionsSchema,
   ExchangesVolumeChartCommandOptionsSchema
 } from '@/types/Exchanges'
 import { ensureJsonTreeString } from '@/utils/Lang'
@@ -20,6 +24,9 @@ const DEFAULT_LIST_LIMIT = 50
 const DEFAULT_TICKERS_LIMIT = 50
 const DEFAULT_DERIVATIVES_LIMIT = 50
 const DEFAULT_DERIVATIVES_EXCHANGES_LIMIT = 50
+const DEFAULT_TREASURY_ENTITIES_LIMIT = 50
+const DEFAULT_TREASURY_HISTORY_LIMIT = 50
+const DEFAULT_TREASURY_CHART_DAYS = '365'
 
 export function buildExchangesCommand(): Command {
   const service = new ExchangesService({ apiKey: COIN_GECKO_PRO_API_KEY })
@@ -132,6 +139,78 @@ export function buildExchangesCommand(): Command {
       const treasury = await service.treasury({ coin: request.coin })
       await writeOutput({
         output: ensureJsonTreeString(treasury),
+        outPath: request.out ?? undefined
+      })
+    })
+
+  program
+    .command('treasury-entities')
+    .description('Companies and governments that publicly hold crypto, with entity ids')
+    .option('--limit <n>', 'Entities to return, 1-250 (default 50)', (value) => Number(value))
+    .option('--out <file>', 'Write output JSON to file')
+    .action(async (options: unknown): Promise<void> => {
+      const request = ExchangesTreasuryEntitiesCommandOptionsSchema.parse(options)
+      const entities = await service.treasuryEntities({
+        limit: request.limit ?? DEFAULT_TREASURY_ENTITIES_LIMIT
+      })
+      await writeOutput({
+        output: ensureJsonTreeString(entities),
+        outPath: request.out ?? undefined
+      })
+    })
+
+  program
+    .command('treasury-entity')
+    .description('Treasury holdings of one entity, optionally narrowed to one coin')
+    .requiredOption('--entity <entity>', 'Entity id from `exchanges treasury-entities`')
+    .option('--coin <coin>', 'CoinGecko coin id filter, e.g. bitcoin')
+    .option('--out <file>', 'Write output JSON to file')
+    .action(async (options: unknown): Promise<void> => {
+      const request = ExchangesTreasuryEntityCommandOptionsSchema.parse(options)
+      const holdings = await service.treasuryEntity({
+        entity: request.entity,
+        coin: request.coin ?? null
+      })
+      await writeOutput({
+        output: ensureJsonTreeString(holdings),
+        outPath: request.out ?? undefined
+      })
+    })
+
+  program
+    .command('treasury-chart')
+    .description('Holdings of one coin by one entity over time (t in epoch ms)')
+    .requiredOption('--entity <entity>', 'Entity id from `exchanges treasury-entities`')
+    .requiredOption('--coin <coin>', 'CoinGecko coin id, e.g. bitcoin')
+    .option('--days <days>', 'Window: 7|14|30|90|180|365|730|max (default 365)')
+    .option('--out <file>', 'Write output JSON to file')
+    .action(async (options: unknown): Promise<void> => {
+      const request = ExchangesTreasuryChartCommandOptionsSchema.parse(options)
+      const chart = await service.treasuryChart({
+        entity: request.entity,
+        coin: request.coin,
+        days: request.days ?? DEFAULT_TREASURY_CHART_DAYS
+      })
+      await writeOutput({
+        output: ensureJsonTreeString(chart),
+        outPath: request.out ?? undefined
+      })
+    })
+
+  program
+    .command('treasury-history')
+    .description('Buy/sell transaction history of one treasury entity')
+    .requiredOption('--entity <entity>', 'Entity id from `exchanges treasury-entities`')
+    .option('--limit <n>', 'Transactions to return, 1-250 (default 50)', (value) => Number(value))
+    .option('--out <file>', 'Write output JSON to file')
+    .action(async (options: unknown): Promise<void> => {
+      const request = ExchangesTreasuryHistoryCommandOptionsSchema.parse(options)
+      const history = await service.treasuryHistory({
+        entity: request.entity,
+        limit: request.limit ?? DEFAULT_TREASURY_HISTORY_LIMIT
+      })
+      await writeOutput({
+        output: ensureJsonTreeString(history),
         outPath: request.out ?? undefined
       })
     })

@@ -5,10 +5,13 @@ import { writeOutput } from '@/helpers/WriteOutput'
 import { MarketService } from '@/services/MarketService'
 import {
   MarketCategoriesCommandOptionsSchema,
+  MarketCurrenciesCommandOptionsSchema,
   MarketGlobalCommandOptionsSchema,
   MarketHistoryCommandOptionsSchema,
   MarketMoversCommandOptionsSchema,
   MarketNewCommandOptionsSchema,
+  MarketPlatformsCommandOptionsSchema,
+  MarketPlatformTokensCommandOptionsSchema,
   MarketPriceCommandOptionsSchema,
   MarketSearchCommandOptionsSchema,
   MarketTopCommandOptionsSchema
@@ -21,6 +24,8 @@ const DEFAULT_TOP_LIMIT = 50
 const DEFAULT_CATEGORIES_LIMIT = 50
 const DEFAULT_NEW_LIMIT = 50
 const DEFAULT_MOVERS_DURATION = '24h'
+const DEFAULT_PLATFORMS_LIMIT = 100
+const DEFAULT_PLATFORM_TOKENS_LIMIT = 100
 
 export function buildMarketCommand(): Command {
   const service = new MarketService({ apiKey: COIN_GECKO_PRO_API_KEY })
@@ -159,6 +164,50 @@ export function buildMarketCommand(): Command {
       const trending = await service.getTrending()
       await writeOutput({
         output: ensureJsonTreeString(trending),
+        outPath: request.out ?? undefined
+      })
+    })
+
+  program
+    .command('platforms')
+    .description('Asset platforms (blockchains) with ids for token and contract lookups')
+    .option('--limit <n>', 'Platforms to return, 1-500 (default 100)', (value) => Number(value))
+    .option('--out <file>', 'Write output JSON to file')
+    .action(async (options: unknown): Promise<void> => {
+      const request = MarketPlatformsCommandOptionsSchema.parse(options)
+      const platforms = await service.getPlatforms({
+        limit: request.limit ?? DEFAULT_PLATFORMS_LIMIT
+      })
+      await writeOutput({
+        output: ensureJsonTreeString(platforms),
+        outPath: request.out ?? undefined
+      })
+    })
+
+  program
+    .command('platform-tokens')
+    .description('Token list for an asset platform: symbol, name, address, decimals')
+    .requiredOption('--platform <platform>', 'Asset platform id, e.g. ethereum, polygon-pos')
+    .option('--limit <n>', 'Tokens to return, 1-1000 (default 100)', (value) => Number(value))
+    .option('--out <file>', 'Write output JSON to file')
+    .action(async (options: unknown): Promise<void> => {
+      const request = MarketPlatformTokensCommandOptionsSchema.parse(options)
+      const tokens = await service.getPlatformTokens({
+        platform: request.platform,
+        limit: request.limit ?? DEFAULT_PLATFORM_TOKENS_LIMIT
+      })
+      await writeOutput({ output: ensureJsonTreeString(tokens), outPath: request.out ?? undefined })
+    })
+
+  program
+    .command('currencies')
+    .description('Quote currencies supported by CoinGecko pricing endpoints')
+    .option('--out <file>', 'Write output JSON to file')
+    .action(async (options: unknown): Promise<void> => {
+      const request = MarketCurrenciesCommandOptionsSchema.parse(options)
+      const currencies = await service.getSupportedCurrencies()
+      await writeOutput({
+        output: ensureJsonTreeString(currencies),
         outPath: request.out ?? undefined
       })
     })

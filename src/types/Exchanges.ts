@@ -106,6 +106,67 @@ export const CoinGeckoTreasuryResponseSchema = z.object({
 })
 export type CoinGeckoTreasuryResponse = z.infer<typeof CoinGeckoTreasuryResponseSchema>
 
+export const CoinGeckoEntityRowSchema = z.object({
+  id: z.string(),
+  name: z.string().nullish(),
+  symbol: z.string().nullish(),
+  country: z.string().nullish()
+})
+export type CoinGeckoEntityRow = z.infer<typeof CoinGeckoEntityRowSchema>
+
+export const CoinGeckoTreasuryEntityResponseSchema = z.object({
+  id: z.string().nullish(),
+  name: z.string().nullish(),
+  type: z.string().nullish(),
+  symbol: z.string().nullish(),
+  country: z.string().nullish(),
+  total_treasury_value_usd: z.number().nullish(),
+  unrealized_pnl: z.number().nullish(),
+  holdings: z
+    .array(
+      z.object({
+        coin_id: z.string(),
+        amount: z.number().nullish(),
+        current_value_usd: z.number().nullish(),
+        total_entry_value_usd: z.number().nullish(),
+        average_entry_value_usd: z.number().nullish(),
+        percentage_of_total_supply: z.number().nullish(),
+        unrealized_pnl: z.number().nullish()
+      })
+    )
+    .nullish()
+})
+export type CoinGeckoTreasuryEntityResponse = z.infer<typeof CoinGeckoTreasuryEntityResponseSchema>
+
+// Chart points arrive as [epoch_ms, value].
+export const CoinGeckoTreasuryHoldingChartResponseSchema = z.object({
+  holdings: z.array(z.tuple([z.number(), z.number()])).nullish(),
+  holding_value_in_usd: z.array(z.tuple([z.number(), z.number()])).nullish()
+})
+export type CoinGeckoTreasuryHoldingChartResponse = z.infer<
+  typeof CoinGeckoTreasuryHoldingChartResponseSchema
+>
+
+export const CoinGeckoTreasuryTransactionHistoryResponseSchema = z.object({
+  transactions: z
+    .array(
+      z.object({
+        date: z.number().nullish(),
+        coin_id: z.string().nullish(),
+        type: z.string().nullish(),
+        holding_net_change: z.number().nullish(),
+        transaction_value_usd: z.number().nullish(),
+        holding_balance: z.number().nullish(),
+        average_entry_value_usd: z.number().nullish(),
+        source_url: z.string().nullish()
+      })
+    )
+    .nullish()
+})
+export type CoinGeckoTreasuryTransactionHistoryResponse = z.infer<
+  typeof CoinGeckoTreasuryTransactionHistoryResponseSchema
+>
+
 // ---------------------------------------------------------------------------
 // Agent-facing output shapes printed by `tribes-cli exchanges`.
 // ---------------------------------------------------------------------------
@@ -225,6 +286,82 @@ export const PublicTreasurySchema = z.object({
 })
 export type PublicTreasury = z.infer<typeof PublicTreasurySchema>
 
+export const TreasuryChartDaysSchema = z.enum(['7', '14', '30', '90', '180', '365', '730', 'max'])
+export type TreasuryChartDays = z.infer<typeof TreasuryChartDaysSchema>
+
+const TreasuryEntityRowSchema = z.object({
+  id: z.string(),
+  name: z.string().nullish(),
+  symbol: z.string().nullish(),
+  country: z.string().nullish()
+})
+
+export const TreasuryEntitiesSchema = z.object({
+  source: z.literal('coingecko'),
+  entities: z.array(TreasuryEntityRowSchema)
+})
+export type TreasuryEntities = z.infer<typeof TreasuryEntitiesSchema>
+
+const TreasuryHoldingRowSchema = z.object({
+  coin_id: z.string(),
+  amount: z.number().nullish(),
+  current_value_usd: z.number().nullish(),
+  entry_value_usd: z.number().nullish(),
+  avg_entry_value_usd: z.number().nullish(),
+  pct_of_total_supply: z.number().nullish(),
+  unrealized_pnl_usd: z.number().nullish()
+})
+
+export const TreasuryEntityHoldingsSchema = z.object({
+  source: z.literal('coingecko'),
+  entity: z.string(),
+  name: z.string().nullish(),
+  type: z.string().nullish(),
+  symbol: z.string().nullish(),
+  country: z.string().nullish(),
+  total_value_usd: z.number().nullish(),
+  unrealized_pnl_usd: z.number().nullish(),
+  holdings: z.array(TreasuryHoldingRowSchema)
+})
+export type TreasuryEntityHoldings = z.infer<typeof TreasuryEntityHoldingsSchema>
+
+const TreasuryChartPointSchema = z.object({
+  t: z.number(),
+  amount: z.number()
+})
+
+const TreasuryChartUsdPointSchema = z.object({
+  t: z.number(),
+  usd: z.number()
+})
+
+export const TreasuryHoldingChartSchema = z.object({
+  source: z.literal('coingecko'),
+  entity: z.string(),
+  coin: z.string(),
+  days: TreasuryChartDaysSchema,
+  holdings: z.array(TreasuryChartPointSchema),
+  value_usd: z.array(TreasuryChartUsdPointSchema)
+})
+export type TreasuryHoldingChart = z.infer<typeof TreasuryHoldingChartSchema>
+
+const TreasuryTransactionRowSchema = z.object({
+  date: z.number().nullish(),
+  coin_id: z.string().nullish(),
+  type: z.string().nullish(),
+  net_change: z.number().nullish(),
+  value_usd: z.number().nullish(),
+  balance: z.number().nullish(),
+  avg_entry_value_usd: z.number().nullish()
+})
+
+export const TreasuryHistorySchema = z.object({
+  source: z.literal('coingecko'),
+  entity: z.string(),
+  transactions: z.array(TreasuryTransactionRowSchema)
+})
+export type TreasuryHistory = z.infer<typeof TreasuryHistorySchema>
+
 // ---------------------------------------------------------------------------
 // `tribes-cli exchanges` command options.
 // ---------------------------------------------------------------------------
@@ -278,3 +415,39 @@ export const ExchangesTreasuryCommandOptionsSchema = z.object({
   out: z.string().nullish()
 })
 export type ExchangesTreasuryCommandOptions = z.infer<typeof ExchangesTreasuryCommandOptionsSchema>
+
+export const ExchangesTreasuryEntitiesCommandOptionsSchema = z.object({
+  limit: z.number().int().min(1).max(250).nullish(),
+  out: z.string().nullish()
+})
+export type ExchangesTreasuryEntitiesCommandOptions = z.infer<
+  typeof ExchangesTreasuryEntitiesCommandOptionsSchema
+>
+
+export const ExchangesTreasuryEntityCommandOptionsSchema = z.object({
+  entity: z.string().min(1),
+  coin: z.string().min(1).nullish(),
+  out: z.string().nullish()
+})
+export type ExchangesTreasuryEntityCommandOptions = z.infer<
+  typeof ExchangesTreasuryEntityCommandOptionsSchema
+>
+
+export const ExchangesTreasuryChartCommandOptionsSchema = z.object({
+  entity: z.string().min(1),
+  coin: z.string().min(1),
+  days: TreasuryChartDaysSchema.nullish(),
+  out: z.string().nullish()
+})
+export type ExchangesTreasuryChartCommandOptions = z.infer<
+  typeof ExchangesTreasuryChartCommandOptionsSchema
+>
+
+export const ExchangesTreasuryHistoryCommandOptionsSchema = z.object({
+  entity: z.string().min(1),
+  limit: z.number().int().min(1).max(250).nullish(),
+  out: z.string().nullish()
+})
+export type ExchangesTreasuryHistoryCommandOptions = z.infer<
+  typeof ExchangesTreasuryHistoryCommandOptionsSchema
+>

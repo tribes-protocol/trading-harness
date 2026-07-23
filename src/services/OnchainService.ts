@@ -1,5 +1,7 @@
 import type {
   CoinGeckoOnchainPool,
+  OnchainCategories,
+  OnchainCategoryPools,
   OnchainDexes,
   OnchainNetworks,
   OnchainPoolOhlcv,
@@ -7,22 +9,28 @@ import type {
   OnchainPools,
   OnchainPoolSnapshot,
   OnchainPoolTrades,
+  OnchainRecentTokens,
   OnchainSearchResults,
   OnchainTimeframe
 } from '@/types/Onchain'
 import {
+  CoinGeckoOnchainCategoriesResponseSchema,
   CoinGeckoOnchainDexesResponseSchema,
   CoinGeckoOnchainNetworksResponseSchema,
   CoinGeckoOnchainOhlcvResponseSchema,
   CoinGeckoOnchainPoolResponseSchema,
   CoinGeckoOnchainPoolsResponseSchema,
+  CoinGeckoOnchainTokensInfoResponseSchema,
   CoinGeckoOnchainTradesResponseSchema,
+  OnchainCategoriesSchema,
+  OnchainCategoryPoolsSchema,
   OnchainDexesSchema,
   OnchainNetworksSchema,
   OnchainPoolOhlcvSchema,
   OnchainPoolSnapshotSchema,
   OnchainPoolsSchema,
   OnchainPoolTradesSchema,
+  OnchainRecentTokensSchema,
   OnchainSearchResultsSchema
 } from '@/types/Onchain'
 import { isNullish } from '@/utils/Lang'
@@ -78,6 +86,43 @@ type GetPoolTradesParams = {
 type SearchPoolsParams = {
   readonly query: string
   readonly network: string | null
+}
+
+type GetMegafilterPoolsParams = {
+  readonly networks: string | null
+  readonly dexes: string | null
+  readonly minFdv: number | null
+  readonly minLiquidity: number | null
+  readonly minVolume: number | null
+  readonly sort: string | null
+  readonly limit: number
+}
+
+type GetCategoriesParams = {
+  readonly limit: number
+}
+
+type GetPoolsByCategoryParams = {
+  readonly category: string
+  readonly limit: number
+}
+
+type GetTrendingSearchPoolsParams = {
+  readonly limit: number
+}
+
+type GetPairOhlcvParams = {
+  readonly network: string
+  readonly pool: string
+  readonly base: string
+  readonly quote: string
+  readonly timeframe: OnchainTimeframe
+  readonly aggregate: number | null
+  readonly limit: number
+}
+
+type GetRecentlyUpdatedTokensParams = {
+  readonly limit: number
 }
 
 const COINGECKO_PRO_BASE_URL = 'https://pro-api.coingecko.com/'
@@ -244,6 +289,115 @@ export class OnchainService {
       source: 'geckoterminal',
       query: params.query,
       pools: (parsed.data ?? []).map((pool) => this.shapePoolRow(pool))
+    })
+  }
+
+  async getMegafilterPools(params: GetMegafilterPoolsParams): Promise<OnchainPools> {
+    const searchParams: Record<string, string> = {}
+    if (!isNullish(params.networks)) {
+      searchParams.networks = params.networks
+    }
+    if (!isNullish(params.dexes)) {
+      searchParams.dexes = params.dexes
+    }
+    if (!isNullish(params.minFdv)) {
+      searchParams.fdv_usd_min = String(params.minFdv)
+    }
+    if (!isNullish(params.minLiquidity)) {
+      searchParams.reserve_in_usd_min = String(params.minLiquidity)
+    }
+    if (!isNullish(params.minVolume)) {
+      searchParams.h24_volume_usd_min = String(params.minVolume)
+    }
+    if (!isNullish(params.sort)) {
+      searchParams.sort = params.sort
+    }
+    const raw = await this.fetch('api/v3/onchain/pools/megafilter', searchParams)
+    return this.shapePools(raw, params.limit)
+  }
+
+  async getCategories(params: GetCategoriesParams): Promise<OnchainCategories> {
+    const raw = await this.fetch('api/v3/onchain/categories', {})
+    const parsed = CoinGeckoOnchainCategoriesResponseSchema.parse(raw)
+    return OnchainCategoriesSchema.parse({
+      source: 'geckoterminal',
+      categories: (parsed.data ?? []).slice(0, params.limit).map((row) => ({
+        id: row.id,
+        name: row.attributes?.name,
+        volume_24h_usd: this.asFiniteNumber(row.attributes?.h24_volume_usd),
+        reserve_usd: this.asFiniteNumber(row.attributes?.reserve_in_usd),
+        fdv_usd: this.asFiniteNumber(row.attributes?.fdv_usd),
+        tx_24h: row.attributes?.h24_tx_count
+      }))
+    })
+  }
+
+  async getPoolsByCategory(params: GetPoolsByCategoryParams): Promise<OnchainCategoryPools> {
+    const raw = await this.fetch(
+      `api/v3/onchain/categories/${encodeURIComponent(params.category)}/pools`,
+      {}
+    )
+    const parsed = CoinGeckoOnchainPoolsResponseSchema.parse(raw)
+    return OnchainCategoryPoolsSchema.parse({
+      source: 'geckoterminal',
+      category: params.category,
+      pools: (parsed.data ?? []).slice(0, params.limit).map((pool) => this.shapePoolRow(pool))
+    })
+  }
+
+  async getTrendingSearchPools(params: GetTrendingSearchPoolsParams): Promise<OnchainPools> {
+    const raw = await this.fetch('api/v3/onchain/pools/trending_search', {
+      pools: String(params.limit)
+    })
+    return this.shapePools(raw, params.limit)
+  }
+
+  // Base/quote pair candles: the pool OHLCV endpoint prices the base token in
+  // the pool's quote token when currency=token; the quote address is context
+  // for the caller and never sent on the wire.
+  async getPairOhlcv(params: GetPairOhlcvParams): Promise<OnchainPoolOhlcv> {
+    const searchParams: Record<string, string> = {
+      token: params.base,
+      currency: 'token',
+      limit: String(params.limit)
+    }
+    if (!isNullish(params.aggregate)) {
+      searchParams.aggregate = String(params.aggregate)
+    }
+    const raw = await this.fetch(
+      `api/v3/onchain/networks/${encodeURIComponent(params.network)}/pools/${encodeURIComponent(params.pool)}/ohlcv/${params.timeframe}`,
+      searchParams
+    )
+    const parsed = CoinGeckoOnchainOhlcvResponseSchema.parse(raw)
+    return OnchainPoolOhlcvSchema.parse({
+      source: 'geckoterminal',
+      candles: (parsed.data.attributes.ohlcv_list ?? []).map((row) => ({
+        t: row[0] * MS_PER_SECOND,
+        o: row[1],
+        h: row[2],
+        l: row[3],
+        c: row[4],
+        v: row[5]
+      }))
+    })
+  }
+
+  async getRecentlyUpdatedTokens(
+    params: GetRecentlyUpdatedTokensParams
+  ): Promise<OnchainRecentTokens> {
+    const raw = await this.fetch('api/v3/onchain/tokens/info_recently_updated', {})
+    const parsed = CoinGeckoOnchainTokensInfoResponseSchema.parse(raw)
+    return OnchainRecentTokensSchema.parse({
+      source: 'geckoterminal',
+      tokens: (parsed.data ?? []).slice(0, params.limit).map((row) => ({
+        network: this.networkFromPoolId(row.id),
+        address: row.attributes?.address,
+        name: row.attributes?.name,
+        symbol: row.attributes?.symbol,
+        coingecko_id: row.attributes?.coingecko_coin_id,
+        gt_score: row.attributes?.gt_score,
+        updated_at: row.attributes?.metadata_updated_at
+      }))
     })
   }
 

@@ -304,6 +304,186 @@ describe('ExchangesService', () => {
     expect(requestUrl.pathname).toBe('/api/v3/companies/public_treasury/bitcoin')
   })
 
+  it('lists treasury entities through /entities/list with per_page paging', async () => {
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      jsonResponse([
+        { id: 'microstrategy', name: 'Strategy', symbol: 'NASDAQ:MSTR', country: 'US' },
+        { id: 'tesla', name: 'Tesla, Inc.', symbol: 'NASDAQ:TSLA' }
+      ])
+    )
+
+    const result = await makeService().treasuryEntities({ limit: 25 })
+
+    expect(result).toEqual({
+      source: 'coingecko',
+      entities: [
+        { id: 'microstrategy', name: 'Strategy', symbol: 'NASDAQ:MSTR', country: 'US' },
+        { id: 'tesla', name: 'Tesla, Inc.', symbol: 'NASDAQ:TSLA' }
+      ]
+    })
+
+    const requestUrl = new URL(String(fetchSpy.mock.calls[0]?.[0]))
+    expect(requestUrl.pathname).toBe('/api/v3/entities/list')
+    expect(requestUrl.searchParams.get('per_page')).toBe('25')
+    expect(requestUrl.searchParams.get('page')).toBe('1')
+  })
+
+  it('shapes entity treasury holdings', async () => {
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      jsonResponse({
+        id: 'microstrategy',
+        name: 'Strategy',
+        type: 'company',
+        symbol: 'NASDAQ:MSTR',
+        country: 'US',
+        total_treasury_value_usd: 14330398800,
+        unrealized_pnl: 6800398800,
+        holdings: [
+          {
+            coin_id: 'bitcoin',
+            amount: 214400,
+            current_value_usd: 14330398800,
+            total_entry_value_usd: 7530000000,
+            average_entry_value_usd: 35123.5,
+            percentage_of_total_supply: 1.021,
+            unrealized_pnl: 6800398800
+          }
+        ]
+      })
+    )
+
+    const result = await makeService().treasuryEntity({ entity: 'microstrategy', coin: null })
+
+    expect(result).toEqual({
+      source: 'coingecko',
+      entity: 'microstrategy',
+      name: 'Strategy',
+      type: 'company',
+      symbol: 'NASDAQ:MSTR',
+      country: 'US',
+      total_value_usd: 14330398800,
+      unrealized_pnl_usd: 6800398800,
+      holdings: [
+        {
+          coin_id: 'bitcoin',
+          amount: 214400,
+          current_value_usd: 14330398800,
+          entry_value_usd: 7530000000,
+          avg_entry_value_usd: 35123.5,
+          pct_of_total_supply: 1.021,
+          unrealized_pnl_usd: 6800398800
+        }
+      ]
+    })
+
+    const requestUrl = new URL(String(fetchSpy.mock.calls[0]?.[0]))
+    expect(requestUrl.pathname).toBe('/api/v3/public_treasury/microstrategy')
+  })
+
+  it('narrows entity holdings client-side when a coin is given', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      jsonResponse({
+        id: 'tesla',
+        name: 'Tesla, Inc.',
+        holdings: [
+          { coin_id: 'bitcoin', amount: 9720 },
+          { coin_id: 'ethereum', amount: 100 }
+        ]
+      })
+    )
+
+    const result = await makeService().treasuryEntity({ entity: 'tesla', coin: 'ethereum' })
+
+    expect(result.holdings).toEqual([
+      {
+        coin_id: 'ethereum',
+        amount: 100
+      }
+    ])
+  })
+
+  it('shapes the treasury holding chart with amount and usd series', async () => {
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      jsonResponse({
+        holdings: [
+          [1712793600000, 214000],
+          [1712880000000, 214400]
+        ],
+        holding_value_in_usd: [
+          [1712793600000, 14100000000],
+          [1712880000000, 14330398800]
+        ]
+      })
+    )
+
+    const result = await makeService().treasuryChart({
+      entity: 'microstrategy',
+      coin: 'bitcoin',
+      days: '90'
+    })
+
+    expect(result).toEqual({
+      source: 'coingecko',
+      entity: 'microstrategy',
+      coin: 'bitcoin',
+      days: '90',
+      holdings: [
+        { t: 1712793600000, amount: 214000 },
+        { t: 1712880000000, amount: 214400 }
+      ],
+      value_usd: [
+        { t: 1712793600000, usd: 14100000000 },
+        { t: 1712880000000, usd: 14330398800 }
+      ]
+    })
+
+    const requestUrl = new URL(String(fetchSpy.mock.calls[0]?.[0]))
+    expect(requestUrl.pathname).toBe('/api/v3/public_treasury/microstrategy/bitcoin/holding_chart')
+    expect(requestUrl.searchParams.get('days')).toBe('90')
+  })
+
+  it('shapes treasury transaction history with per_page paging', async () => {
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      jsonResponse({
+        transactions: [
+          {
+            date: 1712793600,
+            coin_id: 'bitcoin',
+            type: 'buy',
+            holding_net_change: 12000,
+            transaction_value_usd: 821700000,
+            holding_balance: 214400,
+            average_entry_value_usd: 68475,
+            source_url: 'https://example.com/8-k'
+          }
+        ]
+      })
+    )
+
+    const result = await makeService().treasuryHistory({ entity: 'microstrategy', limit: 25 })
+
+    expect(result).toEqual({
+      source: 'coingecko',
+      entity: 'microstrategy',
+      transactions: [
+        {
+          date: 1712793600,
+          coin_id: 'bitcoin',
+          type: 'buy',
+          net_change: 12000,
+          value_usd: 821700000,
+          balance: 214400,
+          avg_entry_value_usd: 68475
+        }
+      ]
+    })
+
+    const requestUrl = new URL(String(fetchSpy.mock.calls[0]?.[0]))
+    expect(requestUrl.pathname).toBe('/api/v3/public_treasury/microstrategy/transaction_history')
+    expect(requestUrl.searchParams.get('per_page')).toBe('25')
+    expect(requestUrl.searchParams.get('page')).toBe('1')
+  })
+
   it('throws the unavailable message without calling fetch when the key is unset', async () => {
     const fetchSpy = vi.spyOn(globalThis, 'fetch')
 
