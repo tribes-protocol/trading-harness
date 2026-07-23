@@ -253,6 +253,7 @@ exists.
    - Do not bind terminal PR #2575 as safe until external delivery and terminal #2613 both land.
 
 6. **ATA staging and delivery evidence**
+
    - ATA clones trading-harness `main` at claim and ignores `HOST_HARNESS_REF`; record the exact
      external main SHA before provisioning.
    - Drain/recreate existing staging ATA boxes so no old clone survives. Provision a fresh ATA box
@@ -264,6 +265,37 @@ exists.
      and keyless hosts stay keyless.
    - This plan authorizes no production fleet mutation. Staging evidence remains **NOT RUN** until
      the exact merged source and terminal candidate exist.
+
+## Implementation and local-verification receipt
+
+Product commit `13231d17954a913d18e72f498df52afc404f2b79` was pushed and read back exactly
+on `fix/p27-pr80-billed-topology-v1`.
+
+| Provider consumers               | Environment variable     | Exact origin                    | Placement                 |
+| -------------------------------- | ------------------------ | ------------------------------- | ------------------------- |
+| Coin, Market, Onchain, Exchanges | `COIN_GECKO_PRO_API_KEY` | `https://pro-api.coingecko.com` | `x-cg-pro-api-key` header |
+| Birdeye                          | `BIRDEYE_API_KEY`        | `https://public-api.birdeye.so` | `X-API-KEY` header        |
+| Nansen                           | `NANSEN_API_KEY`         | `https://api.nansen.ai`         | `apiKey` header           |
+| Stocks                           | `MARKETSTACK_API_KEY`    | `https://api.marketstack.com`   | `access_key` query        |
+
+All seven keyed service consumers fail before `fetch` when their placeholder is empty. Provider
+failure messages retain only provider, path, status, and status text; they do not emit the request
+URL or response body, so an echoed placeholder cannot enter an exception or log. No proxy
+dispatcher, direct-key fallback, pricing table, or PR #74 content was added.
+
+Local low-priority gates on the exact product tree:
+
+- billed-topology semantic/mutation contract: **4 / 4 PASS**;
+- router, adapter, and keyed-provider focused suites: **173 / 173 PASS** across ten files;
+- native CLI registration smoke: all imported analyst command groups present;
+- repository Prettier check, ESLint, TypeScript build, and diff checks: **PASS**;
+- full Vitest suite: **398 / 398 PASS** across 32 files;
+- unmodified shared-skills inheritance script: **PASS** in a private clean-root mount namespace
+  matching its disposable-runner precondition.
+
+Protected-PR CI, external merge SHA, external-main delivery stamp, staging drain/recreate,
+provider calls, tollbooth charges, wallet settlement, live QA, deployment, production, and
+certification remain **UNBOUND / NOT RUN**. No user-authority question was discovered.
 
 ## Exact non-overlap with terminal #2613
 
