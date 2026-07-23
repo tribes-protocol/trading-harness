@@ -58,7 +58,10 @@ live credential. Empty key = the command group reports itself unavailable.
   extract with its transitive helpers.
 - **LLM client + logger**: re-home `createAi` and the lucy logger wiring (apps/api,
   apps/backend, apps/telegram) to core/server.
-- **Boot env**: inject the six provider placeholders above into SandboxBootEnv.
+- **Boot env**: terminal issue #2613 reconstructs the security work from PR #2586, including the
+  exact catalog-placeholder projection into `SandboxBootEnv`. The harness never receives a live
+  provider key. Historical PR #2573 is evidence for that accepted behavior, not a branch or merge
+  dependency.
 - zipbox TEST-SUITE.md items for the changed in-guest surface.
 
 ## PR 2 — Lucy deletion (terminal repo), blocked on PR 1 merge + fleet rebake/drain + PR 1b deploy
@@ -78,18 +81,26 @@ live credential. Empty key = the command group reports itself unavailable.
   test surviving non-lucy code and relocate.
 - Web chat surface is already dark (`LUCY_AGENT_ENABLED=false`) — delete with the rest.
 
-## MITM / metering posture
+## Egress / metering posture
 
-1. Harness sandboxes run forced-mitm and are zero-rated: catalog entries do key
-   injection + allowlisting there, not billing.
-2. **Tavily is deliberately NOT cataloged** (its key is body-carried per the catalog
-   doctrine) — research web search stays behind the JWT-authed apps/api `/agent/web`
-   proxy; never inject a real Tavily key into a VM.
-3. Keyless direct egress (api.hyperliquid.xyz, gamma-api.polymarket.com,
-   api.thegraph.com) is unmetered — accepted for keyless hosts.
-4. **Massive is not cataloged**: stock NBBO/movers/status/news route through the
-   existing non-Lucy apps/api `/stocks/*` endpoints rather than adding a catalog +
-   billing entry. Revisit if in-VM direct calls are ever wanted.
+1. Transparent MITM and explicit HTTP-proxy egress both enter the same tollbooth billing path.
+   Neither transport is zero-rated.
+2. A sandbox receives only the catalog placeholder under the exact provider environment variable.
+   The egress boundary swaps the operator credential at the provider hop; this harness must never
+   mint, store, log, or expose a live provider key.
+3. Keyed requests stay on their cataloged provider origin and normal network path. Harness code
+   must not install a billing bypass, direct-real-key fallback, global proxy override, or second
+   pricing table.
+4. A missing placeholder fails the affected command group closed. Keyless public hosts remain
+   keyless; their traffic is not evidence that keyed provider traffic is unbilled.
+5. The terminal repository owns placeholder projection and delivery, iron-proxy injection,
+   metering, wallet settlement, and deployment evidence. This repository owns the native
+   commands, provider request shape, redaction, routing, and tests.
+
+Tavily remains deliberately outside the catalog because its credential is body-carried. Research
+web search stays behind the JWT-authenticated apps/api `/agent/web` proxy; never inject a live
+Tavily key into a VM. Massive is also not cataloged: stock NBBO/movers/status/news stay behind the
+existing non-Lucy apps/api `/stocks/*` endpoints rather than adding a direct in-VM provider path.
 
 ## Open decisions (defaults chosen, flag to change)
 

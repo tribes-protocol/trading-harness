@@ -203,11 +203,13 @@ exists.
 ## Implementation sequence
 
 1. **Plan and ownership gate**
+
    - Commit/push/read back this sole plan path from exact base `f75060e5`.
    - Bind the existing Project card and owner block exactly as described above.
    - Verify the worktree is clean and local equals remote.
 
 2. **Additive old-head integration**
+
    - Merge exact old head `66b4c5d289f70bd343356c05987498147af1df42` into this branch with
      `--no-ff`, preserving current main's two later commits.
    - Do not rebase, rewrite, force-push, or mutate `leo/lucy-migration-pr1`.
@@ -215,6 +217,7 @@ exists.
      classifies it.
 
 3. **Billed-topology remediation**
+
    - Replace the forced-MITM/zero-rated section in
      `plans/lucy-sunset-two-pr-migration.md` with the five current #2067 invariants above.
    - Audit all `EGRESS-BOUND` paths against exact provider origins and key placement:
@@ -227,6 +230,7 @@ exists.
      deletions, Massive removal, and the existing no-subscription decision.
 
 4. **Focused regression and mutation coverage**
+
    - Add or extend a repository test that fails if the zero-rated claim returns, if exact env
      names/provider origins drift, if a keyed service bypasses missing-key failure, or if a
      credential value reaches an error string.
@@ -241,6 +245,7 @@ exists.
    - Full protected-PR CI remains mandatory even if focused local gates pass.
 
 5. **Release accounting**
+
    - Record the exact external merge SHA and CI run.
    - On the terminal release branch, add the PR #80 behavior to the changelog, permanent suite,
      release delta, QA plan, certification plan, and the existing #2067 decision record. Keep live

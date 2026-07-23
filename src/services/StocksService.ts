@@ -36,7 +36,6 @@ type SearchParams = {
 }
 
 const MARKETSTACK_BASE_URL = 'https://api.marketstack.com/'
-const ERROR_BODY_MAX_CHARS = 300
 
 export class StocksService {
   private readonly apiKey: string
@@ -142,12 +141,9 @@ export class StocksService {
       headers: { Accept: 'application/json' }
     })
     if (!response.ok) {
-      const body = await response.text().catch(() => '')
       // The access key rides the URL query, so the message references only the
-      // request path — never the full URL.
-      throw new Error(
-        `Marketstack /${path} failed: ${response.status} ${response.statusText} ${body.slice(0, ERROR_BODY_MAX_CHARS)}`
-      )
+      // request path and status — never the full URL or provider response body.
+      throw new Error(`Marketstack /${path} failed: ${response.status} ${response.statusText}`)
     }
     const data: unknown = await response.json()
     return data

@@ -199,7 +199,6 @@ type GetTokenTransferTotalParams = {
 const BIRDEYE_BASE_URL = 'https://public-api.birdeye.so/'
 const BIRDEYE_KEY_HEADER = 'X-API-KEY'
 const BIRDEYE_CHAIN_HEADER = 'x-chain'
-const ERROR_BODY_MAX_CHARS = 300
 const DEFAULT_OHLCV_CANDLES = 200
 const DEFAULT_SEARCH_CHAIN = 'all'
 const DEFAULT_SEARCH_LIMIT = 20
@@ -856,10 +855,7 @@ export class BirdeyeService {
       body: ensureJsonTreeString(body)
     })
     if (!response.ok) {
-      const responseBody = await response.text().catch(() => '')
-      throw new Error(
-        `BirdEye /${path} failed: ${response.status} ${response.statusText} ${responseBody.slice(0, ERROR_BODY_MAX_CHARS)}`
-      )
+      throw new Error(`BirdEye /${path} failed: ${response.status} ${response.statusText}`)
     }
     const data: unknown = await response.json()
     return data
@@ -888,10 +884,7 @@ export class BirdeyeService {
       }
     })
     if (!response.ok) {
-      const body = await response.text().catch(() => '')
-      throw new Error(
-        `BirdEye /${path} failed: ${response.status} ${response.statusText} ${body.slice(0, ERROR_BODY_MAX_CHARS)}`
-      )
+      throw new Error(`BirdEye /${path} failed: ${response.status} ${response.statusText}`)
     }
     const data: unknown = await response.json()
     return data

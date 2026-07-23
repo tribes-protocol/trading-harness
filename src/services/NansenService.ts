@@ -221,7 +221,6 @@ type GetEntitySearchParams = {
 
 const NANSEN_BASE_URL = 'https://api.nansen.ai'
 const NANSEN_KEY_HEADER = 'apiKey'
-const ERROR_BODY_MAX_CHARS = 300
 const LOOKBACK_DAYS = 30
 const MS_PER_DAY = 24 * 60 * 60 * 1000
 const FLOWS_WINDOW_DAYS: Record<NansenFlowsWindow, number> = { '1d': 1, '7d': 7, '30d': 30 }
@@ -907,10 +906,7 @@ export class NansenService {
       body: ensureJsonTreeString(body)
     })
     if (!response.ok) {
-      const errorBody = await response.text().catch(() => '')
-      throw new Error(
-        `Nansen ${path} failed: ${response.status} ${response.statusText} ${errorBody.slice(0, ERROR_BODY_MAX_CHARS)}`
-      )
+      throw new Error(`Nansen ${path} failed: ${response.status} ${response.statusText}`)
     }
     const data: unknown = await response.json()
     return data

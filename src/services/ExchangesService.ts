@@ -98,7 +98,6 @@ type TreasuryHistoryParams = {
 
 const COINGECKO_PRO_BASE_URL = 'https://pro-api.coingecko.com/'
 const COINGECKO_KEY_HEADER = 'x-cg-pro-api-key'
-const ERROR_BODY_MAX_CHARS = 300
 const DETAIL_TOP_TICKERS = 10
 
 export class ExchangesService {
@@ -344,10 +343,7 @@ export class ExchangesService {
       }
     })
     if (!response.ok) {
-      const body = await response.text().catch(() => '')
-      throw new Error(
-        `CoinGecko /${path} failed: ${response.status} ${response.statusText} ${body.slice(0, ERROR_BODY_MAX_CHARS)}`
-      )
+      throw new Error(`CoinGecko /${path} failed: ${response.status} ${response.statusText}`)
     }
     const data: unknown = await response.json()
     return data
