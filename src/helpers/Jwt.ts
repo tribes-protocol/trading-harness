@@ -25,6 +25,10 @@ interface IsReusableCacheParams {
   readonly key: AgentAuthorizationKey
 }
 
+interface GetApiBearerTokenParams {
+  readonly force?: boolean
+}
+
 interface WriteDiskCacheParams {
   readonly cache: JwtTokenCache
 }
@@ -129,13 +133,13 @@ export async function signLoginProof(params: SignLoginProofParams): Promise<stri
     .sign(privateKey)
 }
 
-export async function getApiBearerToken(): Promise<string> {
+export async function getApiBearerToken(params: GetApiBearerTokenParams = {}): Promise<string> {
   const key = await readAgentAuthorizationKey()
   if (isNullish(key)) {
     throw new Error('Authorization key missing')
   }
 
-  if (!isNullish(memoryCache)) {
+  if (!params.force && !isNullish(memoryCache)) {
     const reusableMemoryCache = isReusableCache({
       key,
       cache: memoryCache
@@ -145,7 +149,7 @@ export async function getApiBearerToken(): Promise<string> {
     }
   }
 
-  const diskCache = await readDiskCache()
+  const diskCache = !params.force ? await readDiskCache() : null
   if (!isNullish(diskCache)) {
     const reusableDiskCache = isReusableCache({
       key,
