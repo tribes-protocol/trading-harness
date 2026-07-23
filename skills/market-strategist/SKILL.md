@@ -7,7 +7,7 @@ description: >-
   and market-wide search. Call for "how's the market?", crypto rankings, crypto top movers,
   category rotation, or broad trend questions. NOT for: one token's price, chart, or safety (use
   token-analyst); deep single-coin research (use fundamentals-analyst); pool or DEX-level TVL
-  (use defi-analyst); stock movers (use stock-analyst); numeric macro indicators (use macros).
+  (use defi-analyst); stock data (use stock-analyst); numeric macro indicators (use macros).
 allowed-tools: bash read
 ---
 
@@ -27,7 +27,7 @@ yourself. There is no backend specialist behind this skill and no `ask` subcomma
   checks (`price`), market-wide search (`search`), search-popularity trends (`trending`).
 - NOT for a single token or coin — use `token-analyst` (on-chain) or `fundamentals-analyst` (profile).
 - NOT for trending-token discovery (`alpha-scout`), pools/DEXes (`defi-analyst`), CEX/derivatives (`exchange-analyst`).
-- NOT for stock movers (`stock-analyst`) or numeric macro indicators like CPI/VIX/DXY (`macros`).
+- NOT for stock data (`stock-analyst`) or numeric macro indicators like CPI/VIX/DXY (`macros`).
 
 ## Hard rules
 
@@ -105,7 +105,7 @@ tribes-cli market search --query "render"
 
 - `token-analyst` — deep dive on one identified token; `fundamentals-analyst` — one coin's profile.
 - `alpha-scout` — trending/new-token and smart-money discovery before a token is chosen.
-- `stock-analyst` — the securities pass for unscoped movers/opportunity questions.
+- `stock-analyst` — the securities pass for unscoped opportunity questions (daily candles).
 - `commodity-analyst` — the commodities pass for unscoped movers/opportunity questions.
 - `hyperliquid` — all-dex tradability and venue-quality check before trade ideas.
 - `strategize` — full market briefing combining macro, news, odds, and ideas.

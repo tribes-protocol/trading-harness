@@ -8,7 +8,7 @@ description: >-
   confluence reads, and long-only backtests of two built-in strategies (SMA cross,
   RSI mean-revert). Call whenever the question is an indicator value, signal, setup, level, or
   backtest. NOT for: raw prices or candles with no indicator math (use stock-analyst,
-  fundamentals-analyst, or token-analyst); stock quotes or snapshots (use stock-analyst); asset
+  fundamentals-analyst, or token-analyst); stock prices or candles (use stock-analyst); asset
   news (use news); pool OHLCV charts (use defi-analyst).
 allowed-tools: bash read
 ---
@@ -49,7 +49,7 @@ All four candle sources write the shared candle contract, which is exactly what
 - NOT for raw candles or price history as the answer itself — use `fundamentals-analyst` or
   `stock-analyst`.
 - NOT for one token's live price, safety, or on-chain trades — use `token-analyst`.
-- NOT for stock quotes, snapshots, or movers — use `stock-analyst`; stock news — use `news`.
+- NOT for stock prices, candles, or ticker details — use `stock-analyst`; stock news — use `news`.
 - NOT for pool or pair OHLCV charts as a deliverable — use `defi-analyst`.
 
 ## Hard rules
@@ -130,7 +130,7 @@ Report win rate, total return vs buy-and-hold, and max drawdown straight from th
 
 ## Related skills
 
-- `stock-analyst` — stock prices, quotes, candles, snapshots, movers.
+- `stock-analyst` — stock daily candles, ticker details, and search (Marketstack).
 - `fundamentals-analyst` — raw coin OHLCV candles and historical charts (no indicator math).
 - `defi-analyst` — pool discovery and pool charts as a deliverable.
 - `strategize` — turns TA reads into a trade plan.
