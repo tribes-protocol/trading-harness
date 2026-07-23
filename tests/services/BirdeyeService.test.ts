@@ -448,13 +448,551 @@ describe('BirdeyeService', () => {
     expect(requestUrl.searchParams.get('wallet')).toBe('Wallet111')
   })
 
+  it('shapes mint/burn transactions and requests all types newest-first', async () => {
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      jsonResponse({
+        success: true,
+        data: {
+          items: [
+            {
+              tx_hash: 'MintTx111',
+              block_time: 1784560000,
+              common_type: 'mint',
+              ui_amount: 5000000,
+              slot: 312345678
+            },
+            {
+              tx_hash: 'BurnTx222',
+              block_time: 1784550000,
+              common_type: 'burn',
+              ui_amount: 120000,
+              slot: 312345000
+            }
+          ]
+        }
+      })
+    )
+
+    const result = await makeService().getMintBurns({
+      address: BONK_ADDRESS,
+      limit: 2,
+      chain: 'solana'
+    })
+
+    expect(result).toEqual({
+      source: 'birdeye',
+      chain: 'solana',
+      address: BONK_ADDRESS,
+      transactions: [
+        {
+          tx_hash: 'MintTx111',
+          block_unix_time: 1784560000,
+          type: 'mint',
+          amount: 5000000,
+          slot: 312345678
+        },
+        {
+          tx_hash: 'BurnTx222',
+          block_unix_time: 1784550000,
+          type: 'burn',
+          amount: 120000,
+          slot: 312345000
+        }
+      ]
+    })
+
+    const requestUrl = new URL(String(fetchSpy.mock.calls[0]?.[0]))
+    expect(requestUrl.pathname).toBe('/defi/v3/token/mint-burn-txs')
+    expect(requestUrl.searchParams.get('address')).toBe(BONK_ADDRESS)
+    expect(requestUrl.searchParams.get('sort_by')).toBe('block_time')
+    expect(requestUrl.searchParams.get('sort_type')).toBe('desc')
+    expect(requestUrl.searchParams.get('type')).toBe('all')
+    expect(requestUrl.searchParams.get('offset')).toBe('0')
+    expect(requestUrl.searchParams.get('limit')).toBe('2')
+  })
+
+  it('shapes token creation info', async () => {
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      jsonResponse({
+        success: true,
+        data: {
+          decimals: 5,
+          symbol: 'BONK',
+          name: 'Bonk',
+          mint: BONK_ADDRESS,
+          creator: 'CreatorAddr111',
+          txHash: 'DeployTx111',
+          slot: 168000000,
+          blockHumanTime: '2022-12-25T12:00:00',
+          blockUnixTime: 1671969600
+        }
+      })
+    )
+
+    const result = await makeService().getCreationInfo({
+      address: BONK_ADDRESS,
+      chain: 'solana'
+    })
+
+    expect(result).toEqual({
+      source: 'birdeye',
+      chain: 'solana',
+      address: BONK_ADDRESS,
+      symbol: 'BONK',
+      name: 'Bonk',
+      decimals: 5,
+      creator: 'CreatorAddr111',
+      tx_hash: 'DeployTx111',
+      slot: 168000000,
+      created_at: 1671969600
+    })
+
+    const requestUrl = new URL(String(fetchSpy.mock.calls[0]?.[0]))
+    expect(requestUrl.pathname).toBe('/defi/token_creation_info')
+    expect(requestUrl.searchParams.get('address')).toBe(BONK_ADDRESS)
+  })
+
+  it('returns null creation fields when BirdEye has no creation record', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(jsonResponse({ success: true, data: null }))
+
+    const result = await makeService().getCreationInfo({
+      address: BONK_ADDRESS,
+      chain: 'solana'
+    })
+
+    expect(result).toEqual({
+      source: 'birdeye',
+      chain: 'solana',
+      address: BONK_ADDRESS
+    })
+  })
+
+  it('keeps requested exit-liquidity addresses in order, drops unknowns, and coalesces field casings', async () => {
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      jsonResponse({
+        success: true,
+        data: {
+          BaseToken111: { exit_liquidity_usd: 250000.5 },
+          BaseToken222: { exitLiquidityUsd: 91000 },
+          BaseToken333: null
+        }
+      })
+    )
+
+    const result = await makeService().getExitLiquidity({
+      addresses: ['BaseToken111', 'BaseToken222', 'BaseToken333', 'no-such-address'],
+      chain: 'base'
+    })
+
+    expect(result).toEqual({
+      source: 'birdeye',
+      chain: 'base',
+      tokens: [
+        { address: 'BaseToken111', exit_liquidity_usd: 250000.5 },
+        { address: 'BaseToken222', exit_liquidity_usd: 91000 }
+      ]
+    })
+
+    const requestUrl = new URL(String(fetchSpy.mock.calls[0]?.[0]))
+    expect(requestUrl.pathname).toBe('/defi/v3/token/exit-liquidity/multiple')
+    expect(requestUrl.searchParams.get('list_address')).toBe(
+      'BaseToken111,BaseToken222,BaseToken333,no-such-address'
+    )
+    expect(fetchSpy.mock.calls[0]?.[1]?.headers).toMatchObject({ 'x-chain': 'base' })
+  })
+
+  it('shapes windowed trade-history totals and sends the time frame', async () => {
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      jsonResponse({
+        success: true,
+        data: [
+          {
+            address: BONK_ADDRESS,
+            sell: 410000,
+            buy: 540000,
+            total_trade: 950000,
+            volume_buy_usd: 51000000,
+            volume_sell_usd: 47000000,
+            total_volume_usd: 98000000
+          }
+        ]
+      })
+    )
+
+    const result = await makeService().getTradeHistory({
+      address: BONK_ADDRESS,
+      timeFrame: '7d',
+      chain: 'solana'
+    })
+
+    expect(result).toEqual({
+      source: 'birdeye',
+      chain: 'solana',
+      address: BONK_ADDRESS,
+      time_frame: '7d',
+      stats: [
+        {
+          address: BONK_ADDRESS,
+          buys: 540000,
+          sells: 410000,
+          total_trades: 950000,
+          volume_buy_usd: 51000000,
+          volume_sell_usd: 47000000,
+          total_volume_usd: 98000000
+        }
+      ]
+    })
+
+    const requestUrl = new URL(String(fetchSpy.mock.calls[0]?.[0]))
+    expect(requestUrl.pathname).toBe('/defi/v3/all-time/trades/single')
+    expect(requestUrl.searchParams.get('address')).toBe(BONK_ADDRESS)
+    expect(requestUrl.searchParams.get('time_frame')).toBe('7d')
+  })
+
+  it('keeps requested trade-data addresses in order and drops unknowns', async () => {
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      jsonResponse({
+        success: true,
+        data: {
+          [BONK_ADDRESS]: {
+            price: 0.0000312,
+            price_change_1h_percent: 0.8,
+            price_change_24h_percent: 14.2,
+            trade_24h: 950000,
+            buy_24h: 540000,
+            sell_24h: 410000,
+            volume_24h_usd: 98000000,
+            volume_24h_change_percent: 22.5,
+            unique_wallet_24h: 210000,
+            holder: 1250000,
+            last_trade_unix_time: 1784560000
+          },
+          [SOL_ADDRESS]: null
+        }
+      })
+    )
+
+    const result = await makeService().getTradeStats({
+      addresses: [BONK_ADDRESS, SOL_ADDRESS, 'no-such-address'],
+      chain: 'solana'
+    })
+
+    expect(result).toEqual({
+      source: 'birdeye',
+      chain: 'solana',
+      tokens: [
+        {
+          address: BONK_ADDRESS,
+          price_usd: 0.0000312,
+          change_1h_pct: 0.8,
+          change_24h_pct: 14.2,
+          trades_24h: 950000,
+          buys_24h: 540000,
+          sells_24h: 410000,
+          volume_24h_usd: 98000000,
+          volume_24h_change_pct: 22.5,
+          unique_wallets_24h: 210000,
+          holders: 1250000,
+          last_trade_at: 1784560000
+        }
+      ]
+    })
+
+    const requestUrl = new URL(String(fetchSpy.mock.calls[0]?.[0]))
+    expect(requestUrl.pathname).toBe('/defi/v3/token/trade-data/multiple')
+    expect(requestUrl.searchParams.get('list_address')).toBe(
+      `${BONK_ADDRESS},${SOL_ADDRESS},no-such-address`
+    )
+  })
+
+  it('shapes the current wallet net worth and sends value-sorted pagination params', async () => {
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      jsonResponse({
+        success: true,
+        data: {
+          totalNetWorth: 1893.42,
+          items: [
+            {
+              address: SOL_ADDRESS,
+              symbol: 'SOL',
+              uiAmount: 10.5,
+              priceUsd: 171.42,
+              valueUsd: 1799.91,
+              allocation: 95.06
+            }
+          ]
+        }
+      })
+    )
+
+    const result = await makeService().getWalletNetWorth({
+      wallet: 'Wallet111',
+      limit: 20,
+      chain: 'solana'
+    })
+
+    expect(result).toEqual({
+      source: 'birdeye',
+      chain: 'solana',
+      wallet: 'Wallet111',
+      total_usd: 1893.42,
+      tokens: [
+        {
+          address: SOL_ADDRESS,
+          symbol: 'SOL',
+          ui_amount: 10.5,
+          price_usd: 171.42,
+          value_usd: 1799.91,
+          cost_basis_usd: null,
+          allocation_pct: 95.06
+        }
+      ]
+    })
+
+    const requestUrl = new URL(String(fetchSpy.mock.calls[0]?.[0]))
+    expect(requestUrl.pathname).toBe('/wallet/v2/current-net-worth')
+    expect(requestUrl.searchParams.get('wallet')).toBe('Wallet111')
+    expect(requestUrl.searchParams.get('sort_by')).toBe('value')
+    expect(requestUrl.searchParams.get('sort_type')).toBe('desc')
+    expect(requestUrl.searchParams.get('offset')).toBe('0')
+    expect(requestUrl.searchParams.get('limit')).toBe('20')
+    expect(fetchSpy.mock.calls[0]?.[1]?.headers).toMatchObject({
+      'X-API-KEY': TEST_API_KEY,
+      'x-chain': 'solana'
+    })
+  })
+
+  it('shapes net-worth details, coalesces probed field casings, and sends interval + time', async () => {
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      jsonResponse({
+        success: true,
+        data: {
+          net_worth: 1000.5,
+          holdings: [
+            {
+              token_address: BONK_ADDRESS,
+              token_symbol: 'BONK',
+              ui_amount: '3200000.5',
+              value: 99.84,
+              costBasisUsd: 70.1,
+              weight: 9.98
+            }
+          ]
+        }
+      })
+    )
+
+    const result = await makeService().getWalletNetWorthDetails({
+      wallet: 'Wallet111',
+      interval: '1h',
+      time: '2026-07-22 10:00:00',
+      limit: 10,
+      chain: 'solana'
+    })
+
+    expect(result).toEqual({
+      source: 'birdeye',
+      chain: 'solana',
+      wallet: 'Wallet111',
+      interval: '1h',
+      time: '2026-07-22 10:00:00',
+      total_usd: 1000.5,
+      tokens: [
+        {
+          address: BONK_ADDRESS,
+          symbol: 'BONK',
+          ui_amount: 3200000.5,
+          price_usd: null,
+          value_usd: 99.84,
+          cost_basis_usd: 70.1,
+          allocation_pct: 9.98
+        }
+      ]
+    })
+
+    const requestUrl = new URL(String(fetchSpy.mock.calls[0]?.[0]))
+    expect(requestUrl.pathname).toBe('/wallet/v2/net-worth-details')
+    expect(requestUrl.searchParams.get('wallet')).toBe('Wallet111')
+    expect(requestUrl.searchParams.get('type')).toBe('1h')
+    expect(requestUrl.searchParams.get('sort_type')).toBe('desc')
+    expect(requestUrl.searchParams.get('time')).toBe('2026-07-22 10:00:00')
+    expect(requestUrl.searchParams.get('limit')).toBe('10')
+  })
+
+  it('shapes net-worth chart points from a bare data array and sends count + direction', async () => {
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      jsonResponse({
+        success: true,
+        data: [
+          { unixTime: 1784473600, valueUsd: 1750.1 },
+          { unixTime: 1784560000, valueUsd: 1893.42 }
+        ]
+      })
+    )
+
+    const result = await makeService().getWalletNetWorthChart({
+      wallet: 'Wallet111',
+      interval: '1d',
+      count: 7,
+      chain: 'solana'
+    })
+
+    expect(result).toEqual({
+      source: 'birdeye',
+      chain: 'solana',
+      wallet: 'Wallet111',
+      interval: '1d',
+      points: [
+        { unix_time: 1784473600, value_usd: 1750.1 },
+        { unix_time: 1784560000, value_usd: 1893.42 }
+      ]
+    })
+
+    const requestUrl = new URL(String(fetchSpy.mock.calls[0]?.[0]))
+    expect(requestUrl.pathname).toBe('/wallet/v2/net-worth')
+    expect(requestUrl.searchParams.get('wallet')).toBe('Wallet111')
+    expect(requestUrl.searchParams.get('count')).toBe('7')
+    expect(requestUrl.searchParams.get('direction')).toBe('back')
+    expect(requestUrl.searchParams.get('type')).toBe('1d')
+    expect(requestUrl.searchParams.get('sort_type')).toBe('desc')
+  })
+
+  it('shapes wallet balance changes and sends the time window', async () => {
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      jsonResponse({
+        success: true,
+        data: {
+          items: [
+            {
+              address: SOL_ADDRESS,
+              symbol: 'SOL',
+              blockTime: 1784560000,
+              changeType: 'increase',
+              uiAmount: 2.5,
+              valueUsd: 428.55
+            }
+          ]
+        }
+      })
+    )
+
+    const result = await makeService().getWalletBalanceChanges({
+      wallet: 'Wallet111',
+      from: 1784470000,
+      to: 1784560000,
+      limit: 20,
+      chain: 'solana'
+    })
+
+    expect(result).toEqual({
+      source: 'birdeye',
+      chain: 'solana',
+      wallet: 'Wallet111',
+      changes: [
+        {
+          block_unix_time: 1784560000,
+          address: SOL_ADDRESS,
+          symbol: 'SOL',
+          amount: 2.5,
+          value_usd: 428.55,
+          change_type: 'increase'
+        }
+      ]
+    })
+
+    const requestUrl = new URL(String(fetchSpy.mock.calls[0]?.[0]))
+    expect(requestUrl.pathname).toBe('/wallet/v2/balance-change')
+    expect(requestUrl.searchParams.get('address')).toBe('Wallet111')
+    expect(requestUrl.searchParams.get('time_from')).toBe('1784470000')
+    expect(requestUrl.searchParams.get('time_to')).toBe('1784560000')
+    expect(requestUrl.searchParams.get('offset')).toBe('0')
+    expect(requestUrl.searchParams.get('limit')).toBe('20')
+  })
+
+  it('shapes wallet transfer totals via POST with the wallet in the JSON body', async () => {
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      jsonResponse({
+        success: true,
+        data: {
+          totalAmount: 152000.5,
+          totalValueUsd: 98765.4,
+          transferCount: 412,
+          uniqueCounterparties: 37
+        }
+      })
+    )
+
+    const result = await makeService().getWalletTransferTotal({
+      wallet: 'Wallet111',
+      chain: 'solana'
+    })
+
+    expect(result).toEqual({
+      source: 'birdeye',
+      chain: 'solana',
+      wallet: 'Wallet111',
+      total_amount: 152000.5,
+      total_value_usd: 98765.4,
+      transfer_count: 412,
+      unique_counterparties: 37,
+      symbol: null
+    })
+
+    const requestUrl = new URL(String(fetchSpy.mock.calls[0]?.[0]))
+    expect(requestUrl.pathname).toBe('/wallet/v2/transfer/total')
+    const requestInit = fetchSpy.mock.calls[0]?.[1]
+    expect(requestInit?.method).toBe('POST')
+    expect(JSON.parse(String(requestInit?.body))).toEqual({ wallet: 'Wallet111' })
+    expect(requestInit?.headers).toMatchObject({
+      'X-API-KEY': TEST_API_KEY,
+      'x-chain': 'solana',
+      'Content-Type': 'application/json'
+    })
+  })
+
+  it('flattens token transfer totals into metric rows and drops non-scalar fields', async () => {
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      jsonResponse({
+        success: true,
+        data: {
+          total_transfer: 91234,
+          total_volume_usd: 4500000.25,
+          top_wallet: 'Whale111',
+          breakdown: { in: 1, out: 2 }
+        }
+      })
+    )
+
+    const result = await makeService().getTokenTransferTotal({
+      address: BONK_ADDRESS,
+      chain: 'solana'
+    })
+
+    expect(result).toEqual({
+      source: 'birdeye',
+      chain: 'solana',
+      address: BONK_ADDRESS,
+      metrics: [
+        { metric: 'total_transfer', value: 91234 },
+        { metric: 'total_volume_usd', value: 4500000.25 },
+        { metric: 'top_wallet', value: 'Whale111' }
+      ]
+    })
+
+    const requestUrl = new URL(String(fetchSpy.mock.calls[0]?.[0]))
+    expect(requestUrl.pathname).toBe('/token/v1/transfer/total')
+    const requestInit = fetchSpy.mock.calls[0]?.[1]
+    expect(requestInit?.method).toBe('POST')
+    expect(JSON.parse(String(requestInit?.body))).toEqual({ token_address: BONK_ADDRESS })
+  })
+
   it('throws the unavailable message without calling fetch when the key is unset', async () => {
     const fetchSpy = vi.spyOn(globalThis, 'fetch')
 
     await expect(
       makeService('').getOverview({ address: SOL_ADDRESS, chain: 'solana' })
     ).rejects.toThrow(
-      'BIRDEYE_API_KEY is not set — the `token-data` command group is unavailable on this box'
+      'BIRDEYE_API_KEY is not set — the `token-data` group and the BirdEye-backed `wallet-data` commands are unavailable on this box'
     )
     expect(fetchSpy).not.toHaveBeenCalled()
   })

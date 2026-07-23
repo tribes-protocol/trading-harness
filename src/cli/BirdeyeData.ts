@@ -4,13 +4,19 @@ import { BIRDEYE_API_KEY } from '@/common/Env'
 import { writeOutput } from '@/helpers/WriteOutput'
 import { BirdeyeService } from '@/services/BirdeyeService'
 import {
+  TokenDataCreationInfoCommandOptionsSchema,
+  TokenDataExitLiquidityCommandOptionsSchema,
   TokenDataHoldersCommandOptionsSchema,
+  TokenDataMintBurnCommandOptionsSchema,
   TokenDataNewListingsCommandOptionsSchema,
   TokenDataOhlcvCommandOptionsSchema,
   TokenDataOverviewCommandOptionsSchema,
   TokenDataPriceCommandOptionsSchema,
   TokenDataSecurityCommandOptionsSchema,
+  TokenDataTradeDataCommandOptionsSchema,
+  TokenDataTradeHistoryCommandOptionsSchema,
   TokenDataTradesCommandOptionsSchema,
+  TokenDataTransferTotalCommandOptionsSchema,
   TokenDataTrendingCommandOptionsSchema,
   TokenDataWalletPortfolioCommandOptionsSchema
 } from '@/types/Birdeye'
@@ -23,6 +29,10 @@ const DEFAULT_HOLDERS_LIMIT = 20
 const DEFAULT_TRADES_LIMIT = 20
 const DEFAULT_TRENDING_LIMIT = 20
 const DEFAULT_NEW_LISTINGS_LIMIT = 10
+const DEFAULT_MINT_BURN_LIMIT = 20
+const DEFAULT_TRADE_HISTORY_TIME_FRAME = '24h'
+// The BirdEye exit-liquidity endpoint is Base-only in the legacy client.
+const DEFAULT_EXIT_LIQUIDITY_CHAIN = 'base'
 
 export function buildTokenDataCommand(): Command {
   const service = new BirdeyeService({ apiKey: BIRDEYE_API_KEY })
@@ -195,6 +205,125 @@ export function buildTokenDataCommand(): Command {
         output: ensureJsonTreeString(portfolio),
         outPath: request.out ?? undefined
       })
+    })
+
+  program
+    .command('mint-burn')
+    .description('Token mint/burn transactions for supply-change analysis, newest first')
+    .requiredOption('--address <address>', 'Token address')
+    .option('--limit <n>', 'Transactions to return, 1-100 (default 20)', (value) => Number(value))
+    .option('--chain <chain>', 'BirdEye chain, e.g. solana|ethereum|base (default solana)')
+    .option('--out <file>', 'Write output JSON to file')
+    .action(async (options: unknown): Promise<void> => {
+      const request = TokenDataMintBurnCommandOptionsSchema.parse(options)
+      const mintBurns = await service.getMintBurns({
+        address: request.address,
+        limit: request.limit ?? DEFAULT_MINT_BURN_LIMIT,
+        chain: request.chain ?? DEFAULT_CHAIN
+      })
+      await writeOutput({
+        output: ensureJsonTreeString(mintBurns),
+        outPath: request.out ?? undefined
+      })
+    })
+
+  program
+    .command('creation-info')
+    .description('Token creation info: creator, deploy tx, creation time')
+    .requiredOption('--address <address>', 'Token address')
+    .option('--chain <chain>', 'BirdEye chain, e.g. solana|ethereum|base (default solana)')
+    .option('--out <file>', 'Write output JSON to file')
+    .action(async (options: unknown): Promise<void> => {
+      const request = TokenDataCreationInfoCommandOptionsSchema.parse(options)
+      const creationInfo = await service.getCreationInfo({
+        address: request.address,
+        chain: request.chain ?? DEFAULT_CHAIN
+      })
+      await writeOutput({
+        output: ensureJsonTreeString(creationInfo),
+        outPath: request.out ?? undefined
+      })
+    })
+
+  program
+    .command('exit-liquidity')
+    .description('Estimated exit liquidity for multiple tokens')
+    .requiredOption('--addresses <addresses>', 'Comma-separated token addresses')
+    .option('--chain <chain>', 'BirdEye chain (default base; the endpoint is Base-only)')
+    .option('--out <file>', 'Write output JSON to file')
+    .action(async (options: unknown): Promise<void> => {
+      const request = TokenDataExitLiquidityCommandOptionsSchema.parse(options)
+      const addresses = request.addresses
+        .split(',')
+        .map((address) => address.trim())
+        .filter((address) => address !== '')
+      const exitLiquidity = await service.getExitLiquidity({
+        addresses,
+        chain: request.chain ?? DEFAULT_EXIT_LIQUIDITY_CHAIN
+      })
+      await writeOutput({
+        output: ensureJsonTreeString(exitLiquidity),
+        outPath: request.out ?? undefined
+      })
+    })
+
+  program
+    .command('trade-history')
+    .description('Windowed trade-activity totals: buys/sells and USD volumes')
+    .requiredOption('--address <address>', 'Token address')
+    .option(
+      '--time-frame <frame>',
+      'Window: 1m|5m|30m|1h|2h|4h|8h|24h|3d|7d|14d|30d|90d|180d|1y|alltime (default 24h)'
+    )
+    .option('--chain <chain>', 'BirdEye chain, e.g. solana|ethereum|base (default solana)')
+    .option('--out <file>', 'Write output JSON to file')
+    .action(async (options: unknown): Promise<void> => {
+      const request = TokenDataTradeHistoryCommandOptionsSchema.parse(options)
+      const tradeHistory = await service.getTradeHistory({
+        address: request.address,
+        timeFrame: request.timeFrame ?? DEFAULT_TRADE_HISTORY_TIME_FRAME,
+        chain: request.chain ?? DEFAULT_CHAIN
+      })
+      await writeOutput({
+        output: ensureJsonTreeString(tradeHistory),
+        outPath: request.out ?? undefined
+      })
+    })
+
+  program
+    .command('trade-data')
+    .description('Aggregated 24h trade metrics for multiple tokens')
+    .requiredOption('--addresses <addresses>', 'Comma-separated token addresses')
+    .option('--chain <chain>', 'BirdEye chain, e.g. solana|ethereum|base (default solana)')
+    .option('--out <file>', 'Write output JSON to file')
+    .action(async (options: unknown): Promise<void> => {
+      const request = TokenDataTradeDataCommandOptionsSchema.parse(options)
+      const addresses = request.addresses
+        .split(',')
+        .map((address) => address.trim())
+        .filter((address) => address !== '')
+      const tradeStats = await service.getTradeStats({
+        addresses,
+        chain: request.chain ?? DEFAULT_CHAIN
+      })
+      await writeOutput({
+        output: ensureJsonTreeString(tradeStats),
+        outPath: request.out ?? undefined
+      })
+    })
+
+  program
+    .command('transfer-total')
+    .description('Aggregate token transfer totals over all history (Solana only)')
+    .requiredOption('--address <address>', 'Token address')
+    .option('--out <file>', 'Write output JSON to file')
+    .action(async (options: unknown): Promise<void> => {
+      const request = TokenDataTransferTotalCommandOptionsSchema.parse(options)
+      const totals = await service.getTokenTransferTotal({
+        address: request.address,
+        chain: DEFAULT_CHAIN
+      })
+      await writeOutput({ output: ensureJsonTreeString(totals), outPath: request.out ?? undefined })
     })
 
   return program

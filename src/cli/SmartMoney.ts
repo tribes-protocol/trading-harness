@@ -4,9 +4,13 @@ import { NANSEN_API_KEY } from '@/common/Env'
 import { writeOutput } from '@/helpers/WriteOutput'
 import { NansenService } from '@/services/NansenService'
 import {
+  SmartMoneyAddressLeaderboardCommandOptionsSchema,
   SmartMoneyFlowIntelligenceCommandOptionsSchema,
+  SmartMoneyFlowsCommandOptionsSchema,
   SmartMoneyListCommandOptionsSchema,
+  SmartMoneyPerpLeaderboardCommandOptionsSchema,
   SmartMoneyPnlLeaderboardCommandOptionsSchema,
+  SmartMoneyTokenChainCommandOptionsSchema,
   SmartMoneyTokenListCommandOptionsSchema,
   SmartMoneyTradesCommandOptionsSchema
 } from '@/types/Nansen'
@@ -19,6 +23,7 @@ const DEFAULT_TOKEN_LIST_CHAIN = 'ethereum'
 const DEFAULT_LIMIT = 20
 const DEFAULT_TOKEN_LIST_TIMEFRAME = '24h'
 const DEFAULT_FLOW_TIMEFRAME = '1d'
+const DEFAULT_FLOWS_WINDOW = '30d'
 
 export function buildSmartMoneyCommand(): Command {
   const service = new NansenService({ apiKey: NANSEN_API_KEY })
@@ -161,6 +166,152 @@ export function buildSmartMoneyCommand(): Command {
       const leaderboard = await service.getPnlLeaderboard({
         chain: request.chain,
         tokenAddress: request.token,
+        limit: request.limit ?? DEFAULT_LIMIT
+      })
+      await writeOutput({
+        output: ensureJsonTreeString(leaderboard),
+        outPath: request.out ?? undefined
+      })
+    })
+
+  program
+    .command('screener')
+    .description('General token screener across all traders (not smart-money-only)')
+    .option('--chain <chain>', 'Chain, e.g. ethereum|solana|base (default ethereum, no all)')
+    .option('--limit <n>', 'Tokens to return, 1-100 (default 20)', (value) => Number(value))
+    .option('--timeframe <window>', 'Window: 5m|10m|1h|6h|24h|7d|30d (default 24h)')
+    .option('--out <file>', 'Write output JSON to file')
+    .action(async (options: unknown): Promise<void> => {
+      const request = SmartMoneyTokenListCommandOptionsSchema.parse(options)
+      const tokens = await service.getScreener({
+        chain: request.chain ?? DEFAULT_TOKEN_LIST_CHAIN,
+        limit: request.limit ?? DEFAULT_LIMIT,
+        timeframe: request.timeframe ?? DEFAULT_TOKEN_LIST_TIMEFRAME
+      })
+      await writeOutput({ output: ensureJsonTreeString(tokens), outPath: request.out ?? undefined })
+    })
+
+  program
+    .command('flows')
+    .description('Daily token flow time series (inflows/outflows, DEX vs CEX), newest first')
+    .requiredOption('--token <address>', 'Token address')
+    .requiredOption('--chain <chain>', 'Chain, e.g. ethereum|solana|base')
+    .option('--timeframe <window>', 'Lookback window: 1d|7d|30d (default 30d)')
+    .option('--out <file>', 'Write output JSON to file')
+    .action(async (options: unknown): Promise<void> => {
+      const request = SmartMoneyFlowsCommandOptionsSchema.parse(options)
+      const flows = await service.getFlows({
+        chain: request.chain,
+        tokenAddress: request.token,
+        timeframe: request.timeframe ?? DEFAULT_FLOWS_WINDOW
+      })
+      await writeOutput({ output: ensureJsonTreeString(flows), outPath: request.out ?? undefined })
+    })
+
+  program
+    .command('who-bought-sold')
+    .description('Top buyers and sellers of a token over the last 30 days by trade volume')
+    .requiredOption('--token <address>', 'Token address')
+    .requiredOption('--chain <chain>', 'Chain, e.g. ethereum|solana|base')
+    .option('--limit <n>', 'Traders to return, 1-100 (default 20)', (value) => Number(value))
+    .option('--out <file>', 'Write output JSON to file')
+    .action(async (options: unknown): Promise<void> => {
+      const request = SmartMoneyTokenChainCommandOptionsSchema.parse(options)
+      const traders = await service.getWhoBoughtSold({
+        chain: request.chain,
+        tokenAddress: request.token,
+        limit: request.limit ?? DEFAULT_LIMIT
+      })
+      await writeOutput({
+        output: ensureJsonTreeString(traders),
+        outPath: request.out ?? undefined
+      })
+    })
+
+  program
+    .command('signals')
+    .description('Nansen risk and reward indicator scores for one token')
+    .requiredOption('--token <address>', 'Token address')
+    .requiredOption('--chain <chain>', 'Chain, e.g. ethereum|solana|base')
+    .option('--out <file>', 'Write output JSON to file')
+    .action(async (options: unknown): Promise<void> => {
+      const request = SmartMoneyTokenChainCommandOptionsSchema.parse(options)
+      const signals = await service.getSignals({
+        chain: request.chain,
+        tokenAddress: request.token
+      })
+      await writeOutput({
+        output: ensureJsonTreeString(signals),
+        outPath: request.out ?? undefined
+      })
+    })
+
+  program
+    .command('transfers')
+    .description('Recent transfers of a token (last 30 days), newest first')
+    .requiredOption('--token <address>', 'Token address')
+    .requiredOption('--chain <chain>', 'Chain, e.g. ethereum|solana|base')
+    .option('--limit <n>', 'Transfers to return, 1-100 (default 20)', (value) => Number(value))
+    .option('--out <file>', 'Write output JSON to file')
+    .action(async (options: unknown): Promise<void> => {
+      const request = SmartMoneyTokenChainCommandOptionsSchema.parse(options)
+      const transfers = await service.getTransfers({
+        chain: request.chain,
+        tokenAddress: request.token,
+        limit: request.limit ?? DEFAULT_LIMIT
+      })
+      await writeOutput({
+        output: ensureJsonTreeString(transfers),
+        outPath: request.out ?? undefined
+      })
+    })
+
+  program
+    .command('historical-holdings')
+    .description('Daily smart-money holdings snapshots over the last 30 days, newest first')
+    .option('--chain <chain>', 'Chain: ethereum|base|bnb|monad|solana (default ethereum, no all)')
+    .option('--limit <n>', 'Rows to return, 1-100 (default 20)', (value) => Number(value))
+    .option('--token <address>', 'Filter to one token address')
+    .option('--out <file>', 'Write output JSON to file')
+    .action(async (options: unknown): Promise<void> => {
+      const request = SmartMoneyListCommandOptionsSchema.parse(options)
+      const holdings = await service.getHistoricalHoldings({
+        chain: request.chain ?? DEFAULT_TOKEN_LIST_CHAIN,
+        limit: request.limit ?? DEFAULT_LIMIT,
+        tokenAddress: request.token ?? null
+      })
+      await writeOutput({
+        output: ensureJsonTreeString(holdings),
+        outPath: request.out ?? undefined
+      })
+    })
+
+  program
+    .command('perp-leaderboard')
+    .description('Hyperliquid perp trader PnL leaderboard for one token over the last 30 days')
+    .requiredOption('--token <symbol>', 'Perp token symbol, e.g. BTC')
+    .option('--limit <n>', 'Traders to return, 1-100 (default 20)', (value) => Number(value))
+    .option('--out <file>', 'Write output JSON to file')
+    .action(async (options: unknown): Promise<void> => {
+      const request = SmartMoneyPerpLeaderboardCommandOptionsSchema.parse(options)
+      const leaderboard = await service.getPerpPnlLeaderboard({
+        tokenSymbol: request.token,
+        limit: request.limit ?? DEFAULT_LIMIT
+      })
+      await writeOutput({
+        output: ensureJsonTreeString(leaderboard),
+        outPath: request.out ?? undefined
+      })
+    })
+
+  program
+    .command('address-leaderboard')
+    .description('Hyperliquid address leaderboard by total PnL over the last 30 days')
+    .option('--limit <n>', 'Addresses to return, 1-100 (default 20)', (value) => Number(value))
+    .option('--out <file>', 'Write output JSON to file')
+    .action(async (options: unknown): Promise<void> => {
+      const request = SmartMoneyAddressLeaderboardCommandOptionsSchema.parse(options)
+      const leaderboard = await service.getAddressLeaderboard({
         limit: request.limit ?? DEFAULT_LIMIT
       })
       await writeOutput({
