@@ -140,33 +140,34 @@ Pick the skill with these tie-breaker rules, in order:
   `research-analyst` for source-backed finance research and ENS → `web-search` as last resort or
   to read a specific URL → `browser` only for JS-gated or fetch-blocked pages.
 
-| Intent                                                                            | Skill                  |
-| --------------------------------------------------------------------------------- | ---------------------- |
-| One crypto token: price, chart, safety, trades, holders                           | `token-analyst`        |
-| One coin: profile, links, supply, historical charts, where listed                 | `fundamentals-analyst` |
-| Trending tokens, new listings, smart-money flows                                  | `alpha-scout`          |
-| Global caps, dominance, rankings, crypto top movers                               | `market-strategist`    |
-| Stock or security prices, candles, issuer detail                                  | `stock-analyst`        |
-| Commodity candidate research, macro drivers, and venue-quality scan               | `commodity-analyst`    |
-| Indicators, signals, backtests (any asset)                                        | `technical-analyst`    |
-| Liquidity pools, DEX pairs, TVL                                                   | `defi-analyst`         |
-| CEX rankings, derivatives open interest, public treasuries                        | `exchange-analyst`     |
-| Numeric macro indicators (CPI, yields, VIX, DXY)                                  | `macros`               |
-| Market news, catalysts, sentiment (crypto, securities, commodities)               | `news`                 |
-| Event odds and prediction markets                                                 | `prediction`           |
-| Deep finance research, ENS resolution                                             | `research-analyst`     |
-| Full market briefing (macro + news + odds + ideas)                                | `strategize`           |
-| What to trade / is this trade worth taking (bull-bear debate)                     | `thesis`               |
-| Wallet addresses, wallet IDs, raw balances (pre-trade)                            | `zipbox-wallet`        |
-| Third-party wallet balances, PnL, transaction/counterparty history                | `wallet-analyst`       |
-| Hyperliquid markets, perp/HL-spot orders, deposits, all security/commodity trades | `hyperliquid`          |
-| End-to-end trade with pre/post checks                                             | `trade-execution`      |
-| Stops, leverage, liquidation distance, closing positions                          | `position-management`  |
-| On-chain DEX swap or cross-chain bridge                                           | `spot-trading`         |
-| Broadcast a prepared transaction, check tx status                                 | `zipbox-wallet`        |
-| General web lookup or read one URL                                                | `web-search`           |
-| JS-gated or fetch-blocked pages, UI automation                                    | `browser`              |
-| Alert the human: long job finished, needs attention                               | `notify`               |
+| Intent                                                                             | Skill                  |
+| ---------------------------------------------------------------------------------- | ---------------------- |
+| Any asset's price, candles, profile, search, trending, new, holders (default path) | `asset-data`           |
+| One crypto token: price, chart, safety, trades, holders                            | `token-analyst`        |
+| One coin: profile, links, supply, historical charts, where listed                  | `fundamentals-analyst` |
+| Trending tokens, new listings, smart-money flows                                   | `alpha-scout`          |
+| Global caps, dominance, rankings, crypto top movers                                | `market-strategist`    |
+| Stock or security prices, candles, issuer detail                                   | `stock-analyst`        |
+| Commodity candidate research, macro drivers, and venue-quality scan                | `commodity-analyst`    |
+| Indicators, signals, backtests (any asset)                                         | `technical-analyst`    |
+| Liquidity pools, DEX pairs, TVL                                                    | `defi-analyst`         |
+| CEX rankings, derivatives open interest, public treasuries                         | `exchange-analyst`     |
+| Numeric macro indicators (CPI, yields, VIX, DXY)                                   | `macros`               |
+| Market news, catalysts, sentiment (crypto, securities, commodities)                | `news`                 |
+| Event odds and prediction markets                                                  | `prediction`           |
+| Deep finance research, ENS resolution                                              | `research-analyst`     |
+| Full market briefing (macro + news + odds + ideas)                                 | `strategize`           |
+| What to trade / is this trade worth taking (bull-bear debate)                      | `thesis`               |
+| Wallet addresses, wallet IDs, raw balances (pre-trade)                             | `zipbox-wallet`        |
+| Third-party wallet balances, PnL, transaction/counterparty history                 | `wallet-analyst`       |
+| Hyperliquid markets, perp/HL-spot orders, deposits, all security/commodity trades  | `hyperliquid`          |
+| End-to-end trade with pre/post checks                                              | `trade-execution`      |
+| Stops, leverage, liquidation distance, closing positions                           | `position-management`  |
+| On-chain DEX swap or cross-chain bridge                                            | `spot-trading`         |
+| Broadcast a prepared transaction, check tx status                                  | `zipbox-wallet`        |
+| General web lookup or read one URL                                                 | `web-search`           |
+| JS-gated or fetch-blocked pages, UI automation                                     | `browser`              |
+| Alert the human: long job finished, needs attention                                | `notify`               |
 
 <!-- BEGIN synced skill routes (managed by .github/workflows/sync-harness-skills.yml) -->
 

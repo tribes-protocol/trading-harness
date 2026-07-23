@@ -17,8 +17,7 @@ import {
   TokenDataTradeHistoryCommandOptionsSchema,
   TokenDataTradesCommandOptionsSchema,
   TokenDataTransferTotalCommandOptionsSchema,
-  TokenDataTrendingCommandOptionsSchema,
-  TokenDataWalletPortfolioCommandOptionsSchema
+  TokenDataTrendingCommandOptionsSchema
 } from '@/types/Birdeye'
 import { ensureJsonTreeString } from '@/utils/Lang'
 
@@ -185,24 +184,6 @@ export function buildTokenDataCommand(): Command {
       })
       await writeOutput({
         output: ensureJsonTreeString(candles),
-        outPath: request.out ?? undefined
-      })
-    })
-
-  program
-    .command('wallet-portfolio')
-    .description('Wallet token balances with USD values')
-    .requiredOption('--wallet <wallet>', 'Wallet address')
-    .option('--chain <chain>', 'BirdEye chain, e.g. solana|ethereum|base (default solana)')
-    .option('--out <file>', 'Write output JSON to file')
-    .action(async (options: unknown): Promise<void> => {
-      const request = TokenDataWalletPortfolioCommandOptionsSchema.parse(options)
-      const portfolio = await service.getWalletPortfolio({
-        wallet: request.wallet,
-        chain: request.chain ?? DEFAULT_CHAIN
-      })
-      await writeOutput({
-        output: ensureJsonTreeString(portfolio),
         outPath: request.out ?? undefined
       })
     })

@@ -64,6 +64,10 @@ All under `tribes-cli market`; every subcommand accepts `--out <file>`. All read
 | `platform-tokens` | Token list for an asset platform: symbol, name, address, decimals     | `--platform` e.g. `ethereum` | `--limit` 1-1000 (default 100)              |
 | `currencies`      | Quote currencies supported by CoinGecko pricing endpoints             | none                         |                                             |
 
+Quick multi-coin price checks stay on `market price --ids` (batching many coins in one call is
+its strength); a single-asset lookup can equally use `tribes-cli asset price --id <coin-id>`
+(generic router, see `asset-data`).
+
 ## Examples
 
 ### Market overview ("how's the market?")

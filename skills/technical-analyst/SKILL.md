@@ -27,14 +27,15 @@ Every TA task is the same two steps:
 1. Fetch candles from any source and save them: `tribes-cli <source> ... --out /tmp/<x>.json`.
 2. Compute over the file: `tribes-cli ta <indicators|levels|backtest> --candles-file /tmp/<x>.json`.
 
-All four candle sources write the shared candle contract, which is exactly what
-`--candles-file` expects:
+Every candle source — the generic `asset candles` and each direct provider command — writes
+the shared candle contract, which is exactly what `--candles-file` expects:
 
 ```json
 { "source": "<provider>", "candles": [{ "t": 0, "o": 0, "h": 0, "l": 0, "c": 0, "v": 0 }] }
 ```
 
-`t` is epoch ms; `v` may be absent (`coin ohlc` has no volume — skip `vwap` on those files).
+`t` is epoch ms; `v` may be absent (coin-id candles — `asset candles --id` / `coin ohlc` —
+have no volume; skip `vwap` on those files).
 
 ## When to use
 
@@ -43,9 +44,9 @@ All four candle sources write the shared candle contract, which is exactly what
 - Support/resistance and range context — `ta levels`.
 - A long-only backtest of an SMA cross or RSI mean-revert strategy — `ta backtest`.
 - Perps: no Hyperliquid candles command exists — compute on the underlying coin's candles
-  (`coin ohlc` or `token-data ohlcv`) and say so in your answer.
-- Commodities: no direct candle source — use an ETF proxy via `stocks candles` (e.g. GLD for
-  gold) and state the proxy in your answer.
+  (`asset candles` with the coin id or token address) and say so in your answer.
+- Commodities: no direct candle source — use an ETF proxy via `asset candles --ticker` (e.g.
+  GLD for gold) and state the proxy in your answer.
 - NOT for raw candles or price history as the answer itself — use `fundamentals-analyst` or
   `stock-analyst`.
 - NOT for one token's live price, safety, or on-chain trades — use `token-analyst`.
@@ -82,6 +83,18 @@ All four candle sources write the shared candle contract, which is exactly what
 
 ### Candle sources (fetch with `--out <file>`, then feed to `--candles-file`)
 
+Default: `tribes-cli asset candles` — one line per asset class, automatic provider fallback,
+`source` in the file says who answered (full docs in the `asset-data` skill):
+
+```bash
+tribes-cli asset candles --address <address> --chain <chain> --timeframe 4H --out <file>  # contract token
+tribes-cli asset candles --id <coin-id> --days 90 --out <file>                            # CoinGecko coin
+tribes-cli asset candles --ticker <SYMBOL> --out <file>                                   # stock (daily)
+```
+
+Fallback / manual path — the direct provider commands, for when you need one specific
+provider or a source the router does not cover (DEX pools):
+
 | Asset                  | Command                         | Required flags                                            | Useful flags                                               |
 | ---------------------- | ------------------------------- | --------------------------------------------------------- | ---------------------------------------------------------- |
 | Crypto token (address) | `tribes-cli token-data ohlcv`   | `--address`, `--timeframe 1m\|5m\|15m\|1H\|4H\|1D\|1W`    | `--chain` (default solana), `--from`/`--to` (epoch s)      |
@@ -94,7 +107,7 @@ All four candle sources write the shared candle contract, which is exactly what
 ### Crypto confluence read (major coin, 4H via token candles)
 
 ```bash
-tribes-cli token-data ohlcv --address <token-address> --chain ethereum --timeframe 4H --out /tmp/tok-4h.json
+tribes-cli asset candles --address <token-address> --chain ethereum --timeframe 4H --out /tmp/tok-4h.json
 tribes-cli ta indicators --candles-file /tmp/tok-4h.json --set rsi,macd,atr
 tribes-cli ta levels --candles-file /tmp/tok-4h.json
 ```
@@ -105,14 +118,14 @@ support/resistance before calling the setup.
 ### Stock technicals (daily)
 
 ```bash
-tribes-cli stocks candles --symbol TSLA --limit 200 --out /tmp/tsla-1d.json
+tribes-cli asset candles --ticker TSLA --out /tmp/tsla-1d.json
 tribes-cli ta indicators --candles-file /tmp/tsla-1d.json --set bb,ema,stoch
 ```
 
 ### Backtest (RSI mean-revert on BTC, 90 days of daily candles)
 
 ```bash
-tribes-cli coin ohlc --id bitcoin --days 90 --out /tmp/btc-90d.json
+tribes-cli asset candles --id bitcoin --days 90 --out /tmp/btc-90d.json
 tribes-cli ta backtest --candles-file /tmp/btc-90d.json --strategy rsi-revert --rsi-low 30 --rsi-high 70
 ```
 
@@ -123,6 +136,7 @@ Report win rate, total return vs buy-and-hold, and max drawdown straight from th
 | Symptom                                   | Action                                                                             |
 | ----------------------------------------- | ---------------------------------------------------------------------------------- |
 | Key-not-set error from a candle source    | Provider unconfigured on this box — switch candle source or report it; no retries. |
+| `asset candles` fails all providers       | Its `attempted` list names each provider and reason — report that precisely.       |
 | `ta` rejects the candles file             | Refetch with the source command's `--out` — never hand-edit the file.              |
 | Unknown option error                      | Drop the extra flag — see the command reference for each subcommand's flags.       |
 | Stock query fails or lacks candle history | Retry the same question via `stock-analyst`.                                       |

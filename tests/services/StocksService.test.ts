@@ -77,6 +77,61 @@ describe('StocksService', () => {
     expect(requestUrl.searchParams.get('limit')).toBe('100')
   })
 
+  it('shapes the real-time stock price and coerces the numeric-string price', async () => {
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      jsonResponse({
+        data: [
+          {
+            exchange_code: 'NASDAQ',
+            exchange_name: 'Nasdaq Stock Market',
+            country: 'United States',
+            ticker: 'AAPL',
+            price: '244.07',
+            currency: 'USD',
+            trade_last: '2026-07-22 15:03:45'
+          }
+        ]
+      })
+    )
+
+    const result = await makeService().getStockPrice({ symbol: 'AAPL' })
+
+    expect(result).toEqual({
+      source: 'marketstack',
+      symbol: 'AAPL',
+      price: 244.07,
+      currency: 'USD',
+      trade_last: '2026-07-22 15:03:45'
+    })
+
+    const requestUrl = new URL(String(fetchSpy.mock.calls[0]?.[0]))
+    expect(requestUrl.pathname).toBe('/v2/stockprice')
+    expect(requestUrl.searchParams.get('ticker')).toBe('AAPL')
+    expect(requestUrl.searchParams.get('access_key')).toBe(TEST_MARKETSTACK_KEY)
+  })
+
+  it('throws the 1-call-per-minute message on stockprice 429 without echoing the access key', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response('{"error":{"code":"rate_limit_reached"}}', {
+        status: 429,
+        statusText: 'Too Many Requests'
+      })
+    )
+
+    const error = await makeService()
+      .getStockPrice({ symbol: 'AAPL' })
+      .catch((caught: unknown) => caught)
+
+    expect(error).toBeInstanceOf(Error)
+    if (error instanceof Error) {
+      expect(error.message).toContain(
+        'Marketstack /v2/stockprice failed: 429 Too Many Requests — the endpoint is rate-limited to 1 call per minute'
+      )
+      expect(error.message).not.toContain(TEST_MARKETSTACK_KEY)
+      expect(error.message).not.toContain('access_key=')
+    }
+  })
+
   it('shapes the ticker detail with the exchange fields flattened', async () => {
     const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
       jsonResponse({

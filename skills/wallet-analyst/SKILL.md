@@ -14,16 +14,15 @@ allowed-tools: bash read
 
 # Wallet Analyst
 
-Backing command groups: `tribes-cli wallet-data` (Nansen wallet intelligence plus BirdEye
-Solana wallet analytics) plus
-`tribes-cli token-data wallet-portfolio` (BirdEye portfolio detail, default Solana) — structured
+Backing command group: `tribes-cli wallet-data` (Nansen wallet intelligence plus BirdEye
+Solana wallet analytics) — structured
 JSON, answering in seconds. YOU are the analyst: pull the numbers with the subcommands below and
 do the interpretation — performance reads, flow attribution, identity profiling — yourself.
 There is no backend specialist behind this skill and no `ask` subcommand.
 
 ## When to use
 
-- Current holdings and USD net worth of a wallet (`balances`, `wallet-portfolio` for Solana
+- Current holdings and USD net worth of a wallet (`balances`, `net-worth` for Solana
   detail).
 - Trading PnL over the last 30 days, overall and per top token (`pnl`).
 - Transfer activity and transaction history (`transactions`), top counterparties by volume
@@ -47,7 +46,7 @@ There is no backend specialist behind this skill and no `ask` subcommand.
    takes `--from`/`--to` epoch bounds. Do not promise arbitrary ranges; state the window in
    your answer.
 4. Chain defaults differ: most Nansen subcommands default `--chain all`; `related` defaults
-   `ethereum` and does not accept `all`; `token-data wallet-portfolio` defaults `solana`. The
+   `ethereum` and does not accept `all`. The
    BirdEye-backed subcommands (`net-worth`, `net-worth-details`, `net-worth-chart`,
    `balance-change`, `transfer-total`) are Solana-only and take no `--chain` flag.
 5. If a command reports the provider key is not set, the capability is unavailable on this box —
@@ -74,19 +73,13 @@ Under `tribes-cli wallet-data` — Nansen-backed, multi-chain:
 
 Also under `tribes-cli wallet-data` — BirdEye-backed, Solana-only (no `--chain` flag):
 
-| Subcommand          | Purpose                                                   | Useful flags                                                                           |
-| ------------------- | --------------------------------------------------------- | -------------------------------------------------------------------------------------- |
-| `net-worth`         | Current net worth and holdings, largest USD value first   | `--limit` 1-100 (default 20)                                                           |
-| `net-worth-details` | Asset-level net-worth composition at a timepoint          | `--type 1h\|1d` (default 1d), `--time` YYYY-MM-DD HH:MM:SS (default latest), `--limit` |
-| `net-worth-chart`   | Historical net-worth points across hourly/daily intervals | `--type 1h\|1d` (default 1d), `--count` 1-30 (default 7)                               |
-| `balance-change`    | Balance delta history (increases/decreases)               | `--from`/`--to` (epoch seconds), `--limit` 1-100 (default 20)                          |
-| `transfer-total`    | Aggregate transfer totals without full transfer rows      | none                                                                                   |
-
-Under `tribes-cli token-data`:
-
-| Subcommand         | Purpose                               | Useful flags                                      |
-| ------------------ | ------------------------------------- | ------------------------------------------------- |
-| `wallet-portfolio` | Wallet token balances with USD values | `--chain solana\|ethereum\|base` (default solana) |
+| Subcommand          | Purpose                                                      | Useful flags                                                                           |
+| ------------------- | ------------------------------------------------------------ | -------------------------------------------------------------------------------------- |
+| `net-worth`         | Current portfolio: holdings + total USD value, largest first | `--limit` 1-100 (default 20)                                                           |
+| `net-worth-details` | Asset-level net-worth composition at a timepoint             | `--type 1h\|1d` (default 1d), `--time` YYYY-MM-DD HH:MM:SS (default latest), `--limit` |
+| `net-worth-chart`   | Historical net-worth points across hourly/daily intervals    | `--type 1h\|1d` (default 1d), `--count` 1-30 (default 7)                               |
+| `balance-change`    | Balance delta history (increases/decreases)                  | `--from`/`--to` (epoch seconds), `--limit` 1-100 (default 20)                          |
+| `transfer-total`    | Aggregate transfer totals without full transfer rows         | none                                                                                   |
 
 ## Examples
 
@@ -94,7 +87,7 @@ Under `tribes-cli token-data`:
 
 ```bash
 tribes-cli wallet-data balances --wallet <address>
-tribes-cli token-data wallet-portfolio --wallet <address> --chain solana
+tribes-cli wallet-data net-worth --wallet <address>
 ```
 
 Sum USD values for net worth; report composition from the largest positions.

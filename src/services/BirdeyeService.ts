@@ -8,6 +8,7 @@ import type {
   TokenDataNewListings,
   TokenDataOverview,
   TokenDataPrices,
+  TokenDataSearchResults,
   TokenDataSecurity,
   TokenDataTimeframe,
   TokenDataTradeHistory,
@@ -16,7 +17,6 @@ import type {
   TokenDataTradeStats,
   TokenDataTransferTotal,
   TokenDataTrending,
-  TokenDataWalletPortfolio,
   WalletAnalyticsBalanceChanges,
   WalletAnalyticsInterval,
   WalletAnalyticsNetWorth,
@@ -34,6 +34,7 @@ import {
   BirdeyeMultiPriceResponseSchema,
   BirdeyeNewListingResponseSchema,
   BirdeyeOhlcvResponseSchema,
+  BirdeyeSearchResponseSchema,
   BirdeyeTokenOverviewResponseSchema,
   BirdeyeTokenSecurityResponseSchema,
   BirdeyeTokenTransferTotalResponseSchema,
@@ -42,7 +43,6 @@ import {
   BirdeyeTxsTokenResponseSchema,
   BirdeyeWalletNetWorthChartResponseSchema,
   BirdeyeWalletNetWorthResponseSchema,
-  BirdeyeWalletTokenListResponseSchema,
   BirdeyeWalletTransferTotalResponseSchema,
   TokenDataCandlesSchema,
   TokenDataCreationInfoSchema,
@@ -52,13 +52,13 @@ import {
   TokenDataNewListingsSchema,
   TokenDataOverviewSchema,
   TokenDataPricesSchema,
+  TokenDataSearchResultsSchema,
   TokenDataSecuritySchema,
   TokenDataTradeHistorySchema,
   TokenDataTradesSchema,
   TokenDataTradeStatsSchema,
   TokenDataTransferTotalSchema,
   TokenDataTrendingSchema,
-  TokenDataWalletPortfolioSchema,
   WalletAnalyticsBalanceChangesSchema,
   WalletAnalyticsNetWorthChartSchema,
   WalletAnalyticsNetWorthDetailsSchema,
@@ -116,9 +116,18 @@ type GetOhlcvParams = {
   readonly chain: string
 }
 
-type GetWalletPortfolioParams = {
-  readonly wallet: string
+type GetPairOhlcvParams = {
+  readonly address: string
+  readonly timeframe: TokenDataTimeframe
+  readonly from: number | null | undefined
+  readonly to: number | null | undefined
   readonly chain: string
+}
+
+type GetSearchParams = {
+  readonly keyword: string
+  readonly chain: string | null | undefined
+  readonly limit: number | null | undefined
 }
 
 type GetMintBurnsParams = {
@@ -192,6 +201,8 @@ const BIRDEYE_KEY_HEADER = 'X-API-KEY'
 const BIRDEYE_CHAIN_HEADER = 'x-chain'
 const ERROR_BODY_MAX_CHARS = 300
 const DEFAULT_OHLCV_CANDLES = 200
+const DEFAULT_SEARCH_CHAIN = 'all'
+const DEFAULT_SEARCH_LIMIT = 20
 
 const TIMEFRAME_SECONDS: Record<TokenDataTimeframe, number> = {
   '1m': 60,
@@ -453,22 +464,75 @@ export class BirdeyeService {
     })
   }
 
-  async getWalletPortfolio(params: GetWalletPortfolioParams): Promise<TokenDataWalletPortfolio> {
-    const raw = await this.fetch('v1/wallet/token_list', { wallet: params.wallet }, params.chain)
-    const parsed = BirdeyeWalletTokenListResponseSchema.parse(raw)
-    return TokenDataWalletPortfolioSchema.parse({
+  // Pair (pool) candles: address is the pair/pool address, not a token mint.
+  async getPairOhlcv(params: GetPairOhlcvParams): Promise<TokenDataCandles> {
+    const to = params.to ?? Math.floor(Date.now() / 1000)
+    const from = params.from ?? to - TIMEFRAME_SECONDS[params.timeframe] * DEFAULT_OHLCV_CANDLES
+    const raw = await this.fetch(
+      'defi/v3/ohlcv/pair',
+      {
+        address: params.address,
+        type: params.timeframe,
+        time_from: String(from),
+        time_to: String(to)
+      },
+      params.chain
+    )
+    const parsed = BirdeyeOhlcvResponseSchema.parse(raw)
+    return TokenDataCandlesSchema.parse({
       source: 'birdeye',
-      chain: params.chain,
-      wallet: params.wallet,
-      total_usd: parsed.data.totalUsd,
-      tokens: (parsed.data.items ?? []).map((item) => ({
-        address: item.address,
-        symbol: item.symbol,
-        name: item.name,
-        ui_amount: item.uiAmount,
-        price_usd: item.priceUsd,
-        value_usd: item.valueUsd
+      candles: (parsed.data.items ?? []).map((item) => ({
+        t: item.unix_time * 1000,
+        o: item.o,
+        h: item.h,
+        l: item.l,
+        c: item.c,
+        v: item.v
       }))
+    })
+  }
+
+  async getSearch(params: GetSearchParams): Promise<TokenDataSearchResults> {
+    const chain = params.chain ?? DEFAULT_SEARCH_CHAIN
+    const raw = await this.fetch(
+      'defi/v3/search',
+      {
+        keyword: params.keyword,
+        chain,
+        target: 'token',
+        search_by: 'combination',
+        sort_by: 'volume_24h_usd',
+        sort_type: 'desc',
+        offset: '0',
+        limit: String(params.limit ?? DEFAULT_SEARCH_LIMIT)
+      },
+      chain
+    )
+    const parsed = BirdeyeSearchResponseSchema.parse(raw)
+    const tokens = (parsed.data.items ?? [])
+      .filter((item) => item.type === 'token')
+      .flatMap((item) => item.result ?? [])
+    const results = compactMap(
+      tokens.map((token) => {
+        if (isNullish(token.address)) {
+          return null
+        }
+        return {
+          address: token.address,
+          symbol: token.symbol,
+          name: token.name,
+          price_usd: token.price,
+          liquidity_usd: token.liquidity,
+          volume_24h_usd: token.volume_24h_usd,
+          network: token.network
+        }
+      })
+    )
+    return TokenDataSearchResultsSchema.parse({
+      source: 'birdeye',
+      chain,
+      keyword: params.keyword,
+      results
     })
   }
 

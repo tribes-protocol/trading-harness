@@ -1,10 +1,12 @@
-import type { StocksCandles, StocksDetail, StocksSearchResults } from '@/types/Stocks'
+import type { StocksCandles, StocksDetail, StocksPrice, StocksSearchResults } from '@/types/Stocks'
 import {
   MarketstackEodResponseSchema,
+  MarketstackStockPriceResponseSchema,
   MarketstackTickerSchema,
   MarketstackTickersResponseSchema,
   StocksCandlesSchema,
   StocksDetailSchema,
+  StocksPriceSchema,
   StocksSearchResultsSchema
 } from '@/types/Stocks'
 import { compactMap, isNullish } from '@/utils/Lang'
@@ -21,6 +23,10 @@ type GetCandlesParams = {
 }
 
 type GetDetailParams = {
+  readonly symbol: string
+}
+
+type GetStockPriceParams = {
   readonly symbol: string
 }
 
@@ -57,6 +63,30 @@ export class StocksService {
       })
     ).sort((a, b) => a.t - b.t)
     return StocksCandlesSchema.parse({ source: 'marketstack', symbol: params.symbol, candles })
+  }
+
+  // Marketstack rate-limits /v2/stockprice to 1 call per minute.
+  async getStockPrice(params: GetStockPriceParams): Promise<StocksPrice> {
+    const raw = await this.fetchMarketstack('v2/stockprice', { ticker: params.symbol }).catch(
+      (error: unknown) => {
+        if (error instanceof Error && error.message.includes('failed: 429')) {
+          throw new Error(
+            'Marketstack /v2/stockprice failed: 429 Too Many Requests — the endpoint is rate-limited to 1 call per minute; wait before retrying'
+          )
+        }
+        throw error
+      }
+    )
+    const parsed = MarketstackStockPriceResponseSchema.parse(raw)
+    const row = (parsed.data ?? [])[0]
+    const price = isNullish(row?.price) ? null : Number(row.price)
+    return StocksPriceSchema.parse({
+      source: 'marketstack',
+      symbol: row?.ticker ?? params.symbol,
+      price: price !== null && Number.isFinite(price) ? price : null,
+      currency: row?.currency,
+      trade_last: row?.trade_last
+    })
   }
 
   async getDetail(params: GetDetailParams): Promise<StocksDetail> {
