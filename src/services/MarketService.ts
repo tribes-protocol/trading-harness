@@ -14,6 +14,7 @@ import type {
   MarketPrices,
   MarketSearchResults,
   MarketSupportedCurrencies,
+  MarketTokenPrices,
   MarketTopCoins,
   MarketTrending
 } from '@/types/Market'
@@ -42,6 +43,7 @@ import {
   MarketPricesSchema,
   MarketSearchResultsSchema,
   MarketSupportedCurrenciesSchema,
+  MarketTokenPricesSchema,
   MarketTopCoinsSchema,
   MarketTrendingSchema
 } from '@/types/Market'
@@ -73,6 +75,11 @@ type GetNewCoinsParams = {
 
 type GetPricesParams = {
   readonly ids: string[]
+}
+
+type GetTokenPricesParams = {
+  readonly platform: string
+  readonly addresses: string[]
 }
 
 type SearchParams = {
@@ -249,6 +256,44 @@ export class MarketService {
       })
     )
     return MarketPricesSchema.parse({ source: 'coingecko', prices })
+  }
+
+  // Response keys are contract addresses; EVM keys come back lowercased
+  // regardless of request casing, so lookups fall back to lowercase.
+  async getTokenPrices(params: GetTokenPricesParams): Promise<MarketTokenPrices> {
+    const raw = await this.fetch(
+      `api/v3/simple/token_price/${encodeURIComponent(params.platform)}`,
+      {
+        contract_addresses: params.addresses.join(','),
+        vs_currencies: 'usd',
+        include_market_cap: 'true',
+        include_24hr_vol: 'true',
+        include_24hr_change: 'true',
+        include_last_updated_at: 'true'
+      }
+    )
+    const parsed = CoinGeckoSimplePriceResponseSchema.parse(raw)
+    const prices = compactMap(
+      params.addresses.map((address) => {
+        const entry = parsed[address] ?? parsed[address.toLowerCase()]
+        if (isNullish(entry)) {
+          return null
+        }
+        return {
+          address,
+          price_usd: entry.usd,
+          market_cap_usd: entry.usd_market_cap,
+          volume_24h_usd: entry.usd_24h_vol,
+          change_24h_pct: entry.usd_24h_change,
+          updated_at: entry.last_updated_at
+        }
+      })
+    )
+    return MarketTokenPricesSchema.parse({
+      source: 'coingecko',
+      platform: params.platform,
+      prices
+    })
   }
 
   async search(params: SearchParams): Promise<MarketSearchResults> {

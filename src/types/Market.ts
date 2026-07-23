@@ -296,6 +296,22 @@ export const MarketPricesSchema = z.object({
 })
 export type MarketPrices = z.infer<typeof MarketPricesSchema>
 
+const MarketTokenPriceRowSchema = z.object({
+  address: z.string(),
+  price_usd: z.number().nullish(),
+  market_cap_usd: z.number().nullish(),
+  volume_24h_usd: z.number().nullish(),
+  change_24h_pct: z.number().nullish(),
+  updated_at: z.number().nullish()
+})
+
+export const MarketTokenPricesSchema = z.object({
+  source: z.literal('coingecko'),
+  platform: z.string(),
+  prices: z.array(MarketTokenPriceRowSchema)
+})
+export type MarketTokenPrices = z.infer<typeof MarketTokenPricesSchema>
+
 const MarketSearchCoinSchema = z.object({
   id: z.string(),
   symbol: z.string().nullish(),
