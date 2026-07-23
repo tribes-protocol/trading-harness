@@ -22,9 +22,13 @@ specialist behind this skill and no `ask` subcommand.
 
 - Daily OHLCV history for a ticker (`candles`), ticker profile (`detail`), resolving a
   company name to a ticker (`search`).
-- There is NO live quote, top-movers, or market open/closed command. The freshest price
-  available is the latest daily close from `candles` — relay it as such, never as a live
-  quote. For movers or market-status questions, say the data is not available here.
+- There is NO top-movers or market open/closed command, and no live quote in this group.
+  The freshest figure here is the latest daily close from `candles` — relay it as such,
+  never as a live quote. A near-live single-symbol price IS available via
+  `tribes-cli asset price --ticker <SYMBOL>` (generic router, see `asset-data`); its
+  upstream is rate-limited, and when throttled it falls back to the latest daily close
+  marked `stale: true` — relay staleness either way. That is the only extra: for movers or
+  market-status questions, still say the data is not available here.
 - NOT for indicator values, signals, backtests, or any indicator math — use
   `technical-analyst`: run `stocks candles --out <file>` here, then feed the file to
   `tribes-cli ta`.
@@ -38,8 +42,8 @@ specialist behind this skill and no `ask` subcommand.
    All subcommands accept `--out <file>` to also write the JSON to a file.
 2. Symbols are stock tickers (`AAPL`, not "Apple") — resolve company names with
    `stocks search` first when unsure.
-3. Candles are daily EOD only (`--interval` supports only `1d`). There is no intraday or
-   live data — always state that figures are end-of-day closes.
+3. Candles are daily EOD only (`--interval` supports only `1d`). There is no intraday
+   candle data — always state that candle figures are end-of-day closes.
 4. Relay exact figures with the timeframe and direction of change, never approximations.
 5. For unscoped movers/discovery requests, also run crypto via `market-strategist` and
    commodities via `commodity-analyst` (cross-asset guardrail, see AGENTS.md).
@@ -68,7 +72,9 @@ tribes-cli stocks candles --symbol AAPL --limit 2
 ```
 
 Relay the latest close, the change vs the prior close, and the date of that close — state
-explicitly it is an end-of-day figure, not a live quote.
+explicitly it is an end-of-day figure, not a live quote. For a near-live figure use
+`tribes-cli asset price --ticker AAPL` instead (rate-limited upstream; falls back to the
+latest daily close marked `stale: true`).
 
 ### Candles over a timeframe
 
@@ -92,7 +98,9 @@ tribes-cli stocks candles --symbol MSFT --limit 200 --out /tmp/msft-candles.json
 tribes-cli ta indicators --candles-file /tmp/msft-candles.json --set rsi,macd,ema
 ```
 
-For signals, levels, or backtests on the same file, use `technical-analyst`.
+`tribes-cli asset candles --ticker MSFT --out /tmp/msft-candles.json` is the equivalent
+generic-router fetch — same candle contract, same downstream `ta` use. For signals, levels,
+or backtests on the same file, use `technical-analyst`.
 
 ## Error recovery
 
