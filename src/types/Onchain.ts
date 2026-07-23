@@ -173,6 +173,89 @@ export const CoinGeckoOnchainTradesResponseSchema = z.object({
 })
 export type CoinGeckoOnchainTradesResponse = z.infer<typeof CoinGeckoOnchainTradesResponseSchema>
 
+// simple/networks/{network}/token_price: per-metric records keyed by token
+// address (EVM keys come back lowercased regardless of request casing).
+export const CoinGeckoOnchainSimpleTokenPriceResponseSchema = z.object({
+  data: z.object({
+    attributes: z
+      .object({
+        token_prices: z.record(z.string(), CoinGeckoOnchainDecimalSchema.nullish()).nullish(),
+        market_cap_usd: z.record(z.string(), CoinGeckoOnchainDecimalSchema.nullish()).nullish(),
+        h24_volume_usd: z.record(z.string(), CoinGeckoOnchainDecimalSchema.nullish()).nullish(),
+        h24_price_change_percentage: z
+          .record(z.string(), CoinGeckoOnchainDecimalSchema.nullish())
+          .nullish()
+      })
+      .nullish()
+  })
+})
+export type CoinGeckoOnchainSimpleTokenPriceResponse = z.infer<
+  typeof CoinGeckoOnchainSimpleTokenPriceResponseSchema
+>
+
+export const CoinGeckoOnchainTokenResponseSchema = z.object({
+  data: z.object({
+    attributes: z
+      .object({
+        address: z.string().nullish(),
+        name: z.string().nullish(),
+        symbol: z.string().nullish(),
+        price_usd: CoinGeckoOnchainDecimalSchema.nullish(),
+        fdv_usd: CoinGeckoOnchainDecimalSchema.nullish(),
+        market_cap_usd: CoinGeckoOnchainDecimalSchema.nullish(),
+        volume_usd: z.record(z.string(), CoinGeckoOnchainDecimalSchema.nullish()).nullish(),
+        total_reserve_in_usd: CoinGeckoOnchainDecimalSchema.nullish()
+      })
+      .nullish()
+  })
+})
+export type CoinGeckoOnchainTokenResponse = z.infer<typeof CoinGeckoOnchainTokenResponseSchema>
+
+export const CoinGeckoOnchainTokenInfoResponseSchema = z.object({
+  data: z.object({
+    attributes: z
+      .object({
+        name: z.string().nullish(),
+        symbol: z.string().nullish(),
+        decimals: z.number().nullish(),
+        image_url: z.string().nullish(),
+        websites: z.array(z.string().nullish()).nullish(),
+        description: z.string().nullish(),
+        gt_score: z.number().nullish(),
+        twitter_handle: z.string().nullish(),
+        telegram_handle: z.string().nullish(),
+        discord_url: z.string().nullish()
+      })
+      .nullish()
+  })
+})
+export type CoinGeckoOnchainTokenInfoResponse = z.infer<
+  typeof CoinGeckoOnchainTokenInfoResponseSchema
+>
+
+export const CoinGeckoOnchainTopHoldersResponseSchema = z.object({
+  data: z.object({
+    attributes: z
+      .object({
+        holders: z
+          .array(
+            z.object({
+              address: z.string().nullish(),
+              label: z.string().nullish(),
+              amount: CoinGeckoOnchainDecimalSchema.nullish(),
+              percentage: CoinGeckoOnchainDecimalSchema.nullish(),
+              value: CoinGeckoOnchainDecimalSchema.nullish()
+            })
+          )
+          .nullish()
+      })
+      .nullish()
+  })
+})
+export type CoinGeckoOnchainTopHoldersResponse = z.infer<
+  typeof CoinGeckoOnchainTopHoldersResponseSchema
+>
+
 // ---------------------------------------------------------------------------
 // Agent-facing output shapes printed by `tribes-cli onchain`.
 // ---------------------------------------------------------------------------
@@ -336,6 +419,70 @@ export const OnchainPoolTradesSchema = z.object({
   trades: z.array(OnchainTradeRowSchema)
 })
 export type OnchainPoolTrades = z.infer<typeof OnchainPoolTradesSchema>
+
+const OnchainTokenPriceRowSchema = z.object({
+  address: z.string(),
+  price_usd: z.number().nullish(),
+  market_cap_usd: z.number().nullish(),
+  volume_24h_usd: z.number().nullish(),
+  change_24h_pct: z.number().nullish()
+})
+
+export const OnchainTokenPricesSchema = z.object({
+  source: z.literal('geckoterminal'),
+  network: z.string(),
+  prices: z.array(OnchainTokenPriceRowSchema)
+})
+export type OnchainTokenPrices = z.infer<typeof OnchainTokenPricesSchema>
+
+export const OnchainTokenSnapshotSchema = z.object({
+  source: z.literal('geckoterminal'),
+  network: z.string(),
+  address: z.string(),
+  name: z.string().nullish(),
+  symbol: z.string().nullish(),
+  price_usd: z.number().nullish(),
+  fdv_usd: z.number().nullish(),
+  market_cap_usd: z.number().nullish(),
+  volume_24h_usd: z.number().nullish(),
+  total_reserve_usd: z.number().nullish()
+})
+export type OnchainTokenSnapshot = z.infer<typeof OnchainTokenSnapshotSchema>
+
+export const OnchainTokenInfoSchema = z.object({
+  source: z.literal('geckoterminal'),
+  network: z.string(),
+  address: z.string(),
+  name: z.string().nullish(),
+  symbol: z.string().nullish(),
+  decimals: z.number().nullish(),
+  image_url: z.string().nullish(),
+  websites: z.array(z.string()),
+  socials: z.object({
+    twitter: z.string().nullish(),
+    telegram: z.string().nullish(),
+    discord: z.string().nullish()
+  }),
+  description: z.string().nullish(),
+  gt_score: z.number().nullish()
+})
+export type OnchainTokenInfo = z.infer<typeof OnchainTokenInfoSchema>
+
+const OnchainTopHolderRowSchema = z.object({
+  address: z.string().nullish(),
+  label: z.string().nullish(),
+  amount: z.number().nullish(),
+  pct_supply: z.number().nullish(),
+  value_usd: z.number().nullish()
+})
+
+export const OnchainTopHoldersSchema = z.object({
+  source: z.literal('geckoterminal'),
+  network: z.string(),
+  address: z.string(),
+  holders: z.array(OnchainTopHolderRowSchema)
+})
+export type OnchainTopHolders = z.infer<typeof OnchainTopHoldersSchema>
 
 // ---------------------------------------------------------------------------
 // `tribes-cli onchain` command options.

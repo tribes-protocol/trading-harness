@@ -275,6 +275,64 @@ describe('MarketService', () => {
     expect(requestUrl.searchParams.get('vs_currencies')).toBe('usd')
   })
 
+  it('keeps requested token price addresses in order and drops unknown addresses', async () => {
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      jsonResponse({
+        '0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48': {
+          usd: 0.9998,
+          usd_market_cap: 32500000000,
+          usd_24h_vol: 5100000000,
+          usd_24h_change: 0.01,
+          last_updated_at: 1784560000
+        },
+        '0xdac17f958d2ee523a2206206994597c13d831ec7': { usd: 1.0002, last_updated_at: 1784560010 }
+      })
+    )
+
+    const result = await makeService().getTokenPrices({
+      platform: 'ethereum',
+      addresses: [
+        '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48',
+        '0xdac17f958d2ee523a2206206994597c13d831ec7',
+        '0xunknown'
+      ]
+    })
+
+    expect(result).toEqual({
+      source: 'coingecko',
+      platform: 'ethereum',
+      prices: [
+        {
+          address: '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48',
+          price_usd: 0.9998,
+          market_cap_usd: 32500000000,
+          volume_24h_usd: 5100000000,
+          change_24h_pct: 0.01,
+          updated_at: 1784560000
+        },
+        {
+          address: '0xdac17f958d2ee523a2206206994597c13d831ec7',
+          price_usd: 1.0002,
+          updated_at: 1784560010
+        }
+      ]
+    })
+
+    const requestUrl = new URL(String(fetchSpy.mock.calls[0]?.[0]))
+    expect(requestUrl.pathname).toBe('/api/v3/simple/token_price/ethereum')
+    expect(requestUrl.searchParams.get('contract_addresses')).toBe(
+      '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48,0xdac17f958d2ee523a2206206994597c13d831ec7,0xunknown'
+    )
+    expect(requestUrl.searchParams.get('vs_currencies')).toBe('usd')
+    expect(requestUrl.searchParams.get('include_market_cap')).toBe('true')
+    expect(requestUrl.searchParams.get('include_24hr_vol')).toBe('true')
+    expect(requestUrl.searchParams.get('include_24hr_change')).toBe('true')
+    expect(requestUrl.searchParams.get('include_last_updated_at')).toBe('true')
+    expect(fetchSpy.mock.calls[0]?.[1]?.headers).toMatchObject({
+      'x-cg-pro-api-key': TEST_API_KEY
+    })
+  })
+
   it('shapes trending coins from the nested item payload', async () => {
     vi.spyOn(globalThis, 'fetch').mockResolvedValue(
       jsonResponse({

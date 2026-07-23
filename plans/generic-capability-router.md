@@ -160,12 +160,10 @@ global stats, exchanges/derivatives/treasury, supply (CoinGecko); stocks beyond 
 - Merging providers within one response; caching; websockets; BirdEye perps API.
 - Removing existing provider subcommands (compat kept; revisit after Phase 4).
 
-## Open questions for the operator
+## Open questions — ANSWERED by the operator (2026-07-23), plan approved
 
-1. `coin supply` runs on a CoinGecko **Enterprise-only** endpoint — confirm our key's plan;
-   if not Enterprise, the command should be removed or marked degraded (separate from this
-   plan, discovered by the sweep).
-2. BirdEye `wallet-portfolio` rides a docs-deprecated endpoint; its successor
-   (`current-net-worth`) is already wired — fold `wallet-portfolio` into it during Phase 3?
-3. Group name `asset` — acceptable, or prefer capability-per-group (`price`, `candles` as
-   top-level groups)?
+1. CoinGecko key is **Enterprise** — `coin supply` stands; no tier degradation needed for
+   our own calls (the 401/403 fallback trigger remains as defensive routing).
+2. **Fold approved**: the deprecated BirdEye wallet-portfolio endpoint is removed; its
+   successor surface is `wallet-data net-worth`.
+3. Group name **`asset` approved**.

@@ -386,66 +386,120 @@ describe('BirdeyeService', () => {
     expect(timeTo - timeFrom).toBe(200 * 900)
   })
 
-  it('shapes the wallet portfolio with USD totals', async () => {
+  it('maps pair ohlcv items into the shared candle contract from the pair endpoint', async () => {
     const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
       jsonResponse({
         success: true,
         data: {
-          wallet: 'Wallet111',
-          totalUsd: 1893.42,
           items: [
-            {
-              address: SOL_ADDRESS,
-              symbol: 'SOL',
-              name: 'Wrapped SOL',
-              uiAmount: 10.5,
-              priceUsd: 171.42,
-              valueUsd: 1799.91
-            },
-            {
-              address: 'UsdcAddr',
-              symbol: 'USDC',
-              uiAmount: 93.51,
-              priceUsd: 1,
-              valueUsd: 93.51
-            }
+            { unix_time: 1784556400, o: 170.1, h: 172.4, l: 169.8, c: 171.42, v: 125000 },
+            { unix_time: 1784560000, o: 171.42, h: 171.9, l: 170.5, c: 170.9, v: null }
           ]
         }
       })
     )
 
-    const result = await makeService().getWalletPortfolio({
-      wallet: 'Wallet111',
+    const result = await makeService().getPairOhlcv({
+      address: 'PairAddress1111111111111111111111111111111',
+      timeframe: '1D',
+      from: 1784550000,
+      to: 1784560000,
       chain: 'solana'
     })
 
     expect(result).toEqual({
       source: 'birdeye',
+      candles: [
+        { t: 1784556400000, o: 170.1, h: 172.4, l: 169.8, c: 171.42, v: 125000 },
+        { t: 1784560000000, o: 171.42, h: 171.9, l: 170.5, c: 170.9, v: null }
+      ]
+    })
+
+    const requestUrl = new URL(String(fetchSpy.mock.calls[0]?.[0]))
+    expect(requestUrl.pathname).toBe('/defi/v3/ohlcv/pair')
+    expect(requestUrl.searchParams.get('address')).toBe(
+      'PairAddress1111111111111111111111111111111'
+    )
+    expect(requestUrl.searchParams.get('type')).toBe('1D')
+    expect(requestUrl.searchParams.get('time_from')).toBe('1784550000')
+    expect(requestUrl.searchParams.get('time_to')).toBe('1784560000')
+    expect(fetchSpy.mock.calls[0]?.[1]?.headers).toMatchObject({ 'x-chain': 'solana' })
+  })
+
+  it('shapes token search results, drops market groups, and sends keyword + chain params', async () => {
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      jsonResponse({
+        success: true,
+        data: {
+          items: [
+            {
+              type: 'token',
+              result: [
+                {
+                  address: BONK_ADDRESS,
+                  symbol: 'BONK',
+                  name: 'Bonk',
+                  network: 'solana',
+                  price: 0.0000312,
+                  liquidity: 21000000,
+                  volume_24h_usd: 98000000
+                },
+                { symbol: 'GHOST', name: 'No Address Token' }
+              ]
+            },
+            { type: 'market', result: [{ address: 'PairAddr111', name: 'BONK-SOL' }] }
+          ]
+        }
+      })
+    )
+
+    const result = await makeService().getSearch({ keyword: 'bonk', chain: 'solana', limit: 5 })
+
+    expect(result).toEqual({
+      source: 'birdeye',
       chain: 'solana',
-      wallet: 'Wallet111',
-      total_usd: 1893.42,
-      tokens: [
+      keyword: 'bonk',
+      results: [
         {
-          address: SOL_ADDRESS,
-          symbol: 'SOL',
-          name: 'Wrapped SOL',
-          ui_amount: 10.5,
-          price_usd: 171.42,
-          value_usd: 1799.91
-        },
-        {
-          address: 'UsdcAddr',
-          symbol: 'USDC',
-          ui_amount: 93.51,
-          price_usd: 1,
-          value_usd: 93.51
+          address: BONK_ADDRESS,
+          symbol: 'BONK',
+          name: 'Bonk',
+          price_usd: 0.0000312,
+          liquidity_usd: 21000000,
+          volume_24h_usd: 98000000,
+          network: 'solana'
         }
       ]
     })
 
     const requestUrl = new URL(String(fetchSpy.mock.calls[0]?.[0]))
-    expect(requestUrl.pathname).toBe('/v1/wallet/token_list')
-    expect(requestUrl.searchParams.get('wallet')).toBe('Wallet111')
+    expect(requestUrl.pathname).toBe('/defi/v3/search')
+    expect(requestUrl.searchParams.get('keyword')).toBe('bonk')
+    expect(requestUrl.searchParams.get('chain')).toBe('solana')
+    expect(requestUrl.searchParams.get('target')).toBe('token')
+    expect(requestUrl.searchParams.get('search_by')).toBe('combination')
+    expect(requestUrl.searchParams.get('sort_by')).toBe('volume_24h_usd')
+    expect(requestUrl.searchParams.get('sort_type')).toBe('desc')
+    expect(requestUrl.searchParams.get('limit')).toBe('5')
+    expect(fetchSpy.mock.calls[0]?.[1]?.headers).toMatchObject({
+      'X-API-KEY': TEST_API_KEY,
+      'x-chain': 'solana'
+    })
+  })
+
+  it('defaults search to all chains and 20 results when chain and limit are omitted', async () => {
+    const fetchSpy = vi
+      .spyOn(globalThis, 'fetch')
+      .mockResolvedValue(jsonResponse({ success: true, data: { items: [] } }))
+
+    const result = await makeService().getSearch({ keyword: 'bonk', chain: null, limit: null })
+
+    expect(result).toEqual({ source: 'birdeye', chain: 'all', keyword: 'bonk', results: [] })
+
+    const requestUrl = new URL(String(fetchSpy.mock.calls[0]?.[0]))
+    expect(requestUrl.searchParams.get('chain')).toBe('all')
+    expect(requestUrl.searchParams.get('limit')).toBe('20')
+    expect(fetchSpy.mock.calls[0]?.[1]?.headers).toMatchObject({ 'x-chain': 'all' })
   })
 
   it('shapes mint/burn transactions and requests all types newest-first', async () => {

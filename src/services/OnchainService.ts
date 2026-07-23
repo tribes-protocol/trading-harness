@@ -11,7 +11,11 @@ import type {
   OnchainPoolTrades,
   OnchainRecentTokens,
   OnchainSearchResults,
-  OnchainTimeframe
+  OnchainTimeframe,
+  OnchainTokenInfo,
+  OnchainTokenPrices,
+  OnchainTokenSnapshot,
+  OnchainTopHolders
 } from '@/types/Onchain'
 import {
   CoinGeckoOnchainCategoriesResponseSchema,
@@ -20,7 +24,11 @@ import {
   CoinGeckoOnchainOhlcvResponseSchema,
   CoinGeckoOnchainPoolResponseSchema,
   CoinGeckoOnchainPoolsResponseSchema,
+  CoinGeckoOnchainSimpleTokenPriceResponseSchema,
+  CoinGeckoOnchainTokenInfoResponseSchema,
+  CoinGeckoOnchainTokenResponseSchema,
   CoinGeckoOnchainTokensInfoResponseSchema,
+  CoinGeckoOnchainTopHoldersResponseSchema,
   CoinGeckoOnchainTradesResponseSchema,
   OnchainCategoriesSchema,
   OnchainCategoryPoolsSchema,
@@ -31,9 +39,13 @@ import {
   OnchainPoolsSchema,
   OnchainPoolTradesSchema,
   OnchainRecentTokensSchema,
-  OnchainSearchResultsSchema
+  OnchainSearchResultsSchema,
+  OnchainTokenInfoSchema,
+  OnchainTokenPricesSchema,
+  OnchainTokenSnapshotSchema,
+  OnchainTopHoldersSchema
 } from '@/types/Onchain'
-import { isNullish } from '@/utils/Lang'
+import { compactMap, isNullish } from '@/utils/Lang'
 
 type OnchainServiceParams = {
   readonly apiKey: string
@@ -125,10 +137,41 @@ type GetRecentlyUpdatedTokensParams = {
   readonly limit: number
 }
 
+type GetSimpleTokenPricesParams = {
+  readonly network: string
+  readonly addresses: string[]
+}
+
+type GetTokenOhlcvParams = {
+  readonly network: string
+  readonly address: string
+  readonly timeframe: OnchainTimeframe
+  readonly aggregate: number | null
+  readonly limit: number | null
+  readonly beforeTimestamp: number | null
+}
+
+type GetTokenSnapshotParams = {
+  readonly network: string
+  readonly address: string
+}
+
+type GetTokenInfoParams = {
+  readonly network: string
+  readonly address: string
+}
+
+type GetTopHoldersParams = {
+  readonly network: string
+  readonly address: string
+  readonly limit: number | null
+}
+
 const COINGECKO_PRO_BASE_URL = 'https://pro-api.coingecko.com/'
 const COINGECKO_KEY_HEADER = 'x-cg-pro-api-key'
 const ERROR_BODY_MAX_CHARS = 300
 const MS_PER_SECOND = 1000
+const TOKEN_DESCRIPTION_MAX_CHARS = 600
 
 export class OnchainService {
   private readonly apiKey: string
@@ -397,6 +440,149 @@ export class OnchainService {
         coingecko_id: row.attributes?.coingecko_coin_id,
         gt_score: row.attributes?.gt_score,
         updated_at: row.attributes?.metadata_updated_at
+      }))
+    })
+  }
+
+  // Metric records are keyed by token address; EVM keys come back lowercased
+  // regardless of request casing, so lookups fall back to lowercase. Rows keep
+  // request order and unknown addresses are dropped.
+  async getSimpleTokenPrices(params: GetSimpleTokenPricesParams): Promise<OnchainTokenPrices> {
+    const addresses = params.addresses.map((address) => encodeURIComponent(address)).join(',')
+    const raw = await this.fetch(
+      `api/v3/onchain/simple/networks/${encodeURIComponent(params.network)}/token_price/${addresses}`,
+      {
+        include_market_cap: 'true',
+        include_24hr_vol: 'true',
+        include_24hr_price_change: 'true'
+      }
+    )
+    const parsed = CoinGeckoOnchainSimpleTokenPriceResponseSchema.parse(raw)
+    const attributes = parsed.data.attributes
+    const tokenPrices = attributes?.token_prices ?? {}
+    const marketCaps = attributes?.market_cap_usd ?? {}
+    const volumes = attributes?.h24_volume_usd ?? {}
+    const changes = attributes?.h24_price_change_percentage ?? {}
+    const prices = compactMap(
+      params.addresses.map((address) => {
+        const key = address in tokenPrices ? address : address.toLowerCase()
+        const price = tokenPrices[key]
+        if (isNullish(price)) {
+          return null
+        }
+        return {
+          address,
+          price_usd: this.asFiniteNumber(price),
+          market_cap_usd: this.asFiniteNumber(marketCaps[key]),
+          volume_24h_usd: this.asFiniteNumber(volumes[key]),
+          change_24h_pct: this.asFiniteNumber(changes[key])
+        }
+      })
+    )
+    return OnchainTokenPricesSchema.parse({
+      source: 'geckoterminal',
+      network: params.network,
+      prices
+    })
+  }
+
+  // beforeTimestamp is epoch seconds, passed through as before_timestamp.
+  async getTokenOhlcv(params: GetTokenOhlcvParams): Promise<OnchainPoolOhlcv> {
+    const searchParams: Record<string, string> = {}
+    if (!isNullish(params.aggregate)) {
+      searchParams.aggregate = String(params.aggregate)
+    }
+    if (!isNullish(params.limit)) {
+      searchParams.limit = String(params.limit)
+    }
+    if (!isNullish(params.beforeTimestamp)) {
+      searchParams.before_timestamp = String(params.beforeTimestamp)
+    }
+    const raw = await this.fetch(
+      `api/v3/onchain/networks/${encodeURIComponent(params.network)}/tokens/${encodeURIComponent(params.address)}/ohlcv/${params.timeframe}`,
+      searchParams
+    )
+    const parsed = CoinGeckoOnchainOhlcvResponseSchema.parse(raw)
+    return OnchainPoolOhlcvSchema.parse({
+      source: 'geckoterminal',
+      candles: (parsed.data.attributes.ohlcv_list ?? []).map((row) => ({
+        t: row[0] * MS_PER_SECOND,
+        o: row[1],
+        h: row[2],
+        l: row[3],
+        c: row[4],
+        v: row[5]
+      }))
+    })
+  }
+
+  async getTokenSnapshot(params: GetTokenSnapshotParams): Promise<OnchainTokenSnapshot> {
+    const raw = await this.fetch(
+      `api/v3/onchain/networks/${encodeURIComponent(params.network)}/tokens/${encodeURIComponent(params.address)}`,
+      {}
+    )
+    const parsed = CoinGeckoOnchainTokenResponseSchema.parse(raw)
+    const attributes = parsed.data.attributes
+    return OnchainTokenSnapshotSchema.parse({
+      source: 'geckoterminal',
+      network: params.network,
+      address: params.address,
+      name: attributes?.name,
+      symbol: attributes?.symbol,
+      price_usd: this.asFiniteNumber(attributes?.price_usd),
+      fdv_usd: this.asFiniteNumber(attributes?.fdv_usd),
+      market_cap_usd: this.asFiniteNumber(attributes?.market_cap_usd),
+      volume_24h_usd: this.asFiniteNumber(attributes?.volume_usd?.h24),
+      total_reserve_usd: this.asFiniteNumber(attributes?.total_reserve_in_usd)
+    })
+  }
+
+  async getTokenInfo(params: GetTokenInfoParams): Promise<OnchainTokenInfo> {
+    const raw = await this.fetch(
+      `api/v3/onchain/networks/${encodeURIComponent(params.network)}/tokens/${encodeURIComponent(params.address)}/info`,
+      {}
+    )
+    const parsed = CoinGeckoOnchainTokenInfoResponseSchema.parse(raw)
+    const attributes = parsed.data.attributes
+    return OnchainTokenInfoSchema.parse({
+      source: 'geckoterminal',
+      network: params.network,
+      address: params.address,
+      name: attributes?.name,
+      symbol: attributes?.symbol,
+      decimals: attributes?.decimals,
+      image_url: attributes?.image_url,
+      websites: compactMap(attributes?.websites ?? []),
+      socials: {
+        twitter: attributes?.twitter_handle,
+        telegram: attributes?.telegram_handle,
+        discord: attributes?.discord_url
+      },
+      description: attributes?.description?.slice(0, TOKEN_DESCRIPTION_MAX_CHARS),
+      gt_score: attributes?.gt_score
+    })
+  }
+
+  async getTopHolders(params: GetTopHoldersParams): Promise<OnchainTopHolders> {
+    const searchParams: Record<string, string> = {}
+    if (!isNullish(params.limit)) {
+      searchParams.holders = String(params.limit)
+    }
+    const raw = await this.fetch(
+      `api/v3/onchain/networks/${encodeURIComponent(params.network)}/tokens/${encodeURIComponent(params.address)}/top_holders`,
+      searchParams
+    )
+    const parsed = CoinGeckoOnchainTopHoldersResponseSchema.parse(raw)
+    return OnchainTopHoldersSchema.parse({
+      source: 'geckoterminal',
+      network: params.network,
+      address: params.address,
+      holders: (parsed.data.attributes?.holders ?? []).map((row) => ({
+        address: row.address,
+        label: row.label,
+        amount: this.asFiniteNumber(row.amount),
+        pct_supply: this.asFiniteNumber(row.percentage),
+        value_usd: this.asFiniteNumber(row.value)
       }))
     })
   }

@@ -168,26 +168,33 @@ export const BirdeyeOhlcvResponseSchema = z.object({
 })
 export type BirdeyeOhlcvResponse = z.infer<typeof BirdeyeOhlcvResponseSchema>
 
-// GET /v1/wallet/token_list
-export const BirdeyeWalletTokenListResponseSchema = z.object({
+// GET /defi/v3/search — items group results by type ('token' | 'market');
+// token entries carry the market fields the harness surfaces.
+export const BirdeyeSearchResponseSchema = z.object({
   data: z.object({
-    wallet: z.string().nullish(),
-    totalUsd: z.number().nullish(),
     items: z
       .array(
         z.object({
-          address: z.string(),
-          symbol: z.string().nullish(),
-          name: z.string().nullish(),
-          uiAmount: z.number().nullish(),
-          priceUsd: z.number().nullish(),
-          valueUsd: z.number().nullish()
+          type: z.string().nullish(),
+          result: z
+            .array(
+              z.object({
+                address: z.string().nullish(),
+                symbol: z.string().nullish(),
+                name: z.string().nullish(),
+                network: z.string().nullish(),
+                price: z.number().nullish(),
+                liquidity: z.number().nullish(),
+                volume_24h_usd: z.number().nullish()
+              })
+            )
+            .nullish()
         })
       )
       .nullish()
   })
 })
-export type BirdeyeWalletTokenListResponse = z.infer<typeof BirdeyeWalletTokenListResponseSchema>
+export type BirdeyeSearchResponse = z.infer<typeof BirdeyeSearchResponseSchema>
 
 // GET /defi/v3/token/mint-burn-txs
 export const BirdeyeMintBurnTxsResponseSchema = z.object({
@@ -598,23 +605,23 @@ export const TokenDataCandlesSchema = z.object({
 })
 export type TokenDataCandles = z.infer<typeof TokenDataCandlesSchema>
 
-const TokenDataWalletTokenRowSchema = z.object({
+const TokenDataSearchRowSchema = z.object({
   address: z.string(),
   symbol: z.string().nullish(),
   name: z.string().nullish(),
-  ui_amount: z.number().nullish(),
   price_usd: z.number().nullish(),
-  value_usd: z.number().nullish()
+  liquidity_usd: z.number().nullish(),
+  volume_24h_usd: z.number().nullish(),
+  network: z.string().nullish()
 })
 
-export const TokenDataWalletPortfolioSchema = z.object({
+export const TokenDataSearchResultsSchema = z.object({
   source: z.literal('birdeye'),
   chain: z.string(),
-  wallet: z.string(),
-  total_usd: z.number().nullish(),
-  tokens: z.array(TokenDataWalletTokenRowSchema)
+  keyword: z.string(),
+  results: z.array(TokenDataSearchRowSchema)
 })
-export type TokenDataWalletPortfolio = z.infer<typeof TokenDataWalletPortfolioSchema>
+export type TokenDataSearchResults = z.infer<typeof TokenDataSearchResultsSchema>
 
 const TokenDataMintBurnRowSchema = z.object({
   tx_hash: z.string().nullish(),
@@ -881,15 +888,6 @@ export const TokenDataOhlcvCommandOptionsSchema = z.object({
   out: z.string().nullish()
 })
 export type TokenDataOhlcvCommandOptions = z.infer<typeof TokenDataOhlcvCommandOptionsSchema>
-
-export const TokenDataWalletPortfolioCommandOptionsSchema = z.object({
-  wallet: z.string().min(1),
-  chain: ChainOptionSchema,
-  out: z.string().nullish()
-})
-export type TokenDataWalletPortfolioCommandOptions = z.infer<
-  typeof TokenDataWalletPortfolioCommandOptionsSchema
->
 
 export const TokenDataMintBurnCommandOptionsSchema = z.object({
   address: z.string().min(1),
