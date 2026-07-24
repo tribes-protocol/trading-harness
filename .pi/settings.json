@@ -1,4 +1,11 @@
 {
-  "prompts": ["!prompts/tribes/login.md"],
-  "skills": ["!tribes-login"]
+  "prompts": [
+    "!prompts/tribes/login.md"
+  ],
+  "skills": [
+    "!tribes-login"
+  ],
+  "defaultThinkingLevel": "high",
+  "defaultProvider": "openrouter",
+  "defaultModel": "deepseek/deepseek-v4-pro"
 }

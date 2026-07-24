@@ -1,7 +1,7 @@
 {
-  "defaultThinkingLevel": "high",
-  "defaultProvider": "openrouter",
-  "defaultModel": "deepseek/deepseek-v4-pro",
-  "packages": ["npm:pi-subagents", "npm:pi-prompt-template-model"],
+  "packages": [
+    "npm:pi-subagents",
+    "npm:pi-prompt-template-model"
+  ],
   "theme": "light/dark"
 }
