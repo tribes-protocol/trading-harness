@@ -1,15 +1,20 @@
 /**
  * The `tribes` extension — everything the harness wires into Pi, in one place:
  *   - installs the host-minted agent key + materializes .env (./AuthBootstrap.ts)
- *   - registers the `tribes-llm-proxy` model provider (./Provider.ts)
  *   - renders the welcome header on startup (./Welcome.ts)
  *   - warms the wallet snapshot on startup (./WalletSnapshot.ts)
  *   - registers wallet + Hyperliquid status panels (./wallet, ./hyperliquid)
  *   - exposes a `/tribes:login` command so a logged-out user can authenticate in-app
  *
+ * The LLM needs no wiring here: pi's built-in openrouter provider runs off the
+ * boot-env OPENROUTER_API_KEY egress placeholder (swapped for the real key at
+ * the MITM hop), and settings.json pins the default model on it.
+ *
  * Sibling modules are imported relatively: Pi loads extensions via jiti, which
  * resolves relative paths but not the harness's `@/` tsconfig alias.
  */
+
+import type { ExtensionAPI } from '@earendil-works/pi-coding-agent'
 
 import {
   AUTH_REFRESH_INTERVAL_MS,
@@ -19,7 +24,6 @@ import {
   writeAuthEnv
 } from './AuthBootstrap.ts'
 import registerHyperliquidExtension from './hyperliquid/index.ts'
-import { registerTribesProvider, type TribesApi } from './Provider.ts'
 import { registerWalletExtension } from './wallet/WalletExtension.ts'
 import { warmWalletSnapshot } from './WalletSnapshot.ts'
 import { showWelcome } from './Welcome.ts'
@@ -33,31 +37,19 @@ function errorMessage(err: unknown): string {
   return err instanceof Error ? err.message : String(err)
 }
 
-export default async function tribes(pi: TribesApi): Promise<void> {
+export default async function tribes(pi: ExtensionAPI): Promise<void> {
   const cwd = process.cwd()
 
-  // Put the agent key in place before the provider's token command can run.
+  // Put the agent key in place before AgentProxyToken.ts mints the CLI bearer.
   installAgentKey(cwd)
 
-  let providerFailed = false
-
-  // Only register the LLM provider when logged in. Logged out, Pi boots with no
-  // Tribes models — the user can't switch to or message the LLM until /tribes:login.
-  // Genuine failures (corrupt key, network) are retried on session_start after
-  // writeAuthEnv persists runtime env into .env.
-  let startupNotice: StartupNotice | null = null
-  if (hasAgentKey(cwd)) {
-    try {
-      await registerTribesProvider(pi)
-    } catch {
-      providerFailed = true
-    }
-  } else {
-    startupNotice = {
-      message: 'Log in with /tribes:login to use agentic trading.',
-      level: 'warning'
-    }
-  }
+  // Logged out, wallet/trading calls have no bearer — surface the login path.
+  const startupNotice: StartupNotice | null = hasAgentKey(cwd)
+    ? null
+    : {
+        message: 'Log in with /tribes:login to use agentic trading.',
+        level: 'warning'
+      }
 
   let authRefreshTimer: ReturnType<typeof setInterval> | undefined
 
@@ -92,16 +84,6 @@ export default async function tribes(pi: TribesApi): Promise<void> {
       // "Missing account address"). Don't fail startup, but make it visible.
       if (ctx.hasUI)
         ctx.ui.notify(`auth bootstrap failed — .env not written: ${errorMessage(err)}`, 'error')
-    }
-
-    if (providerFailed) {
-      try {
-        await registerTribesProvider(pi)
-        providerFailed = false
-      } catch (err) {
-        if (ctx.hasUI)
-          ctx.ui.notify(`Tribes provider failed to load: ${errorMessage(err)}`, 'error')
-      }
     }
 
     startAuthRefreshTimer(ctx.cwd)

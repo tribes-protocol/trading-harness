@@ -1,13 +1,12 @@
 import { execFile, spawn } from 'node:child_process'
 import { copyFileSync, existsSync, mkdirSync } from 'node:fs'
-import { readFile, writeFile } from 'node:fs/promises'
+import { writeFile } from 'node:fs/promises'
 import { dirname, resolve } from 'node:path'
 import { promisify } from 'node:util'
 
-import { ExtensionCommandContext } from '@earendil-works/pi-coding-agent'
+import { ExtensionAPI, ExtensionCommandContext } from '@earendil-works/pi-coding-agent'
 
 import { readDotEnv } from './DotEnv'
-import { registerTribesProvider, TribesApi } from './Provider'
 import { warmWalletSnapshot } from './WalletSnapshot'
 
 const execFileAsync = promisify(execFile)
@@ -26,8 +25,21 @@ const MINT_MAX_BUFFER_BYTES = 1024 * 1024
 // them into pi, so this extension inherits them) to point a non-production build
 // at a different backend / Privy app. When present we pass them through to .env;
 // when absent the production defaults apply. API_BEARER_TOKEN is minted from the
-// agent key below.
-const ENV_PASSTHROUGH = ['API_BASE_URL', 'PRIVY_APP_ID'] as const
+// agent key below. The *_API_KEY entries are boot-env egress placeholders (the
+// egress hop swaps in real keys): OPENROUTER_API_KEY signs pi's LLM calls, and
+// the four market-data keys gate their tribes-cli groups (src/common/Env.ts
+// reports a group unavailable on an empty key). Persisting them lets
+// bun-launched CLIs and SSH sessions (which don't inherit the bridge env) pick
+// them up from .env.
+const ENV_PASSTHROUGH = [
+  'API_BASE_URL',
+  'PRIVY_APP_ID',
+  'OPENROUTER_API_KEY',
+  'COIN_GECKO_PRO_API_KEY',
+  'BIRDEYE_API_KEY',
+  'NANSEN_API_KEY',
+  'MARKETSTACK_API_KEY'
+] as const
 
 // Re-mint + rewrite .env on this cadence so the bearer token never goes stale.
 export const AUTH_REFRESH_INTERVAL_MS = 24 * 60 * 60 * 1000
@@ -40,50 +52,11 @@ function stripAnsi(text: string): string {
   return text.replace(ANSI_PATTERN, '')
 }
 
-interface PiSettingsDefaults {
-  readonly defaultProvider: string | null
-  readonly defaultModel: string | null
-}
-
-async function readPiSettingsDefaults(cwd: string): Promise<PiSettingsDefaults> {
-  const path = resolve(cwd, '.pi/agent/settings.json')
-  try {
-    const text = await readFile(path, 'utf8')
-    const parsed: PiSettingsDefaults = JSON.parse(text)
-    return parsed
-  } catch {
-    return { defaultProvider: null, defaultModel: null }
-  }
-}
-
-async function autoSelectTribesModel(
-  pi: TribesApi,
-  ctx: ExtensionCommandContext
-): Promise<string | null> {
-  const defaults = await readPiSettingsDefaults(ctx.cwd)
-
-  const preferredModel =
-    defaults.defaultProvider === 'tribes-llm-proxy' && defaults.defaultModel
-      ? ctx.modelRegistry.find('tribes-llm-proxy', defaults.defaultModel)
-      : undefined
-
-  const fallbackModel = ctx.modelRegistry
-    .getAll()
-    .find((model) => model.provider === 'tribes-llm-proxy')
-
-  const selectedModel = preferredModel ?? fallbackModel
-  if (!selectedModel) return null
-
-  const switched = await pi.setModel(selectedModel)
-  if (!switched) return null
-  return selectedModel.id
-}
-
 /**
  * Copy the host-minted agent key into <root>/.tribes. Sync + best-effort so the key
- * is in place before the LLM provider's `!bun … AgentProxyToken.ts` token
- * command can run. A missing host key (local dev / already provisioned) leaves
- * any existing key untouched.
+ * is in place before AgentProxyToken.ts mints the API_BEARER_TOKEN the CLIs and
+ * /agent/* calls authenticate with. A missing host key (local dev / already
+ * provisioned) leaves any existing key untouched.
  */
 export function installAgentKey(cwd: string): void {
   const keyPath = resolve(cwd, '.tribes/agent-authorization-key.json')
@@ -136,12 +109,13 @@ export async function writeAuthEnv(cwd: string): Promise<void> {
 }
 
 /**
- * Drive `tribes-cli login` from inside Pi, then enable the LLM live
- * (write .env + register the provider) with no restart.
+ * Drive `tribes-cli login` from inside Pi, then enable the agent live
+ * (write .env with a fresh bearer) with no restart. The LLM needs no enabling —
+ * pi's built-in openrouter provider runs off the boot-env OPENROUTER_API_KEY.
  * `tribes-cli login` runs while logged out and writes the agent key on success.
  */
 export async function runLogin(
-  pi: TribesApi,
+  pi: ExtensionAPI,
   ctx: ExtensionCommandContext,
   startAuthRefreshTimer: (cwd: string) => void
 ): Promise<void> {
@@ -174,7 +148,6 @@ export async function runLogin(
 
   try {
     await writeAuthEnv(ctx.cwd)
-    await registerTribesProvider(pi)
   } catch (err) {
     let errorMessage = String(err)
     if (err instanceof Error) {
@@ -184,14 +157,6 @@ export async function runLogin(
     return
   }
 
-  const autoSelectedModelId = await autoSelectTribesModel(pi, ctx)
-  if (autoSelectedModelId === null) {
-    ctx.ui.notify(
-      'Logged in, but no model was auto-selected. Pick a Tribes model in the selector.',
-      'warning'
-    )
-  }
-
   startAuthRefreshTimer(ctx.cwd)
   try {
     await warmWalletSnapshot(ctx.cwd)
@@ -199,8 +164,5 @@ export async function runLogin(
   } catch {
     // Warm-up is best-effort.
   }
-  ctx.ui.notify(
-    autoSelectedModelId ? `Logged in. Auto-selected model: ${autoSelectedModelId}` : 'Logged in.',
-    'info'
-  )
+  ctx.ui.notify('Logged in.', 'info')
 }
