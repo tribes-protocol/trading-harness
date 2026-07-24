@@ -189,6 +189,13 @@ export interface HyperliquidStatus {
   /** Non-zero spot token balances. Shown alongside perp accounts in the Balances tab. */
   readonly spotHoldings: readonly SpotHolding[]
   readonly error?: string
+  /**
+   * True when at least one value in this snapshot came from cache because
+   * Hyperliquid answered 429 and the request was skipped. `updatedAt` is then
+   * the age of the OLDEST such value, not the assembly time — the numbers are
+   * accurate as of that moment, just not live.
+   */
+  readonly stale?: boolean
   // True while the wallet snapshot (.tribes/privy-wallets.json) hasn't been written
   // yet — the account address is being resolved, not genuinely absent. Drives a
   // "loading" widget state instead of "Missing account address".

@@ -815,7 +815,11 @@ export function renderHyperliquidPositionsWidget(
   const context = theme.fg(
     'dim',
     [
-      `updated ${formatLocalTimestamp(status.updatedAt)}`,
+      // A rate-limited (429) refresh serves the last good values rather than
+      // failing; say so next to their real fetch time so stale never reads live.
+      status.stale
+        ? theme.fg('warning', `updated ${formatLocalTimestamp(status.updatedAt)} · stale`)
+        : `updated ${formatLocalTimestamp(status.updatedAt)}`,
       allTime,
       cost,
       `gross ${fmtUsd(status.grossExposureUsd)}`,
