@@ -25,15 +25,23 @@ if [ ! -f .pi/extensions/tribes/Provider.ts ]; then
 else
   bad "Provider.ts still present"
 fi
-if grep -q '"defaultProvider": "openrouter"' .pi/agent/settings.json; then
-  ok "settings pin the native openrouter provider"
+# Pi core merges ~/.pi/agent/settings.json (global) with <cwd>/.pi/settings.json
+# (project, takes precedence). The repo's .pi/agent/settings.json is NOT read by
+# pi, so the model pin must live in the PROJECT settings file.
+if grep -q '"defaultProvider": "openrouter"' .pi/settings.json; then
+  ok "project settings pin the native openrouter provider"
 else
-  bad "defaultProvider is not openrouter"
+  bad "defaultProvider is not openrouter in .pi/settings.json"
 fi
-if grep -q '"defaultModel": "deepseek/deepseek-v4-pro"' .pi/agent/settings.json; then
-  ok "settings pin the namespaced default model"
+if grep -q '"defaultModel": "deepseek/deepseek-v4-pro"' .pi/settings.json; then
+  ok "project settings pin the namespaced default model"
 else
-  bad "defaultModel is not deepseek/deepseek-v4-pro"
+  bad "defaultModel is not deepseek/deepseek-v4-pro in .pi/settings.json"
+fi
+if grep -q '"defaultModel"' .pi/agent/settings.json 2>/dev/null; then
+  bad "a defaultModel lingers in .pi/agent/settings.json (dead config pi never reads)"
+else
+  ok "no model pin in the unread .pi/agent/settings.json"
 fi
 if grep -rq 'llm/proxy' src .pi agent 2>/dev/null; then
   bad "a llm/proxy reference remains in the source"
