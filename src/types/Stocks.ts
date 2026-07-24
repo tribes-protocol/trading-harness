@@ -37,10 +37,20 @@ export const MarketstackTickerSchema = z.object({
 })
 export type MarketstackTicker = z.infer<typeof MarketstackTickerSchema>
 
-export const MarketstackTickersResponseSchema = z.object({
-  data: z.array(MarketstackTickerSchema).nullish()
+// GET /v2/tickerslist?search=<q> — ticker search. Rows carry `ticker` (not
+// `symbol`) and a nested stock_exchange with no `country`. The v1-style
+// /v2/tickers?search= route 404s ("Route not found") on v2.
+export const MarketstackTickersListRowSchema = z.object({
+  ticker: z.string(),
+  name: z.string().nullish(),
+  stock_exchange: MarketstackStockExchangeSchema.nullish()
 })
-export type MarketstackTickersResponse = z.infer<typeof MarketstackTickersResponseSchema>
+export type MarketstackTickersListRow = z.infer<typeof MarketstackTickersListRowSchema>
+
+export const MarketstackTickersListResponseSchema = z.object({
+  data: z.array(MarketstackTickersListRowSchema).nullish()
+})
+export type MarketstackTickersListResponse = z.infer<typeof MarketstackTickersListResponseSchema>
 
 // GET /v2/stockprice — real-time price; the docs example returns price as a
 // numeric string, so both forms are accepted and coalesced at mapping time.
