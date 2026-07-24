@@ -17,6 +17,13 @@ import {
 } from '../wallet/PanelState.ts'
 import { FALLBACK_PERP_DEXES, resolvePerpDexes } from './DexDiscovery.ts'
 import { ensureJsonTreeString } from './EnsureJson.ts'
+import {
+  type InfoBody,
+  infoRequest,
+  type InfoRequestOptions,
+  resetStaleServes,
+  staleServedSinceMs
+} from './InfoCache.ts'
 import { type CrossBucket, estimateCrossLiquidationPx } from './LiqEstimator.ts'
 import { MAX_TAB_ROWS, renderHyperliquidPositionsWidget } from './Render.ts'
 import type {
@@ -43,7 +50,6 @@ const CLOSED_PNL_LOOKBACK_HOURS = 24
 const RECENT_TRADES_LIMIT = 100
 const LEDGER_LOOKBACK_DAYS = 90
 const TAB_ORDER: readonly HlTab[] = ['positions', 'balances', 'transactions', 'orders', 'deposits']
-const HYPERLIQUID_INFO_URL = 'https://api.hyperliquid.xyz/info'
 
 // Types live in ./types.ts; renderer in ./Render.ts. CrossBucket +
 // estimateCrossLiquidationPx live in ./LiqEstimator.ts so they can be
@@ -127,29 +133,8 @@ async function resolveAccountState(cwd: string): Promise<AccountState> {
   return { kind: 'missing' }
 }
 
-async function hyperliquidInfo<T>(
-  body: { type: string } & Record<string, unknown>,
-  options: { cacheTtlMs?: number } = {}
-): Promise<T> {
+async function hyperliquidInfo<T>(body: InfoBody, options: InfoRequestOptions = {}): Promise<T> {
   return await infoRequest<T>(body, options)
-}
-
-async function infoRequest<T>(
-  body: { type: string } & Record<string, unknown>,
-  _options: { cacheTtlMs?: number } = {}
-): Promise<T> {
-  const response = await fetch(HYPERLIQUID_INFO_URL, {
-    method: 'POST',
-    headers: { 'content-type': 'application/json' },
-    body: ensureJsonTreeString(body)
-  })
-  const text = await response.text()
-  const parsed: unknown = text.length > 0 ? JSON.parse(text) : null
-  if (!response.ok) {
-    throw new Error(`Hyperliquid info ${response.status}: ${ensureJsonTreeString(parsed)}`)
-  }
-  const normalized: T = JSON.parse(ensureJsonTreeString(parsed))
-  return normalized
 }
 
 async function discoverPerpDexes(): Promise<readonly string[]> {
@@ -732,6 +717,9 @@ async function readRecentTrades(
 }
 
 async function buildStatus(cwd: string): Promise<HyperliquidStatus> {
+  // Any 429 skipped during this snapshot records the age of the value it was
+  // answered with; drained here so the mark belongs to this snapshot only.
+  resetStaleServes()
   const accountState = await resolveAccountState(cwd)
   const dexes = accountState.kind === 'ready' ? await discoverPerpDexes() : FALLBACK_PERP_DEXES
 
@@ -829,12 +817,17 @@ async function buildStatus(cwd: string): Promise<HyperliquidStatus> {
   )
   const recentTrades: readonly RecentTrade[] = await readRecentTrades(user).catch(() => [])
 
+  // If a 429 was skipped, the snapshot is only as current as the oldest cached
+  // value in it. Date it to that, and flag it, so the widget shows the reader
+  // "updated <then> · stale" instead of stamping stale numbers as live.
+  const staleSinceMs = staleServedSinceMs()
   const status: HyperliquidStatus = {
     ok: account.accounts.length > 0,
     initializing: false,
     unauthenticated: undefined,
     schema: 'hyperliquid-status.v1',
-    updatedAt: new Date().toISOString(),
+    updatedAt: new Date(staleSinceMs ?? Date.now()).toISOString(),
+    stale: staleSinceMs !== null,
     mode: 'live',
     user,
     dexes,

@@ -113,3 +113,24 @@ describe('Hyperliquid widget formatting', () => {
     expect(fmtLeverage('12')).toBe('12x')
   })
 })
+
+describe('Hyperliquid widget staleness', () => {
+  test('a rate-limited snapshot renders its values with a stale marker, not an error', () => {
+    const output = renderHyperliquidPositionsWidget(
+      { ...status, stale: true },
+      theme,
+      200,
+      false,
+      'positions'
+    ).join('\n')
+
+    expect(output).toContain('· stale')
+    // Still the real numbers — a 429 must not blow the panel up.
+    expect(output).toContain('total $113.38')
+    expect(output).not.toContain('Unable to load Hyperliquid status')
+  })
+
+  test('a live snapshot carries no stale marker', () => {
+    expect(render('positions')).not.toContain('· stale')
+  })
+})
