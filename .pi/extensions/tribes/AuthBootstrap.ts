@@ -25,11 +25,21 @@ const MINT_MAX_BUFFER_BYTES = 1024 * 1024
 // them into pi, so this extension inherits them) to point a non-production build
 // at a different backend / Privy app. When present we pass them through to .env;
 // when absent the production defaults apply. API_BEARER_TOKEN is minted from the
-// agent key below. OPENROUTER_API_KEY is the boot-env egress placeholder pi's
-// built-in openrouter provider signs LLM calls with — persisting it lets
+// agent key below. The *_API_KEY entries are boot-env egress placeholders (the
+// egress hop swaps in real keys): OPENROUTER_API_KEY signs pi's LLM calls, and
+// the four market-data keys gate their tribes-cli groups (src/common/Env.ts
+// reports a group unavailable on an empty key). Persisting them lets
 // bun-launched CLIs and SSH sessions (which don't inherit the bridge env) pick
-// it up from .env.
-const ENV_PASSTHROUGH = ['API_BASE_URL', 'PRIVY_APP_ID', 'OPENROUTER_API_KEY'] as const
+// them up from .env.
+const ENV_PASSTHROUGH = [
+  'API_BASE_URL',
+  'PRIVY_APP_ID',
+  'OPENROUTER_API_KEY',
+  'COIN_GECKO_PRO_API_KEY',
+  'BIRDEYE_API_KEY',
+  'NANSEN_API_KEY',
+  'MARKETSTACK_API_KEY'
+] as const
 
 // Re-mint + rewrite .env on this cadence so the bearer token never goes stale.
 export const AUTH_REFRESH_INTERVAL_MS = 24 * 60 * 60 * 1000
