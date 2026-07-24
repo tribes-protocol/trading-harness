@@ -42,9 +42,15 @@ else
 fi
 
 # --- #89: runtime API_BASE_URL wins over the NODE_ENV default --------------
-# Negative probe: a dead-port override must fail to CONNECT. The pre-fix
-# binary ignored the env var and hit prod instead, surfacing as a 401.
-if out=$(API_BASE_URL="http://127.0.0.1:9" timeout 15 tribes-cli wallet list 2>&1); then
+# Negative probe: a dead-port override must fail to CONNECT. Run the compiled
+# binary directly from an .env-less cwd — the tribes-cli wrapper cd's into the
+# workspace, where bun auto-loads .env and its API_BASE_URL takes precedence
+# over the caller's env, which would defeat the probe. The pre-fix binary
+# ignored the env var entirely and hit prod instead, surfacing as a 401.
+COMPILED="$PWD/node_modules/.bin/tribes-cli-compiled"
+if [ ! -x "$COMPILED" ]; then
+  skip "API_BASE_URL probe (no compiled binary at $COMPILED)"
+elif out=$(cd /tmp && API_BASE_URL="http://127.0.0.1:9" timeout 15 "$COMPILED" wallet list 2>&1); then
   bad "API_BASE_URL override ignored (dead-port call succeeded)"
 else
   case "$out" in
