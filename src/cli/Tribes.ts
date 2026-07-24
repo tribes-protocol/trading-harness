@@ -11,6 +11,7 @@
  */
 
 import { Command } from 'commander'
+import { ZodError } from 'zod'
 
 import { buildAssetCommand } from '@/cli/Asset'
 import { buildTokenDataCommand } from '@/cli/BirdeyeData'
@@ -80,7 +81,29 @@ async function runCli(): Promise<void> {
   await program.parseAsync(process.argv)
 }
 
+// A ZodError's own `.message` is a multi-line JSON dump of its issues, which
+// leaks raw validation internals to the agent. Render one readable line per
+// issue instead so a bad flag reads like a usage error, not a stack trace.
+function formatCliError(error: unknown): string {
+  if (error instanceof ZodError) {
+    return error.issues
+      .map((issue) => {
+        const path = issue.path.join('.')
+        const where = path === '' ? '' : `${path}: `
+        if (issue.code === 'invalid_enum_value') {
+          return `${where}invalid value '${String(issue.received)}' — expected one of ${issue.options.join(', ')}`
+        }
+        return `${where}${issue.message}`
+      })
+      .join('; ')
+  }
+  if (error instanceof Error) {
+    return error.message
+  }
+  return 'Unknown error'
+}
+
 void runCli().catch((error: unknown) => {
-  process.stderr.write(`${error instanceof Error ? error.message : 'Unknown error'}\n`)
+  process.stderr.write(`${formatCliError(error)}\n`)
   process.exit(1)
 })
