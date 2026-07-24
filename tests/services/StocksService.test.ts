@@ -166,39 +166,72 @@ describe('StocksService', () => {
     expect(requestUrl.searchParams.get('access_key')).toBe(TEST_MARKETSTACK_KEY)
   })
 
-  it('maps ticker search rows and passes search/limit params', async () => {
+  it('maps tickerslist search rows and passes search/limit params', async () => {
+    // Fixture mirrors the real GET /v2/tickerslist?search=nvidia payload: rows
+    // carry `ticker` (not `symbol`) and a stock_exchange with no `country`.
     const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
       jsonResponse({
-        pagination: { limit: 20, offset: 0, count: 1, total: 1 },
+        pagination: { limit: 20, offset: 0, count: 2, total: 16 },
         data: [
           {
-            symbol: 'MSFT',
-            name: 'Microsoft Corporation',
-            stock_exchange: { name: 'NASDAQ Stock Exchange', acronym: 'NASDAQ', country: 'USA' }
+            name: 'NVIDIA Corp',
+            ticker: 'NVDA',
+            has_intraday: false,
+            has_eod: true,
+            stock_exchange: { name: 'NASDAQ - ALL MARKETS', acronym: 'NASDAQ', mic: 'XNAS' }
+          },
+          {
+            name: 'NVIDIA CORP',
+            ticker: 'NVDA.XBUE',
+            has_intraday: false,
+            has_eod: true,
+            stock_exchange: {
+              name: 'BOLSA DE COMERCIO DE BUENOS AIRES',
+              acronym: 'BCBA',
+              mic: 'XBUE'
+            }
           }
         ]
       })
     )
 
-    const result = await makeService().search({ query: 'microsoft', limit: 20 })
+    const result = await makeService().search({ query: 'nvidia', limit: 20 })
 
     expect(result).toEqual({
       source: 'marketstack',
-      query: 'microsoft',
+      query: 'nvidia',
       results: [
-        {
-          symbol: 'MSFT',
-          name: 'Microsoft Corporation',
-          exchange: 'NASDAQ',
-          country: 'USA'
-        }
+        { symbol: 'NVDA', name: 'NVIDIA Corp', exchange: 'NASDAQ', mic: 'XNAS' },
+        { symbol: 'NVDA.XBUE', name: 'NVIDIA CORP', exchange: 'BCBA', mic: 'XBUE' }
       ]
     })
 
     const requestUrl = new URL(String(fetchSpy.mock.calls[0]?.[0]))
-    expect(requestUrl.pathname).toBe('/v2/tickers')
-    expect(requestUrl.searchParams.get('search')).toBe('microsoft')
+    expect(requestUrl.pathname).toBe('/v2/tickerslist')
+    expect(requestUrl.searchParams.get('search')).toBe('nvidia')
     expect(requestUrl.searchParams.get('limit')).toBe('20')
+    expect(requestUrl.searchParams.get('access_key')).toBe(TEST_MARKETSTACK_KEY)
+  })
+
+  it('throws on a tickerslist error without echoing the URL or access key', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response('{"error":{"code":"not_found_error","message":"Route not found"}}', {
+        status: 404,
+        statusText: 'Not Found'
+      })
+    )
+
+    const error = await makeService()
+      .search({ query: 'nvidia', limit: 20 })
+      .catch((caught: unknown) => caught)
+
+    expect(error).toBeInstanceOf(Error)
+    if (error instanceof Error) {
+      expect(error.message).toContain('Marketstack /v2/tickerslist failed: 404 Not Found')
+      expect(error.message).not.toContain(TEST_MARKETSTACK_KEY)
+      expect(error.message).not.toContain('access_key=')
+      expect(error.message).not.toContain('https://')
+    }
   })
 
   it('throws the unavailable message without calling fetch when the key is unset', async () => {

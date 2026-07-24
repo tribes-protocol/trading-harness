@@ -231,12 +231,75 @@ function pickNumber(
   return null
 }
 
+// Timestamps arrive as epoch seconds, epoch millis, numeric strings, or ISO-8601
+// strings; coalesce the first parseable candidate into epoch seconds.
+function pickUnixTime(
+  ...candidates: ReadonlyArray<number | string | null | undefined>
+): number | null {
+  for (const candidate of candidates) {
+    if (isNullish(candidate)) {
+      continue
+    }
+    if (typeof candidate === 'number') {
+      if (Number.isFinite(candidate)) {
+        return candidate > 1e12 ? Math.floor(candidate / 1000) : candidate
+      }
+      continue
+    }
+    const trimmed = candidate.trim()
+    if (trimmed === '') {
+      continue
+    }
+    const numeric = Number(trimmed)
+    if (Number.isFinite(numeric)) {
+      return numeric > 1e12 ? Math.floor(numeric / 1000) : numeric
+    }
+    const parsed = Date.parse(trimmed)
+    if (Number.isFinite(parsed)) {
+      return Math.floor(parsed / 1000)
+    }
+  }
+  return null
+}
+
+// Enum-coded fields (change_type/type) come back as numbers or strings; keep the
+// first non-empty candidate as a readable label.
+function pickLabel(
+  ...candidates: ReadonlyArray<string | number | null | undefined>
+): string | null {
+  for (const candidate of candidates) {
+    if (isNullish(candidate)) {
+      continue
+    }
+    if (typeof candidate === 'string') {
+      if (candidate.trim() !== '') {
+        return candidate
+      }
+      continue
+    }
+    return String(candidate)
+  }
+  return null
+}
+
+// BirdEye keys record responses by the requested address, but EVM chains echo
+// the CHECKSUMMED address while the caller passes lowercase; index by lowercased
+// key so lookups match regardless of casing (Solana base58 is unaffected).
+function lowerKeyIndex<T>(record: Record<string, T>): Map<string, T> {
+  const index = new Map<string, T>()
+  for (const [key, value] of Object.entries(record)) {
+    index.set(key.toLowerCase(), value)
+  }
+  return index
+}
+
 function pickNetWorthTotal(data: BirdeyeWalletNetWorthData | null | undefined): number | null {
   return pickNumber(
     data?.totalNetWorth,
     data?.totalNetWorthUsd,
     data?.netWorth,
     data?.net_worth,
+    data?.total_value,
     data?.totalValue,
     data?.value
   )
@@ -251,16 +314,23 @@ function mapNetWorthHoldings(data: BirdeyeWalletNetWorthData | null | undefined)
   cost_basis_usd: number | null
   allocation_pct: number | null
 }> {
-  const items = data?.items ?? data?.tokens ?? data?.assets ?? data?.holdings ?? []
-  return items.map((item) => ({
-    address: item.address ?? item.tokenAddress ?? item.token_address ?? item.mint ?? null,
-    symbol: item.symbol ?? item.tokenSymbol ?? item.token_symbol ?? null,
-    ui_amount: pickNumber(item.uiAmount, item.ui_amount, item.amount, item.balance),
-    price_usd: pickNumber(item.priceUsd, item.price_usd, item.price),
-    value_usd: pickNumber(item.valueUsd, item.usdValue, item.value, item.amountUsd),
-    cost_basis_usd: pickNumber(item.costBasisUsd, item.cost_basis_usd, item.costBasis),
-    allocation_pct: pickNumber(item.allocation, item.share, item.weight, item.valuePercent)
-  }))
+  const items =
+    data?.items ?? data?.tokens ?? data?.assets ?? data?.holdings ?? data?.net_assets ?? []
+  return items.map((item) => {
+    const decimals = pickNumber(item.decimals, item.decimal)
+    const rawBalance = pickNumber(item.balance)
+    const uiFromRaw =
+      !isNullish(decimals) && !isNullish(rawBalance) ? rawBalance / 10 ** decimals : null
+    return {
+      address: item.address ?? item.tokenAddress ?? item.token_address ?? item.mint ?? null,
+      symbol: item.symbol ?? item.tokenSymbol ?? item.token_symbol ?? null,
+      ui_amount: pickNumber(item.uiAmount, item.ui_amount, item.amount) ?? uiFromRaw,
+      price_usd: pickNumber(item.priceUsd, item.price_usd, item.price),
+      value_usd: pickNumber(item.valueUsd, item.usdValue, item.value, item.amountUsd),
+      cost_basis_usd: pickNumber(item.costBasisUsd, item.cost_basis_usd, item.costBasis),
+      allocation_pct: pickNumber(item.allocation, item.share, item.weight, item.valuePercent)
+    }
+  })
 }
 
 export class BirdeyeService {
@@ -277,9 +347,10 @@ export class BirdeyeService {
       params.chain
     )
     const parsed = BirdeyeMultiPriceResponseSchema.parse(raw)
+    const index = lowerKeyIndex(parsed.data)
     const prices = compactMap(
       params.addresses.map((address) => {
-        const entry = parsed.data[address]
+        const entry = index.get(address.toLowerCase())
         if (isNullish(entry)) {
           return null
         }
@@ -592,16 +663,26 @@ export class BirdeyeService {
       params.chain
     )
     const parsed = BirdeyeExitLiquidityResponseSchema.parse(raw)
+    const index = new Map<string, NonNullable<typeof parsed.data.items>[number]>()
+    for (const item of parsed.data.items ?? []) {
+      const key = item.token ?? item.address
+      if (!isNullish(key)) {
+        index.set(key.toLowerCase(), item)
+      }
+    }
     const tokens = compactMap(
       params.addresses.map((address) => {
-        const entry = parsed.data[address]
+        const entry = index.get(address.toLowerCase())
         if (isNullish(entry)) {
           return null
         }
         return {
           address,
           exit_liquidity_usd:
-            entry.exit_liquidity_usd ?? entry.exitLiquidityUsd ?? entry.liquidityUsd
+            entry.exit_liquidity ??
+            entry.exit_liquidity_usd ??
+            entry.exitLiquidityUsd ??
+            entry.liquidityUsd
         }
       })
     )
@@ -639,9 +720,10 @@ export class BirdeyeService {
       params.chain
     )
     const parsed = BirdeyeTradeDataMultipleResponseSchema.parse(raw)
+    const index = lowerKeyIndex(parsed.data)
     const tokens = compactMap(
       params.addresses.map((address) => {
-        const entry = parsed.data[address]
+        const entry = index.get(address.toLowerCase())
         if (isNullish(entry)) {
           return null
         }
@@ -706,7 +788,8 @@ export class BirdeyeService {
       chain: params.chain,
       wallet: params.wallet,
       interval: params.interval,
-      time: params.time ?? null,
+      time:
+        params.time ?? parsed.data?.resolved_timestamp ?? parsed.data?.requested_timestamp ?? null,
       total_usd: pickNetWorthTotal(parsed.data),
       tokens: mapNetWorthHoldings(parsed.data)
     })
@@ -735,8 +818,14 @@ export class BirdeyeService {
       wallet: params.wallet,
       interval: params.interval,
       points: points.map((point) => ({
-        unix_time: pickNumber(point.unixTime, point.timestamp, point.time, point.blockTime),
-        value_usd: pickNumber(point.valueUsd, point.netWorthUsd, point.value, point.usdValue)
+        unix_time: pickUnixTime(point.timestamp, point.unixTime, point.time, point.blockTime),
+        value_usd: pickNumber(
+          point.net_worth,
+          point.valueUsd,
+          point.netWorthUsd,
+          point.value,
+          point.usdValue
+        )
       }))
     })
   }
@@ -763,26 +852,43 @@ export class BirdeyeService {
       source: 'birdeye',
       chain: params.chain,
       wallet: params.wallet,
-      changes: items.map((item) => ({
-        block_unix_time: pickNumber(
-          item.blockTime,
-          item.block_time,
-          item.timestamp,
-          item.time,
-          item.unixTime
-        ),
-        address: item.address ?? item.tokenAddress ?? item.token_address ?? item.mint ?? null,
-        symbol: item.symbol ?? item.tokenSymbol ?? item.token_symbol ?? null,
-        amount: pickNumber(
-          item.uiAmount,
-          item.ui_amount,
-          item.amount,
-          item.balance,
-          item.changeAmount
-        ),
-        value_usd: pickNumber(item.valueUsd, item.usdValue, item.value, item.amountUsd),
-        change_type: item.changeType ?? item.change_type ?? item.direction ?? item.type ?? null
-      }))
+      changes: items.map((item) => {
+        const decimals = pickNumber(item.token_info?.decimals)
+        const uiAmount = pickNumber(item.uiAmount, item.ui_amount)
+        const rawAmount = pickNumber(item.amount, item.changeAmount, item.balance)
+        const amount =
+          uiAmount ??
+          (!isNullish(decimals) && !isNullish(rawAmount) ? rawAmount / 10 ** decimals : rawAmount)
+        return {
+          block_unix_time: pickNumber(
+            item.block_unix_time,
+            item.blockTime,
+            item.block_time,
+            item.timestamp,
+            item.time,
+            item.unixTime
+          ),
+          address:
+            item.token_info?.address ??
+            item.address ??
+            item.tokenAddress ??
+            item.token_address ??
+            item.mint ??
+            null,
+          symbol:
+            item.token_info?.symbol ?? item.symbol ?? item.tokenSymbol ?? item.token_symbol ?? null,
+          amount,
+          value_usd: pickNumber(item.valueUsd, item.usdValue, item.value, item.amountUsd),
+          change_type: pickLabel(
+            item.change_type_text,
+            item.type_text,
+            item.changeType,
+            item.change_type,
+            item.direction,
+            item.type
+          )
+        }
+      })
     })
   }
 
@@ -796,21 +902,12 @@ export class BirdeyeService {
       source: 'birdeye',
       chain: params.chain,
       wallet: params.wallet,
-      total_amount: pickNumber(data?.totalAmount, data?.amount, data?.quantity, data?.uiAmount),
-      total_value_usd: pickNumber(
-        data?.totalValueUsd,
-        data?.totalUsd,
-        data?.valueUsd,
-        data?.usdValue,
-        data?.value
-      ),
-      transfer_count: pickNumber(data?.transferCount, data?.count, data?.totalTransfers),
-      unique_counterparties: pickNumber(
-        data?.uniqueCounterparties,
-        data?.counterpartyCount,
-        data?.counterparty_count
-      ),
-      symbol: data?.symbol ?? data?.tokenSymbol ?? data?.token_symbol ?? null
+      transfer_count: pickNumber(
+        data?.total,
+        data?.transferCount,
+        data?.count,
+        data?.totalTransfers
+      )
     })
   }
 
