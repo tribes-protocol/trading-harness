@@ -621,20 +621,40 @@ describe('BirdeyeService', () => {
     })
   })
 
-  it('keeps requested exit-liquidity addresses in order, drops unknowns, and coalesces field casings', async () => {
+  it('shapes exit-liquidity from data.items, matches checksummed EVM keys case-insensitively, and drops unknowns', async () => {
+    // Real shape: data.items is an ARRAY; the USD figure is `exit_liquidity`,
+    // and EVM chains echo the CHECKSUMMED address while callers pass lowercase.
     const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
       jsonResponse({
         success: true,
         data: {
-          BaseToken111: { exit_liquidity_usd: 250000.5 },
-          BaseToken222: { exitLiquidityUsd: 91000 },
-          BaseToken333: null
+          items: [
+            {
+              token: '0x940181a94A35A4569E4529A3CDfB74e38FD98631',
+              exit_liquidity: 75812362.09839873,
+              liquidity: 151624724.19679746,
+              currency: 'USD',
+              address: '0x940181a94A35A4569E4529A3CDfB74e38FD98631',
+              symbol: 'AERO'
+            },
+            {
+              token: '0x4200000000000000000000000000000000000006',
+              exit_liquidity: 91000,
+              currency: 'USD',
+              address: '0x4200000000000000000000000000000000000006',
+              symbol: 'WETH'
+            }
+          ]
         }
       })
     )
 
     const result = await makeService().getExitLiquidity({
-      addresses: ['BaseToken111', 'BaseToken222', 'BaseToken333', 'no-such-address'],
+      addresses: [
+        '0x940181a94a35a4569e4529a3cdfb74e38fd98631',
+        '0x4200000000000000000000000000000000000006',
+        '0xdeadbeef00000000000000000000000000000000'
+      ],
       chain: 'base'
     })
 
@@ -642,15 +662,18 @@ describe('BirdeyeService', () => {
       source: 'birdeye',
       chain: 'base',
       tokens: [
-        { address: 'BaseToken111', exit_liquidity_usd: 250000.5 },
-        { address: 'BaseToken222', exit_liquidity_usd: 91000 }
+        {
+          address: '0x940181a94a35a4569e4529a3cdfb74e38fd98631',
+          exit_liquidity_usd: 75812362.09839873
+        },
+        { address: '0x4200000000000000000000000000000000000006', exit_liquidity_usd: 91000 }
       ]
     })
 
     const requestUrl = new URL(String(fetchSpy.mock.calls[0]?.[0]))
     expect(requestUrl.pathname).toBe('/defi/v3/token/exit-liquidity/multiple')
     expect(requestUrl.searchParams.get('list_address')).toBe(
-      'BaseToken111,BaseToken222,BaseToken333,no-such-address'
+      '0x940181a94a35a4569e4529a3cdfb74e38fd98631,0x4200000000000000000000000000000000000006,0xdeadbeef00000000000000000000000000000000'
     )
     expect(fetchSpy.mock.calls[0]?.[1]?.headers).toMatchObject({ 'x-chain': 'base' })
   })
@@ -985,11 +1008,7 @@ describe('BirdeyeService', () => {
       source: 'birdeye',
       chain: 'solana',
       wallet: 'Wallet111',
-      total_amount: 152000.5,
-      total_value_usd: 98765.4,
-      transfer_count: 412,
-      unique_counterparties: 37,
-      symbol: null
+      transfer_count: 412
     })
 
     const requestUrl = new URL(String(fetchSpy.mock.calls[0]?.[0]))
@@ -1038,6 +1057,257 @@ describe('BirdeyeService', () => {
     const requestInit = fetchSpy.mock.calls[0]?.[1]
     expect(requestInit?.method).toBe('POST')
     expect(JSON.parse(String(requestInit?.body))).toEqual({ token_address: BONK_ADDRESS })
+  })
+
+  it('matches checksummed EVM price keys against the lowercase request address', async () => {
+    // BirdEye keys EVM price data by the CHECKSUMMED address; callers pass lowercase.
+    const wethLower = '0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2'
+    const wethChecksum = '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2'
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      jsonResponse({
+        success: true,
+        data: {
+          [wethChecksum]: {
+            value: 1876.3895230319401,
+            updateUnixTime: 1784867915,
+            priceChange24h: -2.3559478489202954,
+            liquidity: 949935486.3065736
+          }
+        }
+      })
+    )
+
+    const result = await makeService().getPrices({ addresses: [wethLower], chain: 'ethereum' })
+
+    expect(result.prices).toEqual([
+      {
+        address: wethLower,
+        price_usd: 1876.3895230319401,
+        change_24h_pct: -2.3559478489202954,
+        liquidity_usd: 949935486.3065736,
+        updated_at: 1784867915
+      }
+    ])
+  })
+
+  it('matches checksummed EVM trade-data keys against the lowercase request address', async () => {
+    const wethLower = '0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2'
+    const wethChecksum = '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2'
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      jsonResponse({
+        success: true,
+        data: {
+          [wethChecksum]: { price: 1876.38, trade_24h: 1200, volume_24h_usd: 500000 }
+        }
+      })
+    )
+
+    const result = await makeService().getTradeStats({ addresses: [wethLower], chain: 'ethereum' })
+
+    // The checksummed EVM key resolves against the lowercase request, so the row
+    // is populated rather than dropped.
+    expect(result.tokens).toEqual([
+      {
+        address: wethLower,
+        price_usd: 1876.38,
+        trades_24h: 1200,
+        volume_24h_usd: 500000
+      }
+    ])
+  })
+
+  it('reads the net-worth total from total_value and maps amount/price/value holdings (live shape)', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      jsonResponse({
+        success: true,
+        data: {
+          wallet: 'Wallet111',
+          currency: 'usd',
+          total_value: '603347764.5334971',
+          current_timestamp: '2026-07-24T04:39:33.762438943Z',
+          items: [
+            {
+              address: '27G8MtK7VtTcCHkpASjSDdkWWYfoqT6ggEuKidVJidD4',
+              decimals: 6,
+              price: 3.6368317485922432,
+              balance: '58686659500489',
+              amount: 58686659.500489,
+              symbol: 'JLP',
+              name: 'Jupiter Perps LP',
+              value: '213433506.49020097'
+            }
+          ]
+        }
+      })
+    )
+
+    const result = await makeService().getWalletNetWorth({
+      wallet: 'Wallet111',
+      limit: 20,
+      chain: 'solana'
+    })
+
+    expect(result.total_usd).toBe(603347764.5334971)
+    expect(result.tokens).toEqual([
+      {
+        address: '27G8MtK7VtTcCHkpASjSDdkWWYfoqT6ggEuKidVJidD4',
+        symbol: 'JLP',
+        ui_amount: 58686659.500489,
+        price_usd: 3.6368317485922432,
+        value_usd: 213433506.49020097,
+        cost_basis_usd: null,
+        allocation_pct: null
+      }
+    ])
+  })
+
+  it('maps net-worth-details holdings from net_assets and time from resolved_timestamp (live shape)', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      jsonResponse({
+        success: true,
+        data: {
+          wallet_address: 'Wallet111',
+          currency: 'usd',
+          net_worth: 603348551.6047337,
+          requested_timestamp: '2026-07-24T04:39:58.292814582Z',
+          resolved_timestamp: '2026-07-24T04:39:58.323647815Z',
+          net_assets: [
+            {
+              symbol: 'WBTC',
+              token_address: '3NZ9JMVBmGAqocybic2c7LQCJScmgsAZ6vQqTDzcqmJh',
+              decimal: 8,
+              balance: '177806717958',
+              price: 65241.11902264516,
+              value: 116003092.49323775
+            }
+          ]
+        }
+      })
+    )
+
+    const result = await makeService().getWalletNetWorthDetails({
+      wallet: 'Wallet111',
+      interval: '1d',
+      time: null,
+      limit: 10,
+      chain: 'solana'
+    })
+
+    expect(result.total_usd).toBe(603348551.6047337)
+    expect(result.time).toBe('2026-07-24T04:39:58.323647815Z')
+    expect(result.tokens).toEqual([
+      {
+        address: '3NZ9JMVBmGAqocybic2c7LQCJScmgsAZ6vQqTDzcqmJh',
+        symbol: 'WBTC',
+        ui_amount: 177806717958 / 10 ** 8,
+        price_usd: 65241.11902264516,
+        value_usd: 116003092.49323775,
+        cost_basis_usd: null,
+        allocation_pct: null
+      }
+    ])
+  })
+
+  it('maps net-worth chart points from history with ISO timestamps and net_worth (live shape)', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      jsonResponse({
+        success: true,
+        data: {
+          currency: 'usd',
+          current_timestamp: '2026-07-24T04:41:25Z',
+          past_timestamp: '2026-07-17T04:41:25Z',
+          history: [
+            {
+              timestamp: '2026-07-24T04:41:25Z',
+              net_worth: 603131023.71,
+              net_worth_change: -7894503.12,
+              net_worth_change_percent: -1.29
+            }
+          ]
+        }
+      })
+    )
+
+    const result = await makeService().getWalletNetWorthChart({
+      wallet: 'Wallet111',
+      interval: '1d',
+      count: 7,
+      chain: 'solana'
+    })
+
+    expect(result.points).toEqual([
+      { unix_time: Math.floor(Date.parse('2026-07-24T04:41:25Z') / 1000), value_usd: 603131023.71 }
+    ])
+  })
+
+  it('maps balance-change numeric type codes to labels via token_info and block_unix_time (live shape)', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      jsonResponse({
+        success: true,
+        data: {
+          items: [
+            {
+              time: '2026-07-24T04:41:18Z',
+              block_number: 434854201,
+              block_unix_time: 1784868078,
+              address: 'Wallet111',
+              token_account: 'WzWUoCmtVv7eqAbU3BfKPU3fhLP6CXR8NCJH78UK9VS',
+              tx_hash: '2yu1wHpG8y4W8sBVA8b9SsPAUJencBCCcwCdnWM9jCeW',
+              pre_balance: '133095783585491',
+              post_balance: '133095813334702',
+              amount: '29749211',
+              token_info: {
+                address: 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v',
+                decimals: 6,
+                symbol: 'USDC',
+                name: 'USD Coin'
+              },
+              type: 2,
+              type_text: 'SPL',
+              change_type: 1,
+              change_type_text: 'INCR'
+            }
+          ]
+        }
+      })
+    )
+
+    const result = await makeService().getWalletBalanceChanges({
+      wallet: 'Wallet111',
+      from: null,
+      to: null,
+      limit: 20,
+      chain: 'solana'
+    })
+
+    expect(result.changes).toEqual([
+      {
+        block_unix_time: 1784868078,
+        address: 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v',
+        symbol: 'USDC',
+        amount: 29749211 / 10 ** 6,
+        value_usd: null,
+        change_type: 'INCR'
+      }
+    ])
+  })
+
+  it('maps transfer-total count from the live `total` field', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      jsonResponse({ success: true, data: { total: 39218869 } })
+    )
+
+    const result = await makeService().getWalletTransferTotal({
+      wallet: 'Wallet111',
+      chain: 'solana'
+    })
+
+    expect(result).toEqual({
+      source: 'birdeye',
+      chain: 'solana',
+      wallet: 'Wallet111',
+      transfer_count: 39218869
+    })
   })
 
   it('throws the unavailable message without calling fetch when the key is unset', async () => {

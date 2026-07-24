@@ -38,18 +38,24 @@ There is no backend specialist behind this skill and no `ask` subcommand.
 
 1. Every subcommand prints structured JSON on stdout — parse it, never screen-scrape prose.
    All subcommands accept `--out <file>` to also write the JSON to a file.
-2. `--wallet <address>` is required on every subcommand except `entity-search` (which takes
+2. ALWAYS resolve WHO the wallet is with `labels` before characterizing it — even for a plain
+   "show me the transactions / activity" request. A wallet with a Nansen label (an exchange,
+   a fund, a protocol vault like Jupiter's) is NOT "an anonymous algo bot" just because its
+   transaction feed is high-frequency. Never infer identity from activity patterns alone when a
+   label exists; run `labels` first and lead with it, so the same address never gets two
+   different identities across answers.
+3. `--wallet <address>` is required on every subcommand except `entity-search` (which takes
    `--query <text>` instead). NEVER assume a default wallet — an explicit address must come
    from the user or from `zipbox-wallet`.
-3. Lookback windows are fixed: `counterparties`, `transactions`, `pnl`, and
+4. Lookback windows are fixed: `counterparties`, `transactions`, `pnl`, and
    `historical-balances` cover the last 30 days with no timeframe flag; only `balance-change`
    takes `--from`/`--to` epoch bounds. Do not promise arbitrary ranges; state the window in
    your answer.
-4. Chain defaults differ: most Nansen subcommands default `--chain all`; `related` defaults
+5. Chain defaults differ: most Nansen subcommands default `--chain all`; `related` defaults
    `ethereum` and does not accept `all`. The
    BirdEye-backed subcommands (`net-worth`, `net-worth-details`, `net-worth-chart`,
    `balance-change`, `transfer-total`) are Solana-only and take no `--chain` flag.
-5. If a command reports the provider key is not set, the capability is unavailable on this box —
+6. If a command reports the provider key is not set, the capability is unavailable on this box —
    report that plainly instead of retrying or working around it.
 
 ## Command reference
@@ -79,7 +85,7 @@ Also under `tribes-cli wallet-data` — BirdEye-backed, Solana-only (no `--chain
 | `net-worth-details` | Asset-level net-worth composition at a timepoint             | `--type 1h\|1d` (default 1d), `--time` YYYY-MM-DD HH:MM:SS (default latest), `--limit` |
 | `net-worth-chart`   | Historical net-worth points across hourly/daily intervals    | `--type 1h\|1d` (default 1d), `--count` 1-30 (default 7)                               |
 | `balance-change`    | Balance delta history (increases/decreases)                  | `--from`/`--to` (epoch seconds), `--limit` 1-100 (default 20)                          |
-| `transfer-total`    | Aggregate transfer totals without full transfer rows         | none                                                                                   |
+| `transfer-total`    | Lifetime transfer count for the wallet                       | none                                                                                   |
 
 ## Examples
 

@@ -137,6 +137,9 @@ export function buildMarketCommand(): Command {
         .split(',')
         .map((id) => id.trim())
         .filter((id) => id !== '')
+      if (ids.length === 0) {
+        throw new Error('--ids must list at least one CoinGecko id, e.g. bitcoin,ethereum')
+      }
       const prices = await service.getPrices({ ids })
       await writeOutput({ output: ensureJsonTreeString(prices), outPath: request.out ?? undefined })
     })

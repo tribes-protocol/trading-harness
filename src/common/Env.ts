@@ -4,8 +4,14 @@ const NODE_ENV = process.env.NODE_ENV
 const USE_DEFAULT_VALUES = NODE_ENV === undefined || NODE_ENV === ''
 const IS_PRODUCTION = NODE_ENV === 'production' || USE_DEFAULT_VALUES
 
-export const API_BASE_URL = IS_PRODUCTION ? 'https://api.tribes.xyz' : 'http://localhost:8787'
-export const WEB_BASE_URL = IS_PRODUCTION ? 'https://tribes.xyz' : 'http://localhost:3000'
+// An explicit API_BASE_URL / WEB_BASE_URL in the environment wins over the
+// NODE_ENV default. In a sandbox the boot env injects the control-plane base
+// this way, and local dev sets it in .env to point at localhost — either must
+// be honored, not silently overridden by the production ternary.
+export const API_BASE_URL =
+  process.env.API_BASE_URL ?? (IS_PRODUCTION ? 'https://api.tribes.xyz' : 'http://localhost:8787')
+export const WEB_BASE_URL =
+  process.env.WEB_BASE_URL ?? (IS_PRODUCTION ? 'https://tribes.xyz' : 'http://localhost:3000')
 
 // The bearer for every proxy call is the ES256 JWT the harness mints from the
 // in-VM P-256 agent key; the tribes extension (and `tribes-cli login`) persist it

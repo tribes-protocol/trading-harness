@@ -37,6 +37,12 @@ the shared candle contract, which is exactly what `--candles-file` expects:
 `t` is epoch ms; `v` may be absent (coin-id candles — `asset candles --id` / `coin ohlc` —
 have no volume; skip `vwap` on those files).
 
+Candle COUNT is not the requested day count. Providers cap granularity — `coin ohlc --days 365`
+returns far fewer than 365 daily candles (often ~90). Before reporting a backtest span or a
+"lookback", read the FIRST and LAST candle `t` in the file and state the real date range and
+candle count. Never equate `--days N` with "N candles" or "N days of history" — a 92-candle
+daily series is ~3 months, not a year, and any regime conclusion must match the true window.
+
 ## When to use
 
 - Indicator values, signal reads, or multi-indicator confluence (SMA/EMA, RSI, MACD,

@@ -231,20 +231,22 @@ export const BirdeyeCreationInfoResponseSchema = z.object({
 })
 export type BirdeyeCreationInfoResponse = z.infer<typeof BirdeyeCreationInfoResponseSchema>
 
-// GET /defi/v3/token/exit-liquidity/multiple — record keyed by token address.
-// The exit-liquidity field name is undocumented, so every casing the legacy
-// client probed is modeled and coalesced at mapping time.
+// GET /defi/v3/token/exit-liquidity/multiple — data.items is an ARRAY of token
+// entries (each keyed to its own `token`/`address`, checksummed on EVM chains);
+// the USD figure is the `exit_liquidity` field (currency is USD).
+const BirdeyeExitLiquidityItemSchema = z.object({
+  token: z.string().nullish(),
+  address: z.string().nullish(),
+  exit_liquidity: z.number().nullish(),
+  exit_liquidity_usd: z.number().nullish(),
+  exitLiquidityUsd: z.number().nullish(),
+  liquidityUsd: z.number().nullish()
+})
+
 export const BirdeyeExitLiquidityResponseSchema = z.object({
-  data: z.record(
-    z.string(),
-    z
-      .object({
-        exit_liquidity_usd: z.number().nullish(),
-        exitLiquidityUsd: z.number().nullish(),
-        liquidityUsd: z.number().nullish()
-      })
-      .nullish()
-  )
+  data: z.object({
+    items: z.array(BirdeyeExitLiquidityItemSchema).nullish()
+  })
 })
 export type BirdeyeExitLiquidityResponse = z.infer<typeof BirdeyeExitLiquidityResponseSchema>
 
@@ -302,6 +304,10 @@ export type BirdeyeTradeDataMultipleResponse = z.infer<
 
 const BirdeyeLooseNumberSchema = z.union([z.number(), z.string()]).nullish()
 
+// change_type/type on the balance-change endpoint come back as numeric enum
+// codes on some chains and as strings on others.
+const BirdeyeLooseLabelSchema = z.union([z.string(), z.number()]).nullish()
+
 const BirdeyeNetWorthHoldingSchema = z.object({
   address: z.string().nullish(),
   tokenAddress: z.string().nullish(),
@@ -310,6 +316,8 @@ const BirdeyeNetWorthHoldingSchema = z.object({
   symbol: z.string().nullish(),
   tokenSymbol: z.string().nullish(),
   token_symbol: z.string().nullish(),
+  decimals: BirdeyeLooseNumberSchema,
+  decimal: BirdeyeLooseNumberSchema,
   uiAmount: BirdeyeLooseNumberSchema,
   ui_amount: BirdeyeLooseNumberSchema,
   amount: BirdeyeLooseNumberSchema,
@@ -330,18 +338,25 @@ const BirdeyeNetWorthHoldingSchema = z.object({
   valuePercent: BirdeyeLooseNumberSchema
 })
 
-// GET /wallet/v2/current-net-worth and GET /wallet/v2/net-worth-details
+// GET /wallet/v2/current-net-worth (total is `total_value`, holdings under
+// `items`) and GET /wallet/v2/net-worth-details (total is `net_worth`, holdings
+// under `net_assets`, resolved timestamp under `resolved_timestamp`).
 export const BirdeyeWalletNetWorthDataSchema = z.object({
   totalNetWorth: BirdeyeLooseNumberSchema,
   totalNetWorthUsd: BirdeyeLooseNumberSchema,
   netWorth: BirdeyeLooseNumberSchema,
   net_worth: BirdeyeLooseNumberSchema,
+  total_value: BirdeyeLooseNumberSchema,
   totalValue: BirdeyeLooseNumberSchema,
   value: BirdeyeLooseNumberSchema,
+  resolved_timestamp: z.string().nullish(),
+  requested_timestamp: z.string().nullish(),
+  current_timestamp: z.string().nullish(),
   items: z.array(BirdeyeNetWorthHoldingSchema).nullish(),
   tokens: z.array(BirdeyeNetWorthHoldingSchema).nullish(),
   assets: z.array(BirdeyeNetWorthHoldingSchema).nullish(),
-  holdings: z.array(BirdeyeNetWorthHoldingSchema).nullish()
+  holdings: z.array(BirdeyeNetWorthHoldingSchema).nullish(),
+  net_assets: z.array(BirdeyeNetWorthHoldingSchema).nullish()
 })
 export type BirdeyeWalletNetWorthData = z.infer<typeof BirdeyeWalletNetWorthDataSchema>
 
@@ -350,11 +365,13 @@ export const BirdeyeWalletNetWorthResponseSchema = z.object({
 })
 export type BirdeyeWalletNetWorthResponse = z.infer<typeof BirdeyeWalletNetWorthResponseSchema>
 
+// Points carry an ISO-8601 `timestamp` string and a `net_worth` value.
 const BirdeyeNetWorthPointSchema = z.object({
   unixTime: BirdeyeLooseNumberSchema,
   timestamp: BirdeyeLooseNumberSchema,
   time: BirdeyeLooseNumberSchema,
   blockTime: BirdeyeLooseNumberSchema,
+  net_worth: BirdeyeLooseNumberSchema,
   valueUsd: BirdeyeLooseNumberSchema,
   netWorthUsd: BirdeyeLooseNumberSchema,
   value: BirdeyeLooseNumberSchema,
@@ -379,23 +396,36 @@ export type BirdeyeWalletNetWorthChartResponse = z.infer<
   typeof BirdeyeWalletNetWorthChartResponseSchema
 >
 
+// The token identity lives under `token_info`; `type`/`change_type` are numeric
+// enum codes with human labels in `type_text`/`change_type_text`.
+const BirdeyeBalanceChangeTokenInfoSchema = z.object({
+  address: z.string().nullish(),
+  symbol: z.string().nullish(),
+  name: z.string().nullish(),
+  decimals: BirdeyeLooseNumberSchema
+})
+
 const BirdeyeBalanceChangeItemSchema = z.object({
   address: z.string().nullish(),
   tokenAddress: z.string().nullish(),
   token_address: z.string().nullish(),
   mint: z.string().nullish(),
+  token_info: BirdeyeBalanceChangeTokenInfoSchema.nullish(),
   symbol: z.string().nullish(),
   tokenSymbol: z.string().nullish(),
   token_symbol: z.string().nullish(),
+  block_unix_time: BirdeyeLooseNumberSchema,
   blockTime: BirdeyeLooseNumberSchema,
   block_time: BirdeyeLooseNumberSchema,
   timestamp: BirdeyeLooseNumberSchema,
   time: BirdeyeLooseNumberSchema,
   unixTime: BirdeyeLooseNumberSchema,
-  changeType: z.string().nullish(),
-  change_type: z.string().nullish(),
-  direction: z.string().nullish(),
-  type: z.string().nullish(),
+  changeType: BirdeyeLooseLabelSchema,
+  change_type: BirdeyeLooseLabelSchema,
+  change_type_text: z.string().nullish(),
+  direction: BirdeyeLooseLabelSchema,
+  type: BirdeyeLooseLabelSchema,
+  type_text: z.string().nullish(),
   uiAmount: BirdeyeLooseNumberSchema,
   ui_amount: BirdeyeLooseNumberSchema,
   amount: BirdeyeLooseNumberSchema,
@@ -423,10 +453,12 @@ export const BirdeyeBalanceChangeResponseSchema = z.object({
 })
 export type BirdeyeBalanceChangeResponse = z.infer<typeof BirdeyeBalanceChangeResponseSchema>
 
-// POST /wallet/v2/transfer/total
+// POST /wallet/v2/transfer/total — the live payload is `{ total }`, the count
+// of transfers for the wallet.
 export const BirdeyeWalletTransferTotalResponseSchema = z.object({
   data: z
     .object({
+      total: BirdeyeLooseNumberSchema,
       totalAmount: BirdeyeLooseNumberSchema,
       amount: BirdeyeLooseNumberSchema,
       quantity: BirdeyeLooseNumberSchema,
@@ -795,15 +827,15 @@ export const WalletAnalyticsBalanceChangesSchema = z.object({
 })
 export type WalletAnalyticsBalanceChanges = z.infer<typeof WalletAnalyticsBalanceChangesSchema>
 
+// BirdEye's /wallet/v2/transfer/total returns only { total } — the lifetime
+// transfer count. Value/counterparty aggregates are not on this endpoint, so
+// the output carries the count alone rather than promising fields that are
+// always null.
 export const WalletAnalyticsTransferTotalSchema = z.object({
   source: z.literal('birdeye'),
   chain: z.string(),
   wallet: z.string(),
-  total_amount: z.number().nullish(),
-  total_value_usd: z.number().nullish(),
-  transfer_count: z.number().nullish(),
-  unique_counterparties: z.number().nullish(),
-  symbol: z.string().nullish()
+  transfer_count: z.number().nullish()
 })
 export type WalletAnalyticsTransferTotal = z.infer<typeof WalletAnalyticsTransferTotalSchema>
 

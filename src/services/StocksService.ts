@@ -3,7 +3,7 @@ import {
   MarketstackEodResponseSchema,
   MarketstackStockPriceResponseSchema,
   MarketstackTickerSchema,
-  MarketstackTickersResponseSchema,
+  MarketstackTickersListResponseSchema,
   StocksCandlesSchema,
   StocksDetailSchema,
   StocksPriceSchema,
@@ -104,16 +104,16 @@ export class StocksService {
   }
 
   async search(params: SearchParams): Promise<StocksSearchResults> {
-    const raw = await this.fetchMarketstack('v2/tickers', {
+    const raw = await this.fetchMarketstack('v2/tickerslist', {
       search: params.query,
       limit: String(params.limit)
     })
-    const parsed = MarketstackTickersResponseSchema.parse(raw)
+    const parsed = MarketstackTickersListResponseSchema.parse(raw)
     return StocksSearchResultsSchema.parse({
       source: 'marketstack',
       query: params.query,
       results: (parsed.data ?? []).map((row) => ({
-        symbol: row.symbol,
+        symbol: row.ticker,
         name: row.name,
         exchange: row.stock_exchange?.acronym ?? row.stock_exchange?.name,
         mic: row.stock_exchange?.mic,

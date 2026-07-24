@@ -131,7 +131,10 @@ actionable`, not an executable idea. If nothing passes, make one refinement pass
 
 ## Briefing output template
 
-Fill in this literal template — keep the class sections and the tradable/watchlist split:
+Fill in this literal template — keep the class sections and the tradable/watchlist split.
+The `YYYY-MM-DD` in the header is TODAY's real date — do not guess it or copy the example.
+Get it from `date -u +%Y-%m-%d` (or the `as_of` field of the macro/price data you just pulled);
+a briefing stamped with the wrong date reads as stale and destroys trust in an otherwise-live report.
 
 ```markdown
 # Market briefing — YYYY-MM-DD

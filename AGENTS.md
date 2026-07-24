@@ -52,6 +52,10 @@ Your tools, commands, and code are yours alone, never the user's. Never show or 
 
 When you're missing a decision (how much to risk, which asset, whether to proceed), ask a clear, non-technical question — never one that asks them to run or read something. Lead with the answer or outcome, define jargon in a few words the first time it matters, and say plainly what will happen before you put money at risk. Don't lecture or condescend.
 
+Always answer in the SAME language the user wrote in — default to English. Do not drift into another language partway through a briefing or multi-step report, even when a tool's data or an internal note is in another language. An English question always gets an English answer.
+
+Today's date is not something you can assume — you do not have a reliable internal clock. When a report needs a date (a briefing header, a journal entry, "as of" context), get it from a real source: a timestamp in the data you just pulled, or `date -u +%Y-%m-%d`. Never stamp a report with a guessed or example date.
+
 ## Refine analyst answers before finishing
 
 The analyst skills (`alpha-scout`, `token-analyst`, `defi-analyst`, and the rest) are data
@@ -324,7 +328,7 @@ Prettier: no semicolons, single quotes, no trailing commas, width 100. TypeScrip
 
 ## Environment
 
-Config is resolved in `@/common/Env`. When `NODE_ENV` is unset, empty, or `production` (the default), `API_BASE_URL` and `PRIVY_APP_ID` are hardcoded to their production values — neither needs to be set. Under a non-production `NODE_ENV` the URLs point at localhost (`http://localhost:8787` API, `http://localhost:3000` web) and `PRIVY_APP_ID` is read from (and required in) the env; `API_BASE_URL` is never read from the env. The one thing a run needs is a bearer token: `API_BEARER_TOKEN`, the ES256 JWT the Tribes extension mints from the in-VM agent key. It is typically auto-minted; if it is missing, run `tribes-cli login` first so a fresh token is fetched and persisted before other `tribes-cli` actions. Wallet private keys live in Privy, never locally. `.env*` and `.tribes/*.json` snapshots are gitignored.
+Config is resolved in `@/common/Env`. When `NODE_ENV` is unset, empty, or `production` (the default), `API_BASE_URL` and `PRIVY_APP_ID` fall back to their production values — neither needs to be set. Under a non-production `NODE_ENV` the URL defaults point at localhost (`http://localhost:8787` API, `http://localhost:3000` web) and `PRIVY_APP_ID` is read from (and required in) the env. An explicit `API_BASE_URL` / `WEB_BASE_URL` in the environment always wins over the `NODE_ENV` default, so a sandbox's injected base is honored and local dev can target a custom stack. The one thing a run needs is a bearer token: `API_BEARER_TOKEN`, the ES256 JWT the Tribes extension mints from the in-VM agent key. It is typically auto-minted; if it is missing, run `tribes-cli login` first so a fresh token is fetched and persisted before other `tribes-cli` actions. Wallet private keys live in Privy, never locally. `.env*` and `.tribes/*.json` snapshots are gitignored.
 
 **Production is the default; development is opt-in.** `bun build --compile` inlines `NODE_ENV` at build time, so the environment is fixed when the binary is compiled — editing `.env` afterwards does not change an already-compiled binary. `bootstrap.sh` compiles with `NODE_ENV=production`, so a fresh clone always targets `tribes.xyz`. To point the local `tribes-cli` at a localhost stack, run `bun run setup:dev` (it requires `PRIVY_APP_ID` in `.env` and fails with an explanation if it is missing); `bun run setup:prod` rebuilds back to production.
 
