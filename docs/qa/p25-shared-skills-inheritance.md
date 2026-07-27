@@ -14,26 +14,29 @@ first use installs Chromium and Linux packages into the sandbox rootfs.
 ## Catalog and inheritance
 
 1. List direct children of `/root/skills`. The shared catalog must be exactly
-   `zipbox-browser`, `zipbox-caddy`, `zipbox-dns`, `zipbox-email`, and
-   `zipbox-websearch`; every directory must contain `SKILL.md`.
-2. Confirm `/root/skills` and every directory below the five shared entries have mode `0555`, and
+   `zipbox-browser`, `zipbox-caddy`, `zipbox-dns`, `zipbox-egress`, `zipbox-email`,
+   `zipbox-wallet`, and `zipbox-websearch`; every directory must contain `SKILL.md`.
+2. Confirm `/root/skills` and every directory below the seven shared entries have mode `0555`, and
    every shared file has mode `0444`.
 3. Confirm each repo-root `skills/zipbox-*` entry is a symlink to the matching
    `/root/skills/<slug>` directory. Confirm `.pi/skills` still resolves to repo-root `skills/`, and
    reading `.pi/skills/<slug>/SKILL.md` reaches the canonical shared file.
-4. Confirm all 27 non-zipbox trading skill directories remain real directories. Their names and
+4. Confirm all 23 non-zipbox trading skill directories remain real directories. Their names and
    contents must match the checkout; none may move under `/root/skills` or become a per-slug link.
-5. Run `scripts/install-shared-skills.sh` twice. The five canonical paths, numeric modes, file
+5. Run `scripts/install-shared-skills.sh` twice. The seven canonical paths, numeric modes, file
    hashes, and link targets must remain unchanged, with no stale or duplicate `zipbox-*` entry.
 
 ## Functional shared-skill checks
 
-Ask the ATA agent to read and use `zipbox-websearch` specifically, not the trading-only
-`web-search` skill. Search for the current official Playwright CLI documentation and return the
+Ask the ATA agent to read and use `zipbox-websearch`. The trading-only `web-search` skill it used
+to be contrasted against has been deleted, so this now also confirms the shared skill is the ONLY
+web-search path a trading box has. Search for the current official Playwright CLI documentation and return the
 page title and source URL. Then extract readable text from one known public documentation URL.
 The bearer must remain private, and each factual claim must retain its source URL.
 
-Ask the agent to read and use `zipbox-browser` specifically, not the trading-only `browser` skill.
+Ask the agent to read and use `zipbox-browser`. The trading-only `browser` skill it used to be
+contrasted against has been deleted, so this also confirms the shared skill is the ONLY browser
+path a trading box has.
 Open a JavaScript-rendered public page headlessly, wait for a stable selector, capture a shallow
 snapshot, read the title, and close the named session. First use may install Playwright CLI,
 Chromium, and required packages. CAPTCHA or access-control bypass, headed mode, leaked browser

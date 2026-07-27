@@ -7,7 +7,7 @@ description: >-
   crypto, securities, and commodities. Call when structured analyst skills and news cannot fully
   answer and the question needs source-backed evidence or ENS identity. NOT for: headlines,
   catalysts, or sentiment (use news); non-finance topics, one quick search, or reading one known
-  URL (use web-search); deep multi-page reading, crawling, or JS-gated pages (use browser);
+  URL (use zipbox-websearch); deep multi-page reading, crawling, or JS-gated pages (use zipbox-browser);
   price, chart, or market data (route to the matching analyst skill).
 allowed-tools: bash read
 ---
@@ -19,7 +19,7 @@ the Tavily proxy) and `tribes-cli ens` (ENS forward and reverse resolution on Et
 YOU are the analyst: compose searches and extracts, read the sources, and write the cited
 synthesis yourself. There is no backend specialist behind this skill and no `ask` subcommand —
 each command returns in seconds.
-`web-search` requires an auth token (run `tribes-cli login` once if it fails with auth errors);
+`tribes-cli web-search` requires an auth token (run `tribes-cli login` once if it fails with auth errors);
 `ens` reads mainnet directly.
 
 ## When to use
@@ -31,22 +31,22 @@ each command returns in seconds.
 - Research across official docs, filings, investor pages, or blogs — same composition, scoped
   to primary sources.
 - NOT for headlines, catalysts, or sentiment — use `news` first.
-- NOT for non-finance topics, one quick search, or reading one known URL — use `web-search`.
+- NOT for non-finance topics, one quick search, or reading one known URL — use `zipbox-websearch`.
 - NOT for deep multi-page reading or crawling of one site, or JS-gated/blocked pages — use
-  `browser`.
+  `zipbox-browser`.
 - NOT for prices, charts, or market data — use the matching analyst skill (AGENTS.md routing map).
 
 ## Hard rules
 
 1. Every subcommand prints structured JSON on stdout — parse it, never screen-scrape prose.
-   The `ens` subcommands also accept `--out <file>`; the `web-search` subcommands have NO
+   The `ens` subcommands also accept `--out <file>`; the `tribes-cli web-search` subcommands have NO
    `--out` flag (stdout only).
 2. Research flow is: `search` → pick the 1–5 most primary or most recent URLs → `extract` each →
    synthesize. Never rest a load-bearing claim on a search snippet alone — extract the page.
 3. Cite the source URL for every claim in your final answer; say plainly when reliable
    information is unavailable.
 4. NEVER use `extract` to bypass paywalls, CAPTCHAs, or access controls. A blocked, empty, or
-   JS-rendered page routes to the `browser` skill — do not re-run `extract` on it.
+   JS-rendered page routes to the `zipbox-browser` skill — do not re-run `extract` on it.
 5. If a command reports the provider key is not set, the capability is unavailable on this box —
    report that plainly instead of retrying or working around it.
 
@@ -104,13 +104,13 @@ and outlook with a citation per claim.
 | Key-not-set error                                   | Provider unconfigured on this box — report it; do not retry or work around.       |
 | Auth error (unauthorized, expired token)            | Run `tribes-cli login`, retry the original command once, then stop and report.    |
 | Off-target search results                           | Reword `--query` once with more specific names, addresses, or domains; then stop. |
-| `extract` returns empty, blocked, or challenge text | Switch to the `browser` skill for that URL — NEVER re-run `extract` on it.        |
+| `extract` returns empty, blocked, or challenge text | Switch to the `zipbox-browser` skill for that URL — NEVER re-run `extract` on it. |
 | Any other API failure                               | Retry the same command once; if it fails again, stop and report the error.        |
 
 ## Related skills
 
 - `news` — first stop for market/asset news, catalysts, and sentiment.
-- `web-search` — one quick search, reading one known URL, or non-finance topics.
-- `browser` — deep multi-page reading/crawling and JS-gated or fetch-blocked pages.
+- `zipbox-websearch` — one quick search, reading one known URL, or non-finance topics.
+- `zipbox-browser` — deep multi-page reading/crawling and JS-gated or fetch-blocked pages.
 - `fundamentals-analyst` — structured research profile of one listed coin.
 - `wallet-analyst` — on-chain activity of an address after ENS resolution.
