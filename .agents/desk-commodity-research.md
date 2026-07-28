@@ -30,7 +30,7 @@ commodity for candles (GLD gold, USO oil, …; per the technical-analyst skill) 
 trend, entry, target, and invalidation from the indicator and level JSON.
 
 Commodity news has no `news fetch` kind, so the targeted web search is the documented news
-fallback. Retain dated, attributable sources and treat blocked sources as gaps unless the browser
+fallback. Retain dated, attributable sources and treat blocked sources as gaps unless the `zipbox-browser`
 fallback can read them. In the venue output, inspect the exact `DEX:ASSET`: `referencePx`,
 `midPx`/`oraclePx` coherence when available, `dayNtlVlm`, `dayBaseVlm`, `openInterest`, and
 `impactPxs` for the intended size. Missing, zero, stale, or inconsistent market-quality data is

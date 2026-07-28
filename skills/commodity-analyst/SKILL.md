@@ -29,7 +29,7 @@ commodity `news fetch` kind; do not invent either one.
 1. Start with Hyperliquid discovery. Run `list-assets --all-dexes` and use `list-exchanges` only
    when a venue label needs resolving. Never assume a particular HIP-3 dex hosts a commodity.
 2. The commodity-news path is the `news` web fallback: `news fetch` has no commodity kind. Use
-   the targeted `web-search` sequence below and retain dated sources; use `browser` only for a
+   the targeted `tribes-cli web-search` sequence below and retain dated sources; use `zipbox-browser` only for a
    blocked or JS-gated source.
 3. Research a market only after preserving its exact Hyperliquid dex and coin symbol. External
    benchmarks or futures names are context, not proof that the Hyperliquid market is tradable.
@@ -85,7 +85,7 @@ tribes-cli web-search search \
 ```
 
 Retain recent, attributable headlines and cross-check the strongest claim against a primary or
-industry source. If a selected source is blocked or JS-rendered, use `browser`; do not bypass a
+industry source. If a selected source is blocked or JS-rendered, use `zipbox-browser`; do not bypass a
 paywall, CAPTCHA, or access control.
 
 ### 5. Check structure and levels
@@ -138,7 +138,7 @@ GAPS: <unavailable source, missing market data, or none>
 | ---------------------------------------- | ------------------------------------------------------------------------------ |
 | Auth error (unauthorized, expired token) | Run `tribes-cli login`, retry the original command once, then stop and report. |
 | Research analyst fails                   | Retry once; then use the news fallback and state the research gap.             |
-| Search or source is blocked              | Use `browser` for that URL only; never bypass access controls.                 |
+| Search or source is blocked              | Use `zipbox-browser` for that URL only; never bypass access controls.          |
 | Market data is absent or inconsistent    | Keep it watchlist-only and refine once for a liquid listed substitute.         |
 
 ## Related skills
@@ -146,8 +146,8 @@ GAPS: <unavailable source, missing market data, or none>
 - `macros` — numeric gold, Brent, rates, dollar, inflation, and volatility context.
 - `news` — owns the commodity-news fallback sequence.
 - `research-analyst` — cited supply/demand and policy research.
-- `web-search` — first fallback hop for commodity headlines.
-- `browser` — only for JS-gated or blocked sources.
+- `zipbox-websearch` — first fallback hop for commodity headlines.
+- `zipbox-browser` — only for JS-gated or blocked sources.
 - `technical-analyst` — trend, volatility, entry, target, and invalidation analysis.
 - `hyperliquid` — all-dex discovery, venue quality, and execution mechanics.
 - `thesis` — judge-led debate for a selected commodity candidate.

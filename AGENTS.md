@@ -141,8 +141,8 @@ Pick the skill with these tie-breaker rules, in order:
 - **R4 — Data vs computation.** Indicator values, signals, setups, or backtests → `technical-analyst`
   regardless of asset class. Raw prices/candles only → the asset's data skill.
 - **External info precedence:** `news` first for market/asset news and sentiment →
-  `research-analyst` for source-backed finance research and ENS → `web-search` as last resort or
-  to read a specific URL → `browser` only for JS-gated or fetch-blocked pages.
+  `research-analyst` for source-backed finance research and ENS → `zipbox-websearch` as last resort or
+  to read a specific URL → `zipbox-browser` only for JS-gated or fetch-blocked pages.
 
 | Intent                                                                             | Skill                  |
 | ---------------------------------------------------------------------------------- | ---------------------- |
@@ -169,8 +169,8 @@ Pick the skill with these tie-breaker rules, in order:
 | Stops, leverage, liquidation distance, closing positions                           | `position-management`  |
 | On-chain DEX swap or cross-chain bridge                                            | `spot-trading`         |
 | Broadcast a prepared transaction, check tx status                                  | `zipbox-wallet`        |
-| General web lookup or read one URL                                                 | `web-search`           |
-| JS-gated or fetch-blocked pages, UI automation                                     | `browser`              |
+| General web lookup or read one URL                                                 | `zipbox-websearch`     |
+| JS-gated or fetch-blocked pages, UI automation                                     | `zipbox-browser`       |
 | Alert the human: long job finished, needs attention                                | `notify`               |
 
 <!-- BEGIN synced skill routes (managed by scripts/skills-upgrade.mjs) -->
@@ -178,6 +178,7 @@ Pick the skill with these tie-breaker rules, in order:
 - `zipbox-browser` — Fast headless browser automation with Microsoft's Playwright CLI for JavaScript-rendered pages, clicks, typing, snapshots, screenshots, PDF capture, and console or network inspection.
 - `zipbox-caddy` — Safely add or remove HTTPS reverse-proxy sites in this sandbox's in-VM Caddy with the baked tribes-caddy CLI — never hand-edit the Caddyfile, because a bad config kills all browser access to the machine.
 - `zipbox-dns` — Manage DNS records under this sandbox's own public hostname with the baked tribes-dns CLI — expose subdomains and set, list, or delete server-pinned A/AAAA records below the apex.
+- `zipbox-egress` — Understand how this sandbox reaches third-party APIs — the metered secret-injection proxy (tollbooth) vs the transparent first-party MITM — which mode this box is in, how to route through the proxy, and where injected secrets land.
 - `zipbox-email` — Read, organize, delete, mark as junk, and send this sandbox's zbox.sh email through the baked tribes-email CLI and its agent-scoped control-plane API.
 - `zipbox-wallet` — Wallet and transaction capability for this sandbox's bound Privy wallet (EVM + Solana), through the baked tribes-wallet CLI.
 - `zipbox-websearch` — Search the open web and extract readable text from a known public URL through the sandbox-authenticated Tribes search endpoint.

@@ -7,7 +7,7 @@ description: >-
   binary catalysts. Call when a trading thesis needs market-implied probabilities. Read-only
   research — it CANNOT place Polymarket bets or execute anything. NOT for: headlines, catalysts,
   or sentiment (use news); numeric macro indicators (use macros); general web lookups (use
-  web-search).
+  zipbox-websearch).
 allowed-tools: bash read
 ---
 
@@ -23,7 +23,7 @@ as pretty-printed JSON, no API key needed. The CLI calls the API itself — NEVE
 - Stocks traded as Hyperliquid perps (e.g. CRCL, COIN) need regulatory-odds context (SEC, bills).
 - NOT for headlines, catalysts, or sentiment narrative — use `news`.
 - NOT for numeric macro indicators (CPI, yields, VIX) — use `macros`.
-- NOT for general facts or reading a specific URL — use `web-search`.
+- NOT for general facts or reading a specific URL — use `zipbox-websearch`.
 - NOT for placing bets or trades — nothing in this group executes anything.
 
 ## Hard rules
@@ -117,4 +117,4 @@ Extract these JSON keys: `question`, `outcomes`, `outcomePrices`, `volume`, `liq
 - `strategize` — persistence and evidence gates; consumes these odds when forming trade theses.
 - `news` — headlines, catalysts, and sentiment narrative around the same events.
 - `macros` — numeric macro indicators (the actual number vs the market-implied odds).
-- `web-search` — general facts prediction markets do not cover.
+- `zipbox-websearch` — general facts prediction markets do not cover.

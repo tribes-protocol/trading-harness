@@ -6,7 +6,7 @@ description: >-
   chain for macro or uncovered topics. Call it FIRST for any market/asset news, catalyst, or
   sentiment question. NOT for: numeric macro indicators like CPI, yields, VIX (use macros); event
   odds and market-implied probabilities (use prediction); general web lookups or topics this news
-  API does not cover (use web-search).
+  API does not cover (use zipbox-websearch).
 allowed-tools: bash read
 ---
 
@@ -22,7 +22,7 @@ Requires: an auth token (run `tribes-cli login` once if commands fail with auth 
 - Need macro or commodity news narrative — no CLI kind exists; use the web fallback chain below.
 - NOT for numeric macro indicators (CPI, yields, VIX, DXY) — use `macros`.
 - NOT for event odds or market-implied probabilities — use `prediction`.
-- NOT for general non-asset web questions or reading one known URL — use `web-search`.
+- NOT for general non-asset web questions or reading one known URL — use `zipbox-websearch`.
 - NOT for source-backed deep research on protocols or companies — use `research-analyst`.
 
 ## Hard rules
@@ -95,10 +95,10 @@ Use only when the CLI path is exhausted (see Error recovery) or the topic has no
    - Stock/perp: ticker + company name + catalysts (`earnings`, `guidance`, `analyst`, `demand`).
    - Crypto: asset name + ticker + (`ETF`, `flows`, `regulation`, `hack`, `liquidations`).
    - Macro/commodities: asset + (`Fed`, `rates`, `inflation`, `OPEC`, `EIA`, `central bank`).
-2. Run it through `web-search` first; cross-check with free feeds (Google News RSS, Yahoo
+2. Run it through `zipbox-websearch` first; cross-check with free feeds (Google News RSS, Yahoo
    Finance RSS, SEC/issuer feeds, CoinDesk/Cointelegraph RSS for crypto).
 3. IF HTTP fetch is blocked (401/403/406/429, challenge page, empty JS-rendered HTML) → use the
-   `browser` skill; it owns the playwright setup. NEVER bypass paywalls or CAPTCHAs.
+   `zipbox-browser` skill; it owns the playwright setup. NEVER bypass paywalls or CAPTCHAs.
 4. Keep only headlines, URLs, source names, timestamps, snippets, and your sentiment read.
 
 ## Error recovery
@@ -114,7 +114,7 @@ Use only when the CLI path is exhausted (see Error recovery) or the topic has no
 
 - `macros` — numeric macro indicators; this skill covers the macro narrative side only.
 - `prediction` — event odds and market-implied probabilities.
-- `web-search` — general web search and the first hop of the fallback chain.
-- `browser` — JS-gated or fetch-blocked pages during fallback.
+- `zipbox-websearch` — general web search and the first hop of the fallback chain.
+- `zipbox-browser` — JS-gated or fetch-blocked pages during fallback.
 - `spot-trading` — documents `tribes-cli token search` (symbol → chainId + address).
 - `strategize` — consumes this skill's output for full market briefings.

@@ -16,7 +16,7 @@ Choose the asset-class-appropriate path:
 - Crypto perp: use the exact perp coin form.
 - Equity/security with an underlying ticker: use stock news for the underlying ticker.
 - Commodity: there is no commodity `news fetch` kind. Use the documented `news` web fallback
-  chain (targeted `web-search`, then `browser` only for a blocked source) rather than forcing an
+  chain (targeted `zipbox-websearch`, then `zipbox-browser` only for a blocked source) rather than forcing an
   invalid CLI request.
 
 For a covered crypto perp, run:
