@@ -318,10 +318,10 @@ Each data capability is a direct-provider slice: a PascalCase service in `src/se
 
 These run inside Pi, not via `tribes-cli`, and are pinned to the exact Pi API version:
 
-- `tribes/` registers the `tribes-llm-proxy` model provider, mints a fresh `API_BEARER_TOKEN`, writes `API_BASE_URL` / `PRIVY_APP_ID` / token into `.env`, prints the welcome, warms up the wallet, and registers the nested wallet and Hyperliquid status extensions. The compiled `tribes-cli` auto-loads `.env`.
+- `tribes/` mints a fresh `API_BEARER_TOKEN`, writes `API_BASE_URL` / `PRIVY_APP_ID` / token into `.env`, prints the welcome, warms up the wallet, and registers the nested wallet and Hyperliquid status extensions. The compiled `tribes-cli` auto-loads `.env`.
 - `tribes/hyperliquid/` renders the live positions/status widget; `tribes/wallet/` renders wallet balances and PnL.
 
-The custom provider's token pricing shown by Pi comes from each registered model's `cost` object, in dollars per million tokens: `input`, `output`, `cacheRead`, and `cacheWrite`. If the `/models` API omits pricing, the provider must use zero-cost defaults and Pi will show no meaningful token price or cost.
+The agent runs on Pi's built-in `openrouter` provider off the boot-env `OPENROUTER_API_KEY`; the model, provider and thinking level are pinned in `.pi/settings.json` (see `tests/pi/PiSettingsContract.test.ts`). #91 removed the `tribes-llm-proxy` custom provider — do not reintroduce a bespoke provider to change the model.
 
 ## Conventions enforced by tooling
 

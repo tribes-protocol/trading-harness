@@ -6,17 +6,28 @@ import { z } from 'zod'
 /**
  * Contract tests for the Pi model pin.
  *
- * Pi core merges ~/.pi/agent/settings.json (global) with <cwd>/.pi/settings.json
- * (project, wins). The repo's own .pi/agent/settings.json is NEVER read by pi
- * core, so a pin placed there is dead config — a fresh sandbox session silently
- * ignores it and falls back to pi's defaultModelPerProvider. That is exactly the
- * bug 5f57b05 fixed, and nothing but these assertions stops it recurring.
+ * Pi core reads TWO settings files and merges them: <agentDir>/settings.json
+ * (global) and <cwd>/.pi/settings.json (project). Project WINS on any key both
+ * set — verified against the pinned @earendil-works/pi-coding-agent@0.80.3,
+ * dist/core/settings-manager.d.ts (globalSettingsPath / projectSettingsPath).
  *
- * The model is also the control plane's routed model for the `ata` harness
- * (terminal apps/microvmd/src/types/HarnessCatalog.ts — DEFAULT_PROXY_LLM_MODEL).
- * ata never reads TRIBES_LLM_MODEL, so this file is the ONLY place the routed
- * model takes effect; drift here silently bills a different model through the
- * egress tollbooth than the control plane thinks it routed.
+ * So the model pin belongs in .pi/settings.json because project scope wins, NOT
+ * because the agent file is ignored. Both are live. A pin in the agent file is
+ * fragile config that any project-scope value silently overrides, which is the
+ * bug 5f57b05 fixed and nothing but these assertions stops recurring.
+ *
+ * Do NOT read this as "delete .pi/agent/settings.json". `packages` is a real key
+ * on the same Settings interface as defaultThinkingLevel (0.80.3 lines 81 / 62),
+ * and that file is where this agent declares its Pi extensions. Deleting it
+ * drops them.
+ *
+ * This value must stay in lockstep with HARNESS_LLM_ROUTING.ata in the control
+ * plane (terminal packages/sandboxing/src/shared/types/Sandbox.ts, vendored into
+ * apps/microvmd/src/types/HarnessCatalog.ts). The coupling is MANUAL and runs one
+ * way only: ata never reads TRIBES_LLM_MODEL, so the control-plane constant sets
+ * what is INJECTED AND BILLED while this file sets what actually RUNS. Changing
+ * DEFAULT_PROXY_LLM_MODEL there does NOT move ata — it just starts billing a
+ * model this repo never switched to.
  */
 
 const REPO_ROOT = join(__dirname, '..', '..')
@@ -52,14 +63,14 @@ describe('.pi/settings.json — the file pi core actually reads', () => {
   })
 })
 
-describe('.pi/agent/settings.json — never read by pi core', () => {
-  it('carries no model pin, so the pin cannot silently go dead again', () => {
+describe('.pi/agent/settings.json — global scope, loses to project on any shared key', () => {
+  it('carries no model pin, so project scope cannot silently override it', () => {
     const settings = readSettings(AGENT_SETTINGS)
 
     for (const key of MODEL_KEYS) {
       expect(
         settings[key],
-        `${key} in .pi/agent/settings.json is dead config — pi core reads the pin from .pi/settings.json`
+        `${key} in .pi/agent/settings.json is global-scope config that .pi/settings.json overrides — keep the pin in .pi/settings.json only`
       ).toBeUndefined()
     }
   })
