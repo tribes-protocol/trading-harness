@@ -173,7 +173,7 @@ Pick the skill with these tie-breaker rules, in order:
 | JS-gated or fetch-blocked pages, UI automation                                     | `browser`              |
 | Alert the human: long job finished, needs attention                                | `notify`               |
 
-<!-- BEGIN synced skill routes (managed by .github/workflows/sync-harness-skills.yml) -->
+<!-- BEGIN synced skill routes (managed by scripts/skills-upgrade.mjs) -->
 
 - `zipbox-browser` — Fast headless browser automation with Microsoft's Playwright CLI for JavaScript-rendered pages, clicks, typing, snapshots, screenshots, PDF capture, and console or network inspection.
 - `zipbox-caddy` — Safely add or remove HTTPS reverse-proxy sites in this sandbox's in-VM Caddy with the baked tribes-caddy CLI — never hand-edit the Caddyfile, because a bad config kills all browser access to the machine.
@@ -234,6 +234,16 @@ If your client reads skills from a directory that this repo does not already pro
 to the repo-root `skills/` directory (`ln -s ../skills .<client>/skills`). Re-running
 `scripts/install-shared-skills.sh` refreshes only `zipbox-*` entries; it never removes a
 trading-only skill.
+
+### Updating the shared skills
+
+There is no scheduled sync — upstream changes land when someone asks for them. Run
+`bun run skills:upgrade` (add `-- --ref <tag|branch|sha>` to pin a specific upstream commit),
+review the diff, then commit and open a PR like any other change. The command vendors
+ai-harness-setup's `skills/` into `skills/`, regenerates the routing bullets above, and records
+provenance in `skills/.synced.json` (upstream commit + a sha256 per vendored file). Those files
+are machine-written: edit them upstream, never here — `tests/skills/SyncedSkills.test.ts` fails
+CI on any hand-edit.
 
 ## Runtime Preconditions
 

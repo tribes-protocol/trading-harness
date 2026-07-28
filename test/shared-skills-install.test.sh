@@ -4,12 +4,15 @@
 set -eu
 
 REPO="$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)"
-EXPECTED="zipbox-browser
-zipbox-caddy
-zipbox-dns
-zipbox-email
-zipbox-wallet
-zipbox-websearch"
+
+# Derived from the sync manifest, not hardcoded: the contract is "every skill
+# `bun run skills:upgrade` vendored reaches /root/skills and is linked back". A
+# frozen list here would pass while the installer silently dropped a newly vendored
+# skill. Same authority the installer reads, so the two cannot disagree.
+EXPECTED="$(
+  sed -n 's|.*"skills/\(zipbox-[^/"]*\)/[^"]*".*|\1|p' "$REPO/skills/.synced.json" | sort -u
+)"
+[ -n "$EXPECTED" ] || { printf 'FAIL - no vendored skills in .synced.json\n' >&2; exit 1; }
 
 fail() {
   printf 'FAIL - %s\n' "$1" >&2

@@ -129,7 +129,7 @@ export default [
       '**/coverage/**',
       'runtime/**',
       'eslint-rules/**',
-      '.github/scripts/**',
+      'scripts/*.mjs',
       '**/*.d.ts',
       '**/test/**',
       'tests/**',
