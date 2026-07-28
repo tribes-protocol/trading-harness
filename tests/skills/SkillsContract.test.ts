@@ -109,7 +109,7 @@ describe('skill docs contract', () => {
       it('cross-references only skills that exist', () => {
         const slugSet = new Set(skillSlugs())
         const description = parsed.frontmatter.get('description') ?? ''
-        for (const match of description.matchAll(/\(use ([a-z0-9-]+)/g)) {
+        for (const match of description.matchAll(/\(use ([a-z0-9.-]+)/g)) {
           const referenced = match[1] ?? ''
           expect(
             slugSet.has(referenced),
@@ -118,7 +118,7 @@ describe('skill docs contract', () => {
         }
         const relatedSection = parsed.body.split('## Related skills')[1]
         if (relatedSection !== undefined) {
-          for (const match of relatedSection.matchAll(/^- `([a-z0-9-]+)`/gm)) {
+          for (const match of relatedSection.matchAll(/^- `([a-z0-9.-]+)`/gm)) {
             const referenced = match[1] ?? ''
             expect(
               slugSet.has(referenced),
@@ -138,7 +138,7 @@ describe('AGENTS.md routing map', () => {
     const routingSection = raw.split('## Skill routing map')[1]?.split('\n## ')[0] ?? ''
     expect(routingSection.length, 'routing map section must exist').toBeGreaterThan(0)
     const referenced = new Set<string>()
-    for (const match of routingSection.matchAll(/`([a-z0-9-]+)`/g)) {
+    for (const match of routingSection.matchAll(/`([a-z0-9.-]+)`/g)) {
       const token = match[1] ?? ''
       if (slugSet.has(token)) referenced.add(token)
       else expect(token, `routing map references unknown skill: ${token}`).toBe('')
@@ -148,5 +148,18 @@ describe('AGENTS.md routing map', () => {
       if (slug === 'tribes-login') continue
       expect(referenced.has(slug), `routing map is missing skill: ${slug}`).toBe(true)
     }
+  })
+
+  // The three slug-token patterns in this file admit a DOT because an upstream slug
+  // may carry one (zipbox-x.com). This is not cosmetic: skills are vendored from
+  // ai-harness-setup by directory scan with no allowlist, and the routing bullet is
+  // MACHINE-WRITTEN by .github/scripts/sync-harness-skills.mjs — so a dotless
+  // charset cannot be avoided by authoring carefully. It tokenizes `zipbox-x.com`
+  // as `zipbox-x`, which is not a slug, and the sync PR fails with "routing map is
+  // missing skill: zipbox-x.com" while the map plainly contains it.
+  it('tokenizes a dotted skill slug', () => {
+    const line = '- `zipbox-x.com` — post, search, and read on X.'
+    const tokens = [...line.matchAll(/`([a-z0-9.-]+)`/g)].map((match) => match[1])
+    expect(tokens).toEqual(['zipbox-x.com'])
   })
 })
