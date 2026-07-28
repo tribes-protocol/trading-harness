@@ -7,7 +7,27 @@ set -u
 REPO_ROOT="$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)"
 SOURCE_DIR="$REPO_ROOT/skills"
 SHARED_DIR="/root/skills"
-EXPECTED_SKILLS="zipbox-browser zipbox-caddy zipbox-dns zipbox-email zipbox-wallet zipbox-websearch"
+
+MANIFEST="$SOURCE_DIR/.synced.json"
+
+# Derive the catalog from the sync manifest instead of hardcoding it. A hardcoded
+# list makes a skill added upstream invisible here — and because the relink loop
+# below deletes EVERY zipbox-* before restoring only the listed ones, an unlisted
+# skill is not merely skipped, it is deleted. Deriving it keeps
+# `bun run skills:upgrade` the only step needed to ship a new shared skill.
+#
+# The manifest, not a directory glob, is the authority on what was vendored: a glob
+# cannot tell an upstream skill from a leftover zipbox-* directory, and would
+# reinstate exactly the stale entries this script exists to clear. Keys look like
+# "skills/<slug>/SKILL.md"; the file is machine-written one key per line.
+EXPECTED_SKILLS="$(
+  sed -n 's|.*"skills/\(zipbox-[^/"]*\)/[^"]*".*|\1|p' "$MANIFEST" 2>/dev/null | sort -u
+)"
+
+if [ -z "$EXPECTED_SKILLS" ]; then
+  printf '%s\n' '[shared-skills] no vendored zipbox skills in .synced.json; leaving current skills intact'
+  exit 0
+fi
 
 TMP="$(mktemp -d 2>/dev/null || true)"
 if [ -z "$TMP" ]; then
@@ -85,5 +105,6 @@ for slug in $EXPECTED_SKILLS; do
   ln -s "$SHARED_DIR/$slug" "$SOURCE_DIR/$slug" 2>/dev/null || true
 done
 
-printf '%s\n' '[shared-skills] installed 6 read-only zipbox skills under /root/skills'
+printf '[shared-skills] installed %s read-only zipbox skills under /root/skills\n' \
+  "$(printf '%s\n' "$EXPECTED_SKILLS" | wc -l | tr -d ' ')"
 exit 0
