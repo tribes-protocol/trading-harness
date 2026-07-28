@@ -1,7 +1,7 @@
 {
   "prompts": ["!prompts/tribes/login.md"],
   "skills": ["!tribes-login"],
-  "defaultThinkingLevel": "high",
+  "defaultThinkingLevel": "medium",
   "defaultProvider": "openrouter",
-  "defaultModel": "deepseek/deepseek-v4-pro"
+  "defaultModel": "z-ai/glm-5.2"
 }
