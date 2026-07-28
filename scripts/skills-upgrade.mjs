@@ -52,6 +52,8 @@ import { fileURLToPath } from 'node:url'
 
 const UPSTREAM_REPO = 'tribes-protocol/ai-harness-setup'
 const DEFAULT_REF = 'main'
+// Shared skills carry this prefix; see upstreamSlugs() for why it is load-bearing.
+const SHARED_SLUG_PREFIX = 'zipbox-'
 const REPO_ROOT = join(dirname(fileURLToPath(import.meta.url)), '..')
 
 const H1_MARKER = '<!-- synced from tribes-protocol/ai-harness-setup — edit there, not here -->'
@@ -82,8 +84,20 @@ function sha256(buffer) {
 }
 
 // Directories under sourceDir that hold a SKILL.md — the set of slugs to vendor.
+//
+// The `zipbox-` prefix filter is a SAFETY BOUNDARY, not tidiness. Vendoring copies
+// with cpSync(force:true) and the manifest then pins whatever it copied as canonical,
+// so an upstream directory named after one of THIS repo's trading skills — `browser`,
+// `web-search`, `news` — would silently overwrite it, and the drift guard would
+// afterwards defend the overwrite as the intended state. Without this line the only
+// thing protecting the trading catalog is the convention that upstream never creates a
+// directory without the prefix.
+//
+// Reproduced before the filter existed: an upstream `news/` directory replaced this
+// repo's own skills/news/SKILL.md on the next run. (Credit: tribes-protocol/trading-harness#93.)
 function upstreamSlugs(sourceDir) {
   return readdirSync(sourceDir)
+    .filter((entry) => entry.startsWith(SHARED_SLUG_PREFIX))
     .filter((entry) => statSync(join(sourceDir, entry)).isDirectory())
     .filter((entry) => existsSync(join(sourceDir, entry, 'SKILL.md')))
     .sort()
