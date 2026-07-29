@@ -2,8 +2,9 @@
 name: news
 description: >-
   Asset-scoped market news and sentiment. Handles: fetching analyzed news items with
-  bullish/bearish sentiment for a specific token, perp coin, or stock ticker, plus a web fallback
-  chain for macro or uncovered topics. Call it FIRST for any market/asset news, catalyst, or
+  bullish/bearish sentiment for a specific token, perp coin, or stock ticker, raw X/Twitter
+  chatter for a cashtag or handle when the crowd's mood matters more than the headline, plus a
+  web fallback chain for macro or uncovered topics. Call it FIRST for any market/asset news, catalyst, or
   sentiment question. NOT for: numeric macro indicators like CPI, yields, VIX (use macros); event
   odds and market-implied probabilities (use prediction); general web lookups or topics this news
   API does not cover (use web-search).
@@ -12,14 +13,17 @@ allowed-tools: bash read
 
 # News
 
-Backing command group: `tribes-cli news`. Fetches analyzed news items with sentiment for one
-token, perp, or stock, polling the backend until analysis completes.
+Backing command groups: `tribes-cli news` — analyzed news items with sentiment for one token,
+perp, or stock, polling the backend until analysis completes. Plus `tribes-cli social` for raw
+X/Twitter chatter, which is the crowd talking rather than a publisher reporting.
 Requires: an auth token (run `tribes-cli login` once if commands fail with auth errors).
 
 ## When to use
 
 - Need headlines, catalysts, or sentiment for a specific token, perp coin, or stock — run `fetch`.
 - Need macro or commodity news narrative — no CLI kind exists; use the web fallback chain below.
+- Need the crowd's mood rather than published coverage — cashtag chatter, whether a KOL is
+  talking a position, or whether a move was discussed before it happened — run `social tweets`.
 - NOT for numeric macro indicators (CPI, yields, VIX, DXY) — use `macros`.
 - NOT for event odds or market-implied probabilities — use `prediction`.
 - NOT for general non-asset web questions or reading one known URL — use `web-search`.
@@ -34,12 +38,24 @@ Requires: an auth token (run `tribes-cli login` once if commands fail with auth 
    vocabulary in your own notes. Wrong: `"sentiment": "positive"`. Right: `"sentiment": "bullish"`.
 4. Raw JSON is internal working material — the user-facing answer MUST be a plain-language
    summary (headline themes, net sentiment, trading implication), never dumped JSON.
+5. `social tweets` COSTS MONEY PER TWEET. `--limit` is a spend control, not a display option:
+   leave it at the default 100 unless the question genuinely needs more, and never raise it to
+   sweep speculatively. Prefer narrowing with `--since`/`--until` over raising the limit.
+6. `social tweets` is UNFILTERED crowd output — no sentiment scoring, no credibility weighting,
+   and paid promotion is indistinguishable from genuine interest. Read it as evidence of
+   ATTENTION, never as evidence a claim is true, and never let it override `news` sentiment.
+7. If `social tweets` reports a timeout, do NOT retry it. The scrape is still running and still
+   billing upstream; narrow the query instead.
 
 ## Command reference
 
 | Subcommand | Purpose                                      | Required flags                                                                                    | Read-only or signed |
 | ---------- | -------------------------------------------- | ------------------------------------------------------------------------------------------------- | ------------------- |
 | `fetch`    | Fetch asset news, poll while still analyzing | `--kind token\|perp\|stock`; token: `--chain-id`, `--token-id`; perp: `--coin`; stock: `--ticker` | read-only           |
+
+`tribes-cli social tweets` — X/Twitter chatter. At least one of `--query` (search term or
+cashtag, repeatable) or `--handle` (account, repeatable) is required. Useful flags: `--limit`
+(1-500, default 100 — see hard rule 5), `--since`/`--until` (YYYY-MM-DD), `--sort Latest|Top`.
 
 Optional flags: `--cursor <cursor>` (pagination — pass the cursor from the previous response to
 page further), `--out <file>` (write the JSON to a file, then Read it — use for long payloads).
@@ -56,6 +72,17 @@ page further), `--out <file>` (write the JSON to a file, then Read it — use fo
   few tokens called PEPE — do you mean the big one on Ethereum?"
 
 ## Examples
+
+### Is the crowd already positioned?
+
+```bash
+tribes-cli social tweets --query '$BTC' --limit 100 --sort Top
+tribes-cli social tweets --handle <kol-handle> --since 2026-07-01
+```
+
+Run this AFTER `news fetch`, not instead of it. News tells you what was reported; this tells you
+whether it was already priced into the conversation. Chatter that spiked before the move is a
+different signal from chatter that spiked after — and only the timestamps distinguish them.
 
 ### Perp news
 
