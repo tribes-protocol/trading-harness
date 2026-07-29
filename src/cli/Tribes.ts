@@ -27,6 +27,7 @@ import { buildNotifyCommand } from '@/cli/Notify'
 import { buildOnchainCommand } from '@/cli/Onchain'
 import { buildPredictionCommand } from '@/cli/Prediction'
 import { buildSmartMoneyCommand } from '@/cli/SmartMoney'
+import { buildSocialCommand } from '@/cli/Social'
 import { buildSpotTradingCommand } from '@/cli/SpotTrading'
 import { buildStocksCommand } from '@/cli/Stocks'
 import { buildTaCommand } from '@/cli/Ta'
@@ -60,6 +61,7 @@ function buildTribesCli(): Command {
   program.addCommand(buildExchangesCommand())
   program.addCommand(buildTokenDataCommand())
   program.addCommand(buildSmartMoneyCommand())
+  program.addCommand(buildSocialCommand())
   program.addCommand(buildWalletDataCommand())
   program.addCommand(buildStocksCommand())
   program.addCommand(buildEnsCommand())
