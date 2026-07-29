@@ -181,6 +181,7 @@ Pick the skill with these tie-breaker rules, in order:
 - `zipbox-email` — Read, organize, delete, mark as junk, and send this sandbox's zbox.sh email through the baked tribes-email CLI and its agent-scoped control-plane API.
 - `zipbox-wallet` — Wallet and transaction capability for this sandbox's bound Privy wallet (EVM + Solana), through the baked tribes-wallet CLI.
 - `zipbox-websearch` — Search the open web and extract readable text from a known public URL through the sandbox-authenticated Tribes search endpoint.
+- `zipbox-x` — Read X (x.com, formerly Twitter) through the sandbox's metered egress proxy — profiles, timelines, mentions, recent search, quote posts, followers.
 
 <!-- END synced skill routes -->
 
