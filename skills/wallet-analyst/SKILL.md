@@ -139,3 +139,4 @@ likely operators, and notable flow partners.
 - `zipbox-wallet` — the agent's own addresses, wallet IDs, raw balance JSON, and broadcasting
   prepared transactions.
 - `hyperliquid` — live Hyperliquid balances, positions, and open orders.
+- `token-analyst` — EVM contract verification and deployer history via `onchain-evm`.

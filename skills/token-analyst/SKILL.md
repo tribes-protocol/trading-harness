@@ -1,7 +1,8 @@
 ---
 name: token-analyst
 description: >-
-  Deep-dives into ONE identified token using real-time on-chain data. Handles: live and
+  Deep-dives into ONE identified token using real-time on-chain data. Handles: EVM contract
+  verification and proxy status, deployer history, live and
   historical on-chain prices and OHLCV candles, security and rug-risk audits (owner/creator,
   mint/freeze authority, top-holder concentration), on-chain trades and volume, holder tables,
   smart-money and whale flow on the token, contract-to-CoinGecko mapping,
@@ -126,6 +127,24 @@ tribes-cli coin contract --platform ethereum --address 0x6982508145454ce325ddbe4
 Combine mint/freeze flags and owner/creator from `security`, concentration from `holders`, and
 the CoinGecko identity check from `coin contract` into one verdict.
 
+On EVM, add the source-level checks nothing above can answer:
+
+```bash
+tribes-cli onchain-evm contract --chain-id 1 --address 0x6982508145454ce325ddbe47a25d4ec3d2311933
+tribes-cli onchain-evm address  --chain-id 1 --address 0x6982508145454ce325ddbe47a25d4ec3d2311933
+tribes-cli onchain-evm holders  --chain-id 1 --address 0x6982508145454ce325ddbe47a25d4ec3d2311933 --limit 50
+```
+
+Then pivot to the deployer — `creator_address_hash` from `address` — and read what else they have
+shipped:
+
+```bash
+tribes-cli onchain-evm transactions --chain-id 1 --address <creator_address_hash> --limit 50
+```
+
+A deployer with a trail of short-lived contracts is the single strongest rug tell available here,
+and no token-scoped query can surface it.
+
 ### Ambiguous symbol — resolve first, then pull data
 
 ```bash
@@ -161,3 +180,4 @@ does the same via BirdEye directly) — indicator math, levels, and backtests li
 - `defi-analyst` — pools, pairs, and DEX activity.
 - `technical-analyst` — indicator math, levels, and backtests on `ohlcv --out` candle files.
 - `hyperliquid` — all-dex tradability check before trade ideas.
+- `wallet-analyst` — portfolio-level analytics once a holder address is worth profiling.

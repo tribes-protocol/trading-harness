@@ -25,6 +25,7 @@ import { buildMarketCommand } from '@/cli/Market'
 import { buildNewsCommand } from '@/cli/News'
 import { buildNotifyCommand } from '@/cli/Notify'
 import { buildOnchainCommand } from '@/cli/Onchain'
+import { buildOnchainEvmCommand } from '@/cli/OnchainEvm'
 import { buildPredictionCommand } from '@/cli/Prediction'
 import { buildSmartMoneyCommand } from '@/cli/SmartMoney'
 import { buildSpotTradingCommand } from '@/cli/SpotTrading'
@@ -57,6 +58,7 @@ function buildTribesCli(): Command {
   program.addCommand(buildMarketCommand())
   program.addCommand(buildCoinCommand())
   program.addCommand(buildOnchainCommand())
+  program.addCommand(buildOnchainEvmCommand())
   program.addCommand(buildExchangesCommand())
   program.addCommand(buildTokenDataCommand())
   program.addCommand(buildSmartMoneyCommand())

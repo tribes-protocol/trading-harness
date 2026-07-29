@@ -3,6 +3,7 @@ import { readFile } from 'node:fs/promises'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { BirdeyeService } from '@/services/BirdeyeService'
+import { BlockscoutService } from '@/services/BlockscoutService'
 import { CoinService } from '@/services/CoinService'
 import { ExchangesService } from '@/services/ExchangesService'
 import { MarketService } from '@/services/MarketService'
@@ -10,8 +11,12 @@ import { NansenService } from '@/services/NansenService'
 import { OnchainService } from '@/services/OnchainService'
 import { StocksService } from '@/services/StocksService'
 
+// `valuePrefix` is the literal text the service puts in FRONT of the key inside
+// the slot — '' for a provider that sends the bare key, 'Bearer ' for one that
+// frames it as an auth scheme. The egress proxy swaps only the key substring, so
+// the prefix has to survive the round trip untouched.
 type CredentialPlacement =
-  | { readonly kind: 'header'; readonly name: string }
+  | { readonly kind: 'header'; readonly name: string; readonly valuePrefix: string }
   | { readonly kind: 'query'; readonly name: string }
 
 type EgressProbe = {
@@ -24,6 +29,7 @@ type EgressProbe = {
 
 const PROVIDER_ENV_NAMES = [
   'BIRDEYE_API_KEY',
+  'BLOCKSCOUT_API_KEY',
   'COIN_GECKO_PRO_API_KEY',
   'MARKETSTACK_API_KEY',
   'NANSEN_API_KEY'
@@ -34,35 +40,35 @@ const EGRESS_PROBES: readonly EgressProbe[] = [
     label: 'CoinGecko coin',
     envName: 'COIN_GECKO_PRO_API_KEY',
     origin: 'https://pro-api.coingecko.com',
-    credential: { kind: 'header', name: 'x-cg-pro-api-key' },
+    credential: { kind: 'header', name: 'x-cg-pro-api-key', valuePrefix: '' },
     invoke: (apiKey) => new CoinService({ apiKey }).getRates()
   },
   {
     label: 'CoinGecko market',
     envName: 'COIN_GECKO_PRO_API_KEY',
     origin: 'https://pro-api.coingecko.com',
-    credential: { kind: 'header', name: 'x-cg-pro-api-key' },
+    credential: { kind: 'header', name: 'x-cg-pro-api-key', valuePrefix: '' },
     invoke: (apiKey) => new MarketService({ apiKey }).getGlobal()
   },
   {
     label: 'CoinGecko onchain',
     envName: 'COIN_GECKO_PRO_API_KEY',
     origin: 'https://pro-api.coingecko.com',
-    credential: { kind: 'header', name: 'x-cg-pro-api-key' },
+    credential: { kind: 'header', name: 'x-cg-pro-api-key', valuePrefix: '' },
     invoke: (apiKey) => new OnchainService({ apiKey }).getNetworks({ limit: 50 })
   },
   {
     label: 'CoinGecko exchanges',
     envName: 'COIN_GECKO_PRO_API_KEY',
     origin: 'https://pro-api.coingecko.com',
-    credential: { kind: 'header', name: 'x-cg-pro-api-key' },
+    credential: { kind: 'header', name: 'x-cg-pro-api-key', valuePrefix: '' },
     invoke: (apiKey) => new ExchangesService({ apiKey }).list({ limit: 10 })
   },
   {
     label: 'BirdEye',
     envName: 'BIRDEYE_API_KEY',
     origin: 'https://public-api.birdeye.so',
-    credential: { kind: 'header', name: 'X-API-KEY' },
+    credential: { kind: 'header', name: 'X-API-KEY', valuePrefix: '' },
     invoke: (apiKey) =>
       new BirdeyeService({ apiKey }).getOverview({
         address: 'So11111111111111111111111111111111111111112',
@@ -73,7 +79,7 @@ const EGRESS_PROBES: readonly EgressProbe[] = [
     label: 'Nansen',
     envName: 'NANSEN_API_KEY',
     origin: 'https://api.nansen.ai',
-    credential: { kind: 'header', name: 'apiKey' },
+    credential: { kind: 'header', name: 'apiKey', valuePrefix: '' },
     invoke: (apiKey) => new NansenService({ apiKey }).getBalances({ wallet: '0xabc', chain: 'all' })
   },
   {
@@ -88,6 +94,20 @@ const EGRESS_PROBES: readonly EgressProbe[] = [
         to: null,
         limit: 100
       })
+  },
+  {
+    // Blockscout is the ONLY provider that sends the key bare in Authorization.
+    // An empty valuePrefix is the assertion: if someone later "fixes" this to
+    // `Bearer `, the probe fails instead of every request 401ing in production.
+    label: 'Blockscout',
+    envName: 'BLOCKSCOUT_API_KEY',
+    origin: 'https://api.blockscout.com',
+    credential: { kind: 'header', name: 'Authorization', valuePrefix: '' },
+    invoke: (apiKey) =>
+      new BlockscoutService({ apiKey }).getToken({
+        chainId: 1,
+        address: '0x6982508145454Ce325dDbE47a25d4ec3d2311933'
+      })
   }
 ]
 
@@ -96,7 +116,7 @@ describe('billed provider egress contract', () => {
     vi.restoreAllMocks()
   })
 
-  it('binds the exact four catalog environment names', async () => {
+  it('binds the exact catalog environment names', async () => {
     const envSource = await readFile(new URL('../../src/common/Env.ts', import.meta.url), 'utf8')
     const declarations = [
       ...envSource.matchAll(
@@ -132,7 +152,9 @@ describe('billed provider egress contract', () => {
       expect(requestUrl.origin, probe.label).toBe(probe.origin)
 
       if (probe.credential.kind === 'header') {
-        expect(new Headers(init?.headers).get(probe.credential.name), probe.label).toBe(apiKey)
+        expect(new Headers(init?.headers).get(probe.credential.name), probe.label).toBe(
+          `${probe.credential.valuePrefix}${apiKey}`
+        )
       } else {
         expect(requestUrl.searchParams.get(probe.credential.name), probe.label).toBe(apiKey)
       }
