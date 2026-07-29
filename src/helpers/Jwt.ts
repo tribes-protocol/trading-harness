@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto'
 import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import { dirname, resolve } from 'node:path'
 
@@ -91,9 +92,14 @@ async function writeDiskCache(params: WriteDiskCacheParams): Promise<void> {
 async function mintTokenCache(key: AgentAuthorizationKey): Promise<JwtTokenCache> {
   const privateKey = await importPKCS8(key.privateKeyPem, 'ES256')
   const app = key.app ?? undefined
+  // jti is MANDATORY on the control plane (apps/api SandboxJwtClaimsSchema, #2107):
+  // it is the deny-list handle that makes every token revocable, and a token without
+  // it fails that parse before any key work — so it is rejected exactly like no token
+  // at all. Minting without one made every harness call 401.
   const token = await new SignJWT({ sandboxId: key.sandboxId, app })
     .setProtectedHeader({ alg: 'ES256' })
     .setSubject(key.userId)
+    .setJti(randomUUID())
     .setIssuedAt()
     .setExpirationTime(TOKEN_TTL)
     .sign(privateKey)
