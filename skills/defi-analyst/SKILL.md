@@ -65,7 +65,30 @@ All under `tribes-cli onchain`; every subcommand accepts `--out <file>`. All rea
 | `pair-ohlcv`        | Base/quote pair OHLCV candles: base priced in quote (t in epoch ms)         | `--network`, `--pool`, `--base`, `--quote`, `--timeframe minute\|hour\|day` | `--aggregate`, `--limit` 1-1000 (default 100)                                                                                                                  |
 | `recently-updated`  | Tokens whose GeckoTerminal metadata was updated most recently               | none                                                                        | `--limit` 1-100 (default 50)                                                                                                                                   |
 
+### `tribes-cli mesh` — protocol and chain aggregates (DefiLlama)
+
+`defi-analyst` above is pool-level and on-chain. These are the PROTOCOL and CHAIN level numbers
+no pool query can give: TVL, revenue, and cross-protocol yields.
+
+| Subcommand | Purpose                                        | Required flags | Useful flags                                                  |
+| ---------- | ---------------------------------------------- | -------------- | ------------------------------------------------------------- |
+| `protocol` | TVL and revenue metrics for one protocol       | `--protocol`   | slug form, e.g. `aave`                                        |
+| `chain`    | Aggregate TVL and activity for one chain       | `--chain`      | name form, e.g. `ethereum`                                    |
+| `yields`   | Yield pools filtered by chain, project, symbol | none           | `--chain`, `--project`, `--symbol`, `--stablecoin`, `--limit` |
+
 ## Examples
+
+### Protocol health and the cash leg of a carry trade
+
+```bash
+tribes-cli mesh protocol --protocol aave
+tribes-cli mesh chain --chain ethereum
+tribes-cli mesh yields --project aave-v3 --chain ethereum --stablecoin --limit 20
+```
+
+`yields` is what makes a funding-carry trade concrete: the perp leg's funding rate is only edge
+if it clears the stablecoin rate you could earn on the cash leg instead. Compare the two before
+calling any carry attractive.
 
 ### Pool details by address
 

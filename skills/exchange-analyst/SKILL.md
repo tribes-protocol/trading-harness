@@ -3,7 +3,8 @@ name: exchange-analyst
 description: >-
   Expert on centralized exchanges, derivatives markets, and institutional crypto holdings.
   Handles: exchange rankings and volume trends, individual exchange profiles and tickers,
-  derivatives/futures tickers and open interest, derivatives exchange rankings, public
+  derivatives/futures tickers and open interest, cross-venue perp funding rates, spot-futures
+  carry candidates, derivatives exchange rankings, public
   treasury holdings (which companies hold BTC or ETH and how much), and Hyperliquid order-book
   depth. Call when the EXCHANGE or derivatives market is the subject. NOT for: which exchanges
   list a specific coin (use fundamentals-analyst); what is tradable on Hyperliquid or your own
@@ -13,9 +14,10 @@ allowed-tools: bash read
 
 # Exchange Analyst
 
-Backing command group: `tribes-cli exchanges` — CoinGecko-Pro-backed exchange, derivatives, and
-treasury data as structured JSON, answering in seconds. Plus `tribes-cli hyperliquid order-book`
-for Hyperliquid depth. YOU are the analyst: pull the numbers with the subcommands below and do
+Backing command groups: `tribes-cli exchanges` — CoinGecko-Pro-backed exchange, derivatives, and
+treasury data as structured JSON, answering in seconds. Plus `tribes-cli mesh` for cross-venue
+Binance perp funding and carry screening, and `tribes-cli hyperliquid order-book` for
+Hyperliquid depth. YOU are the analyst: pull the numbers with the subcommands below and do
 the interpretation — venue comparisons, open-interest reads, treasury trends — yourself.
 
 ## When to use
@@ -26,6 +28,9 @@ the interpretation — venue comparisons, open-interest reads, treasury trends �
 - Derivatives market context: futures/perp tickers with open interest, volume, and funding
   across venues (`derivatives`).
 - Rank derivatives venues by open interest (`derivatives-exchanges`).
+- Funding and open interest on a Binance perp, or a spot-futures carry screen
+  (`mesh funding`, `mesh basis`) — use this when the question is whether a funding print is
+  venue-specific or market-wide, which Hyperliquid data alone cannot answer.
 - Public treasuries: which companies hold BTC or ETH and their holdings size (`treasury`);
   per-entity holdings, buy/sell history, and holdings-over-time (`treasury-entities`,
   `treasury-entity`, `treasury-history`, `treasury-chart`).
@@ -50,6 +55,11 @@ the interpretation — venue comparisons, open-interest reads, treasury trends �
    (holdings over time).
 5. If a command reports the provider key is not set, the capability is unavailable on this box —
    report that plainly instead of retrying or working around it.
+6. `mesh funding` with no `--symbol` covers ONLY five majors (BTC, ETH, SOL, BNB, XRP). That set
+   is fixed upstream, so a symbol absent from the output was never queried — it is NOT evidence
+   that the market has no funding data. Pass `--symbol` for anything else.
+7. `mesh funding --oi` returns open interest as an English SENTENCE, not numbers. Quote it or
+   summarize it; do not try to parse figures out of it.
 
 ## Command reference
 
@@ -71,7 +81,26 @@ read-only.
 | `treasury-history`       | Buy/sell transaction history of one treasury entity                  | `--entity`           | `--limit` 1-250 (default 50)                             |
 | `hyperliquid order-book` | L2 order book snapshot for a perp coin                               | `--coin`             | `--depth` 1-20 (default 10), `--dex`                     |
 
+### `tribes-cli mesh` — cross-venue funding
+
+| Subcommand | Purpose                                                    | Required flags | Useful flags       |
+| ---------- | ---------------------------------------------------------- | -------------- | ------------------ |
+| `funding`  | Funding rate + APR for one perp, or the five majors        | none           | `--symbol`, `--oi` |
+| `basis`    | Spot-versus-futures carry candidates above a funding floor | none           | `--min-rate`       |
+
 ## Examples
+
+### Is this funding print venue-specific or market-wide?
+
+```bash
+tribes-cli mesh funding --symbol BTC --oi
+tribes-cli mesh funding
+tribes-cli mesh basis --min-rate 0.01
+```
+
+Hyperliquid shows funding on the venue being traded; `mesh funding` shows Binance for the same
+symbol. Agreement means a market-wide regime, divergence means a venue-local dislocation — and
+those two lead to opposite trades.
 
 ### Rank and profile centralized exchanges
 

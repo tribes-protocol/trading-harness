@@ -77,11 +77,14 @@ Every subcommand accepts `--out <file>`. All read-only.
 
 ### Discovery subcommands from other groups
 
-| Command                   | Purpose                                    | Required flags | Useful flags                                             |
-| ------------------------- | ------------------------------------------ | -------------- | -------------------------------------------------------- |
-| `token-data trending`     | Trending tokens ranked by BirdEye          | none           | `--limit` (1-20, default 20), `--chain` (default solana) |
-| `token-data new-listings` | Newly listed tokens with initial liquidity | none           | `--limit` (1-20, default 10), `--chain` (default solana) |
-| `market trending`         | Trending coins by search popularity        | none           |                                                          |
+| Command                   | Purpose                                     | Required flags | Useful flags                                             |
+| ------------------------- | ------------------------------------------- | -------------- | -------------------------------------------------------- |
+| `token-data trending`     | Trending tokens ranked by BirdEye           | none           | `--limit` (1-20, default 20), `--chain` (default solana) |
+| `token-data new-listings` | Newly listed tokens with initial liquidity  | none           | `--limit` (1-20, default 10), `--chain` (default solana) |
+| `market trending`         | Trending coins by search popularity         | none           |                                                          |
+| `mesh trending-tokens`    | Tickers trending among influential accounts | none           | `--window` (default 24h)                                 |
+| `mesh mentions`           | Mentions of up to 3 keywords by them        | `--keyword`    | repeatable x3, `--days`, `--limit`                       |
+| `mesh account`            | Engagement stats + mentions for one account | `--username`   | `--days`, `--limit`                                      |
 
 ## Examples
 
@@ -90,12 +93,29 @@ Every subcommand accepts `--out <file>`. All read-only.
 ```bash
 tribes-cli token-data trending --chain solana --limit 20
 tribes-cli market trending
+tribes-cli mesh trending-tokens --window 24h
 tribes-cli smart-money netflow --chain all --limit 20
 tribes-cli smart-money token-list --chain ethereum --timeframe 24h
 ```
 
 Intersect the lists yourself; report tokens appearing in BOTH trending and smart-money flows
 first as strongest candidates, the rest secondary.
+
+`mesh trending-tokens` is a THIRD axis: what influential accounts are talking about, which moves
+before on-chain flow does. Treat it as a watchlist seed only — it returns bare tickers with no
+counts or sentiment, so it can rank nothing on its own. A ticker appearing in social AND
+smart-money flow is the strongest signal here; social alone is a lead, not a finding.
+
+### Who is talking about a candidate
+
+```bash
+tribes-cli mesh mentions --keyword '$MOG' --days 7 --limit 20
+tribes-cli mesh account --username <handle> --days 30
+```
+
+`mentions` covers influential accounts only, never the full firehose — the narrow coverage is
+the product, not a limitation. Keywords must be words or short phrases (max 3); a sentence
+returns nothing.
 
 ### Smart-money accumulation
 

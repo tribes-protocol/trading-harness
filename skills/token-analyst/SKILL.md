@@ -121,10 +121,17 @@ selling (smart traders vs whales vs exchanges) from `flow-intelligence`.
 tribes-cli token-data security --address 0x6982508145454ce325ddbe47a25d4ec3d2311933 --chain ethereum
 tribes-cli token-data holders --address 0x6982508145454ce325ddbe47a25d4ec3d2311933 --chain ethereum --limit 50
 tribes-cli coin contract --platform ethereum --address 0x6982508145454ce325ddbe47a25d4ec3d2311933
+tribes-cli mesh token-safety --address 0x6982508145454ce325ddbe47a25d4ec3d2311933 --chain-id 1
 ```
 
 Combine mint/freeze flags and owner/creator from `security`, concentration from `holders`, and
 the CoinGecko identity check from `coin contract` into one verdict.
+
+`mesh token-safety` is a SECOND, independent screen (honeypot, sell tax, LP lock, proxy and
+authority checks) from a different vendor. Run it on anything low-cap or newly deployed: two
+sources disagreeing about sellability is itself the finding, and the question it answers — can
+this actually be sold — gates position size rather than informing it. Note `--chain-id` takes a
+numeric id (1 Ethereum, 8453 Base, 56 BNB), not the chain NAME the other subcommands take.
 
 ### Ambiguous symbol — resolve first, then pull data
 
