@@ -3,9 +3,10 @@ name: exchange-analyst
 description: >-
   Expert on centralized exchanges, derivatives markets, and institutional crypto holdings.
   Handles: exchange rankings and volume trends, individual exchange profiles and tickers,
-  derivatives/futures tickers and open interest, derivatives exchange rankings, public
-  treasury holdings (which companies hold BTC or ETH and how much), and Hyperliquid order-book
-  depth. Call when the EXCHANGE or derivatives market is the subject. NOT for: which exchanges
+  derivatives/futures tickers and open interest, derivatives exchange rankings, perp funding-rate
+  history, long/short ratio, liquidation clusters and large liquidation prints, options market
+  data, spot-ETF net flows, public treasury holdings (which companies hold BTC or ETH and how
+  much), and Hyperliquid order-book depth. Call when the EXCHANGE or derivatives market is the subject. NOT for: which exchanges
   list a specific coin (use fundamentals-analyst); what is tradable on Hyperliquid or your own
   positions/orders (use hyperliquid); DEX pools and pairs (use defi-analyst).
 allowed-tools: bash read
@@ -13,9 +14,10 @@ allowed-tools: bash read
 
 # Exchange Analyst
 
-Backing command group: `tribes-cli exchanges` — CoinGecko-Pro-backed exchange, derivatives, and
-treasury data as structured JSON, answering in seconds. Plus `tribes-cli hyperliquid order-book`
-for Hyperliquid depth. YOU are the analyst: pull the numbers with the subcommands below and do
+Backing command groups: `tribes-cli exchanges` — CoinGecko-Pro-backed exchange, derivatives, and
+treasury data as structured JSON, answering in seconds. Plus `tribes-cli surf` for the
+derivatives internals CoinGecko does not carry (funding history, liquidations, options, ETF
+flows), and `tribes-cli hyperliquid order-book` for Hyperliquid depth. YOU are the analyst: pull the numbers with the subcommands below and do
 the interpretation — venue comparisons, open-interest reads, treasury trends — yourself.
 
 ## When to use
@@ -26,6 +28,13 @@ the interpretation — venue comparisons, open-interest reads, treasury trends �
 - Derivatives market context: futures/perp tickers with open interest, volume, and funding
   across venues (`derivatives`).
 - Rank derivatives venues by open interest (`derivatives-exchanges`).
+- Funding-rate HISTORY for one perp, or the long/short account ratio over time
+  (`surf funding-history`, `surf long-short`) — `exchanges derivatives` gives one live snapshot
+  across venues; these give the time series for a single market.
+- Where the stops are: liquidation volume over time, totals ranked by venue, and individual
+  large prints (`surf liquidations`, `surf liquidation-venues`, `surf liquidation-orders`).
+- Options market data for a volatility read (`surf options`).
+- Spot-ETF net flows — the TradFi bid, invisible to every on-chain source (`surf etf-flows`).
 - Public treasuries: which companies hold BTC or ETH and their holdings size (`treasury`);
   per-entity holdings, buy/sell history, and holdings-over-time (`treasury-entities`,
   `treasury-entity`, `treasury-history`, `treasury-chart`).
@@ -50,6 +59,13 @@ the interpretation — venue comparisons, open-interest reads, treasury trends �
    (holdings over time).
 5. If a command reports the provider key is not set, the capability is unavailable on this box —
    report that plainly instead of retrying or working around it.
+6. `surf` takes a PAIR, not a ticker: `--pair BTC/USDT`, or `BTC/USDC:USDC` for Hyperliquid's
+   USDC-settled perps. A bare `BTC` is accepted and returns nothing.
+7. `surf` exchange names are case-sensitive and the casing DIFFERS by subcommand:
+   `funding-history` and `long-short` take lowercase (`binance`); the liquidation subcommands
+   take title case (`Binance`). Using the wrong case fails locally with a clear error.
+8. A `surf` 402 does NOT mean the balance is spent — it means the request reached SurfAI without
+   a key. Report it as a provider misconfiguration, not as a quota problem.
 
 ## Command reference
 
@@ -71,7 +87,45 @@ read-only.
 | `treasury-history`       | Buy/sell transaction history of one treasury entity                  | `--entity`           | `--limit` 1-250 (default 50)                             |
 | `hyperliquid order-book` | L2 order book snapshot for a perp coin                               | `--coin`             | `--depth` 1-20 (default 10), `--dex`                     |
 
+### `tribes-cli surf` — derivatives internals
+
+All read-only; every subcommand accepts `--out <file>`.
+
+| Subcommand           | Purpose                                                       | Required flags | Useful flags                                                         |
+| -------------------- | ------------------------------------------------------------- | -------------- | -------------------------------------------------------------------- |
+| `funding-history`    | Funding-rate history for one perp on one venue                | `--pair`       | `--exchange` (lowercase), `--from`, `--limit`                        |
+| `long-short`         | Long/short account ratio over time                            | `--pair`       | `--interval 1h\|4h\|1d`, `--exchange`, `--from`, `--limit`           |
+| `liquidations`       | Aggregated liquidation volume over time                       | `--symbol`     | `--interval`, `--exchange` (title case), `--limit`, `--from`, `--to` |
+| `liquidation-venues` | Liquidation totals ranked across venues (snapshot, no series) | none           | `--symbol`, `--time-range 1h\|4h\|12h\|24h`, `--sort-by`, `--order`  |
+| `liquidation-orders` | Individual liquidation prints above a USD threshold           | none           | `--symbol`, `--exchange`, `--min-amount`, `--side`, `--limit`        |
+| `options`            | Options market data for one symbol                            | `--symbol`     | `--sort-by open_interest\|volume_24h`, `--order`                     |
+| `etf-flows`          | Spot-ETF net flow history                                     | `--symbol`     | `--sort-by flow_usd\|timestamp`, `--order`, `--from`, `--to`         |
+
 ## Examples
+
+### Funding, positioning, and where the stops are
+
+```bash
+tribes-cli surf funding-history --pair BTC/USDT --exchange binance --limit 100
+tribes-cli surf long-short --pair BTC/USDT --interval 4h
+tribes-cli surf liquidations --symbol BTC --interval 1h --limit 168
+tribes-cli surf liquidation-venues --symbol BTC --time-range 24h
+tribes-cli surf liquidation-orders --symbol BTC --min-amount 100000 --limit 20
+```
+
+Read them together, not separately: persistently positive funding plus a crowded long/short
+ratio plus a dense band of long liquidations just below spot is a squeeze setup, and no one of
+those three says so on its own.
+
+### Volatility and the TradFi bid
+
+```bash
+tribes-cli surf options --symbol BTC --sort-by open_interest
+tribes-cli surf etf-flows --symbol BTC --sort-by timestamp --order desc
+```
+
+Options open interest gives the strikes the market is defending; ETF flows give the direction of
+the spot bid that on-chain data cannot see at all.
 
 ### Rank and profile centralized exchanges
 
@@ -123,3 +177,4 @@ Resolve the entity id from `treasury-entities`, then read accumulation or distri
 - `hyperliquid` — tradable Hyperliquid markets, your own positions, orders, and balances.
 - `defi-analyst` — DEX pools, pairs, TVL, and on-chain liquidity.
 - `market-strategist` — market-wide caps, dominance, rankings, and movers.
+- `position-management` — placing stops against the liquidation clusters found here.

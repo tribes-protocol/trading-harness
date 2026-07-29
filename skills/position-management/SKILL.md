@@ -79,6 +79,17 @@ Flags: `NO-STOP`, `THIN-LIQ-BUFFER`, `LEV/EXPOSURE-CONCERN`, `MARKET-QUALITY-CON
 
 ### 2. Move or add a stop-loss on an existing position
 
+Before choosing the level, check where the liquidation cluster sits — a stop placed just inside a
+dense band of the SAME-side liquidations is the level the market is most likely to hunt:
+
+```bash
+tribes-cli surf liquidations --symbol ETH --interval 1h --limit 168
+tribes-cli surf liquidation-orders --symbol ETH --side long --min-amount 100000
+```
+
+That is context for picking the price, not a reason to skip the risk policy below. If the SurfAI
+key is not configured on this box the commands say so — place the stop on structure instead.
+
 Example position: long 0.5 ETH on main.
 
 ```bash
@@ -191,6 +202,7 @@ tribes-cli hyperliquid trade-perp \
 - `trade-execution` — opening a NEW position end-to-end with pre/post checks.
 - `wallet-analyst` — realized/unrealized PnL and portfolio history context.
 - `thesis` — debate whether the position should still exist (HOLD, ADD, or EXIT).
+- `exchange-analyst` — funding history, liquidation clusters, options and ETF-flow context.
 
 ## Before you finish
 
