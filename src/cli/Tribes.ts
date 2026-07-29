@@ -22,6 +22,7 @@ import { buildHyperliquidCommand } from '@/cli/Hyperliquid'
 import { buildLoginCommand } from '@/cli/Login'
 import { buildMacrosCommand } from '@/cli/Macros'
 import { buildMarketCommand } from '@/cli/Market'
+import { buildMeshCommand } from '@/cli/Mesh'
 import { buildNewsCommand } from '@/cli/News'
 import { buildNotifyCommand } from '@/cli/Notify'
 import { buildOnchainCommand } from '@/cli/Onchain'
@@ -60,6 +61,7 @@ function buildTribesCli(): Command {
   program.addCommand(buildExchangesCommand())
   program.addCommand(buildTokenDataCommand())
   program.addCommand(buildSmartMoneyCommand())
+  program.addCommand(buildMeshCommand())
   program.addCommand(buildWalletDataCommand())
   program.addCommand(buildStocksCommand())
   program.addCommand(buildEnsCommand())
