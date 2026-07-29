@@ -28,6 +28,10 @@ export const ApifyTweetSchema = z
   .object({
     id: z.string().nullish(),
     url: z.string().nullish(),
+    // The actor's placeholder row for a run it will not serve. Modelled
+    // explicitly because these rows are BILLED like real ones, so they have to
+    // be detectable rather than passed through as empty tweets.
+    noResults: z.boolean().nullish(),
     text: z.string().nullish(),
     createdAt: z.string().nullish(),
     retweetCount: z.number().nullish(),

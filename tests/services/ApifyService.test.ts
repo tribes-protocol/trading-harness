@@ -139,6 +139,43 @@ describe('ApifyService', () => {
     expect(tweets[0]?.author?.userName).toBe('someone')
   })
 
+  it('rejects a run that returned only billed placeholder rows', async () => {
+    // Observed live on a FREE plan: ten {noResults:true} rows, charged as ten
+    // dataset items, on a run reporting SUCCEEDED. Passing those back would read
+    // as "nobody is talking about $BTC", which is a materially wrong conclusion.
+    mockJson([{ noResults: true }, { noResults: true }, { noResults: true }])
+
+    const error = await new ApifyService({ apiKey: API_KEY })
+      .searchTweets(search)
+      .catch((caught: unknown) => caught)
+
+    expect(error).toBeInstanceOf(Error)
+    if (error instanceof Error) {
+      expect(error.message).toContain('placeholder rows')
+      expect(error.message).toContain('billed anyway')
+      expect(error.message).toContain('NO DATA')
+    }
+  })
+
+  it('still returns real tweets when placeholders are mixed in', async () => {
+    // Only an ALL-sentinel response is a failed run. One stray placeholder beside
+    // genuine tweets must not throw away the genuine ones.
+    mockJson([{ noResults: true }, { id: '1', text: 'gm' }])
+
+    const tweets = await new ApifyService({ apiKey: API_KEY }).searchTweets(search)
+
+    expect(tweets).toHaveLength(2)
+    expect(tweets[1]?.text).toBe('gm')
+  })
+
+  it('accepts a genuinely empty result set', async () => {
+    // An empty array is a real answer — the query matched nothing — and is
+    // distinct from the placeholder case above.
+    mockJson([])
+
+    await expect(new ApifyService({ apiKey: API_KEY }).searchTweets(search)).resolves.toEqual([])
+  })
+
   it('tells the caller not to retry a 408, because the run is still billing', async () => {
     // Apify caps the synchronous leg at 300s, but the run is a separate object
     // that keeps executing and keeps charging. Retrying turns one timed-out

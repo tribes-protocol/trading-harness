@@ -74,7 +74,34 @@ export class ApifyService {
       input,
       maxTotalChargeUsd: this.chargeCeilingUsd(params.limit)
     })
-    return ApifyTweetsSchema.parse(json)
+    const tweets = ApifyTweetsSchema.parse(json)
+    this.assertNotSentinel(tweets)
+    return tweets
+  }
+
+  // The actor answers a run it cannot serve with `{noResults: true}` placeholder
+  // rows rather than an empty array or an error — and those rows are BILLED as
+  // dataset items, so a run that returned nothing still costs money.
+  //
+  // Observed live on a FREE Apify plan: ten sentinels, charged as ten items
+  // ($0.004), on a run reporting SUCCEEDED with statusMessage "Please subscribe
+  // to a paid plan". Handing those straight back would give the desk ten empty
+  // objects that look like a genuine absence of chatter, which is a materially
+  // wrong read — absence of tweets about $BTC would itself be a signal.
+  private assertNotSentinel(tweets: ApifyTweets): void {
+    if (tweets.length === 0) {
+      return
+    }
+    const allSentinel = tweets.every(
+      (tweet) => tweet.noResults === true && isNullish(tweet.id) && isNullish(tweet.text)
+    )
+    if (allSentinel) {
+      throw new Error(
+        `Apify ${TWEET_SCRAPER_ACTOR} returned ${tweets.length} placeholder rows and no tweets — ` +
+          'the run was billed anyway. This usually means the Apify account is on the FREE plan; ' +
+          'the actor gates real results behind a paid plan. Treat as NO DATA, not as an absence of chatter'
+      )
+    }
   }
 
   // The dollar ceiling for a run of `limit` results, rounded up to the cent.
