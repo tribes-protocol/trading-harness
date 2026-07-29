@@ -5,11 +5,12 @@ import { HeuristService } from '@/services/HeuristService'
 const API_KEY = 'user123#secret'
 
 function mockJson(body: unknown): ReturnType<typeof vi.spyOn> {
-  return vi
-    .spyOn(globalThis, 'fetch')
-    .mockResolvedValue(
-      new Response(JSON.stringify(body), { status: 200, headers: { 'Content-Type': 'application/json' } })
-    )
+  return vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+    new Response(JSON.stringify(body), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' }
+    })
+  )
 }
 
 function requestBody(spy: ReturnType<typeof vi.spyOn>): Record<string, unknown> {
@@ -65,7 +66,10 @@ describe('HeuristService', () => {
     mockJson({
       data: {
         status: 'success',
-        data: { symbol: 'BTCUSDT', funding: { latest_rate: 0.0001, interval_hours: 8, apr: 0.1095 } }
+        data: {
+          symbol: 'BTCUSDT',
+          funding: { latest_rate: 0.0001, interval_hours: 8, apr: 0.1095 }
+        }
       }
     })
 
@@ -85,7 +89,9 @@ describe('HeuristService', () => {
     // The trap this API sets: a failed tool answers 200 with the failure in the
     // body, and the credit is spent anyway. Parsing it as a result would report
     // "no data" for what was really an upstream error.
-    mockJson({ data: { status: 'error', error: "Tool 'get_all_funding_rates' timed out after 30s" } })
+    mockJson({
+      data: { status: 'error', error: "Tool 'get_all_funding_rates' timed out after 30s" }
+    })
 
     await expect(new HeuristService({ apiKey: API_KEY }).getAllFundingRates()).rejects.toThrow(
       /timed out after 30s/
