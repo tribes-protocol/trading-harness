@@ -1,4 +1,5 @@
 import {
+  SurfErrorSchema,
   type SurfEtfFlow,
   SurfEtfFlowSchema,
   type SurfFundingHistory,
@@ -191,25 +192,60 @@ export class SurfService {
       }
     })
     if (!response.ok) {
-      throw new Error(this.transportError({ path, status: response.status, response }))
+      const code = await this.errorCode(response)
+      throw new Error(
+        this.transportError({
+          path,
+          status: response.status,
+          statusText: response.statusText,
+          code
+        })
+      )
     }
     const json: unknown = await response.json()
     return json
   }
 
-  // A 402 here does not mean the balance is spent. SurfAI serves an anonymous
-  // free tier that is evaluated BEFORE key auth, so a request that lost its
-  // credential never 401s — it egresses unauthenticated and 402s once that
-  // shared per-IP pool drains. Saying so turns an inscrutable quota error into
-  // the injection failure it actually is.
+  // SurfAI's machine-readable error code, or null when the body is not its usual
+  // envelope. Read defensively: an error path must never throw a parse failure
+  // over the top of the real error.
+  private async errorCode(response: Response): Promise<string | null> {
+    try {
+      const parsed = SurfErrorSchema.safeParse(await response.json())
+      return parsed.success ? (parsed.data.error?.code ?? null) : null
+    } catch {
+      return null
+    }
+  }
+
+  // SurfAI answers 402 for TWO unrelated failures, and only the body's code
+  // tells them apart. Guessing sends the reader to the wrong place entirely:
+  //
+  //   PAID_BALANCE_ZERO     the key worked and the account is out of credit.
+  //                         Top it up; nothing is misconfigured.
+  //   FREE_QUOTA_EXHAUSTED  the key never arrived, so the request fell through
+  //                         to the anonymous per-IP tier and drained it. THIS is
+  //                         the injection failure.
+  //
+  // Verified live against both states — an earlier version of this reported every
+  // 402 as a missing key and would have sent someone hunting a proxy bug while
+  // the real answer was a $10 top-up.
   private transportError(params: {
     readonly path: string
     readonly status: number
-    readonly response: Response
+    readonly statusText: string
+    readonly code: string | null
   }): string {
-    const base = `SurfAI ${params.path} failed: ${params.status} ${params.response.statusText}`
-    return params.status === 402
-      ? `${base} — the request reached SurfAI without a key and fell back to the anonymous free tier, which is exhausted`
-      : base
+    const base = `SurfAI ${params.path} failed: ${params.status} ${params.statusText}`.trimEnd()
+    if (params.status !== 402) {
+      return params.code === null ? base : `${base} (${params.code})`
+    }
+    if (params.code === 'PAID_BALANCE_ZERO') {
+      return `${base} — the key is valid but the SurfAI account is out of credit; top it up (minimum $10). This is NOT a misconfiguration`
+    }
+    if (params.code === 'FREE_QUOTA_EXHAUSTED') {
+      return `${base} — the request reached SurfAI WITHOUT a key and fell back to the anonymous per-IP tier, which is exhausted; the credential was not injected`
+    }
+    return `${base} — payment required${params.code === null ? '' : ` (${params.code})`}; either the account is out of credit or the key did not arrive`
   }
 }

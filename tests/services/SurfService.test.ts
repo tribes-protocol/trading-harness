@@ -111,10 +111,32 @@ describe('SurfService', () => {
     expect(result.meta?.cached).toBe(true)
   })
 
-  it('explains a 402 as a lost credential rather than a spent balance', async () => {
-    // SurfAI evaluates an anonymous free tier BEFORE key auth, so a request that
-    // lost its key never 401s — it 402s once the shared per-IP pool drains. That
-    // is an injection failure wearing a quota error's clothes.
+  it('reads a 402 as an empty balance when the code says so', async () => {
+    // Both 402 states look identical from the status line. Confirmed live: a
+    // VALID key on a drained account returns PAID_BALANCE_ZERO, and calling that
+    // a missing credential sends the reader hunting a proxy bug that isn't there.
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response('{"error":{"code":"PAID_BALANCE_ZERO","message":"insufficient credit"}}', {
+        status: 402,
+        statusText: 'Payment Required'
+      })
+    )
+
+    const error = await new SurfService({ apiKey: API_KEY })
+      .getOptions({ symbol: 'BTC', sortBy: null, order: null })
+      .catch((caught: unknown) => caught)
+
+    expect(error).toBeInstanceOf(Error)
+    if (error instanceof Error) {
+      expect(error.message).toContain('out of credit')
+      expect(error.message).toContain('NOT a misconfiguration')
+      expect(error.message).not.toContain('WITHOUT a key')
+    }
+  })
+
+  it('reads a 402 as a lost credential when the code says THAT', async () => {
+    // The other 402: no key reached SurfAI, so it fell through to the anonymous
+    // per-IP tier and drained it. This one IS the injection failure.
     vi.spyOn(globalThis, 'fetch').mockResolvedValue(
       new Response('{"error":{"code":"FREE_QUOTA_EXHAUSTED"}}', {
         status: 402,
@@ -128,8 +150,25 @@ describe('SurfService', () => {
 
     expect(error).toBeInstanceOf(Error)
     if (error instanceof Error) {
-      expect(error.message).toContain('without a key')
-      expect(error.message).toContain('anonymous free tier')
+      expect(error.message).toContain('WITHOUT a key')
+      expect(error.message).toContain('not injected')
+    }
+  })
+
+  it('stays honest about an unrecognised 402 instead of guessing', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response('not json at all', { status: 402, statusText: 'Payment Required' })
+    )
+
+    const error = await new SurfService({ apiKey: API_KEY })
+      .getOptions({ symbol: 'BTC', sortBy: null, order: null })
+      .catch((caught: unknown) => caught)
+
+    expect(error).toBeInstanceOf(Error)
+    if (error instanceof Error) {
+      expect(error.message).toContain(
+        'either the account is out of credit or the key did not arrive'
+      )
     }
   })
 
