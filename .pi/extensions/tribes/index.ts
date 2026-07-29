@@ -2,10 +2,12 @@
  * The `tribes` extension — everything the harness wires into Pi, in one place:
  *   - installs the host-minted agent key + materializes .env (./AuthBootstrap.ts)
  *   - renders the welcome header on startup (./Welcome.ts)
- *   - warms the wallet snapshot on startup when the wallet extension is on
- *   - registers wallet + Hyperliquid status extensions (./wallet, ./hyperliquid);
- *     BOTH are OFF by default and enabled per-extension via /wallet on and
- *     /hyperliquid on (persisted in runtime/tribes/extension-toggles.json)
+ *   - warms the wallet snapshot on startup so both status panels (and the CLI)
+ *     find an account the moment they need one
+ *   - registers the independent wallet + Hyperliquid status extensions
+ *     (./wallet, ./hyperliquid); BOTH are OFF by default, each toggled by its
+ *     own /wallet:status and /hyperliquid:status (persisted in
+ *     runtime/tribes/extension-toggles.json)
  *   - exposes a `/tribes:login` command so a logged-out user can authenticate in-app
  *
  * The LLM needs no wiring here: pi's built-in openrouter provider runs off the
@@ -25,8 +27,8 @@ import {
   runLogin,
   writeAuthEnv
 } from './AuthBootstrap.ts'
-import { readExtensionToggles } from './ExtensionToggles.ts'
 import registerHyperliquidExtension from './hyperliquid/index.ts'
+import { STATUS_REFRESH_EVENT } from './StatusRefresh.ts'
 import { registerWalletExtension } from './wallet/WalletExtension.ts'
 import { warmWalletSnapshot } from './WalletSnapshot.ts'
 import { showWelcome } from './Welcome.ts'
@@ -90,16 +92,14 @@ export default async function tribes(pi: ExtensionAPI): Promise<void> {
     }
 
     startAuthRefreshTimer(ctx.cwd)
-    // Warm the wallet snapshot only when the wallet extension is enabled —
-    // startup enables neither extension by default (each has its own explicit
-    // /wallet on|off and /hyperliquid on|off toggle).
-    if ((await readExtensionToggles(ctx.cwd)).wallet) {
-      try {
-        await warmWalletSnapshot(ctx.cwd)
-        pi.events.emit('wallet:changed', undefined)
-      } catch {
-        // Warm-up is best-effort.
-      }
+    // Warm the wallet snapshot regardless of which panels are on: it is the
+    // account cache the wallet panel, the Hyperliquid panel and tribes-cli all
+    // read, so gating it on one panel's toggle would leave the other blank.
+    try {
+      await warmWalletSnapshot(ctx.cwd)
+      pi.events.emit('wallet:changed', undefined)
+    } catch {
+      // Warm-up is best-effort.
     }
   })
 
@@ -126,6 +126,15 @@ export default async function tribes(pi: ExtensionAPI): Promise<void> {
         if (!again) return
       }
       await runLogin(pi, ctx, startAuthRefreshTimer)
+    }
+  })
+
+  pi.registerCommand('refresh', {
+    description: 'Refresh the account data behind the status panels',
+    handler: async (_args, ctx) => {
+      // Broadcast only — each status extension refreshes itself if it is on.
+      pi.events.emit(STATUS_REFRESH_EVENT, undefined)
+      ctx.ui.notify('Account data refresh requested', 'info')
     }
   })
 

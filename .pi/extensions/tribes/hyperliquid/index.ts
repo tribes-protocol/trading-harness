@@ -5,22 +5,8 @@ import { dirname, resolve } from 'node:path'
 import type { ExtensionAPI, ExtensionContext, Theme } from '@earendil-works/pi-coding-agent'
 import type { TUI } from '@earendil-works/pi-tui'
 
-import {
-  EXTENSION_TOGGLED_EVENT,
-  parseToggleArg,
-  readExtensionToggles,
-  writeExtensionToggle
-} from '../ExtensionToggles.ts'
-import {
-  coerceStatusPanelState,
-  readStatusPanelState,
-  selectStatusPanel,
-  STATUS_PAGE_EVENT,
-  STATUS_PANEL_EVENT,
-  STATUS_REFRESH_EVENT,
-  type StatusPanelState,
-  writeStatusPanelState
-} from '../wallet/PanelState.ts'
+import { readExtensionToggles, writeExtensionToggle } from '../ExtensionToggles.ts'
+import { STATUS_REFRESH_EVENT } from '../StatusRefresh.ts'
 import { FALLBACK_PERP_DEXES, resolvePerpDexes } from './DexDiscovery.ts'
 import { ensureJsonTreeString } from './EnsureJson.ts'
 import {
@@ -165,11 +151,10 @@ function resolveConfigPath(cwd: string): string {
 }
 
 type WidgetConfig = {
-  showWidget: boolean
   activeTab: HlTab
 }
 
-const DEFAULT_CONFIG: WidgetConfig = { showWidget: true, activeTab: 'positions' }
+const DEFAULT_CONFIG: WidgetConfig = { activeTab: 'positions' }
 
 function coerceTab(value: unknown): HlTab {
   return TAB_ORDER.find((tab) => tab === value) ?? 'positions'
@@ -918,11 +903,6 @@ async function refreshStatusSnapshot(cwd: string): Promise<HyperliquidStatus> {
 }
 
 export default function hyperliquidStatus(pi: ExtensionAPI): void {
-  let showWidget = true
-  let panelState: StatusPanelState = {
-    activePanel: 'hyperliquid',
-    lastVisiblePanel: 'hyperliquid'
-  }
   let activeTab: HlTab = 'positions'
   // Row offset into the active tab's list; paged by ctrl+shift+↑/↓, reset on tab switch.
   let scrollOffset = 0
@@ -933,7 +913,7 @@ export default function hyperliquidStatus(pi: ExtensionAPI): void {
   let widgetRegistered = false
   let initPollTimer: ReturnType<typeof setTimeout> | undefined
   let sessionContext: ExtensionContext | null = null
-  // The extension does NOTHING until this is true (default off; /hyperliquid on).
+  // The extension does NOTHING until this is true (default off; /hyperliquid:status).
   let enabled = false
 
   function requestWidgetRender(): void {
@@ -942,7 +922,7 @@ export default function hyperliquidStatus(pi: ExtensionAPI): void {
 
   function syncWidget(ctx: ExtensionContext): void {
     if (!ctx.hasUI) return
-    if (!showWidget || panelState.activePanel !== 'hyperliquid') {
+    if (!enabled) {
       ctx.ui.setWidget('hyperliquid-status', undefined)
       widgetHandle = null
       widgetRegistered = false
@@ -965,8 +945,7 @@ export default function hyperliquidStatus(pi: ExtensionAPI): void {
                   width,
                   refreshing,
                   activeTab,
-                  scrollOffset,
-                  panelState.activePanel
+                  scrollOffset
                 )
               : [widgetTheme.fg('dim', 'Hyperliquid Status (loading...)')],
           invalidate: (): void => {}
@@ -1021,13 +1000,10 @@ export default function hyperliquidStatus(pi: ExtensionAPI): void {
 
   async function startHyperliquid(ctx: ExtensionContext): Promise<void> {
     const config = await readJson<WidgetConfig>(resolveConfigPath(ctx.cwd), DEFAULT_CONFIG)
-    panelState = await readStatusPanelState(ctx.cwd, config.showWidget ? 'hyperliquid' : 'hidden')
-    showWidget = panelState.activePanel === 'hyperliquid'
     activeTab = coerceTab(config.activeTab)
     const cached = await readJson<HyperliquidStatus | null>(resolveStatusPath(ctx.cwd), null)
     if (cached) lastStatus = cached
     syncWidget(ctx)
-    pi.events.emit(STATUS_PANEL_EVENT, panelState)
     await refreshStatus(ctx)
     if (lastStatus?.initializing) scheduleInitPoll(ctx, Date.now() + INIT_GRACE_MS)
     statusTimer = setInterval(() => {
@@ -1040,14 +1016,17 @@ export default function hyperliquidStatus(pi: ExtensionAPI): void {
     statusTimer = undefined
     if (initPollTimer) clearTimeout(initPollTimer)
     initPollTimer = undefined
-    showWidget = false
+    // A panel that comes back should come back at the top of the list.
+    scrollOffset = 0
     if (ctx.hasUI) ctx.ui.setWidget('hyperliquid-status', undefined)
+    widgetHandle = null
+    widgetRegistered = false
   }
 
   pi.on('session_start', async (_event, ctx) => {
     sessionContext = ctx
-    // OFF by default: startup enables nothing. /hyperliquid on starts the
-    // pollers and widget; the persisted choice survives restarts.
+    // OFF by default: startup enables nothing. /hyperliquid:status starts the
+    // pollers and panel; the persisted choice survives restarts.
     enabled = (await readExtensionToggles(ctx.cwd)).hyperliquid
     if (!enabled) return
     await startHyperliquid(ctx)
@@ -1057,28 +1036,9 @@ export default function hyperliquidStatus(pi: ExtensionAPI): void {
     const ctx = sessionContext
     if (ctx !== null && enabled) void refreshStatus(ctx)
   })
-  pi.events.on(STATUS_PANEL_EVENT, (value) => {
-    const ctx = sessionContext
-    if (ctx === null || !enabled) return
-    panelState = coerceStatusPanelState(value, panelState)
-    showWidget = panelState.activePanel === 'hyperliquid'
-    syncWidget(ctx)
-  })
   pi.events.on(STATUS_REFRESH_EVENT, () => {
     const ctx = sessionContext
     if (ctx !== null && enabled) void refreshStatus(ctx)
-  })
-  pi.events.on(EXTENSION_TOGGLED_EVENT, (value) => {
-    const ctx = sessionContext
-    if (ctx === null || !isRecord(value) || value.extension !== 'hyperliquid') return
-    const nextEnabled = value.enabled === true
-    if (nextEnabled === enabled) return
-    enabled = nextEnabled
-    if (enabled) {
-      void startHyperliquid(ctx)
-    } else {
-      stopHyperliquid(ctx)
-    }
   })
 
   pi.on('session_shutdown', async () => {
@@ -1087,33 +1047,6 @@ export default function hyperliquidStatus(pi: ExtensionAPI): void {
     statusTimer = undefined
     if (initPollTimer) clearTimeout(initPollTimer)
     initPollTimer = undefined
-  })
-
-  pi.registerCommand('hyperliquid', {
-    description: 'Hyperliquid extension on/off (off by default; state persists)',
-    getArgumentCompletions: (prefix) =>
-      ['on', 'off', 'status']
-        .filter((option) => option.startsWith(prefix.toLowerCase()))
-        .map((option) => ({ value: option, label: option })),
-    handler: async (args, ctx) => {
-      const action = parseToggleArg(args)
-      if (action === null) {
-        ctx.ui.notify('Usage: /hyperliquid on|off', 'warning')
-        return
-      }
-      if (action === 'status') {
-        ctx.ui.notify(`Hyperliquid extension is ${enabled ? 'on' : 'off'}`, 'info')
-        return
-      }
-      const nextEnabled = action === 'on'
-      if (nextEnabled === enabled) {
-        ctx.ui.notify(`Hyperliquid extension is already ${action}`, 'info')
-        return
-      }
-      await writeExtensionToggle(ctx.cwd, 'hyperliquid', nextEnabled)
-      pi.events.emit(EXTENSION_TOGGLED_EVENT, { extension: 'hyperliquid', enabled: nextEnabled })
-      ctx.ui.notify(`Hyperliquid extension ${nextEnabled ? 'on' : 'off'}`, 'info')
-    }
   })
 
   // Move the active tab by `delta` (wrapping), or jump straight to `target`.
@@ -1129,11 +1062,9 @@ export default function hyperliquidStatus(pi: ExtensionAPI): void {
         : (TAB_ORDER[(current + move.delta + TAB_ORDER.length) % TAB_ORDER.length] ?? 'positions')
     // A fresh tab starts at the top; its list length differs from the old one.
     scrollOffset = 0
-    await saveWidgetConfig(ctx.cwd, { showWidget, activeTab })
-    if (showWidget) {
-      syncWidget(ctx)
-      requestWidgetRender()
-    }
+    await saveWidgetConfig(ctx.cwd, { activeTab })
+    syncWidget(ctx)
+    requestWidgetRender()
   }
 
   // Number of rows in the active tab's list (from the latest snapshot).
@@ -1165,27 +1096,20 @@ export default function hyperliquidStatus(pi: ExtensionAPI): void {
     requestWidgetRender()
   }
 
+  // The one command for this extension: turns the Hyperliquid status panel (and
+  // with it the pollers that feed it) on and off. Off by default, and the choice
+  // persists across restarts.
   pi.registerCommand('hyperliquid:status', {
-    description: 'Toggle Hyperliquid detailed status widget',
+    description: 'Toggle the Hyperliquid status panel (off by default; state persists)',
     handler: async (_args, ctx) => {
-      if (!enabled) {
-        ctx.ui.notify('Hyperliquid extension is off — run /hyperliquid on first', 'warning')
-        return
+      enabled = !enabled
+      await writeExtensionToggle(ctx.cwd, 'hyperliquid', enabled)
+      if (enabled) {
+        await startHyperliquid(ctx)
+      } else {
+        stopHyperliquid(ctx)
       }
-      panelState = selectStatusPanel(
-        panelState,
-        panelState.activePanel === 'hyperliquid' ? 'hidden' : 'hyperliquid'
-      )
-      showWidget = panelState.activePanel === 'hyperliquid'
-      await writeStatusPanelState(ctx.cwd, panelState)
-      await saveWidgetConfig(ctx.cwd, { showWidget, activeTab })
-      if (!lastStatus) lastStatus = await refreshStatusSnapshot(ctx.cwd)
-      syncWidget(ctx)
-      pi.events.emit(STATUS_PANEL_EVENT, panelState)
-      ctx.ui.notify(
-        showWidget ? 'Hyperliquid status widget shown' : 'Hyperliquid status widget hidden',
-        'info'
-      )
+      ctx.ui.notify(`Hyperliquid status panel ${enabled ? 'on' : 'off'}`, 'info')
     }
   })
 
@@ -1199,7 +1123,10 @@ export default function hyperliquidStatus(pi: ExtensionAPI): void {
       })),
     handler: async (args, ctx) => {
       if (!enabled) {
-        ctx.ui.notify('Hyperliquid extension is off — run /hyperliquid on first', 'warning')
+        ctx.ui.notify(
+          'Hyperliquid status panel is off — run /hyperliquid:status to show it',
+          'warning'
+        )
         return
       }
       const requested = args.trim().toLowerCase()
@@ -1212,35 +1139,25 @@ export default function hyperliquidStatus(pi: ExtensionAPI): void {
 
   pi.registerShortcut('ctrl+shift+right', {
     description: 'Hyperliquid widget: next tab',
-    handler: (ctx) =>
-      panelState.activePanel === 'hyperliquid' ? switchTab(ctx, { delta: 1 }) : Promise.resolve()
+    handler: (ctx) => (enabled ? switchTab(ctx, { delta: 1 }) : Promise.resolve())
   })
 
   pi.registerShortcut('ctrl+shift+left', {
     description: 'Hyperliquid widget: previous tab',
-    handler: (ctx) =>
-      panelState.activePanel === 'hyperliquid' ? switchTab(ctx, { delta: -1 }) : Promise.resolve()
+    handler: (ctx) => (enabled ? switchTab(ctx, { delta: -1 }) : Promise.resolve())
   })
 
   pi.registerShortcut('ctrl+shift+down', {
     description: 'Hyperliquid widget: page down (show more items)',
     handler: () => {
-      if (panelState.activePanel === 'wallet') {
-        pi.events.emit(STATUS_PAGE_EVENT, { direction: 1 })
-      } else if (panelState.activePanel === 'hyperliquid') {
-        scrollTab(1)
-      }
+      if (enabled) scrollTab(1)
     }
   })
 
   pi.registerShortcut('ctrl+shift+up', {
     description: 'Hyperliquid widget: page up (show previous items)',
     handler: () => {
-      if (panelState.activePanel === 'wallet') {
-        pi.events.emit(STATUS_PAGE_EVENT, { direction: -1 })
-      } else if (panelState.activePanel === 'hyperliquid') {
-        scrollTab(-1)
-      }
+      if (enabled) scrollTab(-1)
     }
   })
 }

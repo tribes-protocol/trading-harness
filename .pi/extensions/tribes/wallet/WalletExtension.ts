@@ -1,23 +1,8 @@
 import type { ExtensionAPI, ExtensionContext, Theme } from '@earendil-works/pi-coding-agent'
 import type { TUI } from '@earendil-works/pi-tui'
 
-import {
-  EXTENSION_TOGGLED_EVENT,
-  parseToggleArg,
-  readExtensionToggles,
-  writeExtensionToggle
-} from '../ExtensionToggles.ts'
-import {
-  coerceStatusPanel,
-  coerceStatusPanelState,
-  readStatusPanelState,
-  selectStatusPanel,
-  STATUS_PAGE_EVENT,
-  STATUS_PANEL_EVENT,
-  STATUS_REFRESH_EVENT,
-  type StatusPanelState,
-  writeStatusPanelState
-} from './PanelState.ts'
+import { readExtensionToggles, writeExtensionToggle } from '../ExtensionToggles.ts'
+import { STATUS_REFRESH_EVENT } from '../StatusRefresh.ts'
 import { MAX_WALLET_ROWS, renderWalletStatusWidget } from './Render.ts'
 import type { WalletStatus } from './StatusTypes.ts'
 import { readCachedWalletStatus, refreshWalletStatus } from './WalletAssets.ts'
@@ -27,15 +12,7 @@ const INIT_POLL_MS = 1_500
 const INIT_GRACE_MS = 25_000
 const WIDGET_KEY = 'wallet-status'
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value)
-}
-
 export function registerWalletExtension(pi: ExtensionAPI): void {
-  let panelState: StatusPanelState = {
-    activePanel: 'hyperliquid',
-    lastVisiblePanel: 'hyperliquid'
-  }
   let lastStatus: WalletStatus | null = null
   let refreshing = false
   let scrollOffset = 0
@@ -44,7 +21,7 @@ export function registerWalletExtension(pi: ExtensionAPI): void {
   let statusTimer: ReturnType<typeof setInterval> | undefined
   let initPollTimer: ReturnType<typeof setTimeout> | undefined
   let sessionContext: ExtensionContext | null = null
-  // The extension does NOTHING until this is true (default off; /wallet on).
+  // The extension does NOTHING until this is true (default off; /wallet:status).
   let enabled = false
 
   function requestWidgetRender(): void {
@@ -54,12 +31,6 @@ export function registerWalletExtension(pi: ExtensionAPI): void {
   function syncWidget(ctx: ExtensionContext): void {
     if (!ctx.hasUI) return
     if (!enabled) {
-      ctx.ui.setWidget(WIDGET_KEY, undefined)
-      widgetHandle = null
-      widgetRegistered = false
-      return
-    }
-    if (panelState.activePanel !== 'wallet') {
       ctx.ui.setWidget(WIDGET_KEY, undefined)
       widgetHandle = null
       widgetRegistered = false
@@ -76,14 +47,7 @@ export function registerWalletExtension(pi: ExtensionAPI): void {
         return {
           render: (width: number): string[] =>
             lastStatus
-              ? renderWalletStatusWidget(
-                  lastStatus,
-                  widgetTheme,
-                  width,
-                  refreshing,
-                  scrollOffset,
-                  panelState.activePanel
-                )
+              ? renderWalletStatusWidget(lastStatus, widgetTheme, width, refreshing, scrollOffset)
               : [widgetTheme.fg('dim', 'Wallet (loading…)')],
           invalidate: (): void => {}
         }
@@ -117,15 +81,6 @@ export function registerWalletExtension(pi: ExtensionAPI): void {
     }, INIT_POLL_MS)
   }
 
-  async function setPanelState(ctx: ExtensionContext, next: StatusPanelState): Promise<void> {
-    panelState = next
-    scrollOffset = 0
-    await writeStatusPanelState(ctx.cwd, panelState)
-    syncWidget(ctx)
-    pi.events.emit(STATUS_PANEL_EVENT, panelState)
-    if (panelState.activePanel === 'wallet') await refreshStatus(ctx)
-  }
-
   function scrollWallet(direction: 1 | -1): void {
     const total = lastStatus?.assets.length ?? 0
     if (total <= MAX_WALLET_ROWS) return
@@ -136,27 +91,17 @@ export function registerWalletExtension(pi: ExtensionAPI): void {
     requestWidgetRender()
   }
 
-  pi.events.on(STATUS_PANEL_EVENT, (value) => {
-    const ctx = sessionContext
-    if (ctx === null || !enabled) return
-    panelState = coerceStatusPanelState(value, panelState)
-    scrollOffset = 0
-    syncWidget(ctx)
-    if (panelState.activePanel === 'wallet') void refreshStatus(ctx)
-  })
-
-  pi.events.on(STATUS_PAGE_EVENT, (value) => {
-    if (!enabled || panelState.activePanel !== 'wallet' || !isRecord(value)) return
-    if (value.direction === 1 || value.direction === -1) scrollWallet(value.direction)
-  })
-
   pi.events.on('wallet:changed', () => {
     const ctx = sessionContext
     if (ctx !== null && enabled) void refreshStatus(ctx)
   })
 
+  pi.events.on(STATUS_REFRESH_EVENT, () => {
+    const ctx = sessionContext
+    if (ctx !== null && enabled) void refreshStatus(ctx)
+  })
+
   async function startWallet(ctx: ExtensionContext): Promise<void> {
-    panelState = await readStatusPanelState(ctx.cwd)
     lastStatus = await readCachedWalletStatus(ctx.cwd)
     syncWidget(ctx)
     await refreshStatus(ctx)
@@ -171,6 +116,8 @@ export function registerWalletExtension(pi: ExtensionAPI): void {
     statusTimer = undefined
     if (initPollTimer) clearTimeout(initPollTimer)
     initPollTimer = undefined
+    // A panel that comes back should come back at the top of the list.
+    scrollOffset = 0
     if (ctx.hasUI) ctx.ui.setWidget(WIDGET_KEY, undefined)
     widgetHandle = null
     widgetRegistered = false
@@ -178,24 +125,11 @@ export function registerWalletExtension(pi: ExtensionAPI): void {
 
   pi.on('session_start', async (_event, ctx) => {
     sessionContext = ctx
-    // OFF by default: startup enables nothing. /wallet on starts the pollers
+    // OFF by default: startup enables nothing. /wallet:status starts the pollers
     // and panel; the persisted choice survives restarts.
     enabled = (await readExtensionToggles(ctx.cwd)).wallet
     if (!enabled) return
     await startWallet(ctx)
-  })
-
-  pi.events.on(EXTENSION_TOGGLED_EVENT, (value) => {
-    const ctx = sessionContext
-    if (ctx === null || !isRecord(value) || value.extension !== 'wallet') return
-    const nextEnabled = value.enabled === true
-    if (nextEnabled === enabled) return
-    enabled = nextEnabled
-    if (enabled) {
-      void startWallet(ctx)
-    } else {
-      stopWallet(ctx)
-    }
   })
 
   pi.on('session_shutdown', async () => {
@@ -206,84 +140,34 @@ export function registerWalletExtension(pi: ExtensionAPI): void {
     initPollTimer = undefined
   })
 
-  pi.registerCommand('tribes:view', {
-    description: 'Switch account panel (wallet|hyperliquid|hidden)',
-    getArgumentCompletions: (prefix) =>
-      ['wallet', 'hyperliquid', 'hidden']
-        .filter((panel) => panel.startsWith(prefix.toLowerCase()))
-        .map((panel) => ({ value: panel, label: panel })),
-    handler: async (args, ctx) => {
-      const requestedText = args.trim().toLowerCase()
-      const requested = requestedText.length === 0 ? undefined : coerceStatusPanel(requestedText)
-      if (requestedText.length > 0 && requested === null) {
-        ctx.ui.notify('Choose wallet, hyperliquid, or hidden', 'warning')
-        return
-      }
-      const next =
-        requested === null
-          ? selectStatusPanel(panelState)
-          : selectStatusPanel(panelState, requested)
-      if (next.activePanel === 'wallet' && !enabled) {
-        ctx.ui.notify('Wallet extension is off — run /wallet on first', 'warning')
-        return
-      }
-      await setPanelState(ctx, next)
-      ctx.ui.notify(
-        next.activePanel === 'hidden'
-          ? 'Account panel hidden'
-          : `${next.activePanel === 'wallet' ? 'Wallet' : 'Hyperliquid'} panel shown`,
-        'info'
-      )
-    }
-  })
-
-  pi.registerShortcut('ctrl+alt+left', {
-    description: 'Previous account panel',
-    handler: async (ctx) => {
-      await setPanelState(ctx, selectStatusPanel(panelState))
-    }
-  })
-
-  pi.registerShortcut('ctrl+alt+right', {
-    description: 'Next account panel',
-    handler: async (ctx) => {
-      await setPanelState(ctx, selectStatusPanel(panelState))
-    }
-  })
-
-  pi.registerCommand('refresh', {
-    description: 'Refresh Wallet and Hyperliquid account data',
+  // The one command for this extension: turns the wallet panel (balances, PnL
+  // and the pollers behind them) on and off. Off by default, and the choice
+  // persists across restarts.
+  pi.registerCommand('wallet:status', {
+    description: 'Toggle the wallet status panel (off by default; state persists)',
     handler: async (_args, ctx) => {
-      pi.events.emit(STATUS_REFRESH_EVENT, undefined)
-      if (enabled) await refreshStatus(ctx)
-      ctx.ui.notify('Wallet and Hyperliquid refresh requested', 'info')
+      enabled = !enabled
+      await writeExtensionToggle(ctx.cwd, 'wallet', enabled)
+      if (enabled) {
+        await startWallet(ctx)
+      } else {
+        stopWallet(ctx)
+      }
+      ctx.ui.notify(`Wallet status panel ${enabled ? 'on' : 'off'}`, 'info')
     }
   })
 
-  pi.registerCommand('wallet', {
-    description: 'Wallet extension on/off (off by default; state persists)',
-    getArgumentCompletions: (prefix) =>
-      ['on', 'off', 'status']
-        .filter((option) => option.startsWith(prefix.toLowerCase()))
-        .map((option) => ({ value: option, label: option })),
-    handler: async (args, ctx) => {
-      const action = parseToggleArg(args)
-      if (action === null) {
-        ctx.ui.notify('Usage: /wallet on|off', 'warning')
-        return
-      }
-      if (action === 'status') {
-        ctx.ui.notify(`Wallet extension is ${enabled ? 'on' : 'off'}`, 'info')
-        return
-      }
-      const nextEnabled = action === 'on'
-      if (nextEnabled === enabled) {
-        ctx.ui.notify(`Wallet extension is already ${action}`, 'info')
-        return
-      }
-      await writeExtensionToggle(ctx.cwd, 'wallet', nextEnabled)
-      pi.events.emit(EXTENSION_TOGGLED_EVENT, { extension: 'wallet', enabled: nextEnabled })
-      ctx.ui.notify(`Wallet extension ${nextEnabled ? 'on' : 'off'}`, 'info')
+  pi.registerShortcut('ctrl+alt+down', {
+    description: 'Wallet widget: page down (show more assets)',
+    handler: () => {
+      if (enabled) scrollWallet(1)
+    }
+  })
+
+  pi.registerShortcut('ctrl+alt+up', {
+    description: 'Wallet widget: page up (show previous assets)',
+    handler: () => {
+      if (enabled) scrollWallet(-1)
     }
   })
 }
