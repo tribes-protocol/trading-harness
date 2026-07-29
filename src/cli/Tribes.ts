@@ -29,6 +29,7 @@ import { buildPredictionCommand } from '@/cli/Prediction'
 import { buildSmartMoneyCommand } from '@/cli/SmartMoney'
 import { buildSpotTradingCommand } from '@/cli/SpotTrading'
 import { buildStocksCommand } from '@/cli/Stocks'
+import { buildSurfCommand } from '@/cli/Surf'
 import { buildTaCommand } from '@/cli/Ta'
 import { buildTokenCommand } from '@/cli/Token'
 import { buildTransactionCommand } from '@/cli/Transaction'
@@ -60,6 +61,7 @@ function buildTribesCli(): Command {
   program.addCommand(buildExchangesCommand())
   program.addCommand(buildTokenDataCommand())
   program.addCommand(buildSmartMoneyCommand())
+  program.addCommand(buildSurfCommand())
   program.addCommand(buildWalletDataCommand())
   program.addCommand(buildStocksCommand())
   program.addCommand(buildEnsCommand())
