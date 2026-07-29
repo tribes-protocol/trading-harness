@@ -1,9 +1,7 @@
 import { DynamicBorder, type Theme } from '@earendil-works/pi-coding-agent'
 import { Container, hyperlink, Text, truncateToWidth, visibleWidth } from '@earendil-works/pi-tui'
 
-import type { StatusPanel } from './PanelState.ts'
 import type { WalletAsset, WalletStatus } from './StatusTypes.ts'
-import { renderStatusViewRail } from './ViewRail.ts'
 
 export const MAX_WALLET_ROWS = 12
 
@@ -194,10 +192,7 @@ function renderBalances(
   }
   if (assets.length > MAX_WALLET_ROWS) {
     lines.push(
-      theme.fg(
-        'dim',
-        `↕ ${start + 1}–${start + page.length} of ${assets.length}  ·  ctrl+shift+↑/↓`
-      )
+      theme.fg('dim', `↕ ${start + 1}–${start + page.length} of ${assets.length}  ·  ctrl+alt+↑/↓`)
     )
   }
   return lines.join('\n')
@@ -208,8 +203,7 @@ export function renderWalletStatusWidget(
   theme: Theme,
   width: number,
   refreshing = false,
-  scrollOffset = 0,
-  activePanel: StatusPanel = 'wallet'
+  scrollOffset = 0
 ): string[] {
   const borderTone = status.ok
     ? status.stale
@@ -222,7 +216,6 @@ export function renderWalletStatusWidget(
   const container = new Container()
   const contentWidth = Math.max(20, width - 2)
   container.addChild(new DynamicBorder(borderColor))
-  container.addChild(new Text(renderStatusViewRail(activePanel, theme, contentWidth), 1, 0))
 
   if (!status.ok) {
     const state = status.initializing

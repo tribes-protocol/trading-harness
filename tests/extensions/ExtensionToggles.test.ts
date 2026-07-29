@@ -7,7 +7,6 @@ import { describe, expect, it } from 'vitest'
 import {
   coerceExtensionToggles,
   DEFAULT_TOGGLES,
-  parseToggleArg,
   readExtensionToggles,
   writeExtensionToggle
 } from '../../.pi/extensions/tribes/ExtensionToggles.ts'
@@ -53,16 +52,5 @@ describe('extension toggles', () => {
       hyperliquid: true,
       wallet: false
     })
-  })
-
-  it('parses only explicit on/off; anything else is status or rejected', () => {
-    expect(parseToggleArg('on')).toBe('on')
-    expect(parseToggleArg(' ENABLE ')).toBe('on')
-    expect(parseToggleArg('off')).toBe('off')
-    expect(parseToggleArg('disable')).toBe('off')
-    expect(parseToggleArg('')).toBe('status')
-    expect(parseToggleArg('status')).toBe('status')
-    expect(parseToggleArg('toggle')).toBeNull()
-    expect(parseToggleArg('maybe')).toBeNull()
   })
 })

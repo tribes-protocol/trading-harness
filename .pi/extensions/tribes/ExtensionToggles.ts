@@ -6,8 +6,11 @@ import { ensureJsonTreeString } from './hyperliquid/EnsureJson.ts'
 /**
  * Per-extension enablement for the two status extensions. BOTH DEFAULT OFF:
  * startup enables neither — the Hyperliquid and Wallet extensions only start
- * their pollers/widgets after an explicit `/hyperliquid on` or `/wallet on`,
- * and the choice persists across restarts in runtime/tribes/.
+ * their pollers/widgets after an explicit `/hyperliquid:status` or
+ * `/wallet:status`, and the choice persists across restarts in runtime/tribes/.
+ *
+ * The two flags are independent: each extension reads and writes only its own,
+ * and neither can see or change the other's panel.
  */
 
 export type TogglableExtension = 'hyperliquid' | 'wallet'
@@ -15,14 +18,6 @@ export type TogglableExtension = 'hyperliquid' | 'wallet'
 export interface ExtensionToggles {
   readonly hyperliquid: boolean
   readonly wallet: boolean
-}
-
-/** Emitted after a toggle is persisted; payload is {@link ExtensionToggleChange}. */
-export const EXTENSION_TOGGLED_EVENT = 'tribes:extension-toggled'
-
-export interface ExtensionToggleChange {
-  readonly extension: TogglableExtension
-  readonly enabled: boolean
 }
 
 const TOGGLES_PATH = 'runtime/tribes/extension-toggles.json'
@@ -68,18 +63,4 @@ export async function writeExtensionToggle(
   await mkdir(dirname(path), { recursive: true })
   await writeFile(path, `${ensureJsonTreeString(next)}\n`, 'utf8')
   return next
-}
-
-/**
- * Parse a toggle command's argument. Only an EXPLICIT `on`/`off` switches the
- * extension; anything else (including no argument) reports state instead of
- * guessing — flipping a poller that spends API calls should never happen by
- * accident.
- */
-export function parseToggleArg(args: string): 'on' | 'off' | 'status' | null {
-  const text = args.trim().toLowerCase()
-  if (text.length === 0 || text === 'status') return 'status'
-  if (text === 'on' || text === 'enable') return 'on'
-  if (text === 'off' || text === 'disable') return 'off'
-  return null
 }
