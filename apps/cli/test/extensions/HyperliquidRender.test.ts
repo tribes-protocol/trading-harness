@@ -82,9 +82,10 @@ describe('Hyperliquid widget balances', () => {
   test('keeps the header to one total instead of a per-dex balance line', () => {
     const output = render('positions')
 
-    expect(output).toContain('Wallet')
-    expect(output).toContain('▎Hyperliquid')
-    expect(output).toContain('/tribes:view')
+    // The panel stands alone — no shared wallet/Hyperliquid switcher rail.
+    expect(output).toContain('● Hyperliquid')
+    expect(output).not.toContain('Wallet')
+    expect(output).not.toContain('/tribes:view')
     expect(output).toContain('total $113.38')
     expect(output).not.toContain('main eq')
     expect(output).not.toContain('xyz eq')
