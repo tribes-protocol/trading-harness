@@ -113,20 +113,28 @@ tribes-cli hyperliquid trade-spot --from <0x-privy-wallet> --pair HYPE/USDC --si
 
 ## Layout
 
-All executable code lives under a single root `src/` (one alias: `@/*` -> `./src/*`). Every
-command builder is composed into one entry, `src/cli/Tribes.ts`, which `bootstrap.sh` compiles
-into the `tribes-cli` binary. Each skill under `skills/<slug>/` is **documentation only** —
-its `SKILL.md` points the agent at the matching `tribes-cli <group>` command.
+A bun-workspaces + turbo monorepo. Each workspace owns one thing; the Pi surface stays at the
+repo root because it has to (see below). Every command builder is composed into one entry,
+`apps/cli/src/cli/Tribes.ts`, which `bootstrap.sh` compiles into the `tribes-cli` binary. Each
+skill under `skills/<slug>/` is **documentation only** — its `SKILL.md` points the agent at the
+matching `tribes-cli <group>` command.
 
 ```text
 AGENTS.md                  # Operating constitution
 bootstrap.sh               # First-boot: install deps + compile tribes-cli, install it globally
-src/                       # ALL code: command builders + shared foundation (@/*)
-  cli/                     # Tribes.ts (the tribes-cli entry) + one builder per group:
-                           #   Wallet, Hyperliquid, Transaction, SpotTrading, Token, News,
-                           #   Macros, WebSearch, Prediction, 9 analysts
-  common/ helpers/ services/ types/ utils/
-.pi/
+bunfig.toml                # Pins the HOISTED linker — the sandbox boot path depends on it
+apps/
+  cli/                     # @tribes-harness/cli — the tribes-cli command surface (@/* -> ./src/*)
+    src/cli/               #   Tribes.ts (the entry) + one builder per group:
+                           #     Wallet, Hyperliquid, Transaction, SpotTrading, Token, News,
+                           #     Macros, WebSearch, Prediction, 9 analysts
+    src/common|helpers|services|types|utils/
+    test/                  #   mirrors src/
+  gateway/                 # @tribes-harness/gateway — hosts Pi sessions, streams them over ws
+  web/                     # @tribes-harness/web — Pi screen canvas (left) + main chat (right)
+packages/
+  protocol/                # @tribes-harness/protocol — the gateway <-> browser wire contract
+.pi/                       # MUST stay at the repo root (see "Why the root is load-bearing")
   agent/
     settings.json          # Pi provider/model config
     trust.json             # Trust the sandbox workspace on first boot
@@ -135,6 +143,33 @@ src/                       # ALL code: command builders + shared foundation (@/*
     hyperliquid/           # live Hyperliquid positions/status widget
   skills/<slug>/SKILL.md   # skill docs only (no code); run via tribes-cli <group>
 .tribes/                   # runtime auth/wallet cache files (gitignored)
+```
+
+### Why the root is load-bearing
+
+Four things cannot move into a workspace, and each fails SILENTLY if moved:
+
+- **`.pi/`** — Pi resolves project extensions, skills, prompts and commands at
+  `join(process.cwd(), '.pi', …)` with no ancestor walk, and ships no `--cwd` flag. A `.pi/`
+  inside a package is simply never discovered: Pi loads nothing and prints nothing.
+- **`bootstrap.sh`** — it self-locates (`cd "$(dirname "$0")"`), so its `$PWD` anchors the
+  shared-skills installer, the `pi` symlink, the build artifact, and the `cd` baked into the
+  installed `tribes-cli` shim. Move it and auth state splits across two `.tribes/` directories.
+- **`skills/` and `AGENTS.md`** — the control plane symlinks the shared zipbox catalog into
+  `<root>/skills`, appends to `<root>/AGENTS.md`, and 55 tracked symlinks encode the current
+  relative depth. Git preserves symlink text, not targets.
+- **`node_modules/.bin`** — baked into the guest's PID-1 PATH. `bunfig.toml` pins
+  `linker = "hoisted"` because bun otherwise switches to the isolated linker as soon as
+  `workspaces` exists, and `ln -sf` onto the resulting missing target succeeds silently.
+
+### Commands
+
+```bash
+bun run dev          # gateway + web (Pi streamed to the browser)
+bun run dev:cli      # watch-compile tribes-cli only
+bun run typecheck    # every workspace, plus the root .pi surface
+bun run test:unit    # every workspace's vitest suite
+bun run lint         # every workspace, plus .pi/
 ```
 
 ## Security

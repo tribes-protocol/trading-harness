@@ -1,0 +1,30 @@
+{
+  "name": "@tribes-harness/cli",
+  "version": "1.0.0",
+  "description": "The tribes-cli command surface every skill and Pi extension shells out to",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "build": "bun run typecheck",
+    "test:unit": "vitest run",
+    "test:unit:coverage": "vitest run --coverage",
+    "lint": "eslint . --max-warnings 0 --no-warn-ignored",
+    "lint:fix": "eslint . --fix --max-warnings 0 --no-warn-ignored"
+  },
+  "dependencies": {
+    "@nktkas/hyperliquid": "0.32.2",
+    "@privy-io/node": "0.7.0",
+    "@solana/spl-token": "0.4.14",
+    "@solana/web3.js": "1.98.4",
+    "bignumber.js": "9.3.1",
+    "bs58": "4.0.1",
+    "commander": "14.0.3",
+    "jose": "4.15.9",
+    "viem": "2.46.3",
+    "zod": "3.25.76"
+  },
+  "devDependencies": {
+    "@types/bs58": "4.0.1"
+  }
+}

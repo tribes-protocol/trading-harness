@@ -1,15 +1,29 @@
 {
   "$schema": "https://unpkg.com/knip@5/schema.json",
-  // All executable code lives in a single root `src/`. Entry points: src/cli/Tribes.ts
-  // (compiled into the `tribes-cli` binary) plus the per-group builders it composes, the
-  // Pi extensions (auto-discovered via their `index.ts` default export), and the proxy
-  // token script the tribes extension spawns directly. Tests live under tests/ and are
-  // detected by knip's vitest plugin.
-  "entry": [
-    "src/cli/*.ts",
-    ".pi/extensions/*/index.ts",
-    ".pi/extensions/tribes/AgentProxyToken.ts",
-    "tests/**/*.test.ts"
-  ],
-  "project": ["src/**/*.ts", ".pi/extensions/**/*.ts", "tests/**/*.ts"]
+  // Workspace-aware since the monorepo split. The Pi surface (`.pi/extensions`)
+  // stays on the ROOT workspace because Pi discovers project extensions at
+  // `join(cwd, '.pi', 'extensions')` with no ancestor walk — it cannot move into
+  // a package. Everything else is declared against the workspace that owns it.
+  "workspaces": {
+    ".": {
+      "entry": [".pi/extensions/*/index.ts", ".pi/extensions/tribes/AgentProxyToken.ts"],
+      "project": [".pi/extensions/**/*.ts"]
+    },
+    "apps/cli": {
+      "entry": ["src/cli/*.ts", "test/**/*.test.ts"],
+      "project": ["src/**/*.ts", "test/**/*.ts"]
+    },
+    "apps/gateway": {
+      "entry": ["src/Main.ts", "test/**/*.test.ts"],
+      "project": ["src/**/*.ts", "test/**/*.ts"]
+    },
+    "apps/web": {
+      "entry": ["src/app/**/{page,layout,route}.tsx", "next.config.ts", "test/**/*.test.ts"],
+      "project": ["src/**/*.{ts,tsx}", "test/**/*.{ts,tsx}"]
+    },
+    "packages/protocol": {
+      "entry": ["src/**/*.ts"],
+      "project": ["src/**/*.ts"]
+    }
+  }
 }

@@ -80,10 +80,34 @@ setup_swapfile() {
 setup_swapfile || echo "[bootstrap] swap: setup did not complete (non-fatal, continuing)"
 
 echo "[bootstrap] installing deps (incl. the pinned pi CLI)…"
-# Pi ships as a devDependency -> node_modules/.bin/pi, on PATH via vm-init.
+# Pi ships as a ROOT devDependency -> node_modules/.bin/pi, on PATH via vm-init.
 # --frozen-lockfile uses the committed bun.lock (skips resolution: faster +
 # deterministic); fall back to a normal install if the lockfile is ever stale.
-bun install --frozen-lockfile || bun install
+#
+# --filter keeps the sandbox install to what the agent actually needs: the root
+# (pi itself) and apps/cli (the tribes-cli command surface). The gateway and the
+# web UI are developer/host-side workspaces — installing Next.js and React into a
+# 2G microVM would slow every first boot and add OOM pressure to a step that
+# already needs the swapfile above. Everything else about the layout is
+# unchanged, and bunfig.toml pins the hoisted linker so node_modules/.bin still
+# lands at the repo root where the guest PATH expects it.
+INSTALL_FILTERS="--filter . --filter ./apps/cli"
+# shellcheck disable=SC2086
+bun install --frozen-lockfile $INSTALL_FILTERS ||
+  bun install $INSTALL_FILTERS ||
+  bun install --frozen-lockfile ||
+  bun install
+
+# Fail loud if the linker layout regressed. Every downstream step — the
+# /usr/local/bin/pi symlink below, the tribes-cli artifact path, and the guest's
+# baked PATH entry /root/workspace/node_modules/.bin — assumes a hoisted root
+# bin dir. `ln -sf` would happily create a dangling link and exit 0, so this is
+# the only place the breakage is visible.
+if [ ! -x "$PWD/node_modules/.bin/pi" ]; then
+  echo "[bootstrap] FATAL: $PWD/node_modules/.bin/pi is missing after install." >&2
+  echo "[bootstrap] The hoisted linker in bunfig.toml is what puts it there." >&2
+  exit 1
+fi
 
 # @solana/web3.js pulls in bigint-buffer, whose native binding is optional.
 # Bundle the package into tribes-cli so the compiled binary can use the pure JS
@@ -143,7 +167,7 @@ done
 # which silently leaves .env unwritten (no bearer token → every proxy/wallet
 # call fails). Bump the pin in package.json + bun.lock instead.
 
-ENTRY="src/cli/Tribes.ts"
+ENTRY="apps/cli/src/cli/Tribes.ts"
 # Build artifact. node_modules/.bin is writable and already on PATH in the
 # sandbox, so this is both the build output and the in-sandbox PATH fallback.
 ARTIFACT="$PWD/node_modules/.bin/tribes-cli"

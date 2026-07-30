@@ -1,24 +1,24 @@
 {
+  // The ROOT project owns exactly one thing: the Pi surface that lives at the repo
+  // root and belongs to no workspace — `.pi/extensions/**`. Every workspace owns
+  // its own tsconfig.
+  //
+  // DELIBERATE DEVIATION from the terminal monorepo, whose root tsconfig is a bare
+  // `{ "files": [], "references": [...] }` solution file with no compilerOptions:
+  // `baseUrl` + `paths` MUST live here. `.pi/extensions/tribes/AgentProxyToken.ts`
+  // imports `@/helpers/Jwt` and is executed at RUNTIME as a subprocess
+  // (`bun .pi/extensions/tribes/AgentProxyToken.ts --force`, see AuthBootstrap.ts).
+  // Bun resolves `@/` by walking UP from that file, and the first tsconfig it finds
+  // is this one — a package-local `paths` never reaches it. Drop this mapping and
+  // token minting fails at runtime behind a clean typecheck and a clean lint: no
+  // API bearer token in .env, so every wallet/proxy/trading call 401s.
+  "extends": "./tsconfig.base.json",
   "compilerOptions": {
-    "target": "ESNext",
-    "module": "ESNext",
-    "lib": ["ESNext", "DOM"],
-    "strict": true,
-    "moduleResolution": "bundler",
-    "esModuleInterop": true,
-    "skipLibCheck": true,
-    "resolveJsonModule": true,
-    "noImplicitAny": true,
-    "types": ["node"],
     "baseUrl": ".",
-    "paths": { "@/*": ["./src/*"] },
-    "allowImportingTsExtensions": true,
-    "noEmit": true,
-    "noUncheckedIndexedAccess": true,
-    "noImplicitOverride": true,
-    "noFallthroughCasesInSwitch": true,
-    "forceConsistentCasingInFileNames": true
+    "paths": {
+      "@/*": ["./apps/cli/src/*"]
+    }
   },
-  "include": ["src/**/*.ts", ".pi/extensions/**/*.ts"],
-  "exclude": ["node_modules", "runtime", "dist", "src/**/*.test.ts"]
+  "include": [".pi/extensions/**/*.ts"],
+  "exclude": ["node_modules", "runtime", "dist"]
 }

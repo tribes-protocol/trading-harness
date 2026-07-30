@@ -1,0 +1,19 @@
+# Bun 1.3.x switches to the ISOLATED linker as soon as `workspaces` exists in
+# package.json. Isolated puts every dependency under node_modules/.bun and leaves
+# NO node_modules/.bin at the repo root — which silently breaks three things the
+# sandbox boot path depends on:
+#
+#   1. /root/workspace/node_modules/.bin is baked into the guest's PID-1 PATH
+#      (terminal: scripts/sandbox-vm-init.sh), so `pi` and `tribes-cli` stop
+#      resolving by name.
+#   2. bootstrap.sh links $PWD/node_modules/.bin/pi -> /usr/local/bin/pi. `ln -sf`
+#      SUCCEEDS against a missing target, so the box boots with a dangling `pi`
+#      and bootstrap still exits 0.
+#   3. bootstrap.sh writes the compiled tribes-cli binary to
+#      $PWD/node_modules/.bin/tribes-cli, a directory that would not exist.
+#
+# Pinning the hoisted linker keeps the flat, pre-monorepo node_modules layout that
+# all three assume. Do not remove this without also changing the guest PATH (which
+# is baked into the rootfs and needs a rebake).
+[install]
+linker = "hoisted"

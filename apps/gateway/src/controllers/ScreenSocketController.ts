@@ -1,0 +1,196 @@
+import { PROTOCOL_VERSION } from '@tribes-harness/protocol/common/Constants'
+import type { ClientFrame, ServerFrame } from '@tribes-harness/protocol/types/ScreenProtocol'
+import { ClientFrameSchema } from '@tribes-harness/protocol/types/ScreenProtocol'
+
+import {
+  WEBSOCKET_OPEN,
+  WEBSOCKET_SEND_DROPPED,
+  WEBSOCKET_SEND_ENQUEUED
+} from '@/common/GatewayLimits'
+import type { ScreenRegistryService } from '@/services/ScreenRegistryService'
+import type { ScreenSocket, ScreenSocketConnection } from '@/types/Screen'
+import { toJsonText } from '@/utils/JsonText'
+import { describeError, logError, logWarn } from '@/utils/Logger'
+
+const textDecoder = new TextDecoder()
+
+/**
+ * The socket half of the protocol: parse every inbound frame, dispatch it to the
+ * registry, serialize outbound frames, and decide what backpressure means.
+ *
+ * Backpressure policy: when Bun reports a saturated socket, `screen.event`
+ * frames are DROPPED rather than queued. Deltas are coalesced and `tool_output`
+ * is a cumulative snapshot, so there is nothing coherent to replay from a delta
+ * buffer anyway. The screen's `seq` still advances for the dropped frame, so the
+ * client sees a gap, re-attaches, and takes a fresh snapshot. Snapshot, state
+ * and error frames are never dropped — they are the recovery path.
+ */
+export class ScreenSocketController {
+  private readonly registry: ScreenRegistryService
+  private readonly connections = new Map<string, ScreenSocketConnection>()
+
+  constructor(registry: ScreenRegistryService) {
+    this.registry = registry
+  }
+
+  handleOpen(socket: ScreenSocket): void {
+    const connection: ScreenSocketConnection = {
+      socket,
+      closed: false,
+      saturated: false,
+      attachments: new Map()
+    }
+    this.connections.set(socket.data.socketId, connection)
+    this.send(connection, {
+      t: 'hello',
+      protocolVersion: PROTOCOL_VERSION,
+      screens: this.registry.listSummaries()
+    })
+  }
+
+  handleClose(socket: ScreenSocket): void {
+    const connection = this.connections.get(socket.data.socketId)
+    if (connection === undefined) {
+      return
+    }
+    connection.closed = true
+    for (const unsubscribe of connection.attachments.values()) {
+      unsubscribe()
+    }
+    connection.attachments.clear()
+    this.connections.delete(socket.data.socketId)
+  }
+
+  handleDrain(socket: ScreenSocket): void {
+    const connection = this.connections.get(socket.data.socketId)
+    if (connection !== undefined) {
+      connection.saturated = false
+    }
+  }
+
+  async handleMessage(socket: ScreenSocket, raw: string | Uint8Array): Promise<void> {
+    const connection = this.connections.get(socket.data.socketId)
+    if (connection === undefined) {
+      return
+    }
+
+    const frame = this.parseClientFrame(raw)
+    if (frame === null) {
+      logWarn(`socket ${socket.data.socketId} sent an unparseable frame`)
+      return
+    }
+
+    try {
+      await this.dispatch(connection, frame)
+    } catch (error) {
+      logError(`socket ${socket.data.socketId} frame ${frame.t} failed`, error)
+      this.send(connection, {
+        t: 'screen.error',
+        screenId: frame.screenId,
+        message: describeError(error)
+      })
+    }
+  }
+
+  private parseClientFrame(raw: string | Uint8Array): ClientFrame | null {
+    const text = typeof raw === 'string' ? raw : textDecoder.decode(raw)
+    let decoded: unknown
+    try {
+      decoded = JSON.parse(text)
+    } catch {
+      return null
+    }
+    const parsed = ClientFrameSchema.safeParse(decoded)
+    return parsed.success ? parsed.data : null
+  }
+
+  private async dispatch(connection: ScreenSocketConnection, frame: ClientFrame): Promise<void> {
+    switch (frame.t) {
+      case 'attach':
+        await this.handleAttach(connection, frame.screenId)
+        return
+      case 'detach':
+        this.handleDetach(connection, frame.screenId)
+        return
+      case 'prompt': {
+        const screen = await this.registry.getScreen(frame.screenId)
+        if (screen === null) {
+          this.sendUnknownScreen(connection, frame.screenId)
+          return
+        }
+        screen.promptScreen(frame.text, frame.streamingBehavior ?? null)
+        return
+      }
+      case 'abort': {
+        const screen = await this.registry.getScreen(frame.screenId)
+        if (screen === null) {
+          this.sendUnknownScreen(connection, frame.screenId)
+          return
+        }
+        screen.abortScreen()
+        return
+      }
+    }
+  }
+
+  private async handleAttach(connection: ScreenSocketConnection, screenId: string): Promise<void> {
+    const screen = await this.registry.getScreen(screenId)
+    if (screen === null) {
+      this.sendUnknownScreen(connection, screenId)
+      return
+    }
+    // The socket can close while the screen is being created.
+    if (connection.closed) {
+      return
+    }
+
+    // A re-attach after a detected gap must not add a second subscription; it
+    // just needs a fresh snapshot.
+    if (!connection.attachments.has(screenId)) {
+      const unsubscribe = screen.subscribe({
+        deliver: (outbound) => {
+          this.send(connection, outbound)
+        },
+        isSaturated: () => connection.saturated
+      })
+      connection.attachments.set(screenId, unsubscribe)
+    }
+
+    this.send(connection, screen.snapshotFrame())
+  }
+
+  private handleDetach(connection: ScreenSocketConnection, screenId: string): void {
+    const unsubscribe = connection.attachments.get(screenId)
+    if (unsubscribe === undefined) {
+      return
+    }
+    unsubscribe()
+    connection.attachments.delete(screenId)
+  }
+
+  private sendUnknownScreen(connection: ScreenSocketConnection, screenId: string): void {
+    this.send(connection, {
+      t: 'screen.error',
+      screenId,
+      message: `unknown screen "${screenId}"`
+    })
+  }
+
+  private send(connection: ScreenSocketConnection, frame: ServerFrame): void {
+    if (connection.closed || connection.socket.readyState !== WEBSOCKET_OPEN) {
+      return
+    }
+    if (connection.saturated && frame.t === 'screen.event') {
+      return
+    }
+
+    const sent = connection.socket.send(toJsonText(frame))
+    if (sent === WEBSOCKET_SEND_ENQUEUED) {
+      connection.saturated = true
+      return
+    }
+    if (sent === WEBSOCKET_SEND_DROPPED) {
+      connection.saturated = true
+    }
+  }
+}

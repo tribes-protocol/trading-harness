@@ -289,13 +289,13 @@ bun run bootstrap.sh
 
 ### The `tribes-cli` binary is the product
 
-Everything the trading agent can do is a subcommand of one CLI. `src/cli/Tribes.ts` is the single entry point: it composes one `build...Command()` builder per group: Wallet, Hyperliquid, Transaction, SpotTrading, News, Macros, Token, WebSearch, Prediction, plus 10 analyst agents. `bootstrap.sh` compiles this into a native `tribes-cli` binary on PATH so the agent runs `tribes-cli <group> <command> ...` with no per-call transpile or `@/` alias resolution.
+Everything the trading agent can do is a subcommand of one CLI. `apps/cli/src/cli/Tribes.ts` is the single entry point: it composes one `build...Command()` builder per group: Wallet, Hyperliquid, Transaction, SpotTrading, News, Macros, Token, WebSearch, Prediction, plus 10 analyst agents. `bootstrap.sh` compiles this into a native `tribes-cli` binary on PATH so the agent runs `tribes-cli <group> <command> ...` with no per-call transpile or `@/` alias resolution.
 
 The `skills/<slug>/SKILL.md` files are documentation only. Each one points the agent at the matching `tribes-cli <group>` command. There is no executable code under `skills/`.
 
 ### Layering
 
-All code lives under one root with a single path alias `@/*` to `./src/*`. Data flows in one direction:
+The CLI lives in one workspace, `apps/cli`, with a single path alias `@/*` to its `./src/*`. Data flows in one direction:
 
 ```text
 cli/        Commander builders. Parse argv, validate with a zod schema from types/,
@@ -312,7 +312,7 @@ Services are dependency-injected by hand. A CLI builder constructs the services 
 
 ### Adding a new provider-backed capability
 
-Each data capability is a direct-provider slice: a PascalCase service in `src/services` (named-params ctor taking `{ apiKey }` for keyed providers, private fetch, zod-parsed compact snake_case output), schemas in `src/types`, a `build…Command()` builder in `src/cli` composed into `Tribes.ts` (every subcommand structured JSON + `--out`), tests in `tests/services`, and a doc-only `SKILL.md` under `skills/<slug>/` plus a routing-map row here. `MarketService` / `tribes-cli market` is the reference slice. Provider key env-var names must match the control plane's egress billing entries so in-VM placeholder injection works.
+Each data capability is a direct-provider slice: a PascalCase service in `apps/cli/src/services` (named-params ctor taking `{ apiKey }` for keyed providers, private fetch, zod-parsed compact snake_case output), schemas in `apps/cli/src/types`, a `build…Command()` builder in `apps/cli/src/cli` composed into `Tribes.ts` (every subcommand structured JSON + `--out`), tests in `apps/cli/test/services`, and a doc-only `SKILL.md` under `skills/<slug>/` plus a routing-map row here. `MarketService` / `tribes-cli market` is the reference slice. Provider key env-var names must match the control plane's egress billing entries so in-VM placeholder injection works.
 
 ### Pi extensions
 
