@@ -45,8 +45,14 @@ export const GATEWAY_HOST =
  * which makes an allowlist the correct — and sufficient — defence against that
  * drive-by. It deliberately does not try to authenticate non-browser clients:
  * they can forge any header, so the header is not where that boundary lives.
+ *
+ * The default is tribes-terminal's dev server, because that is where the UI lives:
+ * apps/web serves /sandbox/chat on :3000. (It used to be :3100, this repo's own web
+ * app, which moved out — leaving a default that rejected the only client there is.)
+ * This matters ONLY in dev mode; in owner mode the origin is not consulted at all,
+ * since the real one is https://pi.<slug>.<domain> and unknowable at boot.
  */
-const DEFAULT_ALLOWED_ORIGINS = ['http://127.0.0.1:3100', 'http://localhost:3100'] as const
+const DEFAULT_ALLOWED_ORIGINS = ['http://127.0.0.1:3000', 'http://localhost:3000'] as const
 
 const ORIGINS_OVERRIDE = process.env.GATEWAY_ALLOWED_ORIGINS
 
