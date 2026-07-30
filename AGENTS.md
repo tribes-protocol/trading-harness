@@ -173,6 +173,25 @@ Pick the skill with these tie-breaker rules, in order:
 | JS-gated or fetch-blocked pages, UI automation                                     | `browser`              |
 | Alert the human: long job finished, needs attention                                | `notify`               |
 
+### Org skills (the trading organization)
+
+The company-style multi-agent organization is chartered in docs/org/ORGANIZATION.md; role
+definitions live in .agents/. These skills are entered by org roles (or the Head of Desk running
+the org) and route into the catalog per R0–R4. The shared protocol is `org-protocol`.
+
+- Market Intelligence: `intel-trending-scan`, `intel-liquidity-anomalies`, `intel-funding-oi`,
+  `intel-derivatives-posture`, `intel-smart-money`, `intel-opportunity-rank`,
+  `intel-news-collect`, `intel-news-triage`, `intel-social-sentiment`, `intel-event-catalysts`
+- Data Validation: `validate-cross-check`, `validate-freshness`, `validate-contradictions`,
+  `validate-signal-score`
+- Strategy Research: `research-hypothesis`, `research-backtest-spec`, `research-backtest-run`,
+  `research-metrics`, `research-robustness`, `research-evaluate`
+- Portfolio Management: `portfolio-reconcile`, `portfolio-exposure`, `portfolio-triggers`,
+  `portfolio-rebalance`
+- Execution Desk: `exec-validate-instruction`, `exec-cost-preflight`, `exec-margin-preflight`,
+  `exec-place-order`, `exec-order-lifecycle`, `exec-onchain-swap`
+- Engineering: `eng-triage`, `eng-diagnose`, `eng-repair-integration`, `eng-verify-change`
+
 <!-- BEGIN synced skill routes (managed by scripts/skills-upgrade.mjs) -->
 
 - `zipbox-browser` — Fast headless browser automation with Microsoft's Playwright CLI for JavaScript-rendered pages, clicks, typing, snapshots, screenshots, PDF capture, and console or network inspection.
