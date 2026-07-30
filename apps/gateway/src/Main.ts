@@ -14,6 +14,7 @@ import { HEALTH_PATH } from '@/common/GatewayLimits'
 import { SCREEN_CONFIGS } from '@/common/ScreenCatalog'
 import { ScreenSocketController } from '@/controllers/ScreenSocketController'
 import { verifyOwnerSignature } from '@/helpers/OwnerSignature'
+import { describeScreenWorkspace } from '@/helpers/ScreenWorkspace'
 import { ScreenRegistryService } from '@/services/ScreenRegistryService'
 import type { GatewayAuthConfig, OwnerAuthResult } from '@/types/OwnerAuth'
 import type { ScreenSocketData } from '@/types/Screen'
@@ -125,6 +126,23 @@ const server = Bun.serve<ScreenSocketData>({
 })
 
 logInfo(`gateway listening on ws://${GATEWAY_HOST}:${GATEWAY_PORT}${SCREEN_SOCKET_PATH}`)
+
+// Say out loud what the agent will actually have. Pi discovers extensions, skills
+// and the operating prompt from cwd and stays silent when they are absent, so a
+// screen pointed at the wrong directory looks identical to one whose skills failed
+// to load.
+for (const screen of SCREEN_CONFIGS) {
+  const missing = describeScreenWorkspace(screen.cwd)
+  if (missing.length > 0) {
+    logWarn(
+      `screen "${screen.screenId}" has no Pi project surface in its working directory — ` +
+        `missing ${missing.join(', ')}. It will run as a bare Pi: no harness skills, ` +
+        'no tribes extensions, and the default model rather than the pinned one.'
+    )
+  } else {
+    logInfo(`screen "${screen.screenId}" loaded the Pi project surface from its workspace`)
+  }
+}
 
 switch (AUTH.mode) {
   case 'owner': {
