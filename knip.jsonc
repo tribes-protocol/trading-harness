@@ -17,10 +17,6 @@
       "entry": ["src/Main.ts", "test/**/*.test.ts"],
       "project": ["src/**/*.ts", "test/**/*.ts"]
     },
-    "apps/web": {
-      "entry": ["src/app/**/{page,layout,route}.tsx", "next.config.ts", "test/**/*.test.ts"],
-      "project": ["src/**/*.{ts,tsx}", "test/**/*.{ts,tsx}"]
-    },
     "packages/protocol": {
       "entry": ["src/**/*.ts"],
       "project": ["src/**/*.ts"]

@@ -38,7 +38,7 @@ jobs:
       - name: Typecheck (workspaces + the root .pi surface)
         run: bun run typecheck
 
-      - name: Build the world (cli + protocol + gateway + web)
+      - name: Build the world (cli + protocol + gateway)
         run: bun run build
 
       - name: Tests (unit + skills contract)

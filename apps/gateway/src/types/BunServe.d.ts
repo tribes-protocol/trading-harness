@@ -38,7 +38,13 @@ declare global {
   interface BunServeOptions<TData> {
     port: number
     hostname: string
-    fetch: (request: Request, server: BunServer<TData>) => Response | Promise<Response> | undefined
+    // `undefined` is how a handler says "upgraded, no HTTP response". The screen
+    // socket awaits owner-signature verification before upgrading, so the async
+    // form has to be allowed to resolve to undefined too.
+    fetch: (
+      request: Request,
+      server: BunServer<TData>
+    ) => Response | Promise<Response | undefined> | undefined
     websocket: BunWebSocketHandler<TData>
   }
 

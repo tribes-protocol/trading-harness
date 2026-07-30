@@ -12,7 +12,7 @@
   "scripts": {
     "typecheck": "TURBO_UI=0 turbo run typecheck --output-logs=full && tsc --noEmit -p tsconfig.json",
     "build": "TURBO_UI=0 turbo run build --output-logs=full",
-    "dev": "TURBO_UI=0 turbo run dev --concurrency=20 --filter=@tribes-harness/web... --filter=@tribes-harness/gateway... --output-logs=full",
+    "dev": "TURBO_UI=0 turbo run dev --filter=@tribes-harness/gateway... --output-logs=full",
     "dev:cli": "sh scripts/dev.sh",
     "setup:dev": "sh scripts/setup-env.sh dev",
     "setup:prod": "sh scripts/setup-env.sh prod",

@@ -56,22 +56,6 @@
     "test:unit:coverage": {
       "dependsOn": ["^build"],
       "outputs": ["coverage/**"]
-    },
-    "@tribes-harness/web#build": {
-      "dependsOn": ["^build"],
-      "outputs": [".next/**", "!.next/cache/**", "*.tsbuildinfo"],
-      "env": ["NODE_ENV", "NEXT_PUBLIC_GATEWAY_WS_URL"],
-      "inputs": [
-        "$TURBO_DEFAULT$",
-        "!test/**",
-        "!**/*.test.ts",
-        "!**/*.test.tsx",
-        "!**/*.md",
-        "!.env.example",
-        "!eslint.config.mjs",
-        "!tsconfig.vitest.json",
-        "!vitest.config.*"
-      ]
     }
   }
 }

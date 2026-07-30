@@ -131,9 +131,9 @@ apps/
     src/common|helpers|services|types|utils/
     test/                  #   mirrors src/
   gateway/                 # @tribes-harness/gateway — hosts Pi sessions, streams them over ws
-  web/                     # @tribes-harness/web — Pi screen canvas (left) + main chat (right)
 packages/
   protocol/                # @tribes-harness/protocol — the gateway <-> browser wire contract
+                           #   CANONICAL; terminal mirrors it (see "The browser half")
 .pi/                       # MUST stay at the repo root (see "Why the root is load-bearing")
   agent/
     settings.json          # Pi provider/model config
@@ -162,10 +162,23 @@ Four things cannot move into a workspace, and each fails SILENTLY if moved:
   `linker = "hoisted"` because bun otherwise switches to the isolated linker as soon as
   `workspaces` exists, and `ln -sf` onto the resulting missing target succeeds silently.
 
+### The browser half lives in tribes-terminal
+
+The UI that renders a Pi screen is **not** in this repo. It is a route in the terminal
+monorepo, `apps/web/src/app/sandbox/chat`, so it inherits that app's auth, theme and deploy.
+This repo owns the two halves that have to sit next to `.pi/`:
+
+- **`apps/gateway`** — hosts the `AgentSession` and speaks the protocol over one WebSocket.
+  It must run with the repo root as its cwd, which is why it lives here and not there.
+- **`packages/protocol`** — the CANONICAL wire contract. terminal cannot import across
+  repos, so it keeps a vendored mirror under `packages/sandboxing/src/shared/types`, the
+  same way `apps/microvmd` mirrors `DialogProtocol.ts` from `packages/sandboxing`. Any frame
+  change lands in both, and a wire-identity test on the terminal side cross-checks them.
+
 ### Commands
 
 ```bash
-bun run dev          # gateway + web (Pi streamed to the browser)
+bun run dev          # the gateway alone; point the terminal UI at it
 bun run dev:cli      # watch-compile tribes-cli only
 bun run typecheck    # every workspace, plus the root .pi surface
 bun run test:unit    # every workspace's vitest suite

@@ -57,6 +57,31 @@ export const GATEWAY_ALLOWED_ORIGINS: readonly string[] =
         .map((origin) => origin.trim())
         .filter((origin) => origin.length > 0)
 
+/**
+ * Owner-signature auth for the screen socket (see types/OwnerAuth).
+ *
+ * Inside a VM the `pi.<slug>.<domain>` front is a bare `reverse_proxy` with no
+ * `forward_auth`, so it is publicly reachable and the gateway must authenticate
+ * every upgrade itself.
+ *
+ * These are the RAW strings only. The mode is DECLARED by `GATEWAY_AUTH_MODE` and
+ * defaults to `owner`; `utils/GatewayAuthConfig` validates the combination and Main
+ * exits on a bad one. Whether an address happens to be present deliberately does
+ * NOT select the mode — inferring it that way means a VM that boots without the
+ * variable serves unauthenticated.
+ */
+const AUTH_MODE_ENV = process.env.GATEWAY_AUTH_MODE
+
+export const GATEWAY_AUTH_MODE_RAW = AUTH_MODE_ENV === undefined ? '' : AUTH_MODE_ENV.trim()
+
+const OWNER_ADDRESS_ENV = process.env.TRIBES_OWNER_ADDRESS
+
+export const TRIBES_OWNER_ADDRESS = OWNER_ADDRESS_ENV === undefined ? '' : OWNER_ADDRESS_ENV.trim()
+
+const SANDBOX_ID_ENV = process.env.TRIBES_SANDBOX_ID
+
+export const TRIBES_SANDBOX_ID = SANDBOX_ID_ENV === undefined ? '' : SANDBOX_ID_ENV.trim()
+
 // src/common -> src -> apps/gateway -> apps -> repo root. Pi resolves project
 // resources at join(cwd, '.pi') with no ancestor walk, so the screen's cwd has
 // to be the repo root itself, not the app directory.
