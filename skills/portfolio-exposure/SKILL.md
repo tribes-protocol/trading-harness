@@ -103,6 +103,10 @@ No artifact state is produced; the report feeds `portfolio-triggers` and `portfo
 - Reads only; no mutation, no instruction, no threshold verdicts (that is
   `portfolio-triggers`' job — this skill supplies its inputs).
 - Never compute exposure over stale marks or unreconciled state; refuse and say why.
+- Measurement is independent of the decision path: performance numbers never leave without
+  their data-quality footnotes, and unresolved reconciliation breaks from
+  `portfolio-reconcile` CAP the stated confidence of any P&L attribution they touch — the
+  book's grader never smooths over the book's breaks.
 - No credentials or wallet ids in the report.
 
 ## Failure & retry

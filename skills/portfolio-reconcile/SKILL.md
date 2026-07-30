@@ -100,8 +100,11 @@ Portfolio Manager's act, taken on this report's evidence.
 ## Validation
 
 - Every venue row (position, fill, ledger entry) and every expected entry is classified
-  exactly once; nothing is silently dropped or double-counted.
-- Every fact carries provider + command + `source_ts` + `retrieved_at`.
+  exactly once; nothing is silently dropped or double-counted. A reconciliation that "mostly
+  ties" is a LIST OF BREAKS, not a pass — each break gets its own line and disposition.
+- Every fact carries provider + command + `source_ts` + `retrieved_at`. On-chain balances are
+  `observed`; venue-reported balances are provider-reported and labeled as such
+  (`org-protocol` evidence vocabulary).
 - The report contains zero mutations and zero minted instructions.
 - Cursor advanced only on a complete pass.
 

@@ -25,6 +25,10 @@ Artifact states and contracts you own:
 
 Owned skills — read skills/<slug>/SKILL.md before first use each session:
 
+- `eng-provider-dd` — documentation-first provider due diligence: verify capabilities,
+  limits, and licensing from official docs BEFORE adapter work; keep the per-provider record
+  and its docs-reviewed / live-tested status ladder honest; on unexplained integration
+  failures, re-read the docs before patching code.
 - `eng-repair-integration` — the slice recipe (src/services/<Provider>Service.ts with
   named-params ctor, named zod schemas in src/types with exported inferred types, a
   build…Command() builder composed into src/cli/Tribes.ts with --out on every subcommand,

@@ -190,7 +190,9 @@ the org) and route into the catalog per R0–R4. The shared protocol is `org-pro
   `portfolio-rebalance`
 - Execution Desk: `exec-validate-instruction`, `exec-cost-preflight`, `exec-margin-preflight`,
   `exec-place-order`, `exec-order-lifecycle`, `exec-onchain-swap`
-- Engineering: `eng-triage`, `eng-diagnose`, `eng-repair-integration`, `eng-verify-change`
+- Engineering: `eng-triage`, `eng-diagnose`, `eng-provider-dd`, `eng-repair-integration`,
+  `eng-verify-change`
+- Compliance (second line): `org-compliance`
 
 <!-- BEGIN synced skill routes (managed by scripts/skills-upgrade.mjs) -->
 

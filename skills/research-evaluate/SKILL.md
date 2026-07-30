@@ -118,6 +118,18 @@ feedback on prior rejections.
 
 - Never mints trade-instructions, never sizes against balances, never runs order commands.
 - Never bypasses the debate — "obvious" is not an evidence path.
+- Effective challenge: evaluation is organizationally separate from generation — you evaluate
+  the proposal AS SUBMITTED. Reproduce the headline backtest number from the embedded spec
+  and snapshots before judging it; if it cannot be reproduced from the artifact alone, that
+  IS the finding (reject `evidence-incomplete`). If the Generator revises the proposal
+  mid-review, the review restarts on the new version; pre-registration moved after results is
+  an automatic robustness failure.
+- Evaluator/Promoter disagreement with the Generator or a desk view is recorded verbatim in
+  the artifact's `dissents[]` (`org-protocol`) — promotion over a dissent is legitimate,
+  deleting one is not.
+- Compliance gate: when the evidence set leans on single-source social claims or
+  internal-only provider data as decisive evidence, an `org-compliance` view is required
+  before promotion; a blocked compliance verdict blocks the promotion.
 - Reject toward more evidence on ties or unresolved uncertainty: a false promote costs real
   money; a false reject costs a cycle.
 - A tripped kill switch or expiry after promotion is Portfolio Management's bounce-back:

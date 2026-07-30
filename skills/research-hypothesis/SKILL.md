@@ -99,6 +99,10 @@ always recorded, never silent.
   Validation, not a pull from here.
 - One proposal per hypothesis. Variants are separate proposals and ALL are recorded — the full
   set, including failures, is `research-robustness`'s defense against cherry-picking.
+- Pre-registration: rationale, universe, horizon, expected sign, and the falsification
+  criterion are written in the proposal BEFORE any backtest data is pulled. Changing the
+  hypothesis after seeing results is a NEW proposal citing the old one — never an edit. A
+  hypothesis with no falsification criterion cannot proceed to a spec at all.
 
 ## Failure & retry
 

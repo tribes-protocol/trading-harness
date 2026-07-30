@@ -77,9 +77,22 @@ Rules:
   `date -u +%Y-%m-%dT%H:%M:%SZ` — several provider payloads carry no as-of field.
 - `checks[]` records every promotion-contract item actually verified, one entry each.
 - Facts, signals, hypotheses, recommendations, and executed actions are labeled as such in
-  `payload` — never mix a hypothesis into a fact field.
+  `payload` — never mix a hypothesis into a fact field. Where finer grain helps, use the
+  evidence-type vocabulary: `observed` | `calculated` | `model_estimate` | `hypothesis` |
+  `assumption` | `analyst_judgment` — provider model output (sentiment labels, smart-money
+  cohorts) is `model_estimate`, never `observed`; venue-reported balances are
+  provider-reported facts, distinct from on-chain `observed`.
+- Source quality flags propagate into the artifact's language: EOD data reads "as of <date>
+  close", delayed data says so, and estimates are never phrased as observations.
+- An optional `dissents[]` array records disagreements VERBATIM with attribution (role + at).
+  A dissent is never deleted, softened, or averaged away; deciding over a dissent is
+  legitimate, erasing it is not.
 - NEVER place credentials, private keys, bearer tokens, or wallet ids in any artifact.
   `.tribes/privy-wallets.json` is NEVER read by org roles.
+- Machine-check every artifact and ack after writing it: `tribes-cli org validate <file>`
+  (acks auto-detected by the `.ack.json` suffix). A nonzero exit with its structured error
+  list means fix the file before handing it off — never ship an artifact that fails
+  validation.
 
 ## Ids and derivations
 
@@ -210,6 +223,7 @@ listing each contract item, and `upstream` citing the observation id.
 ## Acceptance
 
 - [ ] Every promotion matched its charter contract and recorded `checks[]`.
+- [ ] Every artifact and ack written this session passed `tribes-cli org validate`.
 - [ ] Every artifact has exactly one writer; acks are sidecars; writes were atomic.
 - [ ] Ids and cloids follow the derivation rules; execution chain joins on one UUID.
 - [ ] Session-start recovery ran before new work; session-end pass ran after execution.
