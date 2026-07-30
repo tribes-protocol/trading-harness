@@ -44,7 +44,11 @@ describe('resolveGatewayAuthConfig', () => {
   it('accepts an owner address in either casing', () => {
     // viem recovers and compares case-insensitively, and the value arrives as an
     // environment string of unknown casing.
-    for (const ownerAddress of [OWNER, OWNER.toLowerCase(), OWNER.toUpperCase().replace('0X', '0x')])
+    for (const ownerAddress of [
+      OWNER,
+      OWNER.toLowerCase(),
+      OWNER.toUpperCase().replace('0X', '0x')
+    ])
       expect(
         resolveGatewayAuthConfig({ mode: 'owner', ownerAddress, sandboxId: 'sbx-1' }).ok,
         ownerAddress
