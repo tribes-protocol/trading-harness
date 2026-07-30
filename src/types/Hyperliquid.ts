@@ -6,7 +6,7 @@ import { type TransactionService } from '@/services/TransactionService'
 import { type EthAddress, EthAddressSchema } from '@/types/Eth'
 import { BigintSchema, BigNumberSchema, type HexString, HexStringSchema } from '@/types/Lang'
 import { type EthSignTypedData } from '@/types/Tx'
-import { isNullish } from '@/utils/Lang'
+import { isNullish, prepend0x } from '@/utils/Lang'
 
 export const HyperliquidSignerOptionsSchema = z.object({
   walletId: z.string().trim().min(1),
@@ -272,6 +272,14 @@ export type HyperliquidMarketType = z.infer<typeof HyperliquidMarketTypeSchema>
 export const HyperliquidSpotSideSchema = z.enum(['buy', 'sell'])
 export type HyperliquidSpotSide = z.infer<typeof HyperliquidSpotSideSchema>
 
+// Client Order ID: 0x followed by 32 hex characters (16 bytes), normalized to lowercase.
+export const HyperliquidCloidSchema = z
+  .string()
+  .trim()
+  .regex(/^0x[0-9a-fA-F]{32}$/, 'cloid must be 0x followed by 32 hex characters')
+  .transform((value) => prepend0x(value.toLowerCase()))
+export type HyperliquidCloid = z.infer<typeof HyperliquidCloidSchema>
+
 export const HyperliquidPerpTradeCommandOptionsSchema = z
   .object({
     from: EthAddressSchema,
@@ -289,6 +297,7 @@ export const HyperliquidPerpTradeCommandOptionsSchema = z
     reduceOnly: z.boolean().default(false),
     marginMode: HyperliquidPerpMarginModeSchema.default('cross'),
     leverage: z.coerce.number().int().positive().nullish(),
+    cloid: HyperliquidCloidSchema.nullish(),
     dex: z.string().trim().nullish(),
     walletId: z.string().trim().min(1),
     out: z.string().nullish()
@@ -426,6 +435,7 @@ export const HyperliquidSpotTradeCommandOptionsSchema = z
     type: HyperliquidSpotOrderTypeSchema.default('market'),
     price: BigNumberSchema.nullish(),
     tif: HyperliquidPerpTifSchema.default('Gtc'),
+    cloid: HyperliquidCloidSchema.nullish(),
     walletId: z.string().trim().min(1),
     out: z.string().nullish()
   })
@@ -486,25 +496,47 @@ export type HyperliquidSpotTwapCancelCommandOptions = z.infer<
   typeof HyperliquidSpotTwapCancelCommandOptionsSchema
 >
 
-export const HyperliquidCancelOrderCommandOptionsSchema = z.object({
-  from: EthAddressSchema,
-  coin: z.string().trim().min(1),
-  orderId: z.coerce.number().int().nonnegative(),
-  dex: z.string().trim().nullish(),
-  walletId: z.string().trim().min(1),
-  out: z.string().nullish()
-})
+export const HyperliquidCancelOrderCommandOptionsSchema = z
+  .object({
+    from: EthAddressSchema,
+    coin: z.string().trim().min(1),
+    orderId: z.coerce.number().int().nonnegative().nullish(),
+    cloid: HyperliquidCloidSchema.nullish(),
+    dex: z.string().trim().nullish(),
+    walletId: z.string().trim().min(1),
+    out: z.string().nullish()
+  })
+  .superRefine((value, ctx) => {
+    if (isNullish(value.orderId) === isNullish(value.cloid)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['orderId'],
+        message: 'provide exactly one of --order-id or --cloid'
+      })
+    }
+  })
 export type HyperliquidCancelOrderCommandOptions = z.infer<
   typeof HyperliquidCancelOrderCommandOptionsSchema
 >
 
-export const HyperliquidSpotCancelOrderCommandOptionsSchema = z.object({
-  from: EthAddressSchema,
-  pair: z.string().trim().min(1),
-  orderId: z.coerce.number().int().nonnegative(),
-  walletId: z.string().trim().min(1),
-  out: z.string().nullish()
-})
+export const HyperliquidSpotCancelOrderCommandOptionsSchema = z
+  .object({
+    from: EthAddressSchema,
+    pair: z.string().trim().min(1),
+    orderId: z.coerce.number().int().nonnegative().nullish(),
+    cloid: HyperliquidCloidSchema.nullish(),
+    walletId: z.string().trim().min(1),
+    out: z.string().nullish()
+  })
+  .superRefine((value, ctx) => {
+    if (isNullish(value.orderId) === isNullish(value.cloid)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['orderId'],
+        message: 'provide exactly one of --order-id or --cloid'
+      })
+    }
+  })
 export type HyperliquidSpotCancelOrderCommandOptions = z.infer<
   typeof HyperliquidSpotCancelOrderCommandOptionsSchema
 >
@@ -745,6 +777,255 @@ export const HyperliquidFillsResultSchema = z.object({
 })
 export type HyperliquidFillsResult = z.infer<typeof HyperliquidFillsResultSchema>
 
+export const HyperliquidOrderStatusCommandOptionsSchema = z
+  .object({
+    address: EthAddressSchema,
+    oid: z.coerce.number().int().nonnegative().nullish(),
+    cloid: HyperliquidCloidSchema.nullish(),
+    out: z.string().nullish()
+  })
+  .superRefine((value, ctx) => {
+    if (isNullish(value.oid) === isNullish(value.cloid)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['oid'],
+        message: 'provide exactly one of --oid or --cloid'
+      })
+    }
+  })
+export type HyperliquidOrderStatusCommandOptions = z.infer<
+  typeof HyperliquidOrderStatusCommandOptionsSchema
+>
+
+export const HyperliquidOrderStatusOrderSchema = z.object({
+  coin: z.string(),
+  side: HyperliquidOpenOrderSideSchema,
+  size: z.string(),
+  orig_size: z.string(),
+  limit_px: z.string(),
+  oid: z.number().int().nonnegative(),
+  cloid: z.string().nullish(),
+  timestamp: z.number().int().nonnegative()
+})
+export type HyperliquidOrderStatusOrder = z.infer<typeof HyperliquidOrderStatusOrderSchema>
+
+export const HyperliquidOrderStatusResultSchema = z.object({
+  status: z.string(),
+  status_timestamp: z.number().int().nonnegative().nullish(),
+  order: HyperliquidOrderStatusOrderSchema.nullish()
+})
+export type HyperliquidOrderStatusResult = z.infer<typeof HyperliquidOrderStatusResultSchema>
+
+export const HyperliquidFundingHistoryCommandOptionsSchema = z
+  .object({
+    coin: z.string().trim().min(1),
+    startTime: z.coerce.number().int().nonnegative(),
+    endTime: z.coerce.number().int().nonnegative().nullish(),
+    dex: z.string().trim().min(1).nullish(),
+    out: z.string().nullish()
+  })
+  .superRefine((value, ctx) => {
+    if (!isNullish(value.endTime) && value.endTime < value.startTime) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['endTime'],
+        message: 'endTime must be greater than or equal to startTime'
+      })
+    }
+  })
+export type HyperliquidFundingHistoryCommandOptions = z.infer<
+  typeof HyperliquidFundingHistoryCommandOptionsSchema
+>
+
+export const HyperliquidFundingHistoryEntrySchema = z.object({
+  coin: z.string(),
+  funding_rate: z.string(),
+  premium: z.string(),
+  time: z.number().int().nonnegative()
+})
+export type HyperliquidFundingHistoryEntry = z.infer<typeof HyperliquidFundingHistoryEntrySchema>
+
+export const HyperliquidPredictedFundingsCommandOptionsSchema = z.object({
+  out: z.string().nullish()
+})
+export type HyperliquidPredictedFundingsCommandOptions = z.infer<
+  typeof HyperliquidPredictedFundingsCommandOptionsSchema
+>
+
+export const HyperliquidPredictedFundingVenueSchema = z.object({
+  venue: z.string(),
+  funding_rate: z.string().nullish(),
+  next_funding_time: z.number().int().nonnegative().nullish(),
+  funding_interval_hours: z.number().nullish()
+})
+export type HyperliquidPredictedFundingVenue = z.infer<
+  typeof HyperliquidPredictedFundingVenueSchema
+>
+
+export const HyperliquidPredictedFundingSchema = z.object({
+  coin: z.string(),
+  venues: z.array(HyperliquidPredictedFundingVenueSchema)
+})
+export type HyperliquidPredictedFunding = z.infer<typeof HyperliquidPredictedFundingSchema>
+
+// Mirrors the SDK's candleSnapshot interval picklist exactly.
+export const HyperliquidCandleIntervalSchema = z.enum([
+  '1m',
+  '3m',
+  '5m',
+  '15m',
+  '30m',
+  '1h',
+  '2h',
+  '4h',
+  '8h',
+  '12h',
+  '1d',
+  '3d',
+  '1w',
+  '1M'
+])
+export type HyperliquidCandleInterval = z.infer<typeof HyperliquidCandleIntervalSchema>
+
+export const HyperliquidCandlesCommandOptionsSchema = z
+  .object({
+    coin: z.string().trim().min(1),
+    interval: HyperliquidCandleIntervalSchema,
+    startTime: z.coerce.number().int().nonnegative(),
+    endTime: z.coerce.number().int().nonnegative().nullish(),
+    dex: z.string().trim().min(1).nullish(),
+    out: z.string().nullish()
+  })
+  .superRefine((value, ctx) => {
+    if (!isNullish(value.endTime) && value.endTime < value.startTime) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['endTime'],
+        message: 'endTime must be greater than or equal to startTime'
+      })
+    }
+  })
+export type HyperliquidCandlesCommandOptions = z.infer<
+  typeof HyperliquidCandlesCommandOptionsSchema
+>
+
+export const HyperliquidCandleSchema = z.object({
+  open_time: z.number().int().nonnegative(),
+  close_time: z.number().int().nonnegative(),
+  open: z.string(),
+  high: z.string(),
+  low: z.string(),
+  close: z.string(),
+  volume: z.string(),
+  num_trades: z.number().int().nonnegative()
+})
+export type HyperliquidCandle = z.infer<typeof HyperliquidCandleSchema>
+
+export const HyperliquidPortfolioCommandOptionsSchema = z.object({
+  address: EthAddressSchema,
+  out: z.string().nullish()
+})
+export type HyperliquidPortfolioCommandOptions = z.infer<
+  typeof HyperliquidPortfolioCommandOptionsSchema
+>
+
+export const HyperliquidPortfolioBucketSchema = z.object({
+  period: z.string(),
+  account_value_history: z.array(z.tuple([z.number(), z.string()])),
+  pnl_history: z.array(z.tuple([z.number(), z.string()])),
+  vlm: z.string()
+})
+export type HyperliquidPortfolioBucket = z.infer<typeof HyperliquidPortfolioBucketSchema>
+
+export const HyperliquidPortfolioResultSchema = z.object({
+  address: EthAddressSchema,
+  periods: z.array(HyperliquidPortfolioBucketSchema)
+})
+export type HyperliquidPortfolioResult = z.infer<typeof HyperliquidPortfolioResultSchema>
+
+export const HyperliquidLedgerCommandOptionsSchema = z
+  .object({
+    address: EthAddressSchema,
+    startTime: z.coerce.number().int().nonnegative().nullish(),
+    endTime: z.coerce.number().int().nonnegative().nullish(),
+    out: z.string().nullish()
+  })
+  .superRefine((value, ctx) => {
+    if (
+      !isNullish(value.startTime) &&
+      !isNullish(value.endTime) &&
+      value.endTime < value.startTime
+    ) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['endTime'],
+        message: 'endTime must be greater than or equal to startTime'
+      })
+    }
+  })
+export type HyperliquidLedgerCommandOptions = z.infer<typeof HyperliquidLedgerCommandOptionsSchema>
+
+// Non-funding ledger updates carry a per-kind payload; the discriminated union
+// is flattened into {time, hash, kind, ...snake_case fields}.
+export const HyperliquidLedgerEntrySchema = z
+  .object({
+    time: z.number().int().nonnegative(),
+    hash: z.string(),
+    kind: z.string()
+  })
+  .catchall(z.unknown())
+export type HyperliquidLedgerEntry = z.infer<typeof HyperliquidLedgerEntrySchema>
+
+export const HyperliquidLedgerResultSchema = z.object({
+  address: EthAddressSchema,
+  updates: z.array(HyperliquidLedgerEntrySchema)
+})
+export type HyperliquidLedgerResult = z.infer<typeof HyperliquidLedgerResultSchema>
+
+export const HyperliquidUserFeesCommandOptionsSchema = z.object({
+  address: EthAddressSchema,
+  out: z.string().nullish()
+})
+export type HyperliquidUserFeesCommandOptions = z.infer<
+  typeof HyperliquidUserFeesCommandOptionsSchema
+>
+
+export const HyperliquidUserFeesDailyVolumeSchema = z.object({
+  date: z.string(),
+  user_cross: z.string(),
+  user_add: z.string(),
+  exchange: z.string()
+})
+export type HyperliquidUserFeesDailyVolume = z.infer<typeof HyperliquidUserFeesDailyVolumeSchema>
+
+export const HyperliquidUserFeesResultSchema = z.object({
+  address: EthAddressSchema,
+  user_cross_rate: z.string(),
+  user_add_rate: z.string(),
+  user_spot_cross_rate: z.string(),
+  user_spot_add_rate: z.string(),
+  active_referral_discount: z.string(),
+  daily_user_vlm: z.array(HyperliquidUserFeesDailyVolumeSchema)
+})
+export type HyperliquidUserFeesResult = z.infer<typeof HyperliquidUserFeesResultSchema>
+
+export const HyperliquidRateLimitCommandOptionsSchema = z.object({
+  address: EthAddressSchema,
+  out: z.string().nullish()
+})
+export type HyperliquidRateLimitCommandOptions = z.infer<
+  typeof HyperliquidRateLimitCommandOptionsSchema
+>
+
+export const HyperliquidRateLimitResultSchema = z.object({
+  address: EthAddressSchema,
+  cum_vlm: z.string(),
+  n_requests_used: z.number().int().nonnegative(),
+  n_requests_cap: z.number().int().nonnegative(),
+  n_requests_surplus: z.number().int().nonnegative()
+})
+export type HyperliquidRateLimitResult = z.infer<typeof HyperliquidRateLimitResultSchema>
+
 export interface HyperliquidUserFillWire {
   readonly coin: string
   readonly px: string
@@ -933,6 +1214,45 @@ export interface HyperliquidListFillsParams {
   readonly reversed: boolean
 }
 
+export interface HyperliquidOrderStatusParams {
+  readonly address: EthAddress
+  readonly oid: number | null | undefined
+  readonly cloid: string | null | undefined
+}
+
+export interface HyperliquidFundingHistoryParams {
+  readonly coin: string
+  readonly startTime: number
+  readonly endTime: number | null | undefined
+  readonly dex: string | null | undefined
+}
+
+export interface HyperliquidCandlesParams {
+  readonly coin: string
+  readonly interval: HyperliquidCandleInterval
+  readonly startTime: number
+  readonly endTime: number | null | undefined
+  readonly dex: string | null | undefined
+}
+
+export interface HyperliquidPortfolioParams {
+  readonly address: EthAddress
+}
+
+export interface HyperliquidUserFeesParams {
+  readonly address: EthAddress
+}
+
+export interface HyperliquidRateLimitParams {
+  readonly address: EthAddress
+}
+
+export interface HyperliquidLedgerParams {
+  readonly address: EthAddress
+  readonly startTime: number | null | undefined
+  readonly endTime: number | null | undefined
+}
+
 export interface CreateExchangeClientParams {
   readonly address: EthAddress
   readonly walletId: string
@@ -955,6 +1275,7 @@ export interface PerpOrderWire {
   readonly s: string
   readonly r: boolean
   readonly t: PerpOrderTypeField
+  readonly c?: string
 }
 
 export interface BuildBracketExitLegParams {

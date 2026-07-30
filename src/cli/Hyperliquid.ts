@@ -10,15 +10,22 @@ import { TransactionService } from '@/services/TransactionService'
 import {
   HyperliquidAdjustMarginCommandOptionsSchema,
   HyperliquidCancelOrderCommandOptionsSchema,
+  HyperliquidCandlesCommandOptionsSchema,
   HyperliquidDepositCommandOptionsSchema,
   HyperliquidDexCashTransferCommandOptionsSchema,
+  HyperliquidFundingHistoryCommandOptionsSchema,
+  HyperliquidLedgerCommandOptionsSchema,
   HyperliquidListAssetsCommandOptionsSchema,
   HyperliquidListBalancesCommandOptionsSchema,
   HyperliquidListExchangesCommandOptionsSchema,
   HyperliquidListFillsCommandOptionsSchema,
   HyperliquidListOpenOrdersCommandOptionsSchema,
   HyperliquidListPositionsCommandOptionsSchema,
+  HyperliquidOrderStatusCommandOptionsSchema,
   HyperliquidPerpTradeCommandOptionsSchema,
+  HyperliquidPortfolioCommandOptionsSchema,
+  HyperliquidPredictedFundingsCommandOptionsSchema,
+  HyperliquidRateLimitCommandOptionsSchema,
   HyperliquidScaleOrderCommandOptionsSchema,
   HyperliquidSetLeverageCommandOptionsSchema,
   HyperliquidSpotCancelOrderCommandOptionsSchema,
@@ -31,9 +38,10 @@ import {
   HyperliquidTwapOrderCommandOptionsSchema,
   HyperliquidUsdClassTransferCommandOptionsSchema,
   HyperliquidUsdTransferCommandOptionsSchema,
+  HyperliquidUserFeesCommandOptionsSchema,
   HyperliquidWithdrawCommandOptionsSchema
 } from '@/types/Hyperliquid'
-import { ensureJsonTreeString } from '@/utils/Lang'
+import { ensureJsonTreeString, isNullish } from '@/utils/Lang'
 
 const VERSION = '1.0.0'
 
@@ -193,6 +201,169 @@ export function buildHyperliquidCommand(): Command {
         coin: request.coin,
         depth: request.depth ?? DEFAULT_ORDER_BOOK_DEPTH,
         dex: request.dex
+      })
+      const output = ensureJsonTreeString(response)
+      await writeOutput({
+        output,
+        outPath: request.out ?? undefined
+      })
+    })
+
+  program
+    .command('order-status')
+    .description('Look up one order by order id or client order id (cloid)')
+    .requiredOption('--address <address>', 'Hyperliquid account address that placed the order')
+    .option('--oid <oid>', 'Order id (exactly one of --oid | --cloid)')
+    .option(
+      '--cloid <cloid>',
+      'Client order id: 0x + 32 hex chars (exactly one of --oid | --cloid)'
+    )
+    .option('--out <file>', 'Write output JSON to file')
+    .action(async (options: unknown): Promise<void> => {
+      const request = HyperliquidOrderStatusCommandOptionsSchema.parse(options)
+      const response = await hyperliquidService.getOrderStatus({
+        address: request.address,
+        oid: request.oid,
+        cloid: request.cloid
+      })
+      const output = ensureJsonTreeString(response)
+      await writeOutput({
+        output,
+        outPath: request.out ?? undefined
+      })
+    })
+
+  program
+    .command('funding-history')
+    .description('Historical funding rate records for a perp coin')
+    .requiredOption('--coin <coin>', 'Perp symbol (for example: BTC, ETH)')
+    .requiredOption('--start-time <ms>', 'Start time in milliseconds (inclusive)')
+    .option('--end-time <ms>', 'End time in milliseconds (inclusive)')
+    .option('--dex <dex>', 'Perp dex name (main by default)')
+    .option('--out <file>', 'Write output JSON to file')
+    .action(async (options: unknown): Promise<void> => {
+      const request = HyperliquidFundingHistoryCommandOptionsSchema.parse(options)
+      const response = await hyperliquidService.getFundingHistory({
+        coin: request.coin,
+        startTime: request.startTime,
+        endTime: request.endTime,
+        dex: request.dex
+      })
+      const output = ensureJsonTreeString(response)
+      await writeOutput({
+        output,
+        outPath: request.out ?? undefined
+      })
+    })
+
+  program
+    .command('predicted-fundings')
+    .description('Predicted funding rates per coin across venues')
+    .option('--out <file>', 'Write output JSON to file')
+    .action(async (options: unknown): Promise<void> => {
+      const request = HyperliquidPredictedFundingsCommandOptionsSchema.parse(options)
+      const response = await hyperliquidService.getPredictedFundings()
+      const output = ensureJsonTreeString(response)
+      await writeOutput({
+        output,
+        outPath: request.out ?? undefined
+      })
+    })
+
+  program
+    .command('candles')
+    .description('Candlestick snapshot for a perp coin')
+    .requiredOption('--coin <coin>', 'Perp symbol (for example: BTC, ETH)')
+    .requiredOption(
+      '--interval <interval>',
+      'Candle interval: 1m | 3m | 5m | 15m | 30m | 1h | 2h | 4h | 8h | 12h | 1d | 3d | 1w | 1M'
+    )
+    .requiredOption('--start-time <ms>', 'Start time in milliseconds (inclusive)')
+    .option('--end-time <ms>', 'End time in milliseconds (inclusive)')
+    .option('--dex <dex>', 'Perp dex name (main by default)')
+    .option('--out <file>', 'Write output JSON to file')
+    .action(async (options: unknown): Promise<void> => {
+      const request = HyperliquidCandlesCommandOptionsSchema.parse(options)
+      const response = await hyperliquidService.getCandles({
+        coin: request.coin,
+        interval: request.interval,
+        startTime: request.startTime,
+        endTime: request.endTime,
+        dex: request.dex
+      })
+      const output = ensureJsonTreeString(response)
+      await writeOutput({
+        output,
+        outPath: request.out ?? undefined
+      })
+    })
+
+  program
+    .command('portfolio')
+    .description('Portfolio period buckets (account value, pnl, volume) for a Hyperliquid account')
+    .requiredOption('--address <address>', 'Hyperliquid account address to inspect')
+    .option('--out <file>', 'Write output JSON to file')
+    .action(async (options: unknown): Promise<void> => {
+      const request = HyperliquidPortfolioCommandOptionsSchema.parse(options)
+      const response = await hyperliquidService.getPortfolio({
+        address: request.address
+      })
+      const output = ensureJsonTreeString(response)
+      await writeOutput({
+        output,
+        outPath: request.out ?? undefined
+      })
+    })
+
+  program
+    .command('ledger')
+    .description(
+      'Non-funding ledger updates (deposits, withdrawals, transfers) for a Hyperliquid account'
+    )
+    .requiredOption('--address <address>', 'Hyperliquid account address to inspect')
+    .option('--start-time <ms>', 'Start time in milliseconds (inclusive)')
+    .option('--end-time <ms>', 'End time in milliseconds (inclusive)')
+    .option('--out <file>', 'Write output JSON to file')
+    .action(async (options: unknown): Promise<void> => {
+      const request = HyperliquidLedgerCommandOptionsSchema.parse(options)
+      const response = await hyperliquidService.getLedgerUpdates({
+        address: request.address,
+        startTime: request.startTime,
+        endTime: request.endTime
+      })
+      const output = ensureJsonTreeString(response)
+      await writeOutput({
+        output,
+        outPath: request.out ?? undefined
+      })
+    })
+
+  program
+    .command('user-fees')
+    .description('Fee rates and 14-day volume for a Hyperliquid account')
+    .requiredOption('--address <address>', 'Hyperliquid account address to inspect')
+    .option('--out <file>', 'Write output JSON to file')
+    .action(async (options: unknown): Promise<void> => {
+      const request = HyperliquidUserFeesCommandOptionsSchema.parse(options)
+      const response = await hyperliquidService.getUserFees({
+        address: request.address
+      })
+      const output = ensureJsonTreeString(response)
+      await writeOutput({
+        output,
+        outPath: request.out ?? undefined
+      })
+    })
+
+  program
+    .command('rate-limit')
+    .description('API rate-limit usage (cumulative volume, requests used/cap) for an account')
+    .requiredOption('--address <address>', 'Hyperliquid account address to inspect')
+    .option('--out <file>', 'Write output JSON to file')
+    .action(async (options: unknown): Promise<void> => {
+      const request = HyperliquidRateLimitCommandOptionsSchema.parse(options)
+      const response = await hyperliquidService.getRateLimit({
+        address: request.address
       })
       const output = ensureJsonTreeString(response)
       await writeOutput({
@@ -366,10 +537,14 @@ export function buildHyperliquidCommand(): Command {
 
   program
     .command('cancel-order')
-    .description('Cancel a resting perp order on Hyperliquid by order id')
+    .description('Cancel a resting perp order on Hyperliquid by order id or cloid')
     .requiredOption('--from <address>', 'Signer EVM address (Privy wallet)')
     .requiredOption('--coin <coin>', 'Perp symbol the order was placed on')
-    .requiredOption('--order-id <orderId>', 'Order id from list-open-orders')
+    .option('--order-id <orderId>', 'Order id (exactly one of --order-id | --cloid)')
+    .option(
+      '--cloid <cloid>',
+      'Client order id: 0x + 32 hex chars (exactly one of --order-id | --cloid)'
+    )
     .option('--dex <dex>', 'Perp dex name (main by default)')
     .requiredOption('--wallet-id <walletId>', 'Privy wallet id')
     .option('--out <file>', 'Write output JSON to file')
@@ -388,10 +563,14 @@ export function buildHyperliquidCommand(): Command {
 
   program
     .command('cancel-order-spot')
-    .description('Cancel a resting spot order on Hyperliquid by order id')
+    .description('Cancel a resting spot order on Hyperliquid by order id or cloid')
     .requiredOption('--from <address>', 'Signer EVM address (Privy wallet)')
     .requiredOption('--pair <pair>', 'Spot pair the order was placed on (for example: HYPE/USDC)')
-    .requiredOption('--order-id <orderId>', 'Order id from list-open-orders')
+    .option('--order-id <orderId>', 'Order id (exactly one of --order-id | --cloid)')
+    .option(
+      '--cloid <cloid>',
+      'Client order id: 0x + 32 hex chars (exactly one of --order-id | --cloid)'
+    )
     .requiredOption('--wallet-id <walletId>', 'Privy wallet id')
     .option('--out <file>', 'Write output JSON to file')
     .action(async (options: unknown): Promise<void> => {
@@ -523,6 +702,7 @@ export function buildHyperliquidCommand(): Command {
     .option('--reduce-only', 'Place reduce-only order')
     .option('--margin-mode <mode>', 'Margin mode: cross | isolated', 'cross')
     .option('--leverage <leverage>', 'Set leverage before order (integer)')
+    .option('--cloid <cloid>', 'Client order id for the entry order: 0x + 32 hex chars')
     .option('--dex <dex>', 'Perp dex name (main by default)')
     .requiredOption('--wallet-id <walletId>', 'Privy wallet id')
     .option('--out <file>', 'Write output JSON to file')
@@ -532,7 +712,9 @@ export function buildHyperliquidCommand(): Command {
         request,
         walletId: request.walletId
       })
-      const output = ensureJsonTreeString(response)
+      const output = ensureJsonTreeString(
+        isNullish(request.cloid) ? response : { ...response, cloid: request.cloid }
+      )
       await writeOutput({
         output,
         outPath: request.out ?? undefined
@@ -549,6 +731,7 @@ export function buildHyperliquidCommand(): Command {
     .option('--type <type>', 'Order type: market | limit', 'market')
     .option('--price <price>', 'Limit price (required when --type limit)')
     .option('--tif <tif>', 'Time in force for limit orders: Gtc | Ioc | Alo', 'Gtc')
+    .option('--cloid <cloid>', 'Client order id: 0x + 32 hex chars')
     .requiredOption('--wallet-id <walletId>', 'Privy wallet id')
     .option('--out <file>', 'Write output JSON to file')
     .action(async (options: unknown): Promise<void> => {
@@ -557,7 +740,9 @@ export function buildHyperliquidCommand(): Command {
         request,
         walletId: request.walletId
       })
-      const output = ensureJsonTreeString(response)
+      const output = ensureJsonTreeString(
+        isNullish(request.cloid) ? response : { ...response, cloid: request.cloid }
+      )
       await writeOutput({
         output,
         outPath: request.out ?? undefined

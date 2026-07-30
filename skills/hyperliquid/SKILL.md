@@ -27,10 +27,8 @@ commands fail with auth errors) and `evmWalletId` + EVM address from `zipbox-wal
 - Move funds — `deposit`, `withdraw`, and the `transfer-*` commands.
 - Trade a security or commodity — find the exact hosting dex and coin through
   `list-assets --all-dexes`, then `trade-perp --dex <name>`.
-- NOT for on-chain DEX swaps or cross-chain bridges — use `spot-trading`.
-- NOT for wallet IDs, addresses, or cross-chain token balances — use `zipbox-wallet`.
-- NOT for net worth over time, PnL, or transaction history — use `wallet-analyst`.
-- NOT for the end-to-end trade playbook with pre/post checks — use `trade-execution`.
+- NOT for on-chain swaps/bridges (`spot-trading`), wallet IDs/addresses (`zipbox-wallet`),
+  net worth or tx history (`wallet-analyst`), or the end-to-end playbook (`trade-execution`).
 
 ## Hard rules
 
@@ -65,36 +63,39 @@ Every subcommand accepts `--out <file>` to write JSON output to a file. Signed c
 require `--from` and `--wallet-id`; the Required-flags column lists only the other required
 flags. Defaults: `--dex main`, `--type market`, `--tif Gtc`, `--margin-mode cross`.
 
-| Subcommand           | Purpose                                                                | Required flags                                                       | Read-only or signed |
-| -------------------- | ---------------------------------------------------------------------- | -------------------------------------------------------------------- | ------------------- |
-| `list-exchanges`     | List perp dexes, including `main`                                      | none                                                                 | read-only           |
-| `list-assets`        | Tradable assets; use `--all-dexes`, `--dex <name>`, or `--market spot` | none                                                                 | read-only           |
-| `list-balances`      | Perp account summary + spot token balances                             | `--address`                                                          | read-only           |
-| `list-positions`     | Open perp positions AND active TWAPs (source of `twapId`)              | `--address`                                                          | read-only           |
-| `list-open-orders`   | Resting orders, perp + spot                                            | `--address`                                                          | read-only           |
-| `list-fills`         | Trade fills                                                            | `--address`                                                          | read-only           |
-| `deposit`            | Arbitrum native USDC → Hyperliquid bridge                              | `--amount` (decimal USDC)                                            | signed              |
-| `withdraw`           | USDC from Hyperliquid to an EVM address                                | `--amount`, `--destination`                                          | signed              |
-| `trade-perp`         | Perp order; `--tp-px`/`--sl-px` attach an atomic OCO bracket           | `--coin`, `--amount`, `--side`                                       | signed              |
-| `trade-spot`         | Hyperliquid spot order (market or limit)                               | `--pair`, `--amount`, `--side`                                       | signed              |
-| `scale-perp`         | Ladder of 2–50 perp limit legs across a price range                    | `--coin`, `--amount`, `--side`, `--start-px`, `--end-px`, `--orders` | signed              |
-| `scale-spot`         | Ladder of spot limit legs across a price range                         | `--pair`, `--amount`, `--side`, `--start-px`, `--end-px`, `--orders` | signed              |
-| `twap-perp`          | Perp order sliced over 5–1440 minutes                                  | `--coin`, `--amount`, `--side`, `--duration-minutes`                 | signed              |
-| `twap-spot`          | Spot order sliced over 5–1440 minutes                                  | `--pair`, `--amount`, `--side`, `--duration-minutes`                 | signed              |
-| `twap-cancel`        | Cancel a running perp TWAP                                             | `--coin`, `--twap-id`                                                | signed              |
-| `twap-cancel-spot`   | Cancel a running spot TWAP                                             | `--pair`, `--twap-id`                                                | signed              |
-| `cancel-order`       | Cancel one resting perp order                                          | `--coin`, `--order-id`                                               | signed              |
-| `cancel-order-spot`  | Cancel one resting spot order                                          | `--pair`, `--order-id`                                               | signed              |
-| `set-leverage`       | Update perp leverage without placing an order                          | `--coin`, `--leverage`                                               | signed              |
-| `adjust-margin`      | Add/remove isolated margin (`--direction`, default `add`)              | `--coin`, `--amount`, `--side`                                       | signed              |
-| `transfer-usd-class` | Move USDC between spot and perp wallets                                | `--amount`, `--direction`                                            | signed              |
-| `transfer-usd`       | Send USDC from the PERP balance to another Hyperliquid user            | `--amount`, `--destination`                                          | signed              |
-| `transfer-spot`      | Send spot tokens to another Hyperliquid user                           | `--amount`, `--destination`, `--token`                               | signed              |
-| `transfer-dex-cash`  | Move token balances between dexes (`spot` is a valid dex)              | `--amount`, `--source-dex`, `--destination-dex`                      | signed              |
+| Subcommand           | Purpose                                                                          | Required flags                                                       | Read-only or signed |
+| -------------------- | -------------------------------------------------------------------------------- | -------------------------------------------------------------------- | ------------------- |
+| `list-exchanges`     | List perp dexes, including `main`                                                | none                                                                 | read-only           |
+| `list-assets`        | Tradable assets; use `--all-dexes`, `--dex <name>`, or `--market spot`           | none                                                                 | read-only           |
+| `list-balances`      | Perp account summary + spot token balances                                       | `--address`                                                          | read-only           |
+| `list-positions`     | Open perp positions AND active TWAPs (source of `twapId`)                        | `--address`                                                          | read-only           |
+| `list-open-orders`   | Resting orders, perp + spot                                                      | `--address`                                                          | read-only           |
+| `list-fills`         | Trade fills                                                                      | `--address`                                                          | read-only           |
+| `order-status`       | One order's status by `--oid` or `--cloid` (see `references/account-data.md`)    | `--address`, one id flag                                             | read-only           |
+| `deposit`            | Arbitrum native USDC → Hyperliquid bridge                                        | `--amount` (decimal USDC)                                            | signed              |
+| `withdraw`           | USDC from Hyperliquid to an EVM address                                          | `--amount`, `--destination`                                          | signed              |
+| `trade-perp`         | Perp order; `--tp-px`/`--sl-px` attach an atomic OCO bracket; optional `--cloid` | `--coin`, `--amount`, `--side`                                       | signed              |
+| `trade-spot`         | Hyperliquid spot order (market or limit); optional `--cloid`                     | `--pair`, `--amount`, `--side`                                       | signed              |
+| `scale-perp`         | Ladder of 2–50 perp limit legs across a price range                              | `--coin`, `--amount`, `--side`, `--start-px`, `--end-px`, `--orders` | signed              |
+| `scale-spot`         | Ladder of spot limit legs across a price range                                   | `--pair`, `--amount`, `--side`, `--start-px`, `--end-px`, `--orders` | signed              |
+| `twap-perp`          | Perp order sliced over 5–1440 minutes                                            | `--coin`, `--amount`, `--side`, `--duration-minutes`                 | signed              |
+| `twap-spot`          | Spot order sliced over 5–1440 minutes                                            | `--pair`, `--amount`, `--side`, `--duration-minutes`                 | signed              |
+| `twap-cancel`        | Cancel a running perp TWAP                                                       | `--coin`, `--twap-id`                                                | signed              |
+| `twap-cancel-spot`   | Cancel a running spot TWAP                                                       | `--pair`, `--twap-id`                                                | signed              |
+| `cancel-order`       | Cancel one resting perp order                                                    | `--coin`, `--order-id` or `--cloid`                                  | signed              |
+| `cancel-order-spot`  | Cancel one resting spot order                                                    | `--pair`, `--order-id` or `--cloid`                                  | signed              |
+| `set-leverage`       | Update perp leverage without placing an order                                    | `--coin`, `--leverage`                                               | signed              |
+| `adjust-margin`      | Add/remove isolated margin (`--direction`, default `add`)                        | `--coin`, `--amount`, `--side`                                       | signed              |
+| `transfer-usd-class` | Move USDC between spot and perp wallets                                          | `--amount`, `--direction`                                            | signed              |
+| `transfer-usd`       | Send USDC from the PERP balance to another Hyperliquid user                      | `--amount`, `--destination`                                          | signed              |
+| `transfer-spot`      | Send spot tokens to another Hyperliquid user                                     | `--amount`, `--destination`, `--token`                               | signed              |
+| `transfer-dex-cash`  | Move token balances between dexes (`spot` is a valid dex)                        | `--amount`, `--source-dex`, `--destination-dex`                      | signed              |
 
 Reference files — read on trigger:
 
 - For limit, stop, take, or bracket orders and full option flags, read `references/order-types.md`.
+- For order-status, funding, candles, portfolio, ledger, fee, and rate-limit reads — and
+  cancel-by-cloid rules — read `references/account-data.md`.
 - To fund Hyperliquid from any other chain or token, read `references/funding-paths.md`.
 - Before any leverage or margin change, read `references/margin.md`.
 

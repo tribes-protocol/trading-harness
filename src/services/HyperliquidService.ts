@@ -33,6 +33,9 @@ import {
   type HyperliquidBalancesResult,
   HyperliquidBalancesResultSchema,
   type HyperliquidCancelOrderCommandOptions,
+  type HyperliquidCandle,
+  HyperliquidCandleSchema,
+  type HyperliquidCandlesParams,
   HyperliquidCoinSchema,
   type HyperliquidDepositParams,
   type HyperliquidDepositResult,
@@ -45,7 +48,13 @@ import {
   type HyperliquidFillsResult,
   HyperliquidFillsResultSchema,
   type HyperliquidFrontendOpenOrderWire,
+  type HyperliquidFundingHistoryEntry,
+  HyperliquidFundingHistoryEntrySchema,
+  type HyperliquidFundingHistoryParams,
   type HyperliquidInfoUserDexParams,
+  type HyperliquidLedgerParams,
+  type HyperliquidLedgerResult,
+  HyperliquidLedgerResultSchema,
   type HyperliquidListBalancesParams,
   type HyperliquidListFillsParams,
   type HyperliquidListOpenOrdersParams,
@@ -54,6 +63,9 @@ import {
   HyperliquidOpenOrderSchema,
   type HyperliquidOpenOrdersResult,
   HyperliquidOpenOrdersResultSchema,
+  type HyperliquidOrderStatusParams,
+  type HyperliquidOrderStatusResult,
+  HyperliquidOrderStatusResultSchema,
   type HyperliquidOrderTif,
   HyperliquidPerpAssetSchema,
   type HyperliquidPerpAssetsResult,
@@ -63,9 +75,17 @@ import {
   type HyperliquidPerpTradeCommandOptions,
   type HyperliquidPerpTwapOrder,
   HyperliquidPerpTwapOrderSchema,
+  type HyperliquidPortfolioParams,
+  type HyperliquidPortfolioResult,
+  HyperliquidPortfolioResultSchema,
   type HyperliquidPositionsResult,
   HyperliquidPositionsResultSchema,
+  type HyperliquidPredictedFunding,
+  HyperliquidPredictedFundingSchema,
   type HyperliquidPrivyWallet,
+  type HyperliquidRateLimitParams,
+  type HyperliquidRateLimitResult,
+  HyperliquidRateLimitResultSchema,
   type HyperliquidScaleOrderCommandOptions,
   type HyperliquidServiceParams,
   type HyperliquidSetLeverageCommandOptions,
@@ -86,6 +106,9 @@ import {
   type HyperliquidUsdClassDirection,
   type HyperliquidUsdClassTransferCommandOptions,
   type HyperliquidUsdTransferCommandOptions,
+  type HyperliquidUserFeesParams,
+  type HyperliquidUserFeesResult,
+  HyperliquidUserFeesResultSchema,
   type HyperliquidUserFillWire,
   type HyperliquidWithdrawCommandOptions,
   type HyperliquidWithSignerParams,
@@ -429,7 +452,8 @@ export class HyperliquidService {
               tif: request.tif,
               triggerPx: request.triggerPx,
               szDecimals: perpAsset.szDecimals
-            })
+            }),
+            ...(isNullish(request.cloid) ? {} : { c: request.cloid })
           }
         ],
         grouping: 'na'
@@ -453,7 +477,8 @@ export class HyperliquidService {
         p: entryPrice,
         s: size,
         r: false,
-        t: { limit: { tif: request.type === 'market' ? 'Ioc' : 'Gtc' } }
+        t: { limit: { tif: request.type === 'market' ? 'Ioc' : 'Gtc' } },
+        ...(isNullish(request.cloid) ? {} : { c: request.cloid })
       }
     ]
 
@@ -759,6 +784,14 @@ export class HyperliquidService {
       dex
     })
 
+    if (!isNullish(params.request.cloid)) {
+      return await exchange.cancelByCloid({
+        cancels: [{ asset: perpAsset.wireAsset, cloid: params.request.cloid }]
+      })
+    }
+    if (isNullish(params.request.orderId)) {
+      throw new Error('provide exactly one of orderId or cloid')
+    }
     return await exchange.cancel({
       cancels: [{ a: perpAsset.wireAsset, o: params.request.orderId }]
     })
@@ -773,6 +806,14 @@ export class HyperliquidService {
     })
     const spotAsset = await this.resolveSpotAsset(params.request.pair)
 
+    if (!isNullish(params.request.cloid)) {
+      return await exchange.cancelByCloid({
+        cancels: [{ asset: spotAsset.assetId, cloid: params.request.cloid }]
+      })
+    }
+    if (isNullish(params.request.orderId)) {
+      throw new Error('provide exactly one of orderId or cloid')
+    }
     return await exchange.cancel({
       cancels: [{ a: spotAsset.assetId, o: params.request.orderId }]
     })
@@ -885,7 +926,8 @@ export class HyperliquidService {
             limit: {
               tif: this.resolveOrderTif({ orderType: params.request.type, tif: params.request.tif })
             }
-          }
+          },
+          ...(isNullish(params.request.cloid) ? {} : { c: params.request.cloid })
         }
       ],
       grouping: 'na'
@@ -1181,8 +1223,7 @@ export class HyperliquidService {
 
   async getOrderBook(params: HyperliquidOrderBookParams): Promise<HyperliquidOrderBookResult> {
     const dex = this.normalizeDex(params.dex)
-    const coin =
-      dex.length > 0 && !params.coin.includes(':') ? `${dex}:${params.coin}` : params.coin
+    const coin = this.applyDexCoinPrefix(params.coin, dex)
     const book = await this.infoClient.l2Book({ coin })
     if (isNullish(book)) {
       throw new Error(`unknown coin ${params.coin} on dex ${this.formatDexName(dex)}`)
@@ -1195,6 +1236,169 @@ export class HyperliquidService {
         .map((level) => ({ px: level.px, sz: level.sz, n: level.n })),
       asks: asks.slice(0, params.depth).map((level) => ({ px: level.px, sz: level.sz, n: level.n }))
     })
+  }
+
+  async getOrderStatus(
+    params: HyperliquidOrderStatusParams
+  ): Promise<HyperliquidOrderStatusResult> {
+    const oid = params.oid ?? params.cloid
+    if (isNullish(oid)) {
+      throw new Error('provide exactly one of oid or cloid')
+    }
+
+    const response = await this.infoClient.orderStatus({ user: params.address, oid })
+    if (response.status === 'unknownOid') {
+      return HyperliquidOrderStatusResultSchema.parse({
+        status: 'unknownOid',
+        status_timestamp: null,
+        order: null
+      })
+    }
+
+    const order = response.order.order
+    return HyperliquidOrderStatusResultSchema.parse({
+      status: response.order.status,
+      status_timestamp: response.order.statusTimestamp,
+      order: {
+        coin: order.coin,
+        side: order.side === 'B' ? 'buy' : 'sell',
+        size: order.sz,
+        orig_size: order.origSz,
+        limit_px: order.limitPx,
+        oid: order.oid,
+        cloid: order.cloid,
+        timestamp: order.timestamp
+      }
+    })
+  }
+
+  async getFundingHistory(
+    params: HyperliquidFundingHistoryParams
+  ): Promise<HyperliquidFundingHistoryEntry[]> {
+    const dex = this.normalizeDex(params.dex)
+    const rows = await this.infoClient.fundingHistory({
+      coin: this.applyDexCoinPrefix(params.coin, dex),
+      startTime: params.startTime,
+      endTime: params.endTime ?? undefined
+    })
+    return rows.map((row) =>
+      HyperliquidFundingHistoryEntrySchema.parse({
+        coin: row.coin,
+        funding_rate: row.fundingRate,
+        premium: row.premium,
+        time: row.time
+      })
+    )
+  }
+
+  async getPredictedFundings(): Promise<HyperliquidPredictedFunding[]> {
+    const response = await this.infoClient.predictedFundings()
+    return response.map(([coin, venues]) =>
+      HyperliquidPredictedFundingSchema.parse({
+        coin,
+        venues: venues.map(([venue, data]) => ({
+          venue,
+          funding_rate: data?.fundingRate ?? null,
+          next_funding_time: data?.nextFundingTime ?? null,
+          funding_interval_hours: data?.fundingIntervalHours ?? null
+        }))
+      })
+    )
+  }
+
+  async getCandles(params: HyperliquidCandlesParams): Promise<HyperliquidCandle[]> {
+    const dex = this.normalizeDex(params.dex)
+    const candles = await this.infoClient.candleSnapshot({
+      coin: this.applyDexCoinPrefix(params.coin, dex),
+      interval: params.interval,
+      startTime: params.startTime,
+      endTime: params.endTime ?? undefined
+    })
+    return candles.map((candle) =>
+      HyperliquidCandleSchema.parse({
+        open_time: candle.t,
+        close_time: candle.T,
+        open: candle.o,
+        high: candle.h,
+        low: candle.l,
+        close: candle.c,
+        volume: candle.v,
+        num_trades: candle.n
+      })
+    )
+  }
+
+  async getPortfolio(params: HyperliquidPortfolioParams): Promise<HyperliquidPortfolioResult> {
+    const response = await this.infoClient.portfolio({ user: params.address })
+    return HyperliquidPortfolioResultSchema.parse({
+      address: params.address,
+      periods: response.map(([period, data]) => ({
+        period,
+        account_value_history: data.accountValueHistory,
+        pnl_history: data.pnlHistory,
+        vlm: data.vlm
+      }))
+    })
+  }
+
+  async getLedgerUpdates(params: HyperliquidLedgerParams): Promise<HyperliquidLedgerResult> {
+    const updates = await this.infoClient.userNonFundingLedgerUpdates({
+      user: params.address,
+      startTime: params.startTime ?? undefined,
+      endTime: params.endTime ?? undefined
+    })
+    return HyperliquidLedgerResultSchema.parse({
+      address: params.address,
+      updates: updates.map((update) => {
+        const { type, ...fields } = update.delta
+        const row: Record<string, unknown> = {
+          time: update.time,
+          hash: update.hash,
+          kind: type
+        }
+        for (const [key, value] of Object.entries(fields)) {
+          row[this.toSnakeCaseKey(key)] = value
+        }
+        return row
+      })
+    })
+  }
+
+  async getUserFees(params: HyperliquidUserFeesParams): Promise<HyperliquidUserFeesResult> {
+    const response = await this.infoClient.userFees({ user: params.address })
+    return HyperliquidUserFeesResultSchema.parse({
+      address: params.address,
+      user_cross_rate: response.userCrossRate,
+      user_add_rate: response.userAddRate,
+      user_spot_cross_rate: response.userSpotCrossRate,
+      user_spot_add_rate: response.userSpotAddRate,
+      active_referral_discount: response.activeReferralDiscount,
+      daily_user_vlm: response.dailyUserVlm.map((day) => ({
+        date: day.date,
+        user_cross: day.userCross,
+        user_add: day.userAdd,
+        exchange: day.exchange
+      }))
+    })
+  }
+
+  async getRateLimit(params: HyperliquidRateLimitParams): Promise<HyperliquidRateLimitResult> {
+    const response = await this.infoClient.userRateLimit({ user: params.address })
+    return HyperliquidRateLimitResultSchema.parse({
+      address: params.address,
+      cum_vlm: response.cumVlm,
+      n_requests_used: response.nRequestsUsed,
+      n_requests_cap: response.nRequestsCap,
+      n_requests_surplus: response.nRequestsSurplus
+    })
+  }
+
+  private applyDexCoinPrefix(coin: string, dex: string): string {
+    return dex.length > 0 && !coin.includes(':') ? `${dex}:${coin}` : coin
+  }
+
+  private toSnakeCaseKey(key: string): string {
+    return key.replace(/([A-Z])/g, '_$1').toLowerCase()
   }
 
   private directionToPerpFlag(direction: HyperliquidUsdClassDirection): boolean {
