@@ -294,3 +294,68 @@ describe('the `/` palette and `!` bash frames', () => {
     expect(ToolInvocationSchema.safeParse({ ...base, origin: 'system' }).success).toBe(false)
   })
 })
+
+describe('model switching frames', () => {
+  const model = {
+    provider: 'openrouter',
+    id: 'z-ai/glm-5.2',
+    name: 'Z.AI: GLM 5.2',
+    contextWindow: 200_000,
+    reasoning: true
+  }
+
+  it('accepts a set_model frame', () => {
+    expect(
+      ClientFrameSchema.safeParse({
+        t: 'set_model',
+        screenId: 'main',
+        provider: 'openrouter',
+        modelId: 'z-ai/glm-5.2'
+      }).success
+    ).toBe(true)
+  })
+
+  it('requires BOTH provider and id — an id alone is ambiguous', () => {
+    expect(
+      ClientFrameSchema.safeParse({ t: 'set_model', screenId: 'main', modelId: 'z-ai/glm-5.2' })
+        .success
+    ).toBe(false)
+    expect(
+      ClientFrameSchema.safeParse({ t: 'set_model', screenId: 'main', provider: 'openrouter' })
+        .success
+    ).toBe(false)
+  })
+
+  it('accepts a models frame, including an empty catalog', () => {
+    expect(
+      ServerFrameSchema.safeParse({ t: 'screen.models', screenId: 'main', models: [model] }).success
+    ).toBe(true)
+    expect(
+      ServerFrameSchema.safeParse({ t: 'screen.models', screenId: 'main', models: [] }).success
+    ).toBe(true)
+  })
+
+  it('rejects a model missing the fields the picker renders', () => {
+    for (const key of ['provider', 'id', 'name', 'contextWindow', 'reasoning']) {
+      const partial: Record<string, unknown> = { ...model }
+      delete partial[key]
+      expect(
+        ServerFrameSchema.safeParse({ t: 'screen.models', screenId: 'main', models: [partial] })
+          .success,
+        `missing ${key} must be refused`
+      ).toBe(false)
+    }
+  })
+
+  it('rejects a reasoning flag that is not a boolean', () => {
+    // Pi types `Model.reasoning` as a required boolean. It is NOT a thinking level;
+    // a string here means someone reintroduced a conversion that does not exist.
+    expect(
+      ServerFrameSchema.safeParse({
+        t: 'screen.models',
+        screenId: 'main',
+        models: [{ ...model, reasoning: 'medium' }]
+      }).success
+    ).toBe(false)
+  })
+})

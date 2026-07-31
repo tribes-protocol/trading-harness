@@ -34,6 +34,7 @@ import {
 } from '@/utils/EventMapping'
 import { describeError, logError } from '@/utils/Logger'
 import { toScreenCommands } from '@/utils/ScreenCommands'
+import { toScreenModels } from '@/utils/ScreenModels'
 import { deriveScreenStatus } from '@/utils/ScreenStatus'
 import { foldMessagesToBlocks } from '@/utils/SessionReplay'
 import { truncateText } from '@/utils/TextTruncation'
@@ -150,6 +151,72 @@ export class PiScreenService {
         skills: this.session.resourceLoader.getSkills().skills
       })
     }
+  }
+
+  /**
+   * The models this screen can be switched to. Sent once per attach beside the
+   * palette, for the palette's reason and one of its own: this is 256 entries on
+   * this harness, so folding it into the snapshot would put a catalog on the wire
+   * after every user message.
+   *
+   * `getAvailable()`, never `getAll()`. Pi knows 1029 models here and the box has
+   * working auth for 256 of them. The other 773 are not a richer picker — they are
+   * choices that look identical in the UI and fail on the first prompt, after the
+   * operator has already sent it.
+   */
+  modelsFrame(): ServerFrame {
+    return {
+      t: 'screen.models',
+      screenId: this.config.screenId,
+      models: toScreenModels(this.session.modelRegistry.getAvailable())
+    }
+  }
+
+  /**
+   * Switch this screen's model.
+   *
+   * The pair is RESOLVED against the same registry that produced `modelsFrame()`,
+   * never taken on trust. The browser names a provider and an id it read off a
+   * catalog the gateway sent, and that catalog goes stale the moment auth changes
+   * under it — so anything that no longer resolves is refused here rather than
+   * handed to Pi, where it would surface as a dead turn on the next prompt instead
+   * of as a rejected click.
+   *
+   * Returns a failure REASON rather than broadcasting one. A refused switch belongs
+   * to the socket that asked for it: broadcasting sent an error to every other tab
+   * on the screen, which had clicked nothing and has no way to tell whose rejection
+   * it was. Success still broadcasts, because the new model is a fact about the
+   * screen that every attached tab needs.
+   *
+   * Awaited, unlike `promptScreen`. A model switch is a registry lookup and a state
+   * write, not a turn — there is nothing to block on for minutes, and awaiting is
+   * what lets the caller answer the right socket.
+   */
+  async setModel(provider: string, modelId: string): Promise<string | null> {
+    const model = this.session.modelRegistry.find(provider, modelId)
+    if (model === undefined) {
+      return `unknown model "${provider}/${modelId}"`
+    }
+    // `find` searches all ~1029 models pi knows, not the ~256 with credentials that
+    // `modelsFrame` advertised. Pi's own `setModel` would throw `No API key`, but
+    // refusing here keeps the message about what the operator can actually pick.
+    if (!this.session.modelRegistry.hasConfiguredAuth(model)) {
+      return `no credentials on this box for "${provider}/${modelId}"`
+    }
+
+    try {
+      await this.session.setModel(model)
+    } catch (error) {
+      return describeError(error)
+    }
+    // `screen.state` is the only frame that carries the model. A switch that
+    // re-clamps the thinking level also emits `thinking_level_changed`, which
+    // already produces a state frame — so this can be the second one for a single
+    // switch. Emitting unconditionally is still right: on a switch that does NOT
+    // re-clamp, nothing else fires, and on an idle screen nothing would ever
+    // correct the stale model.
+    this.emitState(null)
+    return null
   }
 
   /**
@@ -319,7 +386,7 @@ export class PiScreenService {
     }
   }
 
-  private emitState(trigger: AgentSessionEvent): void {
+  private emitState(trigger: AgentSessionEvent | null): void {
     this.seq += 1
     this.broadcast({
       t: 'screen.state',

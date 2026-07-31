@@ -3,6 +3,7 @@ import { z } from 'zod'
 import { ScreenBlockSchema } from '@/types/ScreenBlock'
 import { ScreenCommandSchema } from '@/types/ScreenCommand'
 import { ScreenEventSchema } from '@/types/ScreenEvent'
+import { ScreenModelSchema } from '@/types/ScreenModel'
 
 /**
  * The gateway <-> browser wire protocol.
@@ -88,6 +89,18 @@ export const ClientFrameSchema = z.discriminatedUnion('t', [
    * than answering it — so it is its own frame, not a prompt with a prefix.
    */
   z.object({ t: z.literal('bash'), screenId: z.string(), command: z.string() }),
+  /**
+   * Switch the screen's model. Provider AND id, because an id is unique only
+   * within a provider. The gateway resolves it against the models it actually has
+   * credentials for and refuses anything else — the browser does not get to name a
+   * model the box cannot reach.
+   */
+  z.object({
+    t: z.literal('set_model'),
+    screenId: z.string(),
+    provider: z.string(),
+    modelId: z.string()
+  }),
   z.object({ t: z.literal('abort'), screenId: z.string() }),
   z.object({ t: z.literal('detach'), screenId: z.string() })
 ])
@@ -129,6 +142,17 @@ export const ServerFrameSchema = z.discriminatedUnion('t', [
     t: z.literal('screen.commands'),
     screenId: z.string(),
     commands: z.array(ScreenCommandSchema)
+  }),
+  /**
+   * The models this screen can switch to. Sent once per attach beside
+   * `screen.commands`, for the same reason: the set is fixed for the session's
+   * lifetime, and it is large (256 entries on this harness), so repeating it on
+   * every snapshot would put a catalog on the wire after every message.
+   */
+  z.object({
+    t: z.literal('screen.models'),
+    screenId: z.string(),
+    models: z.array(ScreenModelSchema)
   }),
   z.object({
     t: z.literal('screen.error'),

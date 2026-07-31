@@ -11,6 +11,9 @@
  * when the server's `hello` reports a different version, so a stale tab fails
  * loudly instead of silently mis-rendering.
  *
+ * 3 — added the `set_model` client frame and the `screen.models` server frame.
+ *     Bumped for the same reason as 2: a new tab sending `set_model` to an older
+ *     gateway has the frame rejected there while the UI shows the switch as taken.
  * 2 — added the `bash` client frame, the `screen.commands` server frame, and
  *     `ToolInvocation.origin`. The two server-side additions are backward
  *     compatible on their own (an old client drops an unknown frame), but the
@@ -21,7 +24,7 @@
  *     no-op.
  * 1 — initial contract.
  */
-export const PROTOCOL_VERSION = 2
+export const PROTOCOL_VERSION = 3
 
 /**
  * Delta coalescing window. Pi emits a `message_update` per token and a

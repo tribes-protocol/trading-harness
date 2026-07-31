@@ -31,8 +31,8 @@ const textDecoder = new TextDecoder()
  * The standing guarantee is instead: `seq` still advances for a dropped frame, so
  * the client sees a gap, re-attaches, and takes a fresh snapshot — and that
  * snapshot now includes in-flight `!` runs (`activeBashBlocks`), so the recovered
- * transcript contains the output the drop lost. Snapshot, state, commands and
- * error frames are never dropped: they ARE the recovery path.
+ * transcript contains the output the drop lost. Snapshot, state, commands, models
+ * and error frames are never dropped: they ARE the recovery path.
  */
 export class ScreenSocketController {
   private readonly registry: ScreenRegistryService
@@ -139,6 +139,30 @@ export class ScreenSocketController {
         screen.runBash(frame.command)
         return
       }
+      case 'set_model': {
+        const screen = await this.registry.getScreen(frame.screenId)
+        if (screen === null) {
+          this.sendUnknownScreen(connection, frame.screenId)
+          return
+        }
+        // The provider/id pair is passed through unvalidated on purpose: the screen
+        // owns the registry that decides whether it resolves, and a second opinion
+        // here would be a second catalog to keep in step with it.
+        //
+        // The refusal comes back rather than being broadcast, so it reaches the tab
+        // that clicked and not every other tab watching the screen. A SUCCESS still
+        // broadcasts, from inside the service — the new model is a fact about the
+        // screen, not about this socket.
+        const reason = await screen.setModel(frame.provider, frame.modelId)
+        if (reason !== null) {
+          this.send(connection, {
+            t: 'screen.error',
+            screenId: frame.screenId,
+            message: reason
+          })
+        }
+        return
+      }
       case 'abort': {
         const screen = await this.registry.getScreen(frame.screenId)
         if (screen === null) {
@@ -178,6 +202,10 @@ export class ScreenSocketController {
     // After the snapshot, never before: the palette is a sidecar to a rendered
     // screen, and a client that got commands first would have nowhere to put them.
     this.send(connection, screen.commandsFrame())
+    // Same rule, same reason. The snapshot's state names the model the screen is
+    // ON; this names the ones it can move to, so it is meaningless before the
+    // client knows where it started.
+    this.send(connection, screen.modelsFrame())
   }
 
   private handleDetach(connection: ScreenSocketConnection, screenId: string): void {
