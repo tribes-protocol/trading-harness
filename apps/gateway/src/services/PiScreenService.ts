@@ -9,7 +9,6 @@ import {
 import type { ScreenEvent } from '@tribes-harness/protocol/types/ScreenEvent'
 import type {
   ScreenState,
-  ScreenStatus,
   ServerFrame,
   StreamingBehavior
 } from '@tribes-harness/protocol/types/ScreenProtocol'
@@ -35,6 +34,7 @@ import {
 } from '@/utils/EventMapping'
 import { describeError, logError } from '@/utils/Logger'
 import { toScreenCommands } from '@/utils/ScreenCommands'
+import { deriveScreenStatus } from '@/utils/ScreenStatus'
 import { foldMessagesToBlocks } from '@/utils/SessionReplay'
 import { truncateText } from '@/utils/TextTruncation'
 import { isBashRunFailed, renderUserBashInvocation } from '@/utils/ToolRendering'
@@ -128,7 +128,9 @@ export class PiScreenService {
         // transcript contains no such block, and then receive output for it.
         ...activeBashBlocks(this.activeBashRuns)
       ],
-      state: this.buildState()
+      // No triggering event: a snapshot is not a moment in the run, so the live
+      // flags are the only truth available and are correct here.
+      state: this.buildState(null)
     }
   }
 
@@ -275,7 +277,7 @@ export class PiScreenService {
       this.broadcast(this.snapshotFrame())
     }
     if (affectsScreenState(event)) {
-      this.emitState()
+      this.emitState(event)
     }
   }
 
@@ -317,13 +319,13 @@ export class PiScreenService {
     }
   }
 
-  private emitState(): void {
+  private emitState(trigger: AgentSessionEvent): void {
     this.seq += 1
     this.broadcast({
       t: 'screen.state',
       screenId: this.config.screenId,
       seq: this.seq,
-      state: this.buildState()
+      state: this.buildState(trigger)
     })
   }
 
@@ -343,12 +345,19 @@ export class PiScreenService {
     }
   }
 
-  private buildState(): ScreenState {
+  private buildState(trigger: AgentSessionEvent | null): ScreenState {
     const stats = this.session.getSessionStats()
     const usage = this.session.getContextUsage()
     const model = this.session.model
+    const runEnded = trigger?.type === 'agent_end'
     return {
-      status: this.currentStatus(),
+      status: deriveScreenStatus({
+        isRetrying: this.session.isRetrying,
+        isCompacting: this.session.isCompacting,
+        isStreaming: this.session.isStreaming,
+        runEnded,
+        willRetry: runEnded && trigger.willRetry
+      }),
       // `stats.sessionFile` and `SessionInfo.path` are absolute host paths and
       // are never read here.
       model: model === undefined ? null : `${model.provider}/${model.id}`,
@@ -360,19 +369,6 @@ export class PiScreenService {
         followUp: [...this.session.getFollowUpMessages()]
       }
     }
-  }
-
-  private currentStatus(): ScreenStatus {
-    if (this.session.isRetrying) {
-      return 'retrying'
-    }
-    if (this.session.isCompacting) {
-      return 'compacting'
-    }
-    if (this.session.isStreaming) {
-      return 'streaming'
-    }
-    return 'idle'
   }
 
   private hasSaturatedSubscriber(): boolean {
