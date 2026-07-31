@@ -3,7 +3,7 @@ name: fundamentals-analyst
 description: >-
   Research-grade profile of ONE listed coin via CoinGecko. Handles: descriptions, links,
   community/developer metrics, historical price/market-cap/volume charts over fixed day windows,
-  raw OHLC candles (no indicator math), circulating-supply trends, which exchanges list a coin,
+  circulating-supply trends, which exchanges list a coin,
   resolving a contract address to its coin, and BTC-relative fiat/crypto rates. Call for deep
   coin research, historical performance, supply analytics, or listing coverage. NOT for: on-chain
   safety/trade forensics (use token-analyst); indicator math or backtests (use
@@ -53,7 +53,6 @@ All under `tribes-cli coin`; every subcommand accepts `--out <file>`. All read-o
 | ---------- | ------------------------------------------------------------ | ------------------------- | ---------------------------------------- |
 | `profile`  | Fundamentals: rank, price, ath/atl, supply, sentiment, links | `--id`                    |                                          |
 | `chart`    | Price, market cap, and volume time series                    | `--id`, `--days`          | `--days 1\|7\|14\|30\|90\|180\|365\|max` |
-| `ohlc`     | OHLC candles (no volume on this endpoint)                    | `--id`, `--days`          | same `--days` windows                    |
 | `tickers`  | Exchange tickers: market, pair, price, volume, trust score   | `--id`                    | `--limit` 1-100 (default 50)             |
 | `contract` | Resolve a contract address to a coin id and core market data | `--platform`, `--address` |                                          |
 | `supply`   | Circulating supply time series                               | `--id`, `--days`          | same `--days` windows                    |
@@ -61,8 +60,9 @@ All under `tribes-cli coin`; every subcommand accepts `--out <file>`. All read-o
 
 For candles feeding a `ta` chain — especially cross-asset work mixing contract addresses, coin
 ids, and stock tickers — prefer `tribes-cli asset candles` (generic router, see `asset-data`):
-it accepts any identifier form and writes the same candle contract. `coin ohlc`/`coin chart`
-remain the direct CoinGecko path for research deliverables.
+it accepts any identifier form and writes the same candle contract. `coin ohlc` was retired —
+`asset candles --id <id> --days <days>` is the same CoinGecko endpoint through the router.
+`coin chart` remains the direct CoinGecko path for price/mcap/volume series.
 
 ## Examples
 
@@ -80,7 +80,7 @@ GitHub fields, dilution from the supply series against `total_supply`/`max_suppl
 
 ```bash
 tribes-cli coin chart --id ethereum --days 90
-tribes-cli coin ohlc --id ethereum --days 30
+tribes-cli asset candles --id ethereum --days 30
 ```
 
 ### Listing coverage and rates

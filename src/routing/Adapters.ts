@@ -26,11 +26,17 @@ import {
   AssetSearchResultsPayloadSchema,
   type AssetSpace,
   type AssetTimeframe,
-  AssetTrendingListPayloadSchema
+  AssetTrendingListPayloadSchema,
+  type CandleWindow,
+  MAX_CANDLE_LIMIT
 } from '@/types/Capability'
 import { type CoinDays } from '@/types/Coin'
 import { type HyperliquidCandleInterval } from '@/types/Hyperliquid'
 import { type OnchainTimeframe } from '@/types/Onchain'
+import { type MarketstackInterval } from '@/types/Stocks'
+import type { TaCandle } from '@/types/Ta'
+import { aggregateCandlesToDuration, aggregateCandlesToIsoWeeks } from '@/utils/Candles'
+import { applyCandleWindow, toEpochSeconds, toIsoDate } from '@/utils/CandleWindow'
 import { isNullish } from '@/utils/Lang'
 
 // ---------------------------------------------------------------------------
@@ -40,8 +46,8 @@ import { isNullish } from '@/utils/Lang'
 // snapshot+info composition counts as one provider, two endpoints).
 // ---------------------------------------------------------------------------
 
-const GECKOTERMINAL_CANDLES_LIMIT = 200
-const STOCK_CANDLES_LIMIT = 200
+const TRADING_DAYS_PER_WEEK = 5
+const MS_PER_HOUR = 3_600_000
 // BirdEye's trending/new-listing endpoints require an x-chain header; when the
 // caller gives no chain the Solana feed is the deepest default.
 const BIRDEYE_DEFAULT_LIST_CHAIN = 'solana'
@@ -293,10 +299,11 @@ type CandlesContractParams = {
   readonly address: string
   readonly chain: ResolvedChain
   readonly timeframe: AssetTimeframe
+  readonly window: CandleWindow
 }
 
 export function candlesContractSources(params: CandlesContractParams): CandleSource[] {
-  const { services, address, chain, timeframe } = params
+  const { services, address, chain, timeframe, window } = params
   const sources: CandleSource[] = [
     {
       provider: 'birdeye',
@@ -304,14 +311,16 @@ export function candlesContractSources(params: CandlesContractParams): CandleSou
         const result = await services.birdeye.getOhlcv({
           address,
           timeframe: BIRDEYE_TIMEFRAMES[timeframe],
-          from: null,
-          to: null,
+          from: toEpochSeconds(window.from),
+          to: toEpochSeconds(window.to),
           chain: chain.birdeye
         })
         if (result.candles.length === 0) {
           throw new EmptyPayloadError(`BirdEye has no ${timeframe} candles for ${address}`)
         }
-        return AssetCandlesPayloadSchema.parse({ candles: result.candles })
+        return AssetCandlesPayloadSchema.parse({
+          candles: applyCandleWindow(result.candles, window)
+        })
       }
     }
   ]
@@ -325,13 +334,15 @@ export function candlesContractSources(params: CandlesContractParams): CandleSou
           address,
           timeframe: geckoTimeframe.timeframe,
           aggregate: geckoTimeframe.aggregate,
-          limit: GECKOTERMINAL_CANDLES_LIMIT,
-          beforeTimestamp: null
+          limit: window.limit,
+          beforeTimestamp: toEpochSeconds(window.to)
         })
         if (result.candles.length === 0) {
           throw new EmptyPayloadError(`GeckoTerminal has no ${timeframe} candles for ${address}`)
         }
-        return AssetCandlesPayloadSchema.parse({ candles: result.candles })
+        return AssetCandlesPayloadSchema.parse({
+          candles: applyCandleWindow(result.candles, window)
+        })
       }
     })
   }
@@ -364,25 +375,94 @@ export function candlesIdSources(params: CandlesIdParams): CandleSource[] {
 type CandlesTickerParams = {
   readonly services: AssetServices
   readonly ticker: string
+  readonly timeframe: AssetTimeframe
+  readonly window: CandleWindow
+}
+
+// How each asset timeframe is sourced from Marketstack: which endpoint, which
+// native interval, and how many source bars roll into one output bar. Ported
+// from the retired UnifiedOhlcvHelper.toMarketStackPlan (terminal PR #2621).
+// Marketstack has no 4hour interval, so 4h is built from 1hour bars; nothing
+// coarser than a day exists on the API, so 1w is built from EOD.
+type StockCandlePlan = {
+  readonly source: 'intraday' | 'eod'
+  readonly interval: MarketstackInterval | null
+  readonly rollup: 'none' | 'duration' | 'isoWeek'
+  // Upper bound on source bars per output bar, used to size the fetch. Over-
+  // estimating is safe: the provider simply returns everything it has.
+  readonly sourceBarsPerOutputBar: number
+}
+
+function stockCandlePlan(timeframe: AssetTimeframe): StockCandlePlan {
+  switch (timeframe) {
+    case '1m':
+      return { source: 'intraday', interval: '1min', rollup: 'none', sourceBarsPerOutputBar: 1 }
+    case '5m':
+      return { source: 'intraday', interval: '5min', rollup: 'none', sourceBarsPerOutputBar: 1 }
+    case '15m':
+      return { source: 'intraday', interval: '15min', rollup: 'none', sourceBarsPerOutputBar: 1 }
+    case '1h':
+      return { source: 'intraday', interval: '1hour', rollup: 'none', sourceBarsPerOutputBar: 1 }
+    case '4h':
+      // No 4hour interval on Marketstack — roll up four 1hour bars.
+      return {
+        source: 'intraday',
+        interval: '1hour',
+        rollup: 'duration',
+        sourceBarsPerOutputBar: 4
+      }
+    case '1d':
+      return { source: 'eod', interval: null, rollup: 'none', sourceBarsPerOutputBar: 1 }
+    case '1w':
+      return {
+        source: 'eod',
+        interval: null,
+        rollup: 'isoWeek',
+        sourceBarsPerOutputBar: TRADING_DAYS_PER_WEEK
+      }
+  }
+}
+
+function rollUpStockCandles(candles: TaCandle[], plan: StockCandlePlan): TaCandle[] {
+  switch (plan.rollup) {
+    case 'none':
+      return candles
+    case 'duration':
+      return aggregateCandlesToDuration(candles, plan.sourceBarsPerOutputBar * MS_PER_HOUR)
+    case 'isoWeek':
+      return aggregateCandlesToIsoWeeks(candles)
+  }
 }
 
 export function candlesTickerSources(params: CandlesTickerParams): CandleSource[] {
-  const { services, ticker } = params
+  const { services, ticker, timeframe, window } = params
+  const plan = stockCandlePlan(timeframe)
+  // Ask for enough source rows that the rollup still yields `window.limit`
+  // output bars. Marketstack caps a page at MAX_CANDLE_LIMIT rows.
+  const limit = Math.min(MAX_CANDLE_LIMIT, window.limit * plan.sourceBarsPerOutputBar)
+  const from = toIsoDate(window.from)
+  const to = toIsoDate(window.to)
   return [
     {
       provider: 'marketstack',
       authoritative: true,
       fetch: async () => {
-        const result = await services.stocks.getCandles({
-          symbol: ticker,
-          from: null,
-          to: null,
-          limit: STOCK_CANDLES_LIMIT
-        })
+        const result =
+          plan.source === 'eod' || isNullish(plan.interval)
+            ? await services.stocks.getCandles({ symbol: ticker, from, to, limit })
+            : await services.stocks.getIntradayCandles({
+                symbol: ticker,
+                interval: plan.interval,
+                from,
+                to,
+                limit
+              })
         if (result.candles.length === 0) {
-          throw new NotFoundError(`Marketstack has no EOD candles for ticker '${ticker}'`)
+          throw new NotFoundError(`Marketstack has no ${timeframe} candles for ticker '${ticker}'`)
         }
-        return AssetCandlesPayloadSchema.parse({ candles: result.candles })
+        return AssetCandlesPayloadSchema.parse({
+          candles: applyCandleWindow(rollUpStockCandles(result.candles, plan), window)
+        })
       }
     }
   ]
@@ -393,10 +473,11 @@ type CandlesPoolParams = {
   readonly pool: string
   readonly chain: ResolvedChain
   readonly timeframe: AssetTimeframe
+  readonly window: CandleWindow
 }
 
 export function candlesPoolSources(params: CandlesPoolParams): CandleSource[] {
-  const { services, pool, chain, timeframe } = params
+  const { services, pool, chain, timeframe, window } = params
   const sources: CandleSource[] = []
   const geckoTimeframe = geckoTerminalTimeframe(timeframe)
   if (!isNullish(geckoTimeframe)) {
@@ -408,12 +489,15 @@ export function candlesPoolSources(params: CandlesPoolParams): CandleSource[] {
           address: pool,
           timeframe: geckoTimeframe.timeframe,
           aggregate: geckoTimeframe.aggregate,
-          limit: GECKOTERMINAL_CANDLES_LIMIT
+          limit: window.limit,
+          beforeTimestamp: toEpochSeconds(window.to)
         })
         if (result.candles.length === 0) {
           throw new EmptyPayloadError(`GeckoTerminal has no ${timeframe} candles for pool ${pool}`)
         }
-        return AssetCandlesPayloadSchema.parse({ candles: result.candles })
+        return AssetCandlesPayloadSchema.parse({
+          candles: applyCandleWindow(result.candles, window)
+        })
       }
     })
   }
@@ -423,14 +507,14 @@ export function candlesPoolSources(params: CandlesPoolParams): CandleSource[] {
       const result = await services.birdeye.getPairOhlcv({
         address: pool,
         timeframe: BIRDEYE_TIMEFRAMES[timeframe],
-        from: null,
-        to: null,
+        from: toEpochSeconds(window.from),
+        to: toEpochSeconds(window.to),
         chain: chain.birdeye
       })
       if (result.candles.length === 0) {
         throw new EmptyPayloadError(`BirdEye has no ${timeframe} candles for pool ${pool}`)
       }
-      return AssetCandlesPayloadSchema.parse({ candles: result.candles })
+      return AssetCandlesPayloadSchema.parse({ candles: applyCandleWindow(result.candles, window) })
     }
   })
   return sources
@@ -458,16 +542,15 @@ const TIMEFRAME_MS: Record<AssetTimeframe, number> = {
   '1w': 604_800_000
 }
 
-const PERP_CANDLES_LIMIT = 200
-
 type CandlesPerpParams = {
   readonly services: AssetServices
   readonly perp: string
   readonly timeframe: AssetTimeframe
+  readonly window: CandleWindow
 }
 
 export function candlesPerpSources(params: CandlesPerpParams): CandleSource[] {
-  const { services, perp, timeframe } = params
+  const { services, perp, timeframe, window } = params
   return [
     {
       provider: 'hyperliquid',
@@ -476,11 +559,14 @@ export function candlesPerpSources(params: CandlesPerpParams): CandleSource[] {
         const colonIdx = perp.indexOf(':')
         const symbol = (colonIdx >= 0 ? perp.slice(colonIdx + 1) : perp).toUpperCase()
         const dex = colonIdx >= 0 ? perp.slice(0, colonIdx) : null
+        // Hyperliquid takes an explicit range, so an absent --from is derived
+        // from the bar count rather than left open.
+        const endTime = window.to ?? Date.now()
         const rows = await services.hyperliquid.getCandles({
           coin: symbol,
           interval: HYPERLIQUID_INTERVALS[timeframe],
-          startTime: Date.now() - PERP_CANDLES_LIMIT * TIMEFRAME_MS[timeframe],
-          endTime: null,
+          startTime: window.from ?? endTime - window.limit * TIMEFRAME_MS[timeframe],
+          endTime: window.to ?? null,
           dex
         })
         if (rows.length === 0) {
@@ -490,14 +576,17 @@ export function candlesPerpSources(params: CandlesPerpParams): CandleSource[] {
           )
         }
         return AssetCandlesPayloadSchema.parse({
-          candles: rows.map((row) => ({
-            t: row.open_time,
-            o: Number(row.open),
-            h: Number(row.high),
-            l: Number(row.low),
-            c: Number(row.close),
-            v: Number(row.volume)
-          }))
+          candles: applyCandleWindow(
+            rows.map((row) => ({
+              t: row.open_time,
+              o: Number(row.open),
+              h: Number(row.high),
+              l: Number(row.low),
+              c: Number(row.close),
+              v: Number(row.volume)
+            })),
+            window
+          )
         })
       }
     }

@@ -1,6 +1,16 @@
-import type { StocksCandles, StocksDetail, StocksPrice, StocksSearchResults } from '@/types/Stocks'
+import type {
+  MarketstackEodRow,
+  MarketstackInterval,
+  MarketstackIntradayRow,
+  StockCandle,
+  StocksCandles,
+  StocksDetail,
+  StocksPrice,
+  StocksSearchResults
+} from '@/types/Stocks'
 import {
   MarketstackEodResponseSchema,
+  MarketstackIntradayResponseSchema,
   MarketstackStockPriceResponseSchema,
   MarketstackTickerSchema,
   MarketstackTickersListResponseSchema,
@@ -22,6 +32,14 @@ type GetCandlesParams = {
   readonly limit: number
 }
 
+type GetIntradayCandlesParams = {
+  readonly symbol: string
+  readonly interval: MarketstackInterval
+  readonly from: string | null | undefined
+  readonly to: string | null | undefined
+  readonly limit: number
+}
+
 type GetDetailParams = {
   readonly symbol: string
 }
@@ -36,6 +54,23 @@ type SearchParams = {
 }
 
 const MARKETSTACK_BASE_URL = 'https://api.marketstack.com/'
+
+// A row missing any OHLC leg or a parseable date is not a candle. Drop it
+// rather than back-fill: Marketstack nulls individual legs on some sessions,
+// and a synthesised value would flow straight into the TA indicators.
+function toCandle(row: MarketstackEodRow | MarketstackIntradayRow): StockCandle | null {
+  const t = Date.parse(row.date)
+  if (
+    !Number.isFinite(t) ||
+    isNullish(row.open) ||
+    isNullish(row.high) ||
+    isNullish(row.low) ||
+    isNullish(row.close)
+  ) {
+    return null
+  }
+  return { t, o: row.open, h: row.high, l: row.low, c: row.close, v: row.volume }
+}
 
 export class StocksService {
   private readonly apiKey: string
@@ -52,15 +87,28 @@ export class StocksService {
       ...(isNullish(params.to) ? {} : { date_to: params.to })
     })
     const parsed = MarketstackEodResponseSchema.parse(raw)
-    const candles = compactMap(
-      (parsed.data ?? []).map((row) => {
-        const t = Date.parse(row.date)
-        if (!Number.isFinite(t)) {
-          return null
-        }
-        return { t, o: row.open, h: row.high, l: row.low, c: row.close, v: row.volume }
-      })
-    ).sort((a, b) => a.t - b.t)
+    const candles = compactMap((parsed.data ?? []).map((row) => toCandle(row))).sort(
+      (a, b) => a.t - b.t
+    )
+    return StocksCandlesSchema.parse({ source: 'marketstack', symbol: params.symbol, candles })
+  }
+
+  // Intraday bars. Marketstack gates the finer intervals (1min/5min) behind
+  // higher plan tiers and answers 403 on the rest, which the router surfaces as
+  // a plan gate rather than a missing ticker.
+  async getIntradayCandles(params: GetIntradayCandlesParams): Promise<StocksCandles> {
+    const raw = await this.fetchMarketstack('v2/intraday', {
+      symbols: params.symbol,
+      interval: params.interval,
+      limit: String(params.limit),
+      sort: 'DESC',
+      ...(isNullish(params.from) ? {} : { date_from: params.from }),
+      ...(isNullish(params.to) ? {} : { date_to: params.to })
+    })
+    const parsed = MarketstackIntradayResponseSchema.parse(raw)
+    const candles = compactMap((parsed.data ?? []).map((row) => toCandle(row))).sort(
+      (a, b) => a.t - b.t
+    )
     return StocksCandlesSchema.parse({ source: 'marketstack', symbol: params.symbol, candles })
   }
 

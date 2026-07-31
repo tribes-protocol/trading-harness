@@ -1,10 +1,10 @@
 ---
 name: stock-analyst
 description: >-
-  Expert on stock market DATA. Handles: daily OHLCV candles, ticker profiles (name, sector,
-  industry, exchange), and company/ticker search. NO live quotes, movers, or market open/closed
-  status — the freshest price is the latest daily close from candles; say so plainly. Call for
-  any stock/equity data question. NOT for: indicator values, signals, or backtests (use
+  Expert on stock market DATA. Handles: ticker profiles (name, sector, industry, exchange),
+  company/ticker search, and OHLCV candles via `asset candles --ticker`. NO live quotes,
+  movers, or market open/closed status — the freshest price is the latest close; say so
+  plainly. Call for any stock/equity data question. NOT for: indicator values, signals, or backtests (use
   technical-analyst); stock news, catalysts, and sentiment (use news); executing stock trades
   (use hyperliquid — stocks are Hyperliquid perps); crypto movers or rankings (use
   market-strategist).
@@ -13,24 +13,25 @@ allowed-tools: bash read
 
 # Stock Analyst
 
-Backing command group: `tribes-cli stocks` — Marketstack as structured JSON, answering in
-seconds. YOU are the analyst: pull the numbers with the subcommands below and do the
-interpretation — trend reads, day-move context, comparisons — yourself. There is no backend
-specialist behind this skill and no `ask` subcommand.
+Backing command groups: `tribes-cli stocks` for profile and search, and `tribes-cli asset
+candles --ticker` for OHLCV — both Marketstack, structured JSON, answering in seconds. YOU
+are the analyst: pull the numbers and do the interpretation — trend reads, day-move context,
+comparisons — yourself. There is no backend specialist behind this skill and no `ask`
+subcommand.
 
 ## When to use
 
-- Daily OHLCV history for a ticker (`candles`), ticker profile (`detail`), resolving a
-  company name to a ticker (`search`).
+- Ticker profile (`stocks detail`), resolving a company name to a ticker (`stocks search`),
+  and OHLCV history via `asset candles --ticker` (see `asset-data`).
 - There is NO top-movers or market open/closed command, and no live quote in this group.
-  The freshest figure here is the latest daily close from `candles` — relay it as such,
-  never as a live quote. A near-live single-symbol price IS available via
+  The freshest figure here is the latest close from `asset candles --ticker` — relay it as
+  such, never as a live quote. A near-live single-symbol price IS available via
   `tribes-cli asset price --ticker <SYMBOL>` (generic router, see `asset-data`); its
   upstream is rate-limited, and when throttled it falls back to the latest daily close
   marked `stale: true` — relay staleness either way. That is the only extra: for movers or
   market-status questions, still say the data is not available here.
 - NOT for indicator values, signals, backtests, or any indicator math — use
-  `technical-analyst`: run `stocks candles --out <file>` here, then feed the file to
+  `technical-analyst`: run `asset candles --ticker <SYMBOL> --out <file>`, then feed the file to
   `tribes-cli ta`.
 - NOT for stock news, catalysts, or sentiment — use `news`.
 - NOT for placing or sizing stock trades — use `hyperliquid` (stocks are Hyperliquid perps).
@@ -42,8 +43,8 @@ specialist behind this skill and no `ask` subcommand.
    All subcommands accept `--out <file>` to also write the JSON to a file.
 2. Symbols are stock tickers (`AAPL`, not "Apple") — resolve company names with
    `stocks search` first when unsure.
-3. Candles are daily EOD only (`--interval` supports only `1d`). There is no intraday
-   candle data — always state that candle figures are end-of-day closes.
+3. Candles come from `asset candles --ticker`, not this group. Daily (`1d`, the default) and
+   weekly (`1w`) are true EOD bars — state that those figures are end-of-day closes.
 4. Relay exact figures with the timeframe and direction of change, never approximations.
 5. For unscoped movers/discovery requests, also run crypto via `market-strategist` and
    commodities via `commodity-analyst` (cross-asset guardrail, see AGENTS.md).
@@ -56,19 +57,19 @@ specialist behind this skill and no `ask` subcommand.
 ## Command reference
 
 All under `tribes-cli stocks`; every subcommand accepts `--out <file>`. All read-only.
+Candles live on `tribes-cli asset candles --ticker` — see the `asset-data` skill.
 
-| Subcommand | Purpose                                          | Required flags | Useful flags                                                                           | Source      |
-| ---------- | ------------------------------------------------ | -------------- | -------------------------------------------------------------------------------------- | ----------- |
-| `candles`  | Daily OHLCV candles for a symbol                 | `--symbol`     | `--from`/`--to` (YYYY-MM-DD), `--limit` 1-1000 (default 100), `--interval` (only `1d`) | Marketstack |
-| `detail`   | Ticker profile: name, sector, industry, exchange | `--symbol`     |                                                                                        | Marketstack |
-| `search`   | Resolve company names/symbols to stock tickers   | `--query`      | `--limit` 1-100 (default 20)                                                           | Marketstack |
+| Subcommand | Purpose                                          | Required flags | Useful flags                 | Source      |
+| ---------- | ------------------------------------------------ | -------------- | ---------------------------- | ----------- |
+| `detail`   | Ticker profile: name, sector, industry, exchange | `--symbol`     |                              | Marketstack |
+| `search`   | Resolve company names/symbols to stock tickers   | `--query`      | `--limit` 1-100 (default 20) | Marketstack |
 
 ## Examples
 
 ### Latest price check (daily close)
 
 ```bash
-tribes-cli stocks candles --symbol AAPL --limit 2
+tribes-cli asset candles --ticker AAPL --limit 2
 ```
 
 Relay the latest close, the change vs the prior close, and the date of that close — state
@@ -79,7 +80,7 @@ latest daily close marked `stale: true`).
 ### Candles over a timeframe
 
 ```bash
-tribes-cli stocks candles --symbol NVDA --from 2026-06-20 --to 2026-07-21
+tribes-cli asset candles --ticker NVDA --from 2026-06-20 --to 2026-07-21
 ```
 
 State the trend direction over the range yourself from the OHLCV series.
@@ -94,13 +95,27 @@ tribes-cli stocks detail --symbol PLTR
 ### Chain candles into TA indicators
 
 ```bash
-tribes-cli stocks candles --symbol MSFT --limit 200 --out /tmp/msft-candles.json
+tribes-cli asset candles --ticker MSFT --limit 200 --out /tmp/msft-candles.json
 tribes-cli ta indicators --candles-file /tmp/msft-candles.json --set rsi,macd,ema
 ```
 
-`tribes-cli asset candles --ticker MSFT --out /tmp/msft-candles.json` is the equivalent
-generic-router fetch — same candle contract, same downstream `ta` use. For signals, levels,
-or backtests on the same file, use `technical-analyst`.
+Stock candles come from `asset candles --ticker` — `tribes-cli stocks` no longer has a
+`candles` subcommand (retired once the router gained `--from`/`--to`/`--limit`; it only did
+daily). For signals, levels, or backtests on the same file, use `technical-analyst`.
+
+`--timeframe` accepts `1m|5m|15m|1h|4h|1d|1w` (default `1d`). Marketstack serves 15min,
+30min, 1hour and coarser natively; the harness rolls up `4h` from 1hour bars and `1w` from
+EOD, both on fixed UTC boundaries so a short session stays on the grid.
+
+Two caveats worth stating when you present intraday stock analysis:
+
+- `1m` and `5m` are gated behind a higher Marketstack plan and return `http_403` in the
+  `attempted` trail. That is a plan limit, not a bad ticker — do not retry.
+- On the current plan, intraday `open`/`high`/`low`/`close` are reported at SESSION level
+  and repeat across every bar in a session; only volume and the last price vary per bar.
+  Close-based indicators (RSI, MACD, EMA, SMA, Bollinger) read sensibly; ATR, stochastic,
+  VWAP and swing levels do NOT — do not size risk off intraday stock ATR. Daily (`1d`) and
+  weekly (`1w`) come from EOD and carry genuine per-bar OHLC.
 
 ## Error recovery
 

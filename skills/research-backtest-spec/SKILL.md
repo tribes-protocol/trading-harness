@@ -5,7 +5,7 @@ description: >-
   for the local backtest engine — the ma-cross or rsi-revert mapping with parameters, the candle
   source, timeframe, and window, the sample-size plan, and the cost assumptions to apply
   analytically afterward. Handles: engine mapping, data-source selection (hyperliquid candles
-  for venue-native series including HIP-3 perps; asset candles or coin ohlc otherwise),
+  for venue-native series including HIP-3 perps; asset candles otherwise),
   provider-limit budgeting (GeckoTerminal 200-candle cap, CoinGecko days enums), and the
   robustness matrix declaration. Call it on an acked strategy-proposal before any engine run.
   NOT for: inventing the strategy (use research-hypothesis); executing the run (use
@@ -67,13 +67,14 @@ Data-source selection, venue-native first for anything that trades on Hyperliqui
   windows via `--start-time`, but its rows are NOT the ta contract — a spec choosing it must
   declare a transform step before `ta backtest` can consume the file.
 - CoinGecko coin: `tribes-cli asset candles --id <id> --days <1|7|14|30|90|180|365|max> --out
-<file>` (or `tribes-cli coin ohlc`). Days enum only, granularity auto — candle count is NOT
+<file>`. Days enum only, granularity auto — candle count is NOT
   the day count (`--days 365` often returns ~90 candles); `v` is null, so no VWAP.
 - Contract token: `tribes-cli asset candles --address <a> --chain <c> --timeframe
 <1m|5m|15m|1h|4h|1d|1w> --out <file>`. BirdEye → GeckoTerminal fallback; GeckoTerminal is
   capped at 200 candles with no pagination and has no 1w aggregate.
-- Stock proxy (EOD daily only): `tribes-cli stocks candles --symbol <s> --from <YYYY-MM-DD>
---to <YYYY-MM-DD> --limit <1-1000> --out <file>`. True historical windows via `--from/--to`;
+- Stock proxy: `tribes-cli asset candles --ticker <s> --timeframe <15m|1h|4h|1d|1w> --from
+<YYYY-MM-DD> --to <YYYY-MM-DD> --limit <1-1000> --out <file>`. True historical windows via
+  `--from/--to`; 1m/5m are Marketstack plan-gated, and intraday OHLC is session-level;
   proxy prices can diverge from HIP-3 dex marks — venue-native preferred when it exists.
 - Engine bounds this spec must respect: `tribes-cli ta backtest` accepts `--fast`/`--slow`
   (2-500, fast < slow) and `--rsi-low`/`--rsi-high` (1-99, low < high); RSI length is

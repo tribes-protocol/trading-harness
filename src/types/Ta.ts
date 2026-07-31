@@ -1,8 +1,8 @@
 import { z } from 'zod'
 
 // ---------------------------------------------------------------------------
-// Shared candle contract: the JSON written via --out by token-data ohlcv,
-// coin ohlc, onchain pool-ohlcv, and stocks candles. `t` is epoch ms.
+// Shared candle contract: the JSON written via --out by asset candles,
+// onchain pool-ohlcv, and hyperliquid candles. `t` is epoch ms.
 // ---------------------------------------------------------------------------
 
 export const TaCandleSchema = z.object({

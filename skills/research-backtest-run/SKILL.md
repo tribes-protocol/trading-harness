@@ -61,8 +61,8 @@ failure — no trigger in the window is evidence.
 ## Integration
 
 - Fetch: the spec's command verbatim — `tribes-cli asset candles ...` (incl. `--perp` for
-  venue-native Hyperliquid series in the shared contract), `tribes-cli coin ohlc ...`,
-  `tribes-cli stocks candles ...`, or raw `tribes-cli hyperliquid candles` (longer windows;
+  venue-native Hyperliquid series in the shared contract),
+  or raw `tribes-cli hyperliquid candles` (longer windows;
   NOT the ta contract, so the spec's declared transform step is mandatory before the engine
   sees it) — always with `--out .tribes/org/snapshots/<UTC>-candles-<slug>.json`.
 - Engine: `tribes-cli ta backtest --candles-file <snapshot> --strategy ma-cross|rsi-revert

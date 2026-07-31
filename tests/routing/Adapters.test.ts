@@ -29,7 +29,12 @@ import { MarketService } from '@/services/MarketService'
 import { OnchainService } from '@/services/OnchainService'
 import { StocksService } from '@/services/StocksService'
 import type { TransactionService } from '@/services/TransactionService'
-import { AssetCandlesPayloadSchema, AssetPriceQuotePayloadSchema } from '@/types/Capability'
+import {
+  AssetCandlesPayloadSchema,
+  AssetPriceQuotePayloadSchema,
+  AssetTimeframeSchema,
+  type CandleWindow
+} from '@/types/Capability'
 import { ensureJsonTreeString } from '@/utils/Lang'
 
 const EVM_ADDRESS = '0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2'
@@ -262,6 +267,87 @@ const EOD_FIXTURE = {
   ]
 }
 
+// Wed 2026-07-22 + Thu 2026-07-23 (ISO week of Mon 07-20), then Mon 2026-07-27.
+const EOD_TWO_WEEK_FIXTURE = {
+  pagination: { limit: 3, offset: 0, count: 3, total: 3 },
+  data: [
+    {
+      date: '2026-07-27T00:00:00+0000',
+      symbol: 'AAPL',
+      open: 235.0,
+      high: 240.0,
+      low: 234.0,
+      close: 239.1,
+      volume: 47000000
+    },
+    {
+      date: '2026-07-23T00:00:00+0000',
+      symbol: 'AAPL',
+      open: 231.2,
+      high: 236.0,
+      low: 230.1,
+      close: 234.5,
+      volume: 52000000
+    },
+    {
+      date: '2026-07-22T00:00:00+0000',
+      symbol: 'AAPL',
+      open: 229.4,
+      high: 233.9,
+      low: 228.7,
+      close: 231.2,
+      volume: 51000000
+    }
+  ]
+}
+
+// Four 1hour intraday bars spanning two 4h grid buckets (15:00 → 12:00 bucket,
+// 16:00-18:00 → 16:00 bucket).
+const INTRADAY_FIXTURE = {
+  pagination: { limit: 4, offset: 0, count: 4, total: 4 },
+  data: [
+    {
+      date: '2026-07-30T18:00:00+0000',
+      symbol: 'AAPL',
+      open: 108,
+      high: 109,
+      low: 95,
+      close: 97,
+      volume: 30
+    },
+    {
+      date: '2026-07-30T17:00:00+0000',
+      symbol: 'AAPL',
+      open: 104,
+      high: 112,
+      low: 103,
+      close: 108,
+      volume: 20
+    },
+    {
+      date: '2026-07-30T16:00:00+0000',
+      symbol: 'AAPL',
+      open: 100,
+      high: 105,
+      low: 99,
+      close: 104,
+      volume: 10
+    },
+    {
+      date: '2026-07-30T15:00:00+0000',
+      symbol: 'AAPL',
+      open: 90,
+      high: 91,
+      low: 89,
+      close: 90,
+      volume: 5
+    }
+  ]
+}
+
+// Default window: both bounds open, the CLI's default bar count.
+const WINDOW: CandleWindow = { from: null, to: null, limit: 200 }
+
 describe('asset adapters', () => {
   afterEach(() => {
     vi.restoreAllMocks()
@@ -439,7 +525,12 @@ describe('asset adapters', () => {
   // --- candles × perp ------------------------------------------------------
 
   it('candles×perp maps Hyperliquid rows into the shared {t,o,h,l,c,v} contract', async () => {
-    const sources = candlesPerpSources({ services: makeServices(), perp: 'btc', timeframe: '1h' })
+    const sources = candlesPerpSources({
+      services: makeServices(),
+      perp: 'btc',
+      timeframe: '1h',
+      window: WINDOW
+    })
 
     const result = await resolveCapability({ capability: 'candles', sources })
 
@@ -460,7 +551,8 @@ describe('asset adapters', () => {
     const sources = candlesPerpSources({
       services: makeServices(),
       perp: 'xyz:aapl',
-      timeframe: '1d'
+      timeframe: '1d',
+      window: WINDOW
     })
 
     await resolveCapability({ capability: 'candles', sources })
@@ -474,7 +566,8 @@ describe('asset adapters', () => {
     const sources = candlesPerpSources({
       services: makeServices(),
       perp: 'GHOST',
-      timeframe: '1h'
+      timeframe: '1h',
+      window: WINDOW
     })
 
     await expect(resolveCapability({ capability: 'candles', sources })).rejects.toThrow(/empty/)
@@ -490,7 +583,8 @@ describe('asset adapters', () => {
       services: makeServices(),
       address: EVM_ADDRESS,
       chain: ETHEREUM,
-      timeframe: '4h'
+      timeframe: '4h',
+      window: WINDOW
     })
 
     const result = await resolveCapability({ capability: 'candles', sources })
@@ -515,7 +609,8 @@ describe('asset adapters', () => {
       services: makeServices(),
       address: EVM_ADDRESS,
       chain: ETHEREUM,
-      timeframe: '4h'
+      timeframe: '4h',
+      window: WINDOW
     })
 
     const result = await resolveCapability({ capability: 'candles', sources })
@@ -533,7 +628,8 @@ describe('asset adapters', () => {
       services: makeServices(),
       address: EVM_ADDRESS,
       chain: ETHEREUM,
-      timeframe: '1h'
+      timeframe: '1h',
+      window: WINDOW
     })
 
     vi.spyOn(globalThis, 'fetch').mockResolvedValue(jsonResponse(BIRDEYE_OHLCV_FIXTURE))
@@ -552,7 +648,8 @@ describe('asset adapters', () => {
       services: makeServices(),
       address: EVM_ADDRESS,
       chain: ETHEREUM,
-      timeframe: '1w'
+      timeframe: '1w',
+      window: WINDOW
     })
 
     expect(sources.map((source) => source.provider)).toEqual(['birdeye'])
@@ -589,15 +686,188 @@ describe('asset adapters', () => {
 
   it('candles×ticker calls Marketstack EOD', async () => {
     const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(jsonResponse(EOD_FIXTURE))
-    const sources = candlesTickerSources({ services: makeServices(), ticker: 'AAPL' })
+    const sources = candlesTickerSources({
+      services: makeServices(),
+      ticker: 'AAPL',
+      timeframe: '1d',
+      window: WINDOW
+    })
 
     const result = await resolveCapability({ capability: 'candles', sources })
 
     const url = new URL(String(fetchSpy.mock.calls[0]?.[0]))
     expect(url.pathname).toBe('/v2/eod')
     expect(url.searchParams.get('symbols')).toBe('AAPL')
+    expect(url.searchParams.get('limit')).toBe('200')
     expect(result.source).toBe('marketstack')
     expect(result.candles).toHaveLength(1)
+  })
+
+  it('candles×ticker rolls EOD up into ISO weeks for 1w and widens the fetch window', async () => {
+    const fetchSpy = vi
+      .spyOn(globalThis, 'fetch')
+      .mockResolvedValue(jsonResponse(EOD_TWO_WEEK_FIXTURE))
+    const sources = candlesTickerSources({
+      services: makeServices(),
+      ticker: 'AAPL',
+      timeframe: '1w',
+      window: WINDOW
+    })
+
+    const result = await resolveCapability({ capability: 'candles', sources })
+
+    const url = new URL(String(fetchSpy.mock.calls[0]?.[0]))
+    expect(url.pathname).toBe('/v2/eod')
+    // Marketstack has no weekly interval, so 1w still fetches daily rows —
+    // 5x as many, so the rollup yields a full-length weekly series.
+    expect(url.searchParams.get('limit')).toBe('1000')
+    expect(result.source).toBe('marketstack')
+    expect(result.candles).toEqual([
+      {
+        t: Date.parse('2026-07-20T00:00:00Z'),
+        o: 229.4,
+        h: 236.0,
+        l: 228.7,
+        c: 234.5,
+        v: 103000000
+      },
+      {
+        t: Date.parse('2026-07-27T00:00:00Z'),
+        o: 235.0,
+        h: 240.0,
+        l: 234.0,
+        c: 239.1,
+        v: 47000000
+      }
+    ])
+  })
+
+  it('candles×ticker routes intraday timeframes to /v2/intraday with the native interval', async () => {
+    const cases: [string, string][] = [
+      ['1m', '1min'],
+      ['5m', '5min'],
+      ['15m', '15min'],
+      ['1h', '1hour']
+    ]
+    for (const [timeframe, interval] of cases) {
+      const fetchSpy = vi
+        .spyOn(globalThis, 'fetch')
+        .mockResolvedValue(jsonResponse(INTRADAY_FIXTURE))
+      const sources = candlesTickerSources({
+        services: makeServices(),
+        ticker: 'AAPL',
+        timeframe: AssetTimeframeSchema.parse(timeframe),
+        window: WINDOW
+      })
+
+      const result = await resolveCapability({ capability: 'candles', sources })
+
+      const url = new URL(String(fetchSpy.mock.calls[0]?.[0]))
+      expect(url.pathname).toBe('/v2/intraday')
+      expect(url.searchParams.get('interval')).toBe(interval)
+      expect(url.searchParams.get('limit')).toBe('200')
+      expect(result.candles).toHaveLength(4)
+      vi.restoreAllMocks()
+    }
+  })
+
+  it('candles×ticker builds 4h from 1hour bars on the 4h grid', async () => {
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(jsonResponse(INTRADAY_FIXTURE))
+    const sources = candlesTickerSources({
+      services: makeServices(),
+      ticker: 'AAPL',
+      timeframe: '4h',
+      window: WINDOW
+    })
+
+    const result = await resolveCapability({ capability: 'candles', sources })
+
+    const url = new URL(String(fetchSpy.mock.calls[0]?.[0]))
+    // Marketstack has no 4hour interval, so 4h fetches 1hour and rolls up —
+    // asking for 4x the bars so the rollup still yields a full series.
+    expect(url.searchParams.get('interval')).toBe('1hour')
+    expect(url.searchParams.get('limit')).toBe('800')
+    expect(result.candles).toEqual([
+      { t: Date.parse('2026-07-30T12:00:00Z'), o: 90, h: 91, l: 89, c: 90, v: 5 },
+      { t: Date.parse('2026-07-30T16:00:00Z'), o: 100, h: 112, l: 95, c: 97, v: 60 }
+    ])
+  })
+
+  // --- candles × window ----------------------------------------------------
+
+  it('converts the window into each provider’s native units', async () => {
+    const from = Date.parse('2026-07-20T00:00:00Z')
+    const to = Date.parse('2026-07-22T00:00:00Z')
+    const windowed: CandleWindow = { from, to, limit: 50 }
+
+    const birdeyeSpy = vi
+      .spyOn(globalThis, 'fetch')
+      .mockResolvedValue(jsonResponse(BIRDEYE_OHLCV_FIXTURE))
+    await resolveCapability({
+      capability: 'candles',
+      sources: candlesContractSources({
+        services: makeServices(),
+        address: EVM_ADDRESS,
+        chain: ETHEREUM,
+        timeframe: '1h',
+        window: windowed
+      })
+    })
+    const birdeyeUrl = new URL(String(birdeyeSpy.mock.calls[0]?.[0]))
+    // BirdEye takes epoch seconds.
+    expect(birdeyeUrl.searchParams.get('time_from')).toBe(String(from / 1000))
+    expect(birdeyeUrl.searchParams.get('time_to')).toBe(String(to / 1000))
+    vi.restoreAllMocks()
+
+    const stocksSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(jsonResponse(EOD_FIXTURE))
+    await resolveCapability({
+      capability: 'candles',
+      sources: candlesTickerSources({
+        services: makeServices(),
+        ticker: 'AAPL',
+        timeframe: '1d',
+        window: windowed
+      })
+    })
+    const stocksUrl = new URL(String(stocksSpy.mock.calls[0]?.[0]))
+    // Marketstack takes calendar dates.
+    expect(stocksUrl.searchParams.get('date_from')).toBe('2026-07-20')
+    expect(stocksUrl.searchParams.get('date_to')).toBe('2026-07-22')
+    expect(stocksUrl.searchParams.get('limit')).toBe('50')
+  })
+
+  it('clips provider rows that fall outside the requested window', async () => {
+    // The BirdEye fixture holds bars at 1784556400s and 1784560000s; the window
+    // admits only the first, even though the provider returned both.
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(jsonResponse(BIRDEYE_OHLCV_FIXTURE))
+    const result = await resolveCapability({
+      capability: 'candles',
+      sources: candlesContractSources({
+        services: makeServices(),
+        address: EVM_ADDRESS,
+        chain: ETHEREUM,
+        timeframe: '1h',
+        window: { from: null, to: 1784556400000, limit: 200 }
+      })
+    })
+
+    expect(result.candles.map((candle) => candle.t)).toEqual([1784556400000])
+  })
+
+  it('truncates to the most recent bars when the provider overshoots the limit', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(jsonResponse(BIRDEYE_OHLCV_FIXTURE))
+    const result = await resolveCapability({
+      capability: 'candles',
+      sources: candlesContractSources({
+        services: makeServices(),
+        address: EVM_ADDRESS,
+        chain: ETHEREUM,
+        timeframe: '1h',
+        window: { from: null, to: null, limit: 1 }
+      })
+    })
+
+    expect(result.candles.map((candle) => candle.t)).toEqual([1784560000000])
   })
 
   // --- candles × pool ------------------------------------------------------
@@ -608,7 +878,8 @@ describe('asset adapters', () => {
       services: makeServices(),
       pool: POOL_ADDRESS,
       chain: SOLANA,
-      timeframe: '1d'
+      timeframe: '1d',
+      window: WINDOW
     })
 
     const result = await resolveCapability({ capability: 'candles', sources })
@@ -630,7 +901,8 @@ describe('asset adapters', () => {
       services: makeServices(),
       pool: POOL_ADDRESS,
       chain: SOLANA,
-      timeframe: '1d'
+      timeframe: '1d',
+      window: WINDOW
     })
 
     const result = await resolveCapability({ capability: 'candles', sources })

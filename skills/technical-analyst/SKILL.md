@@ -34,10 +34,11 @@ the shared candle contract, which is exactly what `--candles-file` expects:
 { "source": "<provider>", "candles": [{ "t": 0, "o": 0, "h": 0, "l": 0, "c": 0, "v": 0 }] }
 ```
 
-`t` is epoch ms; `v` may be absent (coin-id candles — `asset candles --id` / `coin ohlc` —
-have no volume; skip `vwap` on those files).
+`t` is epoch ms; `v` may be absent (coin-id candles — `asset candles --id` — have no volume;
+skip `vwap` on those files).
 
-Candle COUNT is not the requested day count. Providers cap granularity — `coin ohlc --days 365`
+Candle COUNT is not the requested day count. Providers cap granularity — `asset candles --id
+<id> --days 365`
 returns far fewer than 365 daily candles (often ~90). Before reporting a backtest span or a
 "lookback", read the FIRST and LAST candle `t` in the file and state the real date range and
 candle count. Never equate `--days N` with "N candles" or "N days of history" — a 92-candle
@@ -101,12 +102,12 @@ tribes-cli asset candles --ticker <SYMBOL> --out <file>                         
 Fallback / manual path — the direct provider commands, for when you need one specific
 provider or a source the router does not cover (DEX pools):
 
-| Asset                  | Command                         | Required flags                                            | Useful flags                                               |
-| ---------------------- | ------------------------------- | --------------------------------------------------------- | ---------------------------------------------------------- |
-| Crypto token (address) | `tribes-cli token-data ohlcv`   | `--address`, `--timeframe 1m\|5m\|15m\|1H\|4H\|1D\|1W`    | `--chain` (default solana), `--from`/`--to` (epoch s)      |
-| Coin (CoinGecko id)    | `tribes-cli coin ohlc`          | `--id`, `--days 1\|7\|14\|30\|90\|180\|365\|max`          | no volume — skip `vwap`                                    |
-| DEX pool               | `tribes-cli onchain pool-ohlcv` | `--network`, `--address`, `--timeframe minute\|hour\|day` | `--aggregate <n>` (e.g. 4 for 4h), `--limit` (default 100) |
-| Stock (daily only)     | `tribes-cli stocks candles`     | `--symbol`                                                | `--from`/`--to` (YYYY-MM-DD), `--limit` (default 100)      |
+| Asset                  | Command                         | Required flags                                                 | Useful flags                                                                                         |
+| ---------------------- | ------------------------------- | -------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| Crypto token (address) | `tribes-cli asset candles`      | `--address --chain`, `--timeframe 1m\|5m\|15m\|1h\|4h\|1d\|1w` | `--from`/`--to`, `--limit` (default 200)                                                             |
+| Coin (CoinGecko id)    | `tribes-cli asset candles`      | `--id`, `--days 1\|7\|14\|30\|90\|180\|365\|max`               | no volume — skip `vwap`; `--from`/`--to`/`--limit` do not apply                                      |
+| DEX pool               | `tribes-cli onchain pool-ohlcv` | `--network`, `--address`, `--timeframe minute\|hour\|day`      | `--aggregate <n>` (e.g. 4 for 4h), `--limit` (default 100)                                           |
+| Stock                  | `tribes-cli asset candles`      | `--ticker`, `--timeframe 15m\|1h\|4h\|1d\|1w`                  | `--from`/`--to`, `--limit` (default 200); intraday OHLC is session-level — skip `atr`/`stoch`/`vwap` |
 
 ## Examples
 

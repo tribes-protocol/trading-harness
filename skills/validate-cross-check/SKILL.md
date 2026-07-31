@@ -58,7 +58,7 @@ skill emits no recommendation and takes no action; state changes belong to
 - Second read, from a provider different from BOTH P0 and the router's `source`:
   - `tribes-cli market price --ids <coingecko-id>` (CoinGecko)
   - `tribes-cli token-data price --addresses <addr> --chain <chain>` (BirdEye)
-  - `tribes-cli stocks candles --symbol <TICKER> --limit 5 --out <file>` (Marketstack EOD)
+  - `tribes-cli asset candles --ticker <TICKER> --limit 5 --out <file>` (Marketstack EOD)
   - `tribes-cli hyperliquid list-assets --dex <dex> --out <file>` (venue marks; reuse the
     all-dex snapshot within its live window per `org-protocol` instead of re-sweeping)
 - Identifier mapping across id spaces: `tribes-cli asset search --query <name>` and

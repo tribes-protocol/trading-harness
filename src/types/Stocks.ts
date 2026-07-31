@@ -6,12 +6,15 @@ import { z } from 'zod'
 // "Tickers"); only the fields the harness surfaces are modeled.
 // ---------------------------------------------------------------------------
 
+// OHLC legs are nullish: live EOD rows carry `close: null` on some sessions
+// (observed on AAPL history), and a required number there rejects the whole
+// page. Rows missing a leg are dropped at mapping time rather than back-filled.
 export const MarketstackEodRowSchema = z.object({
   date: z.string(),
-  open: z.number(),
-  high: z.number(),
-  low: z.number(),
-  close: z.number(),
+  open: z.number().nullish(),
+  high: z.number().nullish(),
+  low: z.number().nullish(),
+  close: z.number().nullish(),
   volume: z.number().nullish()
 })
 export type MarketstackEodRow = z.infer<typeof MarketstackEodRowSchema>
@@ -20,6 +23,41 @@ export const MarketstackEodResponseSchema = z.object({
   data: z.array(MarketstackEodRowSchema).nullish()
 })
 export type MarketstackEodResponse = z.infer<typeof MarketstackEodResponseSchema>
+
+// GET /v2/intraday — the intervals Marketstack serves natively. Anything else
+// (notably 4h) is rolled up locally from a finer one; see stockCandlePlan in
+// routing/Adapters and the rollups in utils/Candles.
+export const MarketstackIntervalSchema = z.enum([
+  '1min',
+  '5min',
+  '10min',
+  '15min',
+  '30min',
+  '1hour',
+  '3hour',
+  '6hour',
+  '12hour',
+  '24hour'
+])
+export type MarketstackInterval = z.infer<typeof MarketstackIntervalSchema>
+
+// Intraday rows carry the same OHLCV block as EOD plus quote-side fields the
+// harness ignores. open/high/low/close are nullish here: on lower plan tiers
+// Marketstack reports session-level values rather than per-bar ones.
+export const MarketstackIntradayRowSchema = z.object({
+  date: z.string(),
+  open: z.number().nullish(),
+  high: z.number().nullish(),
+  low: z.number().nullish(),
+  close: z.number().nullish(),
+  volume: z.number().nullish()
+})
+export type MarketstackIntradayRow = z.infer<typeof MarketstackIntradayRowSchema>
+
+export const MarketstackIntradayResponseSchema = z.object({
+  data: z.array(MarketstackIntradayRowSchema).nullish()
+})
+export type MarketstackIntradayResponse = z.infer<typeof MarketstackIntradayResponseSchema>
 
 const MarketstackStockExchangeSchema = z.object({
   name: z.string().nullish(),
@@ -72,7 +110,7 @@ export type MarketstackStockPriceResponse = z.infer<typeof MarketstackStockPrice
 // Agent-facing output shapes printed by `tribes-cli stocks`.
 // ---------------------------------------------------------------------------
 
-const StockCandleSchema = z.object({
+export const StockCandleSchema = z.object({
   t: z.number(),
   o: z.number(),
   h: z.number(),
@@ -80,6 +118,7 @@ const StockCandleSchema = z.object({
   c: z.number(),
   v: z.number().nullish()
 })
+export type StockCandle = z.infer<typeof StockCandleSchema>
 
 export const StocksCandlesSchema = z.object({
   source: z.literal('marketstack'),
@@ -127,18 +166,6 @@ export type StocksSearchResults = z.infer<typeof StocksSearchResultsSchema>
 // ---------------------------------------------------------------------------
 // `tribes-cli stocks` command options.
 // ---------------------------------------------------------------------------
-
-const StocksCandleIntervalSchema = z.enum(['1d'])
-
-export const StocksCandlesCommandOptionsSchema = z.object({
-  symbol: z.string().min(1),
-  interval: StocksCandleIntervalSchema.nullish(),
-  from: z.string().min(1).nullish(),
-  to: z.string().min(1).nullish(),
-  limit: z.number().int().min(1).max(1000).nullish(),
-  out: z.string().nullish()
-})
-export type StocksCandlesCommandOptions = z.infer<typeof StocksCandlesCommandOptionsSchema>
 
 export const StocksDetailCommandOptionsSchema = z.object({
   symbol: z.string().min(1),

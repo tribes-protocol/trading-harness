@@ -6,7 +6,6 @@ import { CoinService } from '@/services/CoinService'
 import {
   CoinChartCommandOptionsSchema,
   CoinContractCommandOptionsSchema,
-  CoinOhlcCommandOptionsSchema,
   CoinProfileCommandOptionsSchema,
   CoinRatesCommandOptionsSchema,
   CoinSupplyCommandOptionsSchema,
@@ -48,21 +47,6 @@ export function buildCoinCommand(): Command {
       const request = CoinChartCommandOptionsSchema.parse(options)
       const chart = await service.getChart({ id: request.id, days: request.days })
       await writeOutput({ output: ensureJsonTreeString(chart), outPath: request.out ?? undefined })
-    })
-
-  program
-    .command('ohlc')
-    .description('OHLC candles for one coin (no volume on this endpoint)')
-    .requiredOption('--id <id>', 'CoinGecko coin id, e.g. bitcoin')
-    .requiredOption('--days <days>', 'Window: 1|7|14|30|90|180|365|max')
-    .option('--out <file>', 'Write output JSON to file')
-    .action(async (options: unknown): Promise<void> => {
-      const request = CoinOhlcCommandOptionsSchema.parse(options)
-      const candles = await service.getOhlc({ id: request.id, days: request.days })
-      await writeOutput({
-        output: ensureJsonTreeString(candles),
-        outPath: request.out ?? undefined
-      })
     })
 
   program

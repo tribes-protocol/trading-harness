@@ -9,7 +9,6 @@ import {
   TokenDataHoldersCommandOptionsSchema,
   TokenDataMintBurnCommandOptionsSchema,
   TokenDataNewListingsCommandOptionsSchema,
-  TokenDataOhlcvCommandOptionsSchema,
   TokenDataOverviewCommandOptionsSchema,
   TokenDataPriceCommandOptionsSchema,
   TokenDataSecurityCommandOptionsSchema,
@@ -160,30 +159,6 @@ export function buildTokenDataCommand(): Command {
       })
       await writeOutput({
         output: ensureJsonTreeString(listings),
-        outPath: request.out ?? undefined
-      })
-    })
-
-  program
-    .command('ohlcv')
-    .description('Token OHLCV candles (t in epoch ms)')
-    .requiredOption('--address <address>', 'Token address')
-    .requiredOption('--timeframe <timeframe>', 'Candle size: 1m|5m|15m|1H|4H|1D|1W')
-    .option('--from <epoch-s>', 'Window start in epoch seconds', (value) => Number(value))
-    .option('--to <epoch-s>', 'Window end in epoch seconds (default now)', (value) => Number(value))
-    .option('--chain <chain>', 'BirdEye chain, e.g. solana|ethereum|base (default solana)')
-    .option('--out <file>', 'Write output JSON to file')
-    .action(async (options: unknown): Promise<void> => {
-      const request = TokenDataOhlcvCommandOptionsSchema.parse(options)
-      const candles = await service.getOhlcv({
-        address: request.address,
-        timeframe: request.timeframe,
-        from: request.from,
-        to: request.to,
-        chain: request.chain ?? DEFAULT_CHAIN
-      })
-      await writeOutput({
-        output: ensureJsonTreeString(candles),
         outPath: request.out ?? undefined
       })
     })

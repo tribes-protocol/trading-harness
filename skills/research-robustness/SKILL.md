@@ -61,7 +61,7 @@ Explicit failure states per cell: `fetch-failed`, `insufficient-candles`,
 - Regime classification: `tribes-cli ta indicators --candles-file <cell-snapshot>
 --set ema,atr --out <snapshot>` — `trend` up | down → trending, `flat` → chop (EMA20/50
   spread, 0.1% flat band).
-- Window mechanics differ by source: `tribes-cli stocks candles --from/--to` gives true
+- Window mechanics differ by source: `tribes-cli asset candles --ticker --from/--to` gives true
   historical sub-windows; CoinGecko `--days` windows are anchored to now, so alternative
   windows overlap and the artifact must say so; GeckoTerminal's 200-candle cap bounds how far
   token-route windows reach.
