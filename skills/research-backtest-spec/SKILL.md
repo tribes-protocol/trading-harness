@@ -61,12 +61,11 @@ failure states: `not-representable` (a valid outcome, not an error), `window-una
 Data-source selection, venue-native first for anything that trades on Hyperliquid:
 
 - Venue-native perp series, any dex, including HIP-3 stock/commodity perps:
-  `tribes-cli hyperliquid candles --coin <c> --interval <1m..1M> --start-time <ms>
-[--end-time <ms>] [--dex <d>] --out <file>`. The only series that matches dex marks. CAVEAT:
-  its output rows (`open_time`/`open`/`high`/`low`/`close`/`volume`) are NOT the ta candle
-  contract `{source, candles: [{t,o,h,l,c,v}]}` — a spec choosing this source MUST declare the
-  documented transform step producing a contract-shaped file (or file an Engineering work
-  order to add a contract output mode) before `ta backtest` can consume it.
+  `tribes-cli asset candles --perp <COIN|dex:COIN> --timeframe <1m|5m|15m|1h|4h|1d|1w> --out
+<file>` — emits the shared candle contract directly (venue window ~200 candles) and is the
+  spec's default for perps. The raw `tribes-cli hyperliquid candles` command reaches longer
+  windows via `--start-time`, but its rows are NOT the ta contract — a spec choosing it must
+  declare a transform step before `ta backtest` can consume the file.
 - CoinGecko coin: `tribes-cli asset candles --id <id> --days <1|7|14|30|90|180|365|max> --out
 <file>` (or `tribes-cli coin ohlc`). Days enum only, granularity auto — candle count is NOT
   the day count (`--days 365` often returns ~90 candles); `v` is null, so no VWAP.

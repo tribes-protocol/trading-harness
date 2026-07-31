@@ -79,8 +79,8 @@ payload, or a schema-parse failure. Outcomes: `ok`, `key_unset`, `http_<status>`
    rate limit). The `attempted` trail is your explanation, not noise.
 3. Coin ids are CoinGecko ids (`bitcoin`, not `BTC`) — resolve with `asset search` first
    when unsure.
-4. Candle timeframes: `1m|5m|15m|1h|4h|1d|1w` for `--address`/`--pool`; `--id` uses `--days`
-   instead (daily-ish OHLC, no volume); `--ticker` is EOD daily only.
+4. Candle timeframes: `1m|5m|15m|1h|4h|1d|1w` for `--address`/`--pool`/`--perp`; `--id` uses
+   `--days` instead (daily-ish OHLC, no volume); `--ticker` is EOD daily only.
 5. Before presenting results as actionable trade ideas, verify Hyperliquid tradability with
    `hyperliquid list-assets --all-dexes` (see AGENTS.md).
 
@@ -88,15 +88,15 @@ payload, or a schema-parse failure. Outcomes: `ok`, `key_unset`, `http_<status>`
 
 All under `tribes-cli asset`; every subcommand accepts `--out <file>`. All read-only.
 
-| Subcommand | Purpose                                      | Identifier flags                                        | Useful flags                              |
-| ---------- | -------------------------------------------- | ------------------------------------------------------- | ----------------------------------------- |
-| `price`    | Price quote for any asset                    | `--address --chain` \| `--id` \| `--ticker` \| `--perp` |                                           |
-| `candles`  | OHLCV candles `{t,o,h,l,c,v}` (t epoch ms)   | same as price, plus `--pool --chain`; no `--perp`       | `--timeframe` (default 1h), `--days` (id) |
-| `profile`  | Identity + market block (+links/description) | `--address --chain` \| `--id` \| `--ticker`             |                                           |
-| `trending` | Trending assets                              | `--space onchain\|coins` (default onchain)              | `--chain` (onchain), `--limit`            |
-| `new`      | New listings / recently added coins          | `--space onchain\|coins` (default onchain)              | `--limit`                                 |
-| `search`   | Resolve names/symbols to assets              | `--query`; `--chain` → onchain token search first       | `--limit`                                 |
-| `holders`  | Top holders of a token contract              | `--address --chain`                                     | `--limit`                                 |
+| Subcommand | Purpose                                      | Identifier flags                                                                                             | Useful flags                              |
+| ---------- | -------------------------------------------- | ------------------------------------------------------------------------------------------------------------ | ----------------------------------------- |
+| `price`    | Price quote for any asset                    | `--address --chain` \| `--id` \| `--ticker` \| `--perp`                                                      |                                           |
+| `candles`  | OHLCV candles `{t,o,h,l,c,v}` (t epoch ms)   | same as price, plus `--pool --chain`; `--perp` = venue-native Hyperliquid series (~200 candles, incl. HIP-3) | `--timeframe` (default 1h), `--days` (id) |
+| `profile`  | Identity + market block (+links/description) | `--address --chain` \| `--id` \| `--ticker`                                                                  |                                           |
+| `trending` | Trending assets                              | `--space onchain\|coins` (default onchain)                                                                   | `--chain` (onchain), `--limit`            |
+| `new`      | New listings / recently added coins          | `--space onchain\|coins` (default onchain)                                                                   | `--limit`                                 |
+| `search`   | Resolve names/symbols to assets              | `--query`; `--chain` → onchain token search first                                                            | `--limit`                                 |
+| `holders`  | Top holders of a token contract              | `--address --chain`                                                                                          | `--limit`                                 |
 
 ## Examples
 

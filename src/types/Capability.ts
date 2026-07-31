@@ -292,6 +292,7 @@ const AssetCandlesCommandOptionsBaseSchema = z.object({
   chain: IdentifierOptionSchema,
   id: IdentifierOptionSchema,
   ticker: IdentifierOptionSchema,
+  perp: IdentifierOptionSchema,
   pool: IdentifierOptionSchema,
   timeframe: AssetTimeframeSchema.nullish(),
   days: CoinDaysSchema.nullish(),
@@ -300,7 +301,13 @@ const AssetCandlesCommandOptionsBaseSchema = z.object({
 
 export const AssetCandlesCommandOptionsSchema = AssetCandlesCommandOptionsBaseSchema.superRefine(
   (options, ctx) => {
-    refineIdentifierForms(options, ctx, ['--address --chain', '--id', '--ticker', '--pool --chain'])
+    refineIdentifierForms(options, ctx, [
+      '--address --chain',
+      '--id',
+      '--ticker',
+      '--perp',
+      '--pool --chain'
+    ])
     if (
       options.days !== null &&
       options.days !== undefined &&

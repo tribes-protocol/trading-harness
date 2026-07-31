@@ -29,6 +29,7 @@ import {
   AssetTrendingListPayloadSchema
 } from '@/types/Capability'
 import { type CoinDays } from '@/types/Coin'
+import { type HyperliquidCandleInterval } from '@/types/Hyperliquid'
 import { type OnchainTimeframe } from '@/types/Onchain'
 import { isNullish } from '@/utils/Lang'
 
@@ -433,6 +434,74 @@ export function candlesPoolSources(params: CandlesPoolParams): CandleSource[] {
     }
   })
   return sources
+}
+
+// Hyperliquid supports every asset timeframe natively; the venue window mirrors
+// the GeckoTerminal cap so all candle sources return comparable depth.
+const HYPERLIQUID_INTERVALS: Record<AssetTimeframe, HyperliquidCandleInterval> = {
+  '1m': '1m',
+  '5m': '5m',
+  '15m': '15m',
+  '1h': '1h',
+  '4h': '4h',
+  '1d': '1d',
+  '1w': '1w'
+}
+
+const TIMEFRAME_MS: Record<AssetTimeframe, number> = {
+  '1m': 60_000,
+  '5m': 300_000,
+  '15m': 900_000,
+  '1h': 3_600_000,
+  '4h': 14_400_000,
+  '1d': 86_400_000,
+  '1w': 604_800_000
+}
+
+const PERP_CANDLES_LIMIT = 200
+
+type CandlesPerpParams = {
+  readonly services: AssetServices
+  readonly perp: string
+  readonly timeframe: AssetTimeframe
+}
+
+export function candlesPerpSources(params: CandlesPerpParams): CandleSource[] {
+  const { services, perp, timeframe } = params
+  return [
+    {
+      provider: 'hyperliquid',
+      authoritative: true,
+      fetch: async () => {
+        const colonIdx = perp.indexOf(':')
+        const symbol = (colonIdx >= 0 ? perp.slice(colonIdx + 1) : perp).toUpperCase()
+        const dex = colonIdx >= 0 ? perp.slice(0, colonIdx) : null
+        const rows = await services.hyperliquid.getCandles({
+          coin: symbol,
+          interval: HYPERLIQUID_INTERVALS[timeframe],
+          startTime: Date.now() - PERP_CANDLES_LIMIT * TIMEFRAME_MS[timeframe],
+          endTime: null,
+          dex
+        })
+        if (rows.length === 0) {
+          throw new EmptyPayloadError(
+            `Hyperliquid has no ${timeframe} candles for perp '${perp}' — HIP-3 markets need ` +
+              `the dex-qualified form (e.g. xyz:AAPL)`
+          )
+        }
+        return AssetCandlesPayloadSchema.parse({
+          candles: rows.map((row) => ({
+            t: row.open_time,
+            o: Number(row.open),
+            h: Number(row.high),
+            l: Number(row.low),
+            c: Number(row.close),
+            v: Number(row.volume)
+          }))
+        })
+      }
+    }
+  ]
 }
 
 // --- profile -------------------------------------------------------------

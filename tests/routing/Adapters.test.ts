@@ -5,6 +5,7 @@ import {
   type AssetServices,
   candlesContractSources,
   candlesIdSources,
+  candlesPerpSources,
   candlesPoolSources,
   candlesTickerSources,
   holdersSources,
@@ -49,7 +50,39 @@ function errorResponse(status: number, statusText: string): Response {
   return new Response('provider error body', { status, statusText })
 }
 
+let lastCandleSnapshotArgs: Record<string, unknown> | null = null
+
 const fakeInfoClient = {
+  candleSnapshot: async (args: Record<string, unknown>) => {
+    lastCandleSnapshotArgs = args
+    if (args.coin === 'GHOST') return []
+    return [
+      {
+        t: 1784556400000,
+        T: 1784559999999,
+        s: String(args.coin),
+        i: args.interval,
+        o: '64000',
+        h: '65000',
+        l: '63500',
+        c: '64800',
+        v: '1200.5',
+        n: 42
+      },
+      {
+        t: 1784560000000,
+        T: 1784563599999,
+        s: String(args.coin),
+        i: args.interval,
+        o: '64800',
+        h: '65200',
+        l: '64600',
+        c: '65000',
+        v: '900.25',
+        n: 31
+      }
+    ]
+  },
   perpDexs: async () => [],
   metaAndAssetCtxs: async () => [
     { universe: [{ name: 'BTC', szDecimals: 5, maxLeverage: 40 }] },
@@ -401,6 +434,50 @@ describe('asset adapters', () => {
     const sources = pricePerpSources({ services: makeServices(), perp: 'NOPE' })
 
     await expect(resolveCapability({ capability: 'price', sources })).rejects.toThrow(/not_found/)
+  })
+
+  // --- candles × perp ------------------------------------------------------
+
+  it('candles×perp maps Hyperliquid rows into the shared {t,o,h,l,c,v} contract', async () => {
+    const sources = candlesPerpSources({ services: makeServices(), perp: 'btc', timeframe: '1h' })
+
+    const result = await resolveCapability({ capability: 'candles', sources })
+
+    expect(result.source).toBe('hyperliquid')
+    expect(result.candles).toEqual([
+      { t: 1784556400000, o: 64000, h: 65000, l: 63500, c: 64800, v: 1200.5 },
+      { t: 1784560000000, o: 64800, h: 65200, l: 64600, c: 65000, v: 900.25 }
+    ])
+    expect(lastCandleSnapshotArgs).toMatchObject({ coin: 'BTC', interval: '1h' })
+    const startTime = lastCandleSnapshotArgs?.startTime
+    expect(typeof startTime).toBe('number')
+    // 200-candle window: startTime sits ~200 hours back from now.
+    expect(Date.now() - Number(startTime)).toBeGreaterThan(199 * 3_600_000)
+    expect(Date.now() - Number(startTime)).toBeLessThan(201 * 3_600_000)
+  })
+
+  it('candles×perp forwards the dex-qualified form as dex + bare coin', async () => {
+    const sources = candlesPerpSources({
+      services: makeServices(),
+      perp: 'xyz:aapl',
+      timeframe: '1d'
+    })
+
+    await resolveCapability({ capability: 'candles', sources })
+
+    // The service prefixes builder-dex coins itself, so the adapter passes the
+    // bare symbol and the dex, and the InfoClient sees the prefixed coin.
+    expect(lastCandleSnapshotArgs).toMatchObject({ coin: 'xyz:AAPL', interval: '1d' })
+  })
+
+  it('candles×perp surfaces an unlisted coin as a final empty payload', async () => {
+    const sources = candlesPerpSources({
+      services: makeServices(),
+      perp: 'GHOST',
+      timeframe: '1h'
+    })
+
+    await expect(resolveCapability({ capability: 'candles', sources })).rejects.toThrow(/empty/)
   })
 
   // --- candles × contract --------------------------------------------------

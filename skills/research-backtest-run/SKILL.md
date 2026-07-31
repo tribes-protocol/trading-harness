@@ -60,11 +60,11 @@ failure — no trigger in the window is evidence.
 
 ## Integration
 
-- Fetch: the spec's command verbatim — `tribes-cli asset candles ...`, `tribes-cli coin ohlc
-...`, `tribes-cli stocks candles ...`, or `tribes-cli hyperliquid candles` (venue-native
-  series incl. HIP-3 perps; its raw output is NOT the ta candle contract, so the spec's
-  declared transform step is mandatory before the engine sees it) — always with
-  `--out .tribes/org/snapshots/<UTC>-candles-<slug>.json`.
+- Fetch: the spec's command verbatim — `tribes-cli asset candles ...` (incl. `--perp` for
+  venue-native Hyperliquid series in the shared contract), `tribes-cli coin ohlc ...`,
+  `tribes-cli stocks candles ...`, or raw `tribes-cli hyperliquid candles` (longer windows;
+  NOT the ta contract, so the spec's declared transform step is mandatory before the engine
+  sees it) — always with `--out .tribes/org/snapshots/<UTC>-candles-<slug>.json`.
 - Engine: `tribes-cli ta backtest --candles-file <snapshot> --strategy ma-cross|rsi-revert
 [--fast <n> --slow <n> | --rsi-low <n> --rsi-high <n>]
 --out .tribes/org/snapshots/<UTC>-backtest-<slug>.json` — pure local compute, no network.

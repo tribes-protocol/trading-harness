@@ -20,7 +20,9 @@ Notes:
   error. It is the only safe confirmation surface for a timed-out order command; never resubmit
   an order to "check" it.
 - `candles` output rows are `{open_time, close_time, open, high, low, close, volume,
-num_trades}` — NOT the `ta` candle-file contract; transform before feeding `ta backtest`.
+num_trades}` — NOT the `ta` candle-file contract; transform before feeding `ta backtest`, or
+  use `tribes-cli asset candles --perp <COIN|dex:COIN>` which emits the contract directly
+  (venue window ~200 candles).
 - `funding-history` and `candles` apply the same `dex:coin` prefixing as `order-book` on
   builder dexes — pass `--dex` and the bare coin.
 

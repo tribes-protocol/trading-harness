@@ -13,6 +13,7 @@ import {
   type AssetServices,
   candlesContractSources,
   candlesIdSources,
+  candlesPerpSources,
   candlesPoolSources,
   candlesTickerSources,
   holdersSources,
@@ -147,8 +148,11 @@ function pickCandleSources(
   if (!isNullish(request.ticker)) {
     return candlesTickerSources({ services, ticker: request.ticker })
   }
+  if (!isNullish(request.perp)) {
+    return candlesPerpSources({ services, perp: request.perp, timeframe })
+  }
   throw new Error(
-    'provide exactly one identifier: --address --chain | --id | --ticker | --pool --chain'
+    'provide exactly one identifier: --address --chain | --id | --ticker | --perp | --pool --chain'
   )
 }
 
@@ -211,6 +215,7 @@ export function buildAssetCommand(): Command {
     .option('--chain <chain>', CHAIN_FLAG_HELP)
     .option('--id <id>', 'CoinGecko coin id, e.g. bitcoin (uses --days, no volume)')
     .option('--ticker <symbol>', 'Stock ticker, e.g. AAPL (EOD daily candles)')
+    .option('--perp <coin>', 'Hyperliquid perp coin, e.g. BTC or xyz:AAPL (venue-native)')
     .option('--pool <address>', 'DEX pool/pair address (requires --chain)')
     .option('--timeframe <tf>', 'Candle timeframe 1m|5m|15m|1h|4h|1d|1w (default 1h)')
     .option('--days <days>', 'History window for --id: 1|7|14|30|90|180|365|max (default 30)')
