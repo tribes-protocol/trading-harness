@@ -7,11 +7,21 @@
  */
 
 /**
- * Bumped whenever a frame shape changes incompatibly. The client refuses to
- * attach when the server's `hello` reports a different major version, so a stale
- * tab fails loudly instead of silently mis-rendering.
+ * Bumped whenever a frame shape changes incompatibly. The client refuses to attach
+ * when the server's `hello` reports a different version, so a stale tab fails
+ * loudly instead of silently mis-rendering.
+ *
+ * 2 — added the `bash` client frame, the `screen.commands` server frame, and
+ *     `ToolInvocation.origin`. The two server-side additions are backward
+ *     compatible on their own (an old client drops an unknown frame), but the
+ *     CLIENT-side one is not: a new tab sending `bash` to an old gateway has its
+ *     frame rejected by that gateway's parser while the composer, seeing a
+ *     successful send, clears the operator's text. Silent loss across a deploy skew
+ *     is exactly what this gate is for, so it is a bump rather than an additive
+ *     no-op.
+ * 1 — initial contract.
  */
-export const PROTOCOL_VERSION = 1
+export const PROTOCOL_VERSION = 2
 
 /**
  * Delta coalescing window. Pi emits a `message_update` per token and a

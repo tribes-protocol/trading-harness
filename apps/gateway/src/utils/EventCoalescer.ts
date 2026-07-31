@@ -30,9 +30,16 @@ function isMergeable(event: ScreenEvent): event is MergeableScreenEvent {
 /**
  * Merge `next` into `pending`, or null when they target different blocks.
  *
- * `tool_output` has REPLACE semantics — it is a cumulative snapshot — so merging
- * two of them keeps the latest and discards the earlier one. Concatenating would
- * duplicate the output.
+ * `tool_output` arrives with BOTH semantics and they merge in opposite ways:
+ *  - `replace: true` is a cumulative snapshot (Pi's own tool stream), so merging
+ *    keeps the latest and discards the earlier one. Concatenating would duplicate
+ *    the output.
+ *  - `replace: false` is a chunk (a `!` bash run streams through `onChunk`), so
+ *    merging concatenates exactly like a text delta. Keeping the latest would
+ *    throw output away.
+ *
+ * The two never merge into each other even on the same id: a snapshot followed by
+ * a chunk has no coherent combination, so the buffered one is flushed first.
  */
 function mergeEvents(
   pending: MergeableScreenEvent,
@@ -49,7 +56,10 @@ function mergeEvents(
       : null
   }
   if (pending.kind === 'tool_output' && next.kind === 'tool_output') {
-    return pending.toolCallId === next.toolCallId && next.replace ? next : null
+    if (pending.toolCallId !== next.toolCallId || pending.replace !== next.replace) {
+      return null
+    }
+    return next.replace ? next : { ...pending, text: `${pending.text}${next.text}` }
   }
   return null
 }
@@ -73,15 +83,17 @@ export function tickCoalescer(state: CoalescerState, nowMs: number): CoalesceOut
  * Buffer the event, or emit it immediately once an ACCUMULATING buffer has grown
  * past the size cap.
  *
- * The cap bounds how large a merged delta frame may get, and only `text_delta`
- * and `thinking_delta` concatenate. `tool_output` is a cumulative snapshot that
- * REPLACES: merging never grows the buffer, and `renderToolOutput` has already
- * bounded it at MAX_TOOL_OUTPUT_CHARS. Applying the cap to it would emit every
- * snapshot over 2 KB on arrival, so a single `bun test` would ship one ~20 KB
- * frame per output chunk — exactly the frame storm this file exists to prevent.
+ * The cap bounds how large a merged delta frame may get, so it applies to exactly
+ * the events that concatenate. A `tool_output` SNAPSHOT (`replace: true`) does
+ * not: merging never grows the buffer, and `renderToolOutput` has already bounded
+ * it at MAX_TOOL_OUTPUT_CHARS. Applying the cap to it would emit every snapshot
+ * over 2 KB on arrival, so a single `bun test` would ship one ~20 KB frame per
+ * output chunk — exactly the frame storm this file exists to prevent. A
+ * `tool_output` CHUNK (`replace: false`) does concatenate, so it is capped like a
+ * text delta.
  */
 function bufferOrFlushBySize(pending: MergeableScreenEvent, sinceMs: number): CoalesceOutcome {
-  const accumulates = pending.kind !== 'tool_output'
+  const accumulates = pending.kind !== 'tool_output' || !pending.replace
   if (accumulates && pending.text.length >= COALESCE_MAX_BUFFER_CHARS) {
     return { state: EMPTY_STATE, emit: [pending] }
   }

@@ -29,6 +29,11 @@ function textDelta(messageId: string, text: string): ScreenEvent {
   return { kind: 'text_delta', messageId, text }
 }
 
+/** An APPEND-mode `tool_output`, the shape a `!` bash run's `onChunk` produces. */
+function bashChunk(text: string): ScreenEvent {
+  return { kind: 'tool_output', toolCallId: 'user-bash-1', text, replace: false }
+}
+
 describe('pushCoalescedEvent', () => {
   it('merges consecutive deltas aimed at the same target', () => {
     expect(
@@ -87,6 +92,33 @@ describe('pushCoalescedEvent', () => {
     const b: ScreenEvent = { kind: 'tool_output', toolCallId: 'b', text: 'y', replace: true }
 
     expect(pushAll([a, b], 0)).toEqual([a, b])
+  })
+
+  it('concatenates appended tool_output chunks from a `!` bash run', () => {
+    // `onChunk` hands over new output only. Keeping the latest would leave the
+    // operator looking at the last chunk of their own command.
+    expect(pushAll([bashChunk('one\n'), bashChunk('two\n'), bashChunk('three\n')], 0)).toEqual([
+      bashChunk('one\ntwo\nthree\n')
+    ])
+  })
+
+  it('never merges an appended chunk into a snapshot for the same tool call', () => {
+    const snapshot: ScreenEvent = {
+      kind: 'tool_output',
+      toolCallId: 'user-bash-1',
+      text: 'whole thing',
+      replace: true
+    }
+
+    expect(pushAll([snapshot, bashChunk('more')], 0)).toEqual([snapshot, bashChunk('more')])
+  })
+
+  it('applies the size cap to appended chunks, which do grow the buffer', () => {
+    const chunk = bashChunk('x'.repeat(COALESCE_MAX_BUFFER_CHARS))
+    const outcome = pushCoalescedEvent(createCoalescerState(), chunk, 0)
+
+    expect(outcome.emit).toEqual([chunk])
+    expect(outcome.state.pending).toBeNull()
   })
 
   it('flushes as soon as the buffer crosses the size cap', () => {

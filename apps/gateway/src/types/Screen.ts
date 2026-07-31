@@ -35,6 +35,26 @@ export type ScreenReplayInput = {
   streamingMessage: AgentMessage | null
 }
 
+/**
+ * A `!` bash run that has started but not finished.
+ *
+ * Held because Pi does not record a bash run into `AgentState.messages` until it
+ * COMPLETES (`recordBashResult` runs at the end), so a snapshot taken mid-run folds
+ * no block for it. Without this the documented recovery path deletes a running
+ * command from the transcript and then delivers `tool_output`/`tool_end` for a
+ * `toolCallId` the snapshot never mentioned.
+ *
+ * `emittedChars` bounds what has gone out on the wire. Chunks APPEND, so the cap
+ * has to be tracked across them rather than applied per chunk — truncating each
+ * chunk would splice a truncation marker into the middle of live output and lose
+ * everything after it.
+ */
+export type ActiveBashRun = {
+  command: string
+  output: string
+  emittedChars: number
+}
+
 /** Per-socket data Bun carries on the upgraded connection. */
 export type ScreenSocketData = {
   socketId: string

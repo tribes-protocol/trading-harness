@@ -1,6 +1,5 @@
 import type { AgentMessage } from '@earendil-works/pi-agent-core'
 import {
-  MAX_ARGS_PREVIEW_CHARS,
   MAX_TEXT_BLOCK_CHARS,
   MAX_TOOL_OUTPUT_CHARS
 } from '@tribes-harness/protocol/common/Constants'
@@ -10,7 +9,11 @@ import type { ScreenReplayInput, ScreenToolBlock } from '@/types/Screen'
 import { renderMessageContentText } from '@/utils/MessageContent'
 import { messageBlockId, thinkingBlockId } from '@/utils/ScreenIdentity'
 import { truncateText } from '@/utils/TextTruncation'
-import { renderToolInvocation } from '@/utils/ToolRendering'
+import {
+  isBashRunFailed,
+  renderToolInvocation,
+  renderUserBashInvocation
+} from '@/utils/ToolRendering'
 
 /**
  * Fold a Pi transcript into the same `ScreenBlock[]` the client builds from live
@@ -179,18 +182,11 @@ function appendBashExecution(
 ): void {
   // `fullOutputPath` is deliberately not forwarded — it is an absolute host path.
   const id = messageBlockId(message)
-  const command = truncateText(message.command, MAX_ARGS_PREVIEW_CHARS)
   blocks.push({
     type: 'tool',
     id,
-    invocation: {
-      toolCallId: id,
-      toolName: 'bash',
-      title: 'bash',
-      subtitle: command,
-      argsPreview: command
-    },
+    invocation: renderUserBashInvocation(id, message.command),
     output: truncateText(message.output, MAX_TOOL_OUTPUT_CHARS),
-    status: message.cancelled || message.exitCode !== 0 ? 'error' : 'done'
+    status: isBashRunFailed(message.cancelled, message.exitCode) ? 'error' : 'done'
   })
 }

@@ -27,7 +27,17 @@ export const ToolInvocationSchema = z.object({
   /** The one detail worth showing inline: the command, the path, the pattern. */
   subtitle: z.string().nullish(),
   /** Pretty-printed, truncated arguments for the expanded view. */
-  argsPreview: z.string()
+  argsPreview: z.string(),
+  /**
+   * Who started this. `user` is a `!command` the operator ran themselves, which the
+   * gateway renders through the same tool-block path so it lands in the screen
+   * alongside the agent's own work — but the UI marks it, because "the agent ran
+   * this" and "I ran this" are different facts about a trading session.
+   *
+   * Nullish for wire compatibility: frames minted before this field existed parse
+   * unchanged and are treated as `agent`.
+   */
+  origin: z.enum(['agent', 'user']).nullish()
 })
 export type ToolInvocation = z.infer<typeof ToolInvocationSchema>
 

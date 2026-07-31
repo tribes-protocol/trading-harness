@@ -2,7 +2,8 @@ import { describe, expect, it } from 'vitest'
 
 import { PROTOCOL_VERSION } from '@/common/Constants'
 import { ScreenBlockSchema } from '@/types/ScreenBlock'
-import { ScreenEventSchema } from '@/types/ScreenEvent'
+import { ScreenCommandSchema } from '@/types/ScreenCommand'
+import { ScreenEventSchema, ToolInvocationSchema } from '@/types/ScreenEvent'
 import { ClientFrameSchema, ServerFrameSchema } from '@/types/ScreenProtocol'
 
 /**
@@ -222,5 +223,74 @@ describe('ScreenBlockSchema', () => {
       text: 'boom'
     })
     expect(parsed.success).toBe(false)
+  })
+})
+
+describe('the `/` palette and `!` bash frames', () => {
+  it('accepts a bash frame', () => {
+    const parsed = ClientFrameSchema.safeParse({
+      t: 'bash',
+      screenId: 'main',
+      command: 'tribes-cli market list'
+    })
+    expect(parsed.success).toBe(true)
+  })
+
+  it('rejects a bash frame with no command', () => {
+    // A hostile socket sends this; the gateway must not reach executeBash with
+    // undefined.
+    expect(ClientFrameSchema.safeParse({ t: 'bash', screenId: 'main' }).success).toBe(false)
+    expect(ClientFrameSchema.safeParse({ t: 'bash', screenId: 'main', command: 42 }).success).toBe(
+      false
+    )
+  })
+
+  it('accepts a commands frame carrying all three sources', () => {
+    const parsed = ServerFrameSchema.safeParse({
+      t: 'screen.commands',
+      screenId: 'main',
+      commands: [
+        { name: 'tribes:login', description: 'Log in to Tribes', source: 'extension' },
+        { name: 'thesis', description: 'Run the thesis desk', source: 'prompt' },
+        { name: 'skill:alpha-scout', description: 'Find trending tokens', source: 'skill' }
+      ]
+    })
+    expect(parsed.success).toBe(true)
+  })
+
+  it('accepts a command with no description', () => {
+    // An extension may register without one.
+    const parsed = ScreenCommandSchema.safeParse({ name: 'refresh', source: 'extension' })
+    expect(parsed.success).toBe(true)
+  })
+
+  it('rejects a command from a source the palette cannot badge', () => {
+    const parsed = ScreenCommandSchema.safeParse({ name: 'x', source: 'builtin' })
+    expect(parsed.success).toBe(false)
+  })
+
+  it('accepts an empty palette', () => {
+    const parsed = ServerFrameSchema.safeParse({
+      t: 'screen.commands',
+      screenId: 'main',
+      commands: []
+    })
+    expect(parsed.success).toBe(true)
+  })
+
+  it('accepts a tool invocation with and without an origin', () => {
+    // Nullish for wire compatibility: a frame minted before the field existed must
+    // still parse, and means `agent`.
+    const base = {
+      toolCallId: 'call-1',
+      toolName: 'bash',
+      title: 'bash',
+      subtitle: 'ls',
+      argsPreview: '{}'
+    }
+    expect(ToolInvocationSchema.safeParse(base).success).toBe(true)
+    expect(ToolInvocationSchema.safeParse({ ...base, origin: 'user' }).success).toBe(true)
+    expect(ToolInvocationSchema.safeParse({ ...base, origin: 'agent' }).success).toBe(true)
+    expect(ToolInvocationSchema.safeParse({ ...base, origin: 'system' }).success).toBe(false)
   })
 })

@@ -32,3 +32,14 @@ export const BACKPRESSURE_POLL_MS = 25
  * produce identical block ids.
  */
 export const THINKING_BLOCK_ID_SUFFIX = '-thinking'
+
+/**
+ * Prefix for the synthetic tool-call id minted for a `!` bash run.
+ *
+ * `session.executeBash` produces no tool call and therefore no id, but the run is
+ * rendered through the tool-block path and every frame in that path is addressed
+ * by `toolCallId`. The prefix keeps a minted id out of the namespace of the
+ * provider-assigned ids (`toolu_…`, `call_…`) arriving on the same screen: a
+ * collision would route bash output into the agent's own tool block.
+ */
+export const USER_BASH_TOOL_CALL_PREFIX = 'user-bash-'

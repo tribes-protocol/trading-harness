@@ -4,7 +4,12 @@ import {
 } from '@tribes-harness/protocol/common/Constants'
 import { describe, expect, it } from 'vitest'
 
-import { renderToolInvocation, renderToolOutput } from '@/utils/ToolRendering'
+import {
+  isBashRunFailed,
+  renderToolInvocation,
+  renderToolOutput,
+  renderUserBashInvocation
+} from '@/utils/ToolRendering'
 
 const HOST_PATH = '/Users/leo/Desktop/harness/runtime/secret.txt'
 
@@ -57,6 +62,43 @@ describe('renderToolInvocation', () => {
 
   it('renders undefined arguments as an empty preview', () => {
     expect(renderToolInvocation('c1', 'read', undefined).argsPreview).toBe('')
+  })
+})
+
+describe('renderUserBashInvocation', () => {
+  it('marks the run as the operator, not the agent', () => {
+    const invocation = renderUserBashInvocation('user-bash-1', 'echo hi')
+
+    expect(invocation.origin).toBe('user')
+    expect(invocation.toolName).toBe('bash')
+    expect(invocation.title).toBe('bash')
+    expect(invocation.subtitle).toBe('echo hi')
+    expect(invocation.argsPreview).toBe('echo hi')
+  })
+
+  it('bounds the command it shows', () => {
+    const invocation = renderUserBashInvocation(
+      'user-bash-1',
+      'y'.repeat(MAX_ARGS_PREVIEW_CHARS * 3)
+    )
+
+    expect(invocation.subtitle?.length ?? 0).toBeLessThanOrEqual(MAX_ARGS_PREVIEW_CHARS)
+    expect(invocation.argsPreview.length).toBeLessThanOrEqual(MAX_ARGS_PREVIEW_CHARS)
+  })
+})
+
+describe('isBashRunFailed', () => {
+  it('treats a clean exit as success', () => {
+    expect(isBashRunFailed(false, 0)).toBe(false)
+  })
+
+  it('treats a non-zero exit as a failed block, not a gateway error', () => {
+    expect(isBashRunFailed(false, 3)).toBe(true)
+  })
+
+  it('treats a cancelled run as failed even though it has no exit code', () => {
+    expect(isBashRunFailed(true, undefined)).toBe(true)
+    expect(isBashRunFailed(false, undefined)).toBe(true)
   })
 })
 

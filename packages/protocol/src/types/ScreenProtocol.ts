@@ -1,6 +1,7 @@
 import { z } from 'zod'
 
 import { ScreenBlockSchema } from '@/types/ScreenBlock'
+import { ScreenCommandSchema } from '@/types/ScreenCommand'
 import { ScreenEventSchema } from '@/types/ScreenEvent'
 
 /**
@@ -81,6 +82,12 @@ export const ClientFrameSchema = z.discriminatedUnion('t', [
      */
     streamingBehavior: StreamingBehaviorSchema.nullish()
   }),
+  /**
+   * A `!command` the operator typed. Runs immediately and independently of the
+   * agent's turn — Pi folds the output into the context of the NEXT prompt rather
+   * than answering it — so it is its own frame, not a prompt with a prefix.
+   */
+  z.object({ t: z.literal('bash'), screenId: z.string(), command: z.string() }),
   z.object({ t: z.literal('abort'), screenId: z.string() }),
   z.object({ t: z.literal('detach'), screenId: z.string() })
 ])
@@ -112,6 +119,16 @@ export const ServerFrameSchema = z.discriminatedUnion('t', [
     screenId: z.string(),
     seq: z.number(),
     state: ScreenStateSchema
+  }),
+  /**
+   * The `/` palette for a screen. Sent once per attach, right after the snapshot:
+   * the set is fixed for a session's lifetime, so repeating it on every snapshot
+   * would put the whole skill catalog on the wire after every user message.
+   */
+  z.object({
+    t: z.literal('screen.commands'),
+    screenId: z.string(),
+    commands: z.array(ScreenCommandSchema)
   }),
   z.object({
     t: z.literal('screen.error'),

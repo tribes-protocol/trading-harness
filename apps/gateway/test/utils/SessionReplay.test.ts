@@ -159,7 +159,10 @@ describe('foldMessagesToBlocks', () => {
           toolName: 'bash',
           title: 'bash',
           subtitle: 'echo hi',
-          argsPreview: 'echo hi'
+          argsPreview: 'echo hi',
+          // A `bashExecution` message is by definition a `!` line the operator
+          // ran, so replay marks it the same way the live stream does.
+          origin: 'user'
         },
         output: 'hi',
         status: 'done'

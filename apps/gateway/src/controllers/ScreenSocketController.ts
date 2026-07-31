@@ -18,12 +18,21 @@ const textDecoder = new TextDecoder()
  * The socket half of the protocol: parse every inbound frame, dispatch it to the
  * registry, serialize outbound frames, and decide what backpressure means.
  *
- * Backpressure policy: when Bun reports a saturated socket, `screen.event`
- * frames are DROPPED rather than queued. Deltas are coalesced and `tool_output`
- * is a cumulative snapshot, so there is nothing coherent to replay from a delta
- * buffer anyway. The screen's `seq` still advances for the dropped frame, so the
- * client sees a gap, re-attaches, and takes a fresh snapshot. Snapshot, state
- * and error frames are never dropped — they are the recovery path.
+ * Backpressure policy: when Bun reports a saturated socket, `screen.event` frames
+ * are DROPPED rather than queued — an unbounded outbound queue for one wedged tab
+ * is worse than a gap.
+ *
+ * What makes that safe is the RECOVERY, not the frames being replaceable. It used
+ * to be argued from "`tool_output` is a cumulative snapshot, so there is nothing
+ * coherent to replay anyway". That stopped being true when `!` bash arrived: those
+ * chunks carry `replace: false`, so a dropped one is genuinely lost data, not a
+ * stale view of data that is coming again.
+ *
+ * The standing guarantee is instead: `seq` still advances for a dropped frame, so
+ * the client sees a gap, re-attaches, and takes a fresh snapshot — and that
+ * snapshot now includes in-flight `!` runs (`activeBashBlocks`), so the recovered
+ * transcript contains the output the drop lost. Snapshot, state, commands and
+ * error frames are never dropped: they ARE the recovery path.
  */
 export class ScreenSocketController {
   private readonly registry: ScreenRegistryService
@@ -121,6 +130,15 @@ export class ScreenSocketController {
         screen.promptScreen(frame.text, frame.streamingBehavior ?? null)
         return
       }
+      case 'bash': {
+        const screen = await this.registry.getScreen(frame.screenId)
+        if (screen === null) {
+          this.sendUnknownScreen(connection, frame.screenId)
+          return
+        }
+        screen.runBash(frame.command)
+        return
+      }
       case 'abort': {
         const screen = await this.registry.getScreen(frame.screenId)
         if (screen === null) {
@@ -157,6 +175,9 @@ export class ScreenSocketController {
     }
 
     this.send(connection, screen.snapshotFrame())
+    // After the snapshot, never before: the palette is a sidecar to a rendered
+    // screen, and a client that got commands first would have nowhere to put them.
+    this.send(connection, screen.commandsFrame())
   }
 
   private handleDetach(connection: ScreenSocketConnection, screenId: string): void {
