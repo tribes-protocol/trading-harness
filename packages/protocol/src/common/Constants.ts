@@ -11,6 +11,17 @@
  * when the server's `hello` reports a different version, so a stale tab fails
  * loudly instead of silently mis-rendering.
  *
+ * 5 — added `images` to the `prompt` client frame. A CLIENT-side addition, so it
+ *     is the unsafe direction: a new tab that attaches an image and sends it to an
+ *     older gateway has the whole frame rejected by that gateway's parser, while
+ *     the composer — seeing a successful send — clears the operator's text and
+ *     their attachment.
+ * 4 — added the `notice` screen event, carrying extension UI output (`ctx.ui.notify`
+ *     and `ctx.ui.setWidget`) into the transcript. Additive on the wire — an old
+ *     client would simply drop it — but dropping it is exactly the failure this
+ *     bump exists to prevent: the notice channel is how an extension asks the
+ *     operator for something (a login URL, a refusal), and silently discarding
+ *     that looks identical to the extension never running.
  * 3 — added the `set_model` client frame and the `screen.models` server frame.
  *     Bumped for the same reason as 2: a new tab sending `set_model` to an older
  *     gateway has the frame rejected there while the UI shows the switch as taken.
@@ -24,7 +35,7 @@
  *     no-op.
  * 1 — initial contract.
  */
-export const PROTOCOL_VERSION = 3
+export const PROTOCOL_VERSION = 5
 
 /**
  * Delta coalescing window. Pi emits a `message_update` per token and a
@@ -51,6 +62,17 @@ export const MAX_ARGS_PREVIEW_CHARS = 400
 
 /** Hard cap on a single forwarded text or thinking block. */
 export const MAX_TEXT_BLOCK_CHARS = 200_000
+
+/**
+ * Caps on images pasted into the composer.
+ *
+ * ~8 MB of base64 is roughly a 6 MB image, which comfortably covers a full-screen
+ * retina screenshot — the thing people actually paste — without letting a single
+ * frame become unbounded. The count cap matters as much as the size one: the
+ * gateway buffers a whole frame before parsing it, so N images multiply the cap.
+ */
+export const MAX_PROMPT_IMAGE_CHARS = 8_000_000
+export const MAX_PROMPT_IMAGES = 4
 
 /** Screen id used when the gateway hosts a single default Pi screen. */
 export const DEFAULT_SCREEN_ID = 'main'

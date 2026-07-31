@@ -8,6 +8,7 @@ import {
 } from '@tribes-harness/protocol/common/Constants'
 import type { ScreenEvent } from '@tribes-harness/protocol/types/ScreenEvent'
 import type {
+  PromptImage,
   ScreenState,
   ServerFrame,
   StreamingBehavior
@@ -21,6 +22,7 @@ import {
 import { delay } from '@/helpers/Delay'
 import type { CoalescerState } from '@/types/EventCoalescer'
 import type { ActiveBashRun, ScreenConfig, ScreenSubscriber } from '@/types/Screen'
+import type { ScreenWidgetNotice } from '@/types/ScreenUi'
 import {
   createCoalescerState,
   flushCoalescer,
@@ -33,9 +35,12 @@ import {
   requiresSnapshotRefresh
 } from '@/utils/EventMapping'
 import { describeError, logError } from '@/utils/Logger'
+import { toPiImageContent } from '@/utils/PromptImages'
 import { toScreenCommands } from '@/utils/ScreenCommands'
 import { toScreenModels } from '@/utils/ScreenModels'
+import { widgetNoticeBlocks } from '@/utils/ScreenNotices'
 import { deriveScreenStatus } from '@/utils/ScreenStatus'
+import { createScreenUiContext } from '@/utils/ScreenUiContext'
 import { foldMessagesToBlocks } from '@/utils/SessionReplay'
 import { truncateText } from '@/utils/TextTruncation'
 import { isBashRunFailed, renderUserBashInvocation } from '@/utils/ToolRendering'
@@ -71,6 +76,12 @@ export class PiScreenService {
    * without this a snapshot taken mid-run omits the running command entirely.
    */
   private readonly activeBashRuns = new Map<string, ActiveBashRun>()
+  /**
+   * Extension widgets currently on screen, keyed by notice id. Held for the same
+   * reason as `activeBashRuns`: Pi never writes them to its message list, so a
+   * snapshot built from messages alone would drop them.
+   */
+  private readonly activeWidgets = new Map<string, ScreenWidgetNotice>()
 
   private constructor(config: ScreenConfig, session: AgentSession) {
     this.config = config
@@ -94,7 +105,53 @@ export class PiScreenService {
     // agent's history.
     const sessionManager = SessionManager.create(config.cwd, config.sessionDir)
     const created = await createAgentSession({ cwd: config.cwd, sessionManager })
-    return new PiScreenService(config, created.session)
+    const screen = new PiScreenService(config, created.session)
+
+    // AFTER the instance exists, because binding is what emits `session_start`,
+    // and extensions handle that by calling straight back into `ctx.ui` — which
+    // routes to this screen. Binding from inside the constructor would run those
+    // handlers against a half-built object.
+    //
+    // `createAgentSession` alone does NOT do this, and skipping it is not merely a
+    // missing UI: `bindExtensions` is the only site that emits `session_start` and
+    // the only caller of `extendResourcesFromExtensions`. Without it the tribes
+    // extension never materializes `.env` (so every control-plane call 401s, which
+    // reads as "logged out" no matter how many times the operator logs in) and
+    // extension-contributed skills and prompts are never discovered.
+    //
+    // `rpc` rather than `print`: Pi treats rpc as a mode that HAS a user on the
+    // other end — which is true here — while `print` is the one-shot
+    // non-interactive mode. Extensions branch on this to decide whether asking for
+    // input is meaningful, and they guard terminal-only drawing on `tui`
+    // specifically, so `rpc` gets the interactive behavior without the TUI
+    // assumptions.
+    //
+    // No `commandContextActions`: they are optional, and nothing in this harness's
+    // extensions calls one. Wiring them blind would be inventing behavior for the
+    // session-tree operations rather than implementing it.
+    await created.session.bindExtensions({
+      mode: 'rpc',
+      uiContext: createScreenUiContext({
+        // Widgets are remembered so a re-attach can rebuild them; `notify` toasts
+        // are not (see `widgetNoticeBlocks`).
+        //
+        // Goes through `pushEvents` like the bash stream does, rather than straight
+        // to `emitEvents`, so it shares the screen's one coalescer and one `seq`. A
+        // notice raised mid-turn therefore keeps its position relative to the deltas
+        // around it instead of jumping ahead of buffered output.
+        emitNotice: (notice) => {
+          if (notice.text === null) {
+            screen.activeWidgets.delete(notice.id)
+          } else if (notice.persist) {
+            screen.activeWidgets.set(notice.id, { level: notice.level, text: notice.text })
+          }
+          screen.pushEvents([
+            { kind: 'notice', id: notice.id, level: notice.level, text: notice.text }
+          ])
+        }
+      })
+    })
+    return screen
   }
 
   subscribe(subscriber: ScreenSubscriber): () => void {
@@ -127,7 +184,10 @@ export class PiScreenService {
         // Pi has not recorded these yet — they only enter its message list once the
         // command exits. A client attaching mid-run would otherwise be told the
         // transcript contains no such block, and then receive output for it.
-        ...activeBashBlocks(this.activeBashRuns)
+        ...activeBashBlocks(this.activeBashRuns),
+        // Same omission, different owner: Pi records nothing about an extension
+        // widget either, so a snapshot without these drops a live login URL.
+        ...widgetNoticeBlocks(this.activeWidgets)
       ],
       // No triggering event: a snapshot is not a moment in the run, so the live
       // flags are the only truth available and are correct here.
@@ -223,8 +283,19 @@ export class PiScreenService {
    * Fire-and-forget: `AgentSession.prompt` only resolves when the whole turn is
    * over, and the socket handler that called this must not block for minutes.
    */
-  promptScreen(text: string, streamingBehavior: StreamingBehavior | null): void {
-    const options: PromptOptions = streamingBehavior === null ? {} : { streamingBehavior }
+  promptScreen(
+    text: string,
+    streamingBehavior: StreamingBehavior | null,
+    images: PromptImage[]
+  ): void {
+    const options: PromptOptions = {
+      ...(streamingBehavior === null ? {} : { streamingBehavior }),
+      // Omitted entirely when there are none, rather than passed as an empty
+      // array: Pi branches on the field being present when it builds the user
+      // message, and an empty list is a multimodal message with no images — a
+      // different thing from a plain text one, and one some providers reject.
+      ...(images.length === 0 ? {} : { images: images.map(toPiImageContent) })
+    }
     void this.session.prompt(text, options).catch((error: unknown) => {
       this.emitEvents([{ kind: 'error', message: describeError(error) }])
     })

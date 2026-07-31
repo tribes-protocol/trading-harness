@@ -19,6 +19,9 @@ import { z } from 'zod'
  * `common/Constants.ts`.
  */
 
+export const ScreenNoticeLevelSchema = z.enum(['info', 'warning', 'error'])
+export type ScreenNoticeLevel = z.infer<typeof ScreenNoticeLevelSchema>
+
 export const ToolInvocationSchema = z.object({
   toolCallId: z.string(),
   toolName: z.string(),
@@ -91,6 +94,26 @@ export const ScreenEventSchema = z.discriminatedUnion('kind', [
     message: z.string()
   }),
 
-  z.object({ kind: z.literal('error'), message: z.string() })
+  z.object({ kind: z.literal('error'), message: z.string() }),
+
+  /**
+   * A message an EXTENSION asked the host to show — Pi's `ctx.ui.notify` and
+   * `ctx.ui.setWidget`, which in the TUI are a toast and a panel pinned by the
+   * editor. Neither has a transcript of its own here, so both land as notices.
+   *
+   * `id` is what separates the two: `notify` mints a fresh one per call so the
+   * messages stack, while a widget reuses the id derived from its key so each
+   * update REPLACES the previous text in place. That is what lets a long-running
+   * widget (a login URL, a progress readout) update without spamming the stream.
+   *
+   * A nullish `text` CLEARS the notice, which is how a widget set to `undefined`
+   * removes itself.
+   */
+  z.object({
+    kind: z.literal('notice'),
+    id: z.string(),
+    level: ScreenNoticeLevelSchema,
+    text: z.string().nullish()
+  })
 ])
 export type ScreenEvent = z.infer<typeof ScreenEventSchema>

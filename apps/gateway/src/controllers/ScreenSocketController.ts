@@ -127,7 +127,7 @@ export class ScreenSocketController {
           this.sendUnknownScreen(connection, frame.screenId)
           return
         }
-        screen.promptScreen(frame.text, frame.streamingBehavior ?? null)
+        screen.promptScreen(frame.text, frame.streamingBehavior ?? null, frame.images ?? [])
         return
       }
       case 'bash': {

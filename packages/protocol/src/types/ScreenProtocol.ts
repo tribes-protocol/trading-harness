@@ -1,5 +1,6 @@
 import { z } from 'zod'
 
+import { MAX_PROMPT_IMAGE_CHARS, MAX_PROMPT_IMAGES } from '@/common/Constants'
 import { ScreenBlockSchema } from '@/types/ScreenBlock'
 import { ScreenCommandSchema } from '@/types/ScreenCommand'
 import { ScreenEventSchema } from '@/types/ScreenEvent'
@@ -61,6 +62,33 @@ export type ScreenSummary = z.infer<typeof ScreenSummarySchema>
 export const StreamingBehaviorSchema = z.enum(['steer', 'followUp'])
 export type StreamingBehavior = z.infer<typeof StreamingBehaviorSchema>
 
+/**
+ * An image pasted into the composer.
+ *
+ * `data` is RAW base64 with no `data:` URL prefix, because that is the shape Pi's
+ * `ImageContent` takes and the browser is the only side that ever holds a data
+ * URL. Stripping it at the edge means the gateway never has to parse one.
+ *
+ * The mime type is restricted to what Pi's providers actually accept. An
+ * unrestricted string would let a paste of an unsupported format through to the
+ * provider, which rejects the whole turn — so the prompt fails at send time here
+ * rather than after the operator has waited for a response.
+ */
+export const PromptImageMimeTypeSchema = z.enum([
+  'image/png',
+  'image/jpeg',
+  'image/gif',
+  'image/webp'
+])
+export type PromptImageMimeType = z.infer<typeof PromptImageMimeTypeSchema>
+
+export const PromptImageSchema = z.object({
+  mimeType: PromptImageMimeTypeSchema,
+  /** Base64, bounded by `MAX_PROMPT_IMAGE_CHARS`. */
+  data: z.string().max(MAX_PROMPT_IMAGE_CHARS)
+})
+export type PromptImage = z.infer<typeof PromptImageSchema>
+
 export const ClientFrameSchema = z.discriminatedUnion('t', [
   /**
    * Subscribe to a screen. `sinceEntryId` is the last durable entry the client
@@ -81,7 +109,19 @@ export const ClientFrameSchema = z.discriminatedUnion('t', [
      * current turn's tool calls, `followUp` waits for the agent to stop. Null
      * means "only send if idle".
      */
-    streamingBehavior: StreamingBehaviorSchema.nullish()
+    streamingBehavior: StreamingBehaviorSchema.nullish(),
+    /**
+     * Images pasted into the composer, forwarded to Pi as message content.
+     *
+     * Bounded HERE, not only in the browser. The cap is what stops one paste of a
+     * screenshot from becoming a frame the gateway must buffer whole, and a
+     * client-side check is advice — this socket is reachable by anything that can
+     * authenticate, so the limit has to hold on the side that allocates.
+     *
+     * Nullish for wire compatibility: a prompt minted before this field existed
+     * parses unchanged and carries no images.
+     */
+    images: z.array(PromptImageSchema).max(MAX_PROMPT_IMAGES).nullish()
   }),
   /**
    * A `!command` the operator typed. Runs immediately and independently of the

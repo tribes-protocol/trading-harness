@@ -1,6 +1,6 @@
 import { z } from 'zod'
 
-import { ToolInvocationSchema } from '@/types/ScreenEvent'
+import { ScreenNoticeLevelSchema, ToolInvocationSchema } from '@/types/ScreenEvent'
 
 /**
  * The renderable transcript model for one Pi screen.
@@ -19,9 +19,6 @@ import { ToolInvocationSchema } from '@/types/ScreenEvent'
 
 export const ScreenBlockStatusSchema = z.enum(['pending', 'streaming', 'done', 'error'])
 export type ScreenBlockStatus = z.infer<typeof ScreenBlockStatusSchema>
-
-export const ScreenNoticeLevelSchema = z.enum(['info', 'warning', 'error'])
-export type ScreenNoticeLevel = z.infer<typeof ScreenNoticeLevelSchema>
 
 export const ScreenBlockSchema = z.discriminatedUnion('type', [
   z.object({
