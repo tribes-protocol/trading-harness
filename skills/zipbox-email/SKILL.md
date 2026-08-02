@@ -6,7 +6,7 @@ allowed-tools: bash read
 
 # Sandbox email
 
-<!-- synced from tribes-protocol/ai-harness-setup — edit there, not here -->
+<!-- synced from tribes-protocol/terminal — edit there, not here -->
 
 This sandbox owns one mailbox whose address matches its name, for example
 `demo@zbox.sh`. Use the baked `tribes-email` CLI for every operation. It calls the

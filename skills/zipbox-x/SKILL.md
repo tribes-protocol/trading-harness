@@ -12,7 +12,7 @@ allowed-tools: bash read
 
 # Zipbox X (x.com)
 
-<!-- synced from tribes-protocol/ai-harness-setup — edit there, not here -->
+<!-- synced from tribes-protocol/terminal — edit there, not here -->
 
 Call the X v2 API directly at `api.x.com`. You do **not** hold an X credential: the
 platform injects one at the egress boundary and charges your wallet for what X

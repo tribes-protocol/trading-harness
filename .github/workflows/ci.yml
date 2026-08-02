@@ -31,5 +31,8 @@ jobs:
       - name: Tests (unit + skills contract)
         run: bunx vitest run
 
+      - name: Skills release digest verification
+        run: bun run test:skills-release
+
       - name: Shared skills inheritance contract
         run: sudo -E sh test/shared-skills-install.test.sh

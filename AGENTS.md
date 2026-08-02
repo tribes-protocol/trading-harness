@@ -239,12 +239,22 @@ trading-only skill.
 ### Updating the shared skills
 
 There is no scheduled sync — upstream changes land when someone asks for them. Run
-`bun run skills:upgrade` (add `-- --ref <tag|branch|sha>` to pin a specific upstream commit),
-review the diff, then commit and open a PR like any other change. The command vendors
-ai-harness-setup's `skills/` into `skills/`, regenerates the routing bullets above, and records
-provenance in `skills/.synced.json` (upstream commit + a sha256 per vendored file). Those files
-are machine-written: edit them upstream, never here — `tests/skills/SyncedSkills.test.ts` fails
-CI on any hand-edit.
+`bun run skills:upgrade` (add `-- --pin <contentSha256>` to take a specific published release
+instead of the current one), review the diff, then commit and open a PR like any other change.
+
+The catalog is published by `tribes-protocol/terminal` on every merge to `main` that touches
+`harnesses/setup/skills/**`, content-addressed, to a public-read R2 bucket at
+`https://skills.zipbox.ai/skills/`. That repo is private, so this is the only route: there is no
+cross-repo token and there should not be one. The command downloads the release, verifies the
+tarball's sha256 against the release manifest, the archive's own content hash against the address
+it asked for, and every extracted file against the manifest — all in a temp dir, before anything
+is written into `skills/`. It then regenerates the routing bullets above and records provenance in
+`skills/.synced.json` (upstream commit, content address, tree hash, source URL, and a sha256 per
+vendored file). `--pin` is what makes a vendored release reproducible: it anchors the whole digest
+chain in an argument you typed rather than in the mutable `latest.json` pointer.
+
+Those files are machine-written: edit them upstream, never here — `apps/cli/test/skills/SyncedSkills.test.ts`
+fails CI on any hand-edit, and `test/skills-release-verify.test.mjs` covers the digest chain itself.
 
 ## Runtime Preconditions
 

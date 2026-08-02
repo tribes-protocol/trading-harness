@@ -1,13 +1,31 @@
-// Vendor shared agent skills from tribes-protocol/ai-harness-setup into skills/.
+// Vendor the shared agent skills published by tribes-protocol/terminal into skills/.
 //
 // Run it by hand when you want upstream's skills:
 //
-//   bun run skills:upgrade                 # upstream main's current tip
-//   bun run skills:upgrade -- --ref v1.2.0 # a tag, branch, or full sha
-//   bun run skills:upgrade -- --source ../ai-harness-setup/skills   # preview only
+//   bun run skills:upgrade                    # the current published release
+//   bun run skills:upgrade -- --pin <sha256>  # a specific release, by content address
+//   bun run skills:upgrade -- --source ../terminal/harnesses/setup/skills  # preview only
 //
 // then review the diff, commit, and open a PR. CI runs the same verification the
 // old scheduled workflow ran inline, so the PR gate is unchanged.
+//
+// WHERE THE SKILLS COME FROM. They used to be a public codeload tarball of
+// tribes-protocol/ai-harness-setup. They now live in tribes-protocol/terminal,
+// which is PRIVATE, so codeload is unreachable from here — there is no
+// cross-repo token and there should not be one. terminal republishes the catalog
+// on every merge to an R2 bucket that is public to READ only, content-addressed:
+//
+//   <base>/skills/latest.json                     -> { contentSha256, commit, ... }
+//   <base>/skills/<contentSha256>.manifest.json   -> digests + provenance
+//   <base>/skills/<contentSha256>.tar.gz          -> the catalog
+//
+// NOTHING DOWNLOADED IS TRUSTED. A public bucket is a public bucket: whoever can
+// write it can serve any bytes it likes. So this script verifies, in order, the
+// sha256 of the .tar.gz against the manifest, the sha256 of the archive's
+// uncompressed content against the content address IN THE URL IT ASKED FOR, and
+// the sha256 of every extracted file against the manifest — and it does all of
+// that in a temp dir, before a single byte lands in skills/. Pin with --pin and
+// the chain is anchored in an argument you typed, not in a mutable pointer.
 //
 // This is a build helper, NOT product source. It is a plain .mjs module so it sits
 // outside the repo's tsc/eslint/prettier surface (those only cover .ts/.mts and a
@@ -15,8 +33,8 @@
 //
 // What one run does, in order:
 //
-//   1. resolve --ref to a commit sha (`gh api`) and fetch that exact tree as a
-//      public codeload tarball — no auth, no cross-repo token.
+//   1. resolve the release (latest.json, or --pin), download it, and verify every
+//      digest above before writing anything into the repo.
 //   2. delete any slug the PREVIOUS manifest vendored that upstream no longer ships
 //      (a retirement propagates; local-only trading skills are never touched), copy
 //      skills/<slug>/* -> skills/<slug>/*, inject a "synced" marker after each
@@ -25,9 +43,12 @@
 //   3. run `bun run format`, so the manifest hashes the files as prettier leaves
 //      them and `format:check` cannot fail on freshly vendored markdown.
 //   4. hash every vendored file and write skills/.synced.json =
-//      { upstreamSha, files: { path: sha256 } }. The manifest is only rewritten
-//      when the file set actually changed, so a bare sha bump with identical skill
-//      content produces no diff.
+//      { upstreamSha, contentSha256, treeHash, source, files: { path: sha256 } }.
+//      The manifest is only rewritten when the file set actually changed, so a bare
+//      sha bump with identical skill content produces no diff. `upstreamSha` stays
+//      the 40-hex upstream COMMIT — apps/cli/test/skills/SyncedSkills.test.ts pins
+//      that shape, and scripts/install-shared-skills.sh scrapes the `files` keys
+//      line by line, so neither may change form.
 //
 // The routing block backticks the SLUG ONLY and strips every backtick from the
 // description: tests/skills/SkillsContract.test.ts fails on any backticked token in
@@ -47,16 +68,20 @@ import {
   writeFileSync
 } from 'node:fs'
 import { tmpdir } from 'node:os'
-import { dirname, join, relative } from 'node:path'
+import { dirname, join, relative, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { gunzipSync } from 'node:zlib'
 
-const UPSTREAM_REPO = 'tribes-protocol/ai-harness-setup'
-const DEFAULT_REF = 'main'
+// The R2 bucket terminal publishes to, reachable over its public custom domain.
+// Overridable so a release can be staged and exercised before it is the default.
+const DEFAULT_BASE_URL = 'https://skills.zipbox.ai'
+const HEX_64 = /^[0-9a-f]{64}$/
+const COMMIT_SHA = /^[0-9a-f]{40}$/
 // Shared skills carry this prefix; see upstreamSlugs() for why it is load-bearing.
 const SHARED_SLUG_PREFIX = 'zipbox-'
 const REPO_ROOT = join(dirname(fileURLToPath(import.meta.url)), '..')
 
-const H1_MARKER = '<!-- synced from tribes-protocol/ai-harness-setup — edit there, not here -->'
+const H1_MARKER = '<!-- synced from tribes-protocol/terminal — edit there, not here -->'
 const ROUTES_BEGIN = '<!-- BEGIN synced skill routes (managed by scripts/skills-upgrade.mjs) -->'
 const ROUTES_END = '<!-- END synced skill routes -->'
 const ROUTING_HEADING = '## Skill routing map'
@@ -259,7 +284,7 @@ function sameFileSet(a, b) {
   return aKeys.every((key) => a[key] === b[key])
 }
 
-function runManifestPhase(sourceDir, repoRoot, upstreamSha) {
+function runManifestPhase(sourceDir, repoRoot, release) {
   if (upstreamSlugs(sourceDir).length === 0) return
   const manifestPath = join(repoRoot, 'skills', '.synced.json')
   const files = computeFileHashes(sourceDir, repoRoot)
@@ -273,7 +298,17 @@ function runManifestPhase(sourceDir, repoRoot, upstreamSha) {
     }
   }
 
-  const manifest = { upstreamSha, files }
+  // `upstreamSha` stays first and stays a 40-hex commit: it is the field the
+  // drift guard shape-checks and the field a human reads to find the source
+  // commit. `contentSha256` is what an operator passes back as --pin to get
+  // exactly these bytes again.
+  const manifest = {
+    upstreamSha: release.commit,
+    contentSha256: release.contentSha256,
+    treeHash: release.treeHash,
+    source: release.source,
+    files
+  }
   writeFileSync(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`)
   console.log(`skills:upgrade: wrote manifest for ${Object.keys(files).length} file(s)`)
 }
@@ -290,54 +325,142 @@ function run(command, args, options = {}) {
   return result.stdout ?? ''
 }
 
-// A ref (branch, tag, or sha) -> the exact commit sha recorded in the manifest.
-// Resolving up front means the tarball below and the recorded provenance are the
-// same commit even if upstream moves mid-run.
-function resolveSha(ref) {
-  const sha = run('gh', ['api', `repos/${UPSTREAM_REPO}/commits/${ref}`, '--jq', '.sha']).trim()
-  if (!/^[0-9a-f]{40}$/.test(sha)) throw new Error(`could not resolve ${UPSTREAM_REPO}@${ref}`)
-  return sha
+// Fetch one object, as bytes. Nothing here interprets a body before its digest
+// has been checked, so every fetch returns a Buffer and the callers decide.
+export async function fetchBytes(url, fetchImpl = fetch) {
+  const response = await fetchImpl(url)
+  if (!response.ok) throw new Error(`GET ${url} -> ${response.status}`)
+  return Buffer.from(await response.arrayBuffer())
 }
 
-// Public repo: codeload serves any ref anonymously, so this needs no token.
-function fetchUpstreamSkills(sha, workDir) {
-  const tarball = join(workDir, 'src.tar.gz')
+// THE VERIFICATION. Called with the bytes actually received and the address they
+// were requested under; throws before any caller can act on them.
+//
+// Order matters. The tarball digest is checked against the manifest, and the
+// manifest is only trusted because its own key is the content address the caller
+// asked for and the archive inside hashes back to that same address. A manifest
+// that names a digest, a tarball that matches that digest, and a content address
+// that matches neither is the exact shape of a swapped object — so all three are
+// compared, not two.
+export function verifyRelease({ contentSha256, manifest, tarballBytes, tarBytes }) {
+  if (!HEX_64.test(contentSha256)) {
+    throw new Error(`malformed content address: ${contentSha256}`)
+  }
+  if (manifest.contentSha256 !== contentSha256) {
+    throw new Error(
+      `manifest is for a different release: asked for ${contentSha256}, manifest names ${manifest.contentSha256}`
+    )
+  }
+  if (!COMMIT_SHA.test(manifest.commit ?? '')) {
+    throw new Error(`manifest carries no upstream commit sha: ${manifest.commit}`)
+  }
+  const tarballDigest = sha256(tarballBytes)
+  if (tarballDigest !== manifest.tarball?.sha256) {
+    throw new Error(
+      `tarball digest mismatch: downloaded ${tarballDigest}, manifest says ${manifest.tarball?.sha256}`
+    )
+  }
+  const contentDigest = sha256(tarBytes)
+  if (contentDigest !== contentSha256) {
+    throw new Error(
+      `archive content does not match its address: unpacked to ${contentDigest}, requested ${contentSha256}`
+    )
+  }
+  if (!Array.isArray(manifest.files) || manifest.files.length === 0) {
+    throw new Error('manifest lists no files')
+  }
+}
+
+// Per-file check after extraction. The archive digest already covers these bytes;
+// this catches an extraction that dropped, renamed, or added a file, and it is
+// what makes a partially-unpacked tree fail instead of quietly vendoring.
+export function verifyExtractedFiles(dir, manifest) {
+  for (const entry of manifest.files) {
+    const abs = join(dir, entry.path)
+    if (!existsSync(abs)) throw new Error(`manifest lists ${entry.path}, not present after extract`)
+    const actual = sha256(readFileSync(abs))
+    if (actual !== entry.sha256) {
+      throw new Error(`${entry.path} digest mismatch: got ${actual}, manifest says ${entry.sha256}`)
+    }
+  }
+  const onDisk = walkRelative(dir).sort()
+  const listed = manifest.files.map((entry) => entry.path).sort()
+  if (onDisk.length !== listed.length || onDisk.some((path, i) => path !== listed[i])) {
+    throw new Error(
+      `archive contents differ from the manifest file list:\n  on disk: ${onDisk.join(', ')}\n  manifest: ${listed.join(', ')}`
+    )
+  }
+}
+
+// Resolve, download, verify, unpack. Returns the verified skills dir plus the
+// provenance to record. Nothing is written outside workDir.
+async function fetchRelease(baseUrl, pin, workDir) {
+  let contentSha256 = pin
+  if (!contentSha256) {
+    const latest = JSON.parse((await fetchBytes(`${baseUrl}/skills/latest.json`)).toString('utf8'))
+    contentSha256 = latest.contentSha256
+    console.log(`skills:upgrade: latest -> ${contentSha256}`)
+  } else {
+    console.log(`skills:upgrade: pinned -> ${contentSha256}`)
+  }
+  if (!HEX_64.test(contentSha256 ?? '')) {
+    throw new Error(`malformed content address: ${contentSha256}`)
+  }
+
+  const manifestUrl = `${baseUrl}/skills/${contentSha256}.manifest.json`
+  const tarballUrl = `${baseUrl}/skills/${contentSha256}.tar.gz`
+  const manifest = JSON.parse((await fetchBytes(manifestUrl)).toString('utf8'))
+  const tarballBytes = await fetchBytes(tarballUrl)
+  const tarBytes = gunzipSync(tarballBytes)
+
+  verifyRelease({ contentSha256, manifest, tarballBytes, tarBytes })
+  console.log(
+    `skills:upgrade: verified ${tarballBytes.length} bytes against ${contentSha256.slice(0, 12)}`
+  )
+
+  const tarPath = join(workDir, 'skills.tar')
   const extracted = join(workDir, 'extract')
   mkdirSync(extracted, { recursive: true })
-  run('curl', ['-fsSL', `https://codeload.github.com/${UPSTREAM_REPO}/tar.gz/${sha}`, '-o', tarball])
-  run('tar', ['-xzf', tarball, '-C', extracted, '--strip-components=1'])
+  writeFileSync(tarPath, tarBytes)
+  run('tar', ['-xf', tarPath, '-C', extracted])
+  verifyExtractedFiles(extracted, manifest)
 
-  const skills = join(extracted, 'skills')
-  if (!existsSync(skills)) throw new Error(`upstream ${sha} has no skills/ directory`)
-  return skills
+  return {
+    sourceDir: extracted,
+    release: {
+      contentSha256,
+      commit: manifest.commit,
+      treeHash: manifest.treeHash,
+      source: tarballUrl
+    }
+  }
 }
 
-// --source vendors from a local ai-harness-setup checkout instead of a fetched ref,
-// so an upstream change can be exercised here BEFORE it merges. The result is a
-// preview, not a shippable state: `upstreamSha` still names the resolved --ref, so a
-// source tree carrying unmerged edits produces a manifest whose sha does not describe
-// its own content. Re-run without --source once the upstream PR lands.
-function main() {
+// --source vendors from a local terminal checkout's harnesses/setup/skills instead
+// of a published release, so an upstream change can be exercised here BEFORE it
+// merges. It is a preview and nothing more: there is no release to attribute the
+// bytes to, so the manifest is deliberately NOT written. Re-run without --source
+// once the upstream PR lands and the publisher has run.
+async function main() {
   const args = parseArgs(process.argv.slice(2))
-  const ref = args.ref ?? DEFAULT_REF
+  const baseUrl = (args['base-url'] ?? process.env.ZIPBOX_SKILLS_BASE_URL ?? DEFAULT_BASE_URL).replace(/\/+$/, '')
   const localSource = args.source
-
-  const upstreamSha = resolveSha(ref)
-  console.log(`skills:upgrade: ${UPSTREAM_REPO}@${ref} -> ${upstreamSha}`)
+  const pin = args.pin
 
   const workDir = mkdtempSync(join(tmpdir(), 'skills-upgrade-'))
   try {
-    let sourceDir
     if (localSource) {
       if (!existsSync(localSource)) throw new Error(`--source not found: ${localSource}`)
-      sourceDir = localSource
       console.log(`skills:upgrade: PREVIEW from ${localSource} — do not commit this run`)
+      runContentPhase(localSource, REPO_ROOT)
+      run('bun', ['run', 'format'], { cwd: REPO_ROOT, stdio: 'inherit' })
+      console.log('skills:upgrade: preview — skills/.synced.json deliberately NOT written')
     } else {
-      sourceDir = fetchUpstreamSkills(upstreamSha, workDir)
+      const { sourceDir, release } = await fetchRelease(baseUrl, pin, workDir)
+      runContentPhase(sourceDir, REPO_ROOT)
+      run('bun', ['run', 'format'], { cwd: REPO_ROOT, stdio: 'inherit' })
+      runManifestPhase(sourceDir, REPO_ROOT, release)
     }
-    runContentPhase(sourceDir, REPO_ROOT)
-    run('bun', ['run', 'format'], { cwd: REPO_ROOT, stdio: 'inherit' })
-    runManifestPhase(sourceDir, REPO_ROOT, upstreamSha)
   } finally {
     rmSync(workDir, { recursive: true, force: true })
   }
@@ -345,4 +468,12 @@ function main() {
   console.log('skills:upgrade: done — review the diff, then commit and open a PR')
 }
 
-main()
+// Only run when invoked as a script. apps/cli/test/skills/SkillsRelease.test.ts
+// imports the verifiers from this file; an unguarded main() would fetch the
+// network and rewrite skills/ during test collection.
+if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  main().catch((error) => {
+    console.error(`skills:upgrade: ${error.message}`)
+    process.exit(1)
+  })
+}

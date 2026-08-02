@@ -10,7 +10,7 @@ allowed-tools: bash read
 
 # Zipbox Web Search
 
-<!-- synced from tribes-protocol/ai-harness-setup — edit there, not here -->
+<!-- synced from tribes-protocol/terminal — edit there, not here -->
 
 Use the Tribes web proxy for ranked search results and readable text extraction. The baked
 `tribes-agent-token` helper returns this sandbox's bearer credential; keep it private. This skill
