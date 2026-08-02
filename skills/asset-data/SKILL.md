@@ -79,24 +79,31 @@ payload, or a schema-parse failure. Outcomes: `ok`, `key_unset`, `http_<status>`
    rate limit). The `attempted` trail is your explanation, not noise.
 3. Coin ids are CoinGecko ids (`bitcoin`, not `BTC`) — resolve with `asset search` first
    when unsure.
-4. Candle timeframes: `1m|5m|15m|1h|4h|1d|1w` for `--address`/`--pool`; `--id` uses `--days`
-   instead (daily-ish OHLC, no volume); `--ticker` is EOD daily only.
-5. Before presenting results as actionable trade ideas, verify Hyperliquid tradability with
+4. Candle timeframes: `1m|5m|15m|1h|4h|1d|1w` for `--address`/`--pool`/`--perp`/`--ticker`;
+   `--id` uses `--days` instead (daily-ish OHLC, no volume). `--ticker` defaults to `1d`.
+   Marketstack has no 4hour interval and nothing coarser than a day, so `4h` is rolled up
+   from 1hour bars and `1w` from EOD. Fine intraday intervals (`1m`, `5m`) are plan-gated
+   and come back as `http_403` in `attempted` — that is a plan limit, not a bad ticker.
+5. `--from`/`--to` take `YYYY-MM-DD` or a full ISO 8601 instant and `--limit` takes 1-1000
+   (default 200). They apply to every identifier EXCEPT `--id`, whose CoinGecko endpoint
+   offers only the rolling `--days` window. The router clips to the window client-side, so
+   the range and bar count mean the same thing whichever provider answered.
+6. Before presenting results as actionable trade ideas, verify Hyperliquid tradability with
    `hyperliquid list-assets --all-dexes` (see AGENTS.md).
 
 ## Command reference
 
 All under `tribes-cli asset`; every subcommand accepts `--out <file>`. All read-only.
 
-| Subcommand | Purpose                                      | Identifier flags                                        | Useful flags                              |
-| ---------- | -------------------------------------------- | ------------------------------------------------------- | ----------------------------------------- |
-| `price`    | Price quote for any asset                    | `--address --chain` \| `--id` \| `--ticker` \| `--perp` |                                           |
-| `candles`  | OHLCV candles `{t,o,h,l,c,v}` (t epoch ms)   | same as price, plus `--pool --chain`; no `--perp`       | `--timeframe` (default 1h), `--days` (id) |
-| `profile`  | Identity + market block (+links/description) | `--address --chain` \| `--id` \| `--ticker`             |                                           |
-| `trending` | Trending assets                              | `--space onchain\|coins` (default onchain)              | `--chain` (onchain), `--limit`            |
-| `new`      | New listings / recently added coins          | `--space onchain\|coins` (default onchain)              | `--limit`                                 |
-| `search`   | Resolve names/symbols to assets              | `--query`; `--chain` → onchain token search first       | `--limit`                                 |
-| `holders`  | Top holders of a token contract              | `--address --chain`                                     | `--limit`                                 |
+| Subcommand | Purpose                                      | Identifier flags                                                                                             | Useful flags                                                                                                                  |
+| ---------- | -------------------------------------------- | ------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------- |
+| `price`    | Price quote for any asset                    | `--address --chain` \| `--id` \| `--ticker` \| `--perp`                                                      |                                                                                                                               |
+| `candles`  | OHLCV candles `{t,o,h,l,c,v}` (t epoch ms)   | same as price, plus `--pool --chain`; `--perp` = venue-native Hyperliquid series (~200 candles, incl. HIP-3) | `--timeframe` (default 1h; `--ticker` defaults to 1d), `--from`/`--to`, `--limit` (default 200, max 1000), `--days` (id only) |
+| `profile`  | Identity + market block (+links/description) | `--address --chain` \| `--id` \| `--ticker`                                                                  |                                                                                                                               |
+| `trending` | Trending assets                              | `--space onchain\|coins` (default onchain)                                                                   | `--chain` (onchain), `--limit`                                                                                                |
+| `new`      | New listings / recently added coins          | `--space onchain\|coins` (default onchain)                                                                   | `--limit`                                                                                                                     |
+| `search`   | Resolve names/symbols to assets              | `--query`; `--chain` → onchain token search first                                                            | `--limit`                                                                                                                     |
+| `holders`  | Top holders of a token contract              | `--address --chain`                                                                                          | `--limit`                                                                                                                     |
 
 ## Examples
 

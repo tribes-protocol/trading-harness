@@ -284,13 +284,6 @@ export const CoinChartCommandOptionsSchema = z.object({
 })
 export type CoinChartCommandOptions = z.infer<typeof CoinChartCommandOptionsSchema>
 
-export const CoinOhlcCommandOptionsSchema = z.object({
-  id: z.string().min(1),
-  days: CoinDaysSchema,
-  out: z.string().nullish()
-})
-export type CoinOhlcCommandOptions = z.infer<typeof CoinOhlcCommandOptionsSchema>
-
 export const CoinTickersCommandOptionsSchema = z.object({
   id: z.string().min(1),
   limit: z.number().int().min(1).max(100).nullish(),

@@ -90,12 +90,12 @@ paywall, CAPTCHA, or access control.
 
 ### 5. Check structure and levels
 
-Pull candles for a liquid proxy of the commodity (an ETF proxy via `stocks candles` — e.g.
+Pull candles for a liquid proxy of the commodity (an ETF proxy via `asset candles --ticker` — e.g.
 GLD for gold, USO for oil; see the technical-analyst skill) and compute the structure
 yourself:
 
 ```bash
-tribes-cli stocks candles --symbol {PROXY_TICKER} --limit 200 --out /tmp/{COIN}-candles.json
+tribes-cli asset candles --ticker {PROXY_TICKER} --limit 200 --out /tmp/{COIN}-candles.json
 tribes-cli ta indicators --candles-file /tmp/{COIN}-candles.json --set ema,rsi,macd,atr
 tribes-cli ta levels --candles-file /tmp/{COIN}-candles.json
 ```

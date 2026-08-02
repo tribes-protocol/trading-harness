@@ -13,6 +13,7 @@ import {
   type AssetServices,
   candlesContractSources,
   candlesIdSources,
+  candlesPerpSources,
   candlesPoolSources,
   candlesTickerSources,
   holdersSources,
@@ -58,11 +59,15 @@ import {
   AssetTrendingListSchema
 } from '@/types/Capability'
 import { type CoinDays } from '@/types/Coin'
+import { resolveCandleWindow } from '@/utils/CandleWindow'
 import { ensureJsonTreeString, isNullish } from '@/utils/Lang'
 
 const VERSION = '1.0.0'
 
 const DEFAULT_TIMEFRAME: AssetTimeframe = '1h'
+// Stocks default to daily: the EOD endpoint is the only one every Marketstack
+// plan serves, and intraday intervals are plan-gated.
+const DEFAULT_STOCK_TIMEFRAME: AssetTimeframe = '1d'
 const DEFAULT_DAYS: CoinDays = '30'
 const DEFAULT_LIST_LIMIT = 10
 const DEFAULT_SEARCH_LIMIT = 20
@@ -125,12 +130,14 @@ function pickCandleSources(
   request: AssetCandlesCommandOptions
 ): CandleSource[] {
   const timeframe = request.timeframe ?? DEFAULT_TIMEFRAME
+  const window = resolveCandleWindow(request)
   if (!isNullish(request.address)) {
     return candlesContractSources({
       services,
       address: request.address,
       chain: requireChain(request.chain),
-      timeframe
+      timeframe,
+      window
     })
   }
   if (!isNullish(request.pool)) {
@@ -138,17 +145,26 @@ function pickCandleSources(
       services,
       pool: request.pool,
       chain: requireChain(request.chain),
-      timeframe
+      timeframe,
+      window
     })
   }
   if (!isNullish(request.id)) {
     return candlesIdSources({ services, id: request.id, days: request.days ?? DEFAULT_DAYS })
   }
   if (!isNullish(request.ticker)) {
-    return candlesTickerSources({ services, ticker: request.ticker })
+    return candlesTickerSources({
+      services,
+      ticker: request.ticker,
+      timeframe: request.timeframe ?? DEFAULT_STOCK_TIMEFRAME,
+      window
+    })
+  }
+  if (!isNullish(request.perp)) {
+    return candlesPerpSources({ services, perp: request.perp, timeframe, window })
   }
   throw new Error(
-    'provide exactly one identifier: --address --chain | --id | --ticker | --pool --chain'
+    'provide exactly one identifier: --address --chain | --id | --ticker | --perp | --pool --chain'
   )
 }
 
@@ -210,10 +226,19 @@ export function buildAssetCommand(): Command {
     .option('--address <address>', 'Token contract address (requires --chain)')
     .option('--chain <chain>', CHAIN_FLAG_HELP)
     .option('--id <id>', 'CoinGecko coin id, e.g. bitcoin (uses --days, no volume)')
-    .option('--ticker <symbol>', 'Stock ticker, e.g. AAPL (EOD daily candles)')
+    .option('--ticker <symbol>', 'Stock ticker, e.g. AAPL (intraday is plan-gated; default 1d)')
+    .option('--perp <coin>', 'Hyperliquid perp coin, e.g. BTC or xyz:AAPL (venue-native)')
     .option('--pool <address>', 'DEX pool/pair address (requires --chain)')
-    .option('--timeframe <tf>', 'Candle timeframe 1m|5m|15m|1h|4h|1d|1w (default 1h)')
+    .option(
+      '--timeframe <tf>',
+      'Candle timeframe 1m|5m|15m|1h|4h|1d|1w (default 1h; --ticker defaults to 1d)'
+    )
     .option('--days <days>', 'History window for --id: 1|7|14|30|90|180|365|max (default 30)')
+    .option('--from <date>', 'Window start: YYYY-MM-DD or ISO 8601 instant (not with --id)')
+    .option('--to <date>', 'Window end: YYYY-MM-DD or ISO 8601 instant (not with --id)')
+    .option('--limit <n>', 'Candles to return, 1-1000 (default 200; not with --id)', (value) =>
+      Number(value)
+    )
     .option('--out <file>', 'Write output JSON to file')
     .action(async (options: unknown): Promise<void> => {
       const request = AssetCandlesCommandOptionsSchema.parse(options)
