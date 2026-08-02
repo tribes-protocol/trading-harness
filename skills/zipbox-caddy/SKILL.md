@@ -6,7 +6,7 @@ allowed-tools: bash read
 
 # Caddy web server
 
-<!-- synced from tribes-protocol/ai-harness-setup — edit there, not here -->
+<!-- synced from tribes-protocol/terminal — edit there, not here -->
 
 **Danger first: Caddy is the only thing standing between the browser and this
 machine.** Inside this VM, Caddy terminates TLS on the sandbox's apex hostname

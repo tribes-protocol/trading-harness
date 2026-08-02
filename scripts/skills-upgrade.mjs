@@ -81,7 +81,7 @@ const COMMIT_SHA = /^[0-9a-f]{40}$/
 const SHARED_SLUG_PREFIX = 'zipbox-'
 const REPO_ROOT = join(dirname(fileURLToPath(import.meta.url)), '..')
 
-const H1_MARKER = '<!-- synced from tribes-protocol/ai-harness-setup — edit there, not here -->'
+const H1_MARKER = '<!-- synced from tribes-protocol/terminal — edit there, not here -->'
 const ROUTES_BEGIN = '<!-- BEGIN synced skill routes (managed by scripts/skills-upgrade.mjs) -->'
 const ROUTES_END = '<!-- END synced skill routes -->'
 const ROUTING_HEADING = '## Skill routing map'

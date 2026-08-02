@@ -1,12 +1,15 @@
 {
-  "upstreamSha": "696490a36c72f2e0595ac6ff0d980d11a48477fb",
+  "upstreamSha": "41865eeb20e6b1f0c7d21bd1f310cba1eb903492",
+  "contentSha256": "ba5c8eb6e9a7882fd20f5be85d9460c804ca3584c77b64487810d866eb546111",
+  "treeHash": "ea52bb248ba8c3d3faa0d2bafcebfe148a5d86c6",
+  "source": "https://skills.zipbox.ai/skills/ba5c8eb6e9a7882fd20f5be85d9460c804ca3584c77b64487810d866eb546111.tar.gz",
   "files": {
-    "skills/zipbox-browser/SKILL.md": "d11e559635798ade6890cee37f7fc71f7253002fe1937bd4ec8fcdd0962abf8d",
-    "skills/zipbox-caddy/SKILL.md": "4ef8227d0bb4a73cb5bf8b5544b5649d615e0e6b5c7c486f38e8581eee4278ef",
-    "skills/zipbox-dns/SKILL.md": "abdc44ffd4174691b841dc8f0a5dab0b26c82ea52e83606f46531b286f075bbe",
-    "skills/zipbox-email/SKILL.md": "6b08c17e7c2d0573328ac1304490f51cd5f12e5ef9639d2f7ca67dc94c86641e",
-    "skills/zipbox-wallet/SKILL.md": "2a26338a4383077109c712a61357ceac3402d044512a358895bb880b6fecaed8",
-    "skills/zipbox-websearch/SKILL.md": "2222263e8f1b879a5ccd0d0deb3c7621b7ade33e143ee536cc269532bf6d7b80",
-    "skills/zipbox-x/SKILL.md": "1531dba70b9528d74d089e9147f45b3decd9a8355cedc6a7406bacd164c8f29e"
+    "skills/zipbox-browser/SKILL.md": "0154fd85db9b92a706ea17d71ab2b220f23823b5674d99c27261e8060d73aa60",
+    "skills/zipbox-caddy/SKILL.md": "5fbc706685a6fec91115ec481032e0ffe12ecb69fcd653c5c7587b11dbaa6923",
+    "skills/zipbox-dns/SKILL.md": "fd96960b946fe3b20d9079bbeca2b7396eedaa94aa84fc6830ee15eaef8799c5",
+    "skills/zipbox-email/SKILL.md": "417ff4ee9f836602b80dc50bf1c4337bbb2d0b60144e9db99dc5679352003419",
+    "skills/zipbox-wallet/SKILL.md": "fb11532b72324ad3e0a2029e85f324ebb44744268fc9999b1cbea95045bac752",
+    "skills/zipbox-websearch/SKILL.md": "89133d8e428cf48045c6d3838b2256c986b6afe5556220847d377ff1a33163ad",
+    "skills/zipbox-x/SKILL.md": "f067cb1596c8487b80f2daf914882c67d4ab798ac6fc0146d24e074aff184f28"
   }
 }

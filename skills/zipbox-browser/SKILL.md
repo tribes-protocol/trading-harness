@@ -10,11 +10,10 @@ allowed-tools: bash read
 
 # Zipbox Browser
 
-<!-- synced from tribes-protocol/ai-harness-setup — edit there, not here -->
+<!-- synced from tribes-protocol/terminal — edit there, not here -->
 
-Use Microsoft's `@playwright/cli` to drive headless Chromium from the shell. The Zipbox image keeps
-Playwright and Chromium out of the base rootfs, so first use installs them into the writable
-sandbox. Later sessions reuse that installation.
+Use the baked Microsoft `playwright-cli` to drive the baked Debian Chromium from the shell. A fresh
+Zipbox image needs no package or browser installation.
 
 Read `zipbox-websearch/SKILL.md` first when the task is only search or plain page extraction.
 
@@ -45,25 +44,18 @@ smaller API call.
 8. Never print cookies, tokens, localStorage, sessionStorage, or saved state files.
 9. Save artifacts below `.playwright-cli/` in the working directory.
 
-## One-time setup
+## Baked runtime check
 
-Check before installing:
-
-```bash
-if ! command -v playwright-cli >/dev/null 2>&1; then
-  npm install -g @playwright/cli@latest
-fi
-playwright-cli --help
-```
-
-On the first `open`, a missing browser produces an executable-path error. Install only Chromium
-and the required Linux packages, then retry once:
+Verify the image contract before opening a session:
 
 ```bash
-playwright-cli install-browser chromium --with-deps
+command -v playwright-cli
+test -x /usr/bin/chromium
+playwright-cli --version
 ```
 
-Do not reinstall when `open` already works.
+Do not run `npm install` or `install-browser`. If either baked command is missing, the sandbox
+predates this runtime and installing another browser will not repair the image contract.
 
 ## Fast session wrapper
 
@@ -71,13 +63,21 @@ Shell state resets between bash calls. Paste this wrapper before every group of 
 
 ```bash
 pwcli() {
+  PLAYWRIGHT_MCP_BROWSER='chromium' \
+  PLAYWRIGHT_MCP_EXECUTABLE_PATH='/usr/bin/chromium' \
+  PLAYWRIGHT_MCP_SANDBOX='false' \
   PLAYWRIGHT_MCP_USER_AGENT='Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36' \
   PLAYWRIGHT_MCP_VIEWPORT_SIZE='1365x768' \
+  NO_UPDATE_NOTIFIER='1' \
   playwright-cli "$@"
 }
 ```
 
-Meta commands may run without the wrapper: `install-browser`, `list`, `close-all`, and `kill-all`.
+The agent user is root by design and the disposable microVM is the security boundary. The wrapper
+therefore selects the image's Chromium explicitly and disables Chromium's process sandbox so root
+launches succeed. Do not substitute a Google Chrome channel or remove these settings.
+
+Meta commands may run without the wrapper: `list`, `close-all`, and `kill-all`.
 
 ## Fast interaction loop
 
@@ -222,13 +222,14 @@ State files contain live cookies and tokens. Never print their contents.
 
 ## Error recovery
 
-| Symptom                                                                                                                 | Action                                                                                                |
-| ----------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
-| `playwright-cli` missing                                                                                                | Install the CLI once, verify `--help`, then retry.                                                    |
-| Browser executable missing                                                                                              | Install Chromium with `--with-deps`, then retry once.                                                 |
-| `pwcli` missing                                                                                                         | Redefine the wrapper in the current bash call.                                                        |
-| Session or page missing                                                                                                 | Reopen the URL in the named session.                                                                  |
-| Snapshot is empty                                                                                                       | Wait for one stable selector, then snapshot again.                                                    |
-| Ref is stale after navigation                                                                                           | Capture a fresh snapshot and use a new ref.                                                           |
-| CAPTCHA or access-control page remains                                                                                  | Stop and report the block. Never attempt to solve the CAPTCHA, and never loop.                        |
-| Output has a `### Modal state` section, or a command returns `Error: Tool "browser_*" does not handle the modal state.` | A native dialog is pending. Run `dialog-accept` or `dialog-dismiss`, then retry the original command. |
+| Symptom                                                                                                                 | Action                                                                                                    |
+| ----------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------- |
+| `playwright-cli` missing                                                                                                | Report that the sandbox predates the baked browser runtime. Do not install a replacement.                 |
+| `/usr/bin/chromium` missing                                                                                             | Report that the sandbox image is incomplete or stale. Do not install another browser channel.             |
+| Root launch asks for `--no-sandbox` or `/opt/google/chrome/chrome`                                                      | Redefine and use `pwcli`; a raw `playwright-cli open` bypassed the required root-safe Chromium selection. |
+| `pwcli` missing                                                                                                         | Redefine the wrapper in the current bash call.                                                            |
+| Session or page missing                                                                                                 | Reopen the URL in the named session.                                                                      |
+| Snapshot is empty                                                                                                       | Wait for one stable selector, then snapshot again.                                                        |
+| Ref is stale after navigation                                                                                           | Capture a fresh snapshot and use a new ref.                                                               |
+| CAPTCHA or access-control page remains                                                                                  | Stop and report the block. Never attempt to solve the CAPTCHA, and never loop.                            |
+| Output has a `### Modal state` section, or a command returns `Error: Tool "browser_*" does not handle the modal state.` | A native dialog is pending. Run `dialog-accept` or `dialog-dismiss`, then retry the original command.     |
