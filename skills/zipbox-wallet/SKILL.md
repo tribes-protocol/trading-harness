@@ -12,7 +12,7 @@ allowed-tools: bash read
 
 # Sandbox wallet
 
-<!-- synced from tribes-protocol/ai-harness-setup — edit there, not here -->
+<!-- synced from tribes-protocol/terminal — edit there, not here -->
 
 This sandbox is bound to one custodial wallet per chain family — an EVM wallet and a Solana wallet,
 held by Privy. Use the baked `tribes-wallet` CLI for every wallet and transaction operation. It

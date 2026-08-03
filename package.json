@@ -17,6 +17,7 @@
     "setup:dev": "sh scripts/setup-env.sh dev",
     "setup:prod": "sh scripts/setup-env.sh prod",
     "skills:upgrade": "bun scripts/skills-upgrade.mjs",
+    "test:skills-release": "bun test/skills-release-verify.test.mjs",
     "test": "bun run typecheck",
     "test:unit": "TURBO_UI=0 turbo run test:unit --output-logs=full",
     "lint": "TURBO_UI=0 turbo run lint --output-logs=full && eslint .pi --max-warnings 0 --no-warn-ignored",

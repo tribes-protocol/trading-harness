@@ -6,7 +6,7 @@ allowed-tools: bash read
 
 # DNS management
 
-<!-- synced from tribes-protocol/ai-harness-setup — edit there, not here -->
+<!-- synced from tribes-protocol/terminal — edit there, not here -->
 
 This sandbox owns one apex hostname: `<slug>.<domain>` (for example
 `hish.zipbox.ai`). You may create DNS records **strictly below** that apex —
