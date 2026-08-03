@@ -19,17 +19,30 @@ jobs:
       - name: Install dependencies
         run: bun install --frozen-lockfile
 
+      # The sandbox boot path depends on a HOISTED root node_modules/.bin:
+      # /root/workspace/node_modules/.bin is baked into the guest's PID-1 PATH,
+      # and bootstrap.sh both symlinks pi out of it and writes tribes-cli into it.
+      # Bun switches to the isolated linker (no root .bin at all) the moment
+      # `workspaces` exists, unless bunfig.toml pins linker="hoisted" — and every
+      # downstream failure is silent, `ln -sf` onto a missing target included.
+      # This is the only gate that catches the regression before a fleet does.
+      - name: Assert the hoisted root bin dir survives (sandbox boot contract)
+        run: test -x node_modules/.bin/pi
+
       - name: Format check
         run: bun run format:check
 
       - name: Lint
         run: bun run lint
 
-      - name: Build the world (ata + extensions + all skills)
+      - name: Typecheck (workspaces + the root .pi surface)
+        run: bun run typecheck
+
+      - name: Build the world (cli + protocol + gateway)
         run: bun run build
 
       - name: Tests (unit + skills contract)
-        run: bunx vitest run
+        run: bun run test:unit
 
       - name: Skills release digest verification
         run: bun run test:skills-release

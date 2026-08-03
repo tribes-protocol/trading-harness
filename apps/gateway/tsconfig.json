@@ -1,0 +1,18 @@
+{
+  // The second `@/*` target is not optional. `@tribes-harness/protocol` is a SOURCE
+  // package: its export map points at `packages/protocol/src/*.ts`, and those files
+  // import each other through the protocol's own `@/` alias. `tsc` resolves paths
+  // with the tsconfig of the *program*, not of the file being resolved, so the
+  // protocol's internal `@/types/ScreenBlock` is looked up here. TypeScript tries
+  // each target in order, so gateway sources win and the protocol's internals fall
+  // through to the second entry. Drop it and every protocol import fails TS2307.
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["./src/*", "../../packages/protocol/src/*"]
+    }
+  },
+  "include": ["src/**/*.ts", "test/**/*.ts"],
+  "exclude": ["node_modules", "dist"]
+}

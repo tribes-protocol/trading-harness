@@ -1,0 +1,24 @@
+{
+  "name": "@tribes-harness/gateway",
+  "version": "0.0.0",
+  "description": "Hosts Pi agent sessions and streams them to the browser over one multiplexed WebSocket",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "GATEWAY_AUTH_MODE=dev bun --watch src/Main.ts",
+    "start": "bun src/Main.ts",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "build": "bun run typecheck",
+    "test:unit": "vitest run",
+    "test:unit:coverage": "vitest run --coverage",
+    "lint": "eslint . --max-warnings 0 --no-warn-ignored",
+    "lint:fix": "eslint . --fix --max-warnings 0 --no-warn-ignored"
+  },
+  "dependencies": {
+    "@earendil-works/pi-agent-core": "0.80.3",
+    "@earendil-works/pi-coding-agent": "0.80.3",
+    "@tribes-harness/protocol": "workspace:*",
+    "viem": "2.46.3",
+    "zod": "3.25.76"
+  }
+}

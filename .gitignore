@@ -10,6 +10,11 @@ runtime/
 # Dependencies / build artifacts
 node_modules/
 dist/
+.turbo/
+.next/
+next-env.d.ts
+coverage/
+*.tsbuildinfo
 *.tgz
 .pi/agent/npm/
 skills/**/node_modules/

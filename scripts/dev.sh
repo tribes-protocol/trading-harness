@@ -3,7 +3,7 @@ set -eu
 cd "$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)"
 
 ARTIFACT="node_modules/.bin/tribes-cli"
-ENTRY="src/cli/Tribes.ts"
+ENTRY="apps/cli/src/cli/Tribes.ts"
 
 install_global() {
   for dir in /usr/local/bin "$HOME/.local/bin" "$HOME/.bun/bin"; do

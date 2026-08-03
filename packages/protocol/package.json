@@ -1,0 +1,24 @@
+{
+  "name": "@tribes-harness/protocol",
+  "version": "0.0.0",
+  "description": "Wire contract between the Pi screen gateway and the web UI",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./*": {
+      "types": "./src/*.ts",
+      "import": "./src/*.ts"
+    }
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "build": "bun run typecheck",
+    "test:unit": "vitest run",
+    "test:unit:coverage": "vitest run --coverage",
+    "lint": "eslint . --max-warnings 0 --no-warn-ignored",
+    "lint:fix": "eslint . --fix --max-warnings 0 --no-warn-ignored"
+  },
+  "dependencies": {
+    "zod": "3.25.76"
+  }
+}

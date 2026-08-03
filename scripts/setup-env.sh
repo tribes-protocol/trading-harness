@@ -61,7 +61,7 @@ if [ -f "$ENV_FILE" ]; then
   chmod 600 "$ENV_FILE" 2>/dev/null || true
 fi
 
-ENTRY="src/cli/Tribes.ts"
+ENTRY="apps/cli/src/cli/Tribes.ts"
 # Build artifact + a tiny shim. The shim `cd`s to the repo root before exec'ing
 # so the workspace .env (PRIVY_APP_ID for dev, the bearer token for both) is
 # auto-loaded by bun no matter which directory tribes-cli is invoked from. This
