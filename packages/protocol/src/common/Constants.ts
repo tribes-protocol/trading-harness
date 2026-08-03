@@ -11,6 +11,10 @@
  * when the server's `hello` reports a different version, so a stale tab fails
  * loudly instead of silently mis-rendering.
  *
+ * 6 — added the `set_thinking` client frame. CLIENT-side again, so the same unsafe
+ *     direction as 5: an older gateway rejects the frame outright while the picker,
+ *     seeing a successful send, would sit showing a level the screen is not running.
+ *     The gate turns that silent mismatch into a refused attach.
  * 5 — added `images` to the `prompt` client frame. A CLIENT-side addition, so it
  *     is the unsafe direction: a new tab that attaches an image and sends it to an
  *     older gateway has the whole frame rejected by that gateway's parser, while
@@ -35,7 +39,7 @@
  *     no-op.
  * 1 — initial contract.
  */
-export const PROTOCOL_VERSION = 5
+export const PROTOCOL_VERSION = 6
 
 /**
  * Delta coalescing window. Pi emits a `message_update` per token and a

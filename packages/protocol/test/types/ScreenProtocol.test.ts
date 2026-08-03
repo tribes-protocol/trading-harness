@@ -326,6 +326,30 @@ describe('model switching frames', () => {
     ).toBe(false)
   })
 
+  it('accepts every level on pi ladder for a set_thinking frame', () => {
+    for (const level of ['off', 'minimal', 'low', 'medium', 'high', 'xhigh']) {
+      expect(
+        ClientFrameSchema.safeParse({ t: 'set_thinking', screenId: 'main', level }).success
+      ).toBe(true)
+    }
+  })
+
+  it('refuses a level that is not on pi ladder', () => {
+    // `max` belongs to the launcher's organization-policy ladder, NOT pi's.
+    // Accepting it would put a value on the wire that `session.setThinkingLevel`
+    // cannot take.
+    expect(
+      ClientFrameSchema.safeParse({ t: 'set_thinking', screenId: 'main', level: 'max' }).success
+    ).toBe(false)
+    expect(
+      ClientFrameSchema.safeParse({ t: 'set_thinking', screenId: 'main', level: 'MEDIUM' }).success
+    ).toBe(false)
+  })
+
+  it('requires a level on a set_thinking frame', () => {
+    expect(ClientFrameSchema.safeParse({ t: 'set_thinking', screenId: 'main' }).success).toBe(false)
+  })
+
   it('accepts a models frame, including an empty catalog', () => {
     expect(
       ServerFrameSchema.safeParse({ t: 'screen.models', screenId: 'main', models: [model] }).success

@@ -34,6 +34,23 @@ import { ScreenModelSchema } from '@/types/ScreenModel'
 export const ScreenStatusSchema = z.enum(['idle', 'streaming', 'compacting', 'retrying'])
 export type ScreenStatus = z.infer<typeof ScreenStatusSchema>
 
+/**
+ * How hard the model thinks before answering, ascending.
+ *
+ * These SIX are pi's own ladder (`ThinkingLevel` in `@earendil-works/pi-agent-core`)
+ * and the list must not drift from it — `session.setThinkingLevel` takes that exact
+ * union, so an extra member here is a compile error at the call site rather than a
+ * silent runtime reject. Notably there is NO `max`: that belongs to the launcher's
+ * organization policy ladder, which is a different, longer list.
+ *
+ * Kept as its own schema rather than reusing `ScreenState.thinkingLevel` (a bare
+ * string): the state field REPORTS whatever pi settled on, while this one is what a
+ * client is allowed to ASK for, and an unbounded string on an inbound frame is a
+ * validation hole.
+ */
+export const ThinkingLevelSchema = z.enum(['off', 'minimal', 'low', 'medium', 'high', 'xhigh'])
+export type ThinkingLevel = z.infer<typeof ThinkingLevelSchema>
+
 export const ScreenQueueSchema = z.object({
   steering: z.array(z.string()),
   followUp: z.array(z.string())
@@ -140,6 +157,18 @@ export const ClientFrameSchema = z.discriminatedUnion('t', [
     screenId: z.string(),
     provider: z.string(),
     modelId: z.string()
+  }),
+  /**
+   * Set how hard the model thinks before answering.
+   *
+   * The requested level is NOT necessarily the applied one: pi clamps to what the
+   * CURRENT model offers, so a client must read the result back off `screen.state`
+   * rather than assume its click stuck.
+   */
+  z.object({
+    t: z.literal('set_thinking'),
+    screenId: z.string(),
+    level: ThinkingLevelSchema
   }),
   z.object({ t: z.literal('abort'), screenId: z.string() }),
   z.object({ t: z.literal('detach'), screenId: z.string() })

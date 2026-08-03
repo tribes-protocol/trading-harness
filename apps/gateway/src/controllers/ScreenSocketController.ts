@@ -163,6 +163,19 @@ export class ScreenSocketController {
         }
         return
       }
+      case 'set_thinking': {
+        const screen = await this.registry.getScreen(frame.screenId)
+        if (screen === null) {
+          this.sendUnknownScreen(connection, frame.screenId)
+          return
+        }
+        // No error path to answer, unlike `set_model`: the wire enum already
+        // refused anything off pi's ladder, and pi clamps a level the current
+        // model cannot do rather than rejecting it. What actually got applied
+        // broadcasts as `screen.state` from inside the service.
+        screen.setThinkingLevel(frame.level)
+        return
+      }
       case 'abort': {
         const screen = await this.registry.getScreen(frame.screenId)
         if (screen === null) {

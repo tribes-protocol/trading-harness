@@ -11,7 +11,8 @@ import type {
   PromptImage,
   ScreenState,
   ServerFrame,
-  StreamingBehavior
+  StreamingBehavior,
+  ThinkingLevel
 } from '@tribes-harness/protocol/types/ScreenProtocol'
 
 import {
@@ -276,6 +277,32 @@ export class PiScreenService {
     // correct the stale model.
     this.emitState(null)
     return null
+  }
+
+  /**
+   * Set the screen's thinking level.
+   *
+   * Synchronous and unfailing, unlike `setModel`: pi CLAMPS a level the current
+   * model cannot do rather than rejecting it, so there is no "unknown level" case
+   * to report — the enum on the wire already refused anything off the ladder.
+   *
+   * That clamp is why nothing here is optimistic. The applied level can differ
+   * from the requested one, and the client is told what actually happened by the
+   * `screen.state` below rather than by a return value.
+   *
+   * Emitted UNCONDITIONALLY, for the reason `setModel` does it: pi only fires
+   * `thinking_level_changed` when the level actually moves, so a set that clamps
+   * back to the current value — or one the operator picked twice — would leave a
+   * client that had optimistically rendered the request stuck showing a level the
+   * screen is not running.
+   *
+   * NOTE: like `setModel`, this also writes pi's GLOBAL settings
+   * (`settingsManager.setDefaultThinkingLevel`), so it changes the default for the
+   * next session and for `pi` CLI runs in this workspace — not just this screen.
+   */
+  setThinkingLevel(level: ThinkingLevel): void {
+    this.session.setThinkingLevel(level)
+    this.emitState(null)
   }
 
   /**
