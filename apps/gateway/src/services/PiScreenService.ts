@@ -206,7 +206,6 @@ export class PiScreenService {
       t: 'screen.commands',
       screenId: this.config.screenId,
       commands: toScreenCommands({
-        extensionCommands: this.session.extensionRunner.getRegisteredCommands(),
         promptTemplates: this.session.promptTemplates,
         skills: this.session.resourceLoader.getSkills().skills
       })
