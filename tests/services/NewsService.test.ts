@@ -5,6 +5,7 @@ import { NewsService } from '@/services/NewsService'
 import type { NewsItem, NewsStateResponse } from '@/types/News'
 
 const API_BASE_URL = 'https://api.example.test'
+const API_BEARER_TOKEN = 'test-bearer-token'
 
 function completedResponse(items: NewsItem[]): NewsStateResponse {
   return { state: 'completed', items, nextCursor: null }
@@ -33,7 +34,7 @@ describe('NewsService', () => {
     ])
     const fetchSpy = vi.spyOn(newsHelper, 'fetchNewsState').mockResolvedValue(response)
 
-    const service = new NewsService({ apiBaseUrl: API_BASE_URL })
+    const service = new NewsService({ apiBaseUrl: API_BASE_URL, apiBearerToken: API_BEARER_TOKEN })
     const result = await service.fetchNewsUntilCompleted({
       assetIdentity: { kind: 'perp', coin: 'BTC' }
     })
@@ -59,7 +60,7 @@ describe('NewsService', () => {
         ])
       )
 
-    const service = new NewsService({ apiBaseUrl: API_BASE_URL })
+    const service = new NewsService({ apiBaseUrl: API_BASE_URL, apiBearerToken: API_BEARER_TOKEN })
     const promise = service.fetchNewsUntilCompleted({
       assetIdentity: { kind: 'perp', coin: 'ETH' }
     })
@@ -83,7 +84,7 @@ describe('NewsService', () => {
     const response = completedResponse([unknownItem])
     vi.spyOn(newsHelper, 'fetchNewsState').mockResolvedValue(response)
 
-    const service = new NewsService({ apiBaseUrl: API_BASE_URL })
+    const service = new NewsService({ apiBaseUrl: API_BASE_URL, apiBearerToken: API_BEARER_TOKEN })
     const promise = service.fetchNewsUntilCompleted({
       assetIdentity: { kind: 'stock', ticker: 'NVDA' }
     })
@@ -107,7 +108,7 @@ describe('NewsService', () => {
     }
     const response = completedResponse([pendingItem])
     vi.spyOn(newsHelper, 'fetchNewsState').mockResolvedValue(response)
-    const service = new NewsService({ apiBaseUrl: API_BASE_URL })
+    const service = new NewsService({ apiBaseUrl: API_BASE_URL, apiBearerToken: API_BEARER_TOKEN })
     const promise = service.fetchNewsUntilCompleted({
       assetIdentity: { kind: 'stock', ticker: 'NVDA' }
     })

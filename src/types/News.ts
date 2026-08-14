@@ -38,11 +38,14 @@ export type NewsItem = z.infer<typeof NewsItemSchema>
 
 export type FetchNewsStateParams = {
   apiBaseUrl: string
+  // Bearer for POST /news, a userAuth route since terminal 69823b1ab (2026-07-22).
+  apiBearerToken: string
   request: GetNewsRequest
 }
 
 export type NewsServiceParams = {
   readonly apiBaseUrl: string
+  readonly apiBearerToken: string
 }
 
 export const NewsCliKindSchema = z.enum(['token', 'perp', 'stock'])
