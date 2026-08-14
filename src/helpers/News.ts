@@ -1,4 +1,3 @@
-import { API_BEARER_TOKEN } from '@/common/Env'
 import {
   type FetchNewsStateParams,
   GetNewsRequestSchema,
@@ -19,7 +18,7 @@ export async function fetchNewsState(params: FetchNewsStateParams): Promise<News
     headers: {
       Accept: 'application/json',
       'Content-Type': 'application/json',
-      Authorization: `Bearer ${API_BEARER_TOKEN}`
+      Authorization: `Bearer ${params.apiBearerToken}`
     },
     body: ensureJsonTreeString(parsedRequest)
   })

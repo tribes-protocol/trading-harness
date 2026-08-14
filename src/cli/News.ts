@@ -1,6 +1,6 @@
 import { Command } from 'commander'
 
-import { API_BASE_URL } from '@/common/Env'
+import { API_BASE_URL, API_BEARER_TOKEN } from '@/common/Env'
 import { writeOutput } from '@/helpers/WriteOutput'
 import { NewsService } from '@/services/NewsService'
 import { FetchNewsCommandOptionsSchema } from '@/types/News'
@@ -10,7 +10,10 @@ import { toAssetIdentity } from '@/utils/News'
 const VERSION = '1.0.0'
 
 export function buildNewsCommand(): Command {
-  const newsService = new NewsService({ apiBaseUrl: API_BASE_URL })
+  const newsService = new NewsService({
+    apiBaseUrl: API_BASE_URL,
+    apiBearerToken: API_BEARER_TOKEN
+  })
 
   const program = new Command('news')
   program.description('Asset news CLI').version(VERSION)

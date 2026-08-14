@@ -22,9 +22,11 @@ const NEWS_RETRY_INTERVAL_MS = 30_000
 
 export class NewsService {
   private readonly apiBaseUrl: string
+  private readonly apiBearerToken: string
 
   constructor(params: NewsServiceParams) {
     this.apiBaseUrl = params.apiBaseUrl
+    this.apiBearerToken = params.apiBearerToken
   }
 
   async fetchNewsUntilCompleted(params: GetNewsRequest): Promise<NewsStateResponse> {
@@ -34,6 +36,7 @@ export class NewsService {
         fn: async (): Promise<NewsStateResponse> => {
           const response = await fetchNewsState({
             apiBaseUrl: this.apiBaseUrl,
+            apiBearerToken: this.apiBearerToken,
             request: params
           })
           latestResponse = response
