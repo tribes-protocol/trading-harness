@@ -172,6 +172,7 @@ Pick the skill with these tie-breaker rules, in order:
 | General web lookup or read one URL                                                 | `web-search`           |
 | JS-gated or fetch-blocked pages, UI automation                                     | `browser`              |
 | Alert the human: long job finished, needs attention                                | `notify`               |
+| Shape every reply for an ADHD reader (applies to all output)                       | `i-have-adhd`          |
 
 <!-- BEGIN synced skill routes (managed by scripts/skills-upgrade.mjs) -->
 
