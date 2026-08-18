@@ -176,12 +176,17 @@ Pick the skill with these tie-breaker rules, in order:
 
 <!-- BEGIN synced skill routes (managed by scripts/skills-upgrade.mjs) -->
 
+- `zipbox-api-keys` — Find and use the API keys this box already holds for third-party providers.
 - `zipbox-browser` — Fast headless browser automation with Microsoft's Playwright CLI for JavaScript-rendered pages, clicks, typing, snapshots, screenshots, PDF capture, and console or network inspection.
 - `zipbox-caddy` — Safely add or remove HTTPS reverse-proxy sites in this sandbox's in-VM Caddy with the baked tribes-caddy CLI — never hand-edit the Caddyfile, because a bad config kills all browser access to the machine.
-- `zipbox-dns` — Manage DNS records under this sandbox's own public hostname with the baked tribes-dns CLI — expose subdomains and set, list, or delete server-pinned A/AAAA records below the apex.
-- `zipbox-email` — Read, organize, delete, mark as junk, and send this sandbox's zbox.sh email through the baked tribes-email CLI and its agent-scoped control-plane API.
+- `zipbox-desktop` — Drive the live X11/VNC desktop this box runs (openbox + KasmVNC) that the user can watch and take over.
+- `zipbox-dns` — Every name under this sandbox's apex already resolves via a platform wildcard — serve it and it works.
+- `zipbox-email` — Read, organize, delete, and mark as junk this sandbox's zbox.sh email, and send mail from it, through the baked tribes-email CLI and its agent-scoped control-plane API.
+- `zipbox-geo` — Geocode addresses, reverse-geocode coordinates, find nearby places (restaurants and other POIs), route A to B, isolines, elevation, postcodes, boundaries, and static/tile maps.
+- `zipbox-image` — Read an image your harness cannot see, and generate an image (or other media) with a specific model your harness cannot reach.
+- `zipbox-notify` — Ping the user's dashboard when you finish a long task, get blocked, or need their input.
 - `zipbox-wallet` — Wallet and transaction capability for this sandbox's bound Privy wallet (EVM + Solana), through the baked tribes-wallet CLI.
-- `zipbox-websearch` — Search the open web and extract readable text from a known public URL through the sandbox-authenticated Tribes search endpoint.
+- `zipbox-websearch` — Search the open web and extract readable text from a known public URL.
 - `zipbox-x` — Read X (x.com, formerly Twitter) through the sandbox's metered egress proxy — profiles, timelines, mentions, recent search, quote posts, followers.
 
 <!-- END synced skill routes -->
