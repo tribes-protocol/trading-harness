@@ -141,8 +141,13 @@ Pick the skill with these tie-breaker rules, in order:
 - **R4 — Data vs computation.** Indicator values, signals, setups, or backtests → `technical-analyst`
   regardless of asset class. Raw prices/candles only → the asset's data skill.
 - **External info precedence:** `news` first for market/asset news and sentiment →
-  `research-analyst` for source-backed finance research and ENS → `web-search` as last resort or
-  to read a specific URL → `browser` only for JS-gated or fetch-blocked pages.
+  `research-analyst` for source-backed finance research and ENS → `zipbox-websearch` as last
+  resort or to read a specific URL → `zipbox-browser` only for JS-gated or fetch-blocked pages.
+  Outside a Tribes sandbox `zipbox-websearch` has no credential; `tribes-cli web-search search`
+  and `tribes-cli web-search extract` are the same backend and keep working there after
+  `tribes-cli login`. Never reach for `zipbox-browser` to get market/asset news or sentiment
+  (that is `news`) or market, token, or stock data (that is the matching analyst skill) — it is
+  for pages the fetch path cannot render, not a way around the finance routing above.
 
 | Intent                                                                             | Skill                  |
 | ---------------------------------------------------------------------------------- | ---------------------- |
@@ -169,9 +174,9 @@ Pick the skill with these tie-breaker rules, in order:
 | Stops, leverage, liquidation distance, closing positions                           | `position-management`  |
 | On-chain DEX swap or cross-chain bridge                                            | `spot-trading`         |
 | Broadcast a prepared transaction, check tx status                                  | `zipbox-wallet`        |
-| General web lookup or read one URL                                                 | `web-search`           |
-| JS-gated or fetch-blocked pages, UI automation                                     | `browser`              |
-| Alert the human: long job finished, needs attention                                | `notify`               |
+| General web lookup or read one URL                                                 | `zipbox-websearch`     |
+| JS-gated or fetch-blocked pages, UI automation                                     | `zipbox-browser`       |
+| Alert the human: long job finished, needs attention                                | `zipbox-notify`        |
 | Shape every reply for an ADHD reader (applies to all output)                       | `i-have-adhd`          |
 
 <!-- BEGIN synced skill routes (managed by scripts/skills-upgrade.mjs) -->

@@ -112,8 +112,8 @@ function sha256(buffer) {
 //
 // The `zipbox-` prefix filter is a SAFETY BOUNDARY, not tidiness. Vendoring copies
 // with cpSync(force:true) and the manifest then pins whatever it copied as canonical,
-// so an upstream directory named after one of THIS repo's trading skills — `browser`,
-// `web-search`, `news` — would silently overwrite it, and the drift guard would
+// so an upstream directory named after one of THIS repo's trading skills — `news`,
+// `hyperliquid`, `prediction` — would silently overwrite it, and the drift guard would
 // afterwards defend the overwrite as the intended state. Without this line the only
 // thing protecting the trading catalog is the convention that upstream never creates a
 // directory without the prefix.
