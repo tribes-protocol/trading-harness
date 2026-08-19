@@ -25,6 +25,7 @@ import { buildMarketCommand } from '@/cli/Market'
 import { buildNewsCommand } from '@/cli/News'
 import { buildNotifyCommand } from '@/cli/Notify'
 import { buildOnchainCommand } from '@/cli/Onchain'
+import { buildOrgCommand } from '@/cli/Org'
 import { buildPredictionCommand } from '@/cli/Prediction'
 import { buildSmartMoneyCommand } from '@/cli/SmartMoney'
 import { buildSpotTradingCommand } from '@/cli/SpotTrading'
@@ -67,6 +68,9 @@ function buildTribesCli(): Command {
   program.addCommand(buildTokenCommand())
   program.addCommand(buildWebSearchCommand())
   program.addCommand(buildPredictionCommand())
+
+  // Org artifact machine-validation (local files, no network, no auth).
+  program.addCommand(buildOrgCommand())
 
   program.addCommand(buildLoginCommand())
 

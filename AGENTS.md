@@ -184,6 +184,27 @@ Pick the skill with these tie-breaker rules, in order:
 | Alert the human: long job finished, needs attention                                | `zipbox-notify`        |
 | Shape every reply for an ADHD reader (applies to all output)                       | `i-have-adhd`          |
 
+### Org skills (the trading organization)
+
+The company-style multi-agent organization is chartered in docs/org/ORGANIZATION.md; role
+definitions live in .agents/. These skills are entered by org roles (or the Head of Desk running
+the org) and route into the catalog per R0–R4. The shared protocol is `org-protocol`.
+
+- Market Intelligence: `intel-trending-scan`, `intel-liquidity-anomalies`, `intel-funding-oi`,
+  `intel-derivatives-posture`, `intel-smart-money`, `intel-opportunity-rank`,
+  `intel-news-collect`, `intel-news-triage`, `intel-social-sentiment`, `intel-event-catalysts`
+- Data Validation: `validate-cross-check`, `validate-freshness`, `validate-contradictions`,
+  `validate-signal-score`
+- Strategy Research: `research-hypothesis`, `research-backtest-spec`, `research-backtest-run`,
+  `research-metrics`, `research-robustness`, `research-evaluate`
+- Portfolio Management: `portfolio-reconcile`, `portfolio-exposure`, `portfolio-triggers`,
+  `portfolio-rebalance`
+- Execution Desk: `exec-validate-instruction`, `exec-cost-preflight`, `exec-margin-preflight`,
+  `exec-place-order`, `exec-order-lifecycle`, `exec-onchain-swap`
+- Engineering: `eng-triage`, `eng-diagnose`, `eng-provider-dd`, `eng-repair-integration`,
+  `eng-verify-change`
+- Compliance (second line): `org-compliance`
+
 <!-- BEGIN synced skill routes (managed by scripts/skills-upgrade.mjs) -->
 
 - `zipbox-api-keys` — Find and use the API keys this box already holds for third-party providers.

@@ -911,16 +911,6 @@ export type TokenDataNewListingsCommandOptions = z.infer<
   typeof TokenDataNewListingsCommandOptionsSchema
 >
 
-export const TokenDataOhlcvCommandOptionsSchema = z.object({
-  address: z.string().min(1),
-  timeframe: TokenDataTimeframeSchema,
-  from: z.number().int().positive().nullish(),
-  to: z.number().int().positive().nullish(),
-  chain: ChainOptionSchema,
-  out: z.string().nullish()
-})
-export type TokenDataOhlcvCommandOptions = z.infer<typeof TokenDataOhlcvCommandOptionsSchema>
-
 export const TokenDataMintBurnCommandOptionsSchema = z.object({
   address: z.string().min(1),
   limit: z.number().int().min(1).max(100).nullish(),

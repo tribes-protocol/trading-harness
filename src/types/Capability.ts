@@ -287,20 +287,55 @@ export const AssetPriceCommandOptionsSchema = AssetPriceCommandOptionsBaseSchema
 )
 export type AssetPriceCommandOptions = z.infer<typeof AssetPriceCommandOptionsSchema>
 
+export const MAX_CANDLE_LIMIT = 1000
+export const DEFAULT_CANDLE_LIMIT = 200
+
+const CandleLimitOptionSchema = z.number().int().min(1).max(MAX_CANDLE_LIMIT).nullish()
+
+// --from / --to accept a calendar date (YYYY-MM-DD) or a full ISO 8601
+// instant. Anything Date.parse understands is normalised to epoch ms once, at
+// the CLI boundary, then converted per provider (Marketstack wants dates,
+// BirdEye and GeckoTerminal epoch seconds, Hyperliquid ms).
+const IsoInstantOptionSchema = z
+  .string()
+  .min(1)
+  .refine((value) => Number.isFinite(Date.parse(value)), {
+    message: 'expected a date (YYYY-MM-DD) or an ISO 8601 instant'
+  })
+  .nullish()
+
+// The window every candles source honours. `from`/`to` are epoch ms.
+export const CandleWindowSchema = z.object({
+  from: z.number().nullish(),
+  to: z.number().nullish(),
+  limit: z.number().int().min(1).max(MAX_CANDLE_LIMIT)
+})
+export type CandleWindow = z.infer<typeof CandleWindowSchema>
+
 const AssetCandlesCommandOptionsBaseSchema = z.object({
   address: IdentifierOptionSchema,
   chain: IdentifierOptionSchema,
   id: IdentifierOptionSchema,
   ticker: IdentifierOptionSchema,
+  perp: IdentifierOptionSchema,
   pool: IdentifierOptionSchema,
   timeframe: AssetTimeframeSchema.nullish(),
   days: CoinDaysSchema.nullish(),
+  from: IsoInstantOptionSchema,
+  to: IsoInstantOptionSchema,
+  limit: CandleLimitOptionSchema,
   out: OutOptionSchema
 })
 
 export const AssetCandlesCommandOptionsSchema = AssetCandlesCommandOptionsBaseSchema.superRefine(
   (options, ctx) => {
-    refineIdentifierForms(options, ctx, ['--address --chain', '--id', '--ticker', '--pool --chain'])
+    refineIdentifierForms(options, ctx, [
+      '--address --chain',
+      '--id',
+      '--ticker',
+      '--perp',
+      '--pool --chain'
+    ])
     if (
       options.days !== null &&
       options.days !== undefined &&
@@ -322,16 +357,32 @@ export const AssetCandlesCommandOptionsSchema = AssetCandlesCommandOptionsBaseSc
         message: '--timeframe does not apply to --id; use --days'
       })
     }
+    // CoinGecko's coin OHLC endpoint takes only a rolling --days window, so a
+    // caller-supplied range or bar count has nowhere to go.
+    if (options.id !== null && options.id !== undefined) {
+      for (const [flag, value] of [
+        ['--from', options.from],
+        ['--to', options.to],
+        ['--limit', options.limit]
+      ] as const) {
+        if (value !== null && value !== undefined) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: `${flag} does not apply to --id; use --days`
+          })
+        }
+      }
+    }
     if (
-      options.ticker !== null &&
-      options.ticker !== undefined &&
-      options.timeframe !== null &&
-      options.timeframe !== undefined &&
-      options.timeframe !== '1d'
+      options.from !== null &&
+      options.from !== undefined &&
+      options.to !== null &&
+      options.to !== undefined &&
+      Date.parse(options.to) < Date.parse(options.from)
     ) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        message: 'stock candles are EOD only — --ticker supports only --timeframe 1d'
+        message: '--to must not be earlier than --from'
       })
     }
   }

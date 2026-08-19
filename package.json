@@ -12,6 +12,8 @@
     "setup:prod": "sh scripts/setup-env.sh prod",
     "skills:upgrade": "bun scripts/skills-upgrade.mjs",
     "test:skills-release": "bun test/skills-release-verify.test.mjs",
+    "test:skills-drift": "bun test/skills-drift-check.test.mjs",
+    "check:skills-drift": "bun scripts/skills-drift-check.mjs",
     "test": "bun run typecheck",
     "lint": "eslint . --ext .ts,.mts --max-warnings 0 --no-warn-ignored",
     "lint:fix": "eslint . --ext .ts,.mts --fix --max-warnings 0 --no-warn-ignored",

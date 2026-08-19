@@ -1,8 +1,8 @@
 ---
 name: token-analyst
 description: >-
-  Deep-dives into ONE identified token using real-time on-chain data. Handles: live and
-  historical on-chain prices and OHLCV candles, security and rug-risk audits (owner/creator,
+  Deep-dives into ONE identified token using real-time on-chain data. Handles: live on-chain
+  prices (candles via `asset candles`), security and rug-risk audits (owner/creator,
   mint/freeze authority, top-holder concentration), on-chain trades and volume, holder tables,
   smart-money and whale flow on the token, contract-to-CoinGecko mapping,
   and name-to-address resolution. Call for any question about a specific token's price, safety,
@@ -45,7 +45,7 @@ BirdEye specifically (no fallback). Full `asset` docs live in the `asset-data` s
 - On-chain trade flow and whale/smart-money buys and sells (`trades` +
   `smart-money flow-intelligence`); a specific wallet's holdings live in `wallet-analyst`
   (`wallet-data net-worth`).
-- Historical candles for one token (`asset candles`; `token-data ohlcv` for direct BirdEye),
+- Historical candles for one token (`asset candles --address --chain`, BirdEye first),
   chained into `ta` for indicator math.
 - NOT for coin profiles, supply trends, or exchange listings — use `fundamentals-analyst`.
 - NOT for trending tokens, new listings, or smart-money discovery — use `alpha-scout`
@@ -76,22 +76,21 @@ BirdEye specifically (no fallback). Full `asset` docs live in the `asset-data` s
 Under `tribes-cli token-data`; every subcommand accepts `--out <file>` and (unless noted)
 `--chain <chain>` (default `solana`). All read-only.
 
-| Subcommand       | Purpose                                                                                    | Required flags                                         | Useful flags                                                                                                |
-| ---------------- | ------------------------------------------------------------------------------------------ | ------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------- |
-| `price`          | Multi-token prices with 24h change and liquidity (direct-BirdEye variant of `asset price`) | `--addresses` (comma-separated)                        |                                                                                                             |
-| `overview`       | Price, mcap, liquidity, volume, holders, trades                                            | `--address`                                            |                                                                                                             |
-| `security`       | Top-holder %, owner/creator, mint/freeze flags                                             | `--address`                                            |                                                                                                             |
-| `holders`        | Top token holders                                                                          | `--address`                                            | `--limit` 1-100 (default 20)                                                                                |
-| `trades`         | Recent swaps for a token, newest first                                                     | `--address`                                            | `--limit` 1-50 (default 20)                                                                                 |
-| `trending`       | Trending tokens ranked by BirdEye                                                          | none                                                   | `--limit` 1-20 (default 20)                                                                                 |
-| `new-listings`   | Newly listed tokens with initial liquidity                                                 | none                                                   | `--limit` 1-20 (default 10)                                                                                 |
-| `ohlcv`          | OHLCV candles, t in epoch ms (direct-BirdEye variant of `asset candles`)                   | `--address`, `--timeframe 1m\|5m\|15m\|1H\|4H\|1D\|1W` | `--from`/`--to` (epoch seconds)                                                                             |
-| `mint-burn`      | Mint/burn transactions for supply-change analysis, newest first                            | `--address`                                            | `--limit` 1-100 (default 20)                                                                                |
-| `creation-info`  | Creation info: creator, deploy tx, creation time                                           | `--address`                                            |                                                                                                             |
-| `exit-liquidity` | Estimated exit liquidity for multiple tokens                                               | `--addresses` (comma-separated)                        | `--chain` (default `base`; endpoint is Base-only)                                                           |
-| `trade-history`  | Windowed trade-activity totals: buys/sells and USD volumes                                 | `--address`                                            | `--time-frame` `1m\|5m\|30m\|1h\|2h\|4h\|8h\|24h\|3d\|7d\|14d\|30d\|90d\|180d\|1y\|alltime` (default `24h`) |
-| `trade-data`     | Aggregated 24h trade metrics for multiple tokens                                           | `--addresses` (comma-separated)                        |                                                                                                             |
-| `transfer-total` | Aggregate transfer totals over all history (Solana only; no `--chain`)                     | `--address`                                            |                                                                                                             |
+| Subcommand       | Purpose                                                                                    | Required flags                  | Useful flags                                                                                                |
+| ---------------- | ------------------------------------------------------------------------------------------ | ------------------------------- | ----------------------------------------------------------------------------------------------------------- |
+| `price`          | Multi-token prices with 24h change and liquidity (direct-BirdEye variant of `asset price`) | `--addresses` (comma-separated) |                                                                                                             |
+| `overview`       | Price, mcap, liquidity, volume, holders, trades                                            | `--address`                     |                                                                                                             |
+| `security`       | Top-holder %, owner/creator, mint/freeze flags                                             | `--address`                     |                                                                                                             |
+| `holders`        | Top token holders                                                                          | `--address`                     | `--limit` 1-100 (default 20)                                                                                |
+| `trades`         | Recent swaps for a token, newest first                                                     | `--address`                     | `--limit` 1-50 (default 20)                                                                                 |
+| `trending`       | Trending tokens ranked by BirdEye                                                          | none                            | `--limit` 1-20 (default 20)                                                                                 |
+| `new-listings`   | Newly listed tokens with initial liquidity                                                 | none                            | `--limit` 1-20 (default 10)                                                                                 |
+| `mint-burn`      | Mint/burn transactions for supply-change analysis, newest first                            | `--address`                     | `--limit` 1-100 (default 20)                                                                                |
+| `creation-info`  | Creation info: creator, deploy tx, creation time                                           | `--address`                     |                                                                                                             |
+| `exit-liquidity` | Estimated exit liquidity for multiple tokens                                               | `--addresses` (comma-separated) | `--chain` (default `base`; endpoint is Base-only)                                                           |
+| `trade-history`  | Windowed trade-activity totals: buys/sells and USD volumes                                 | `--address`                     | `--time-frame` `1m\|5m\|30m\|1h\|2h\|4h\|8h\|24h\|3d\|7d\|14d\|30d\|90d\|180d\|1y\|alltime` (default `24h`) |
+| `trade-data`     | Aggregated 24h trade metrics for multiple tokens                                           | `--addresses` (comma-separated) |                                                                                                             |
+| `transfer-total` | Aggregate transfer totals over all history (Solana only; no `--chain`)                     | `--address`                     |                                                                                                             |
 
 Companion commands (same JSON + `--out` contract):
 
@@ -140,9 +139,9 @@ tribes-cli asset candles --address <address> --chain solana --timeframe 4H --out
 tribes-cli ta indicators --candles-file /tmp/candles.json
 ```
 
-`asset candles --out` writes the candle contract that `ta` consumes (`token-data ohlcv --out`
-does the same via BirdEye directly) — indicator math, levels, and backtests live in the
-`technical-analyst` skill.
+`asset candles --out` writes the candle contract that `ta` consumes (`token-data ohlcv` was
+retired; the router tries BirdEye first for `--address`) — indicator math, levels, and
+backtests live in the `technical-analyst` skill.
 
 ## Error recovery
 

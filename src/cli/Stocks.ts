@@ -3,16 +3,11 @@ import { Command } from 'commander'
 import { MARKETSTACK_API_KEY } from '@/common/Env'
 import { writeOutput } from '@/helpers/WriteOutput'
 import { StocksService } from '@/services/StocksService'
-import {
-  StocksCandlesCommandOptionsSchema,
-  StocksDetailCommandOptionsSchema,
-  StocksSearchCommandOptionsSchema
-} from '@/types/Stocks'
+import { StocksDetailCommandOptionsSchema, StocksSearchCommandOptionsSchema } from '@/types/Stocks'
 import { ensureJsonTreeString } from '@/utils/Lang'
 
 const VERSION = '1.0.0'
 
-const DEFAULT_CANDLES_LIMIT = 100
 const DEFAULT_SEARCH_LIMIT = 20
 
 export function buildStocksCommand(): Command {
@@ -20,29 +15,6 @@ export function buildStocksCommand(): Command {
 
   const program = new Command('stocks')
   program.description('Stock market data from Marketstack (structured JSON)').version(VERSION)
-
-  program
-    .command('candles')
-    .description('Daily OHLCV candles for a stock symbol')
-    .requiredOption('--symbol <symbol>', 'Stock ticker, e.g. AAPL')
-    .option('--interval <interval>', 'Candle interval, only 1d supported (default 1d)')
-    .option('--from <date>', 'Start date YYYY-MM-DD')
-    .option('--to <date>', 'End date YYYY-MM-DD')
-    .option('--limit <n>', 'Candles to return, 1-1000 (default 100)', (value) => Number(value))
-    .option('--out <file>', 'Write output JSON to file')
-    .action(async (options: unknown): Promise<void> => {
-      const request = StocksCandlesCommandOptionsSchema.parse(options)
-      const candles = await service.getCandles({
-        symbol: request.symbol,
-        from: request.from,
-        to: request.to,
-        limit: request.limit ?? DEFAULT_CANDLES_LIMIT
-      })
-      await writeOutput({
-        output: ensureJsonTreeString(candles),
-        outPath: request.out ?? undefined
-      })
-    })
 
   program
     .command('detail')

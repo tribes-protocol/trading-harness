@@ -128,6 +128,9 @@ export default [
       '**/dist-test/**',
       '**/coverage/**',
       'runtime/**',
+      // Workflow-runtime scripts: executed in an async wrapper where top-level
+      // return is legal, so they cannot parse as modules.
+      '.claude/workflows/**',
       'eslint-rules/**',
       'scripts/*.mjs',
       '**/*.d.ts',

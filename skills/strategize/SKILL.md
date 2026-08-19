@@ -97,7 +97,7 @@ the legs return because it needs the complete candidate list.
 
    ```bash
    tribes-cli stocks search --query "{CANDIDATE_NAME}"
-   tribes-cli stocks candles --symbol {TICKER} --limit 30
+   tribes-cli asset candles --ticker {TICKER} --limit 30
    ```
 
 6. Commodity ideas (`commodity-analyst` skill):

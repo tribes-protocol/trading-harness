@@ -2,6 +2,7 @@ import { execFile, spawn } from 'node:child_process'
 import { copyFileSync, existsSync, mkdirSync } from 'node:fs'
 import { writeFile } from 'node:fs/promises'
 import { dirname, resolve } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { promisify } from 'node:util'
 
 import { ExtensionAPI, ExtensionCommandContext } from '@earendil-works/pi-coding-agent'
@@ -86,16 +87,22 @@ export function hasAgentKey(cwd: string): boolean {
  * freshly minted API_BEARER_TOKEN. `--force` mints a brand-new token (ignoring
  * .env + cache) so each call genuinely refreshes the key.
  */
+/**
+ * Resolve the sibling AgentProxyToken.ts by this module's own location (they always sit
+ * together), not a cwd-relative `.pi/` path. The tribes extension is loaded from the repo
+ * (`.pi/extensions/tribes/`) in trading-harness and from pi (`extensions/tribes/`) after
+ * rsync, so the two files are always siblings but cx.cwd differs between the two homes.
+ */
+function agentProxyTokenPath(): string {
+  return fileURLToPath(new URL('./AgentProxyToken.ts', import.meta.url))
+}
+
 export async function writeAuthEnv(cwd: string): Promise<void> {
-  const { stdout } = await execFileAsync(
-    'bun',
-    ['.pi/extensions/tribes/AgentProxyToken.ts', '--force'],
-    {
-      cwd,
-      timeout: MINT_TIMEOUT_MS,
-      maxBuffer: MINT_MAX_BUFFER_BYTES
-    }
-  )
+  const { stdout } = await execFileAsync('bun', [agentProxyTokenPath(), '--force'], {
+    cwd,
+    timeout: MINT_TIMEOUT_MS,
+    maxBuffer: MINT_MAX_BUFFER_BYTES
+  })
 
   const env = await readDotEnv(cwd)
   for (const name of ENV_PASSTHROUGH) {

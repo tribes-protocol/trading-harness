@@ -245,6 +245,128 @@ describe('StocksService', () => {
     expect(fetchSpy).not.toHaveBeenCalled()
   })
 
+  // Regression: live AAPL EOD history carries `close: null` on some sessions.
+  // A required z.number() there rejected the whole page, so `asset candles
+  // --ticker` failed with parse_error against real data.
+  it('drops EOD rows with a null OHLC leg instead of rejecting the page', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      jsonResponse({
+        data: [
+          {
+            date: '2026-07-21T00:00:00+0000',
+            symbol: 'AAPL',
+            open: 231.1,
+            high: 234.5,
+            low: 229.8,
+            close: null,
+            volume: 51000000
+          },
+          {
+            date: '2026-07-20T00:00:00+0000',
+            symbol: 'AAPL',
+            open: 228.4,
+            high: 232.0,
+            low: 227.9,
+            close: 231.0,
+            volume: 48000000
+          }
+        ]
+      })
+    )
+
+    const result = await makeService().getCandles({
+      symbol: 'AAPL',
+      from: null,
+      to: null,
+      limit: 100
+    })
+
+    expect(result.candles).toHaveLength(1)
+    expect(result.candles[0]?.t).toBe(T_JUL_20)
+  })
+
+  it('shapes intraday rows into ascending candles and sends the interval', async () => {
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      jsonResponse({
+        pagination: { limit: 2, offset: 0, count: 2, total: 2 },
+        data: [
+          {
+            date: '2026-07-30T18:00:00+0000',
+            symbol: 'AAPL',
+            open: 108,
+            high: 109,
+            low: 95,
+            close: 97,
+            volume: 30
+          },
+          {
+            date: '2026-07-30T17:00:00+0000',
+            symbol: 'AAPL',
+            open: 104,
+            high: 112,
+            low: 103,
+            close: 108,
+            volume: 20
+          }
+        ]
+      })
+    )
+
+    const result = await makeService().getIntradayCandles({
+      symbol: 'AAPL',
+      interval: '1hour',
+      from: null,
+      to: null,
+      limit: 100
+    })
+
+    const url = new URL(String(fetchSpy.mock.calls[0]?.[0]))
+    expect(url.pathname).toBe('/v2/intraday')
+    expect(url.searchParams.get('interval')).toBe('1hour')
+    expect(result.candles.map((candle) => candle.t)).toEqual([
+      Date.parse('2026-07-30T17:00:00Z'),
+      Date.parse('2026-07-30T18:00:00Z')
+    ])
+  })
+
+  // Marketstack omits OHLC legs on some intraday rows; a bar without a high or
+  // low is not a candle, so it is dropped rather than back-filled from close.
+  it('drops intraday rows missing any OHLC leg', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      jsonResponse({
+        data: [
+          {
+            date: '2026-07-30T18:00:00+0000',
+            open: 108,
+            high: null,
+            low: null,
+            close: 97,
+            volume: 30
+          },
+          {
+            date: '2026-07-30T17:00:00+0000',
+            open: 104,
+            high: 112,
+            low: 103,
+            close: 108,
+            volume: 20
+          }
+        ]
+      })
+    )
+
+    const result = await makeService().getIntradayCandles({
+      symbol: 'AAPL',
+      interval: '1hour',
+      from: null,
+      to: null,
+      limit: 100
+    })
+
+    expect(result.candles).toHaveLength(1)
+    expect(result.candles[0]?.t).toBe(Date.parse('2026-07-30T17:00:00Z'))
+  })
+
   it('throws on Marketstack errors without echoing the URL or access key', async () => {
     vi.spyOn(globalThis, 'fetch').mockResolvedValue(
       new Response('{"error":{"code":"invalid_access_key"}}', {

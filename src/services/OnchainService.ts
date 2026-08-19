@@ -87,6 +87,7 @@ type GetPoolOhlcvParams = {
   readonly timeframe: OnchainTimeframe
   readonly aggregate: number | null
   readonly limit: number
+  readonly beforeTimestamp: number | null
 }
 
 type GetPoolTradesParams = {
@@ -274,10 +275,14 @@ export class OnchainService {
     })
   }
 
+  // beforeTimestamp is epoch seconds, passed through as before_timestamp.
   async getPoolOhlcv(params: GetPoolOhlcvParams): Promise<OnchainPoolOhlcv> {
     const searchParams: Record<string, string> = { limit: String(params.limit) }
     if (!isNullish(params.aggregate)) {
       searchParams.aggregate = String(params.aggregate)
+    }
+    if (!isNullish(params.beforeTimestamp)) {
+      searchParams.before_timestamp = String(params.beforeTimestamp)
     }
     const raw = await this.fetch(
       `api/v3/onchain/networks/${encodeURIComponent(params.network)}/pools/${encodeURIComponent(params.address)}/ohlcv/${params.timeframe}`,

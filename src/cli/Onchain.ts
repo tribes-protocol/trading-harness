@@ -152,7 +152,8 @@ export function buildOnchainCommand(): Command {
         address: request.address,
         timeframe: request.timeframe,
         aggregate: request.aggregate ?? null,
-        limit: request.limit ?? DEFAULT_OHLCV_LIMIT
+        limit: request.limit ?? DEFAULT_OHLCV_LIMIT,
+        beforeTimestamp: null
       })
       await writeOutput({
         output: ensureJsonTreeString(candles),
