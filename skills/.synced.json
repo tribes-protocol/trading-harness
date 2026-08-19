@@ -1,12 +1,20 @@
 {
-  "upstreamSha": "696490a36c72f2e0595ac6ff0d980d11a48477fb",
+  "upstreamSha": "0ab39f0fd0d89f707246d51914bfa8f504b33465",
+  "contentSha256": "1e741e48208e205e8b30124f7d94afa64a35857bbf3dffb6ab05f405ef41db50",
+  "treeHash": "529129a865fa713bdb3a93d253ccd595256cc5ed",
+  "source": "https://skills.zipbox.ai/skills/1e741e48208e205e8b30124f7d94afa64a35857bbf3dffb6ab05f405ef41db50.tar.gz",
   "files": {
-    "skills/zipbox-browser/SKILL.md": "d11e559635798ade6890cee37f7fc71f7253002fe1937bd4ec8fcdd0962abf8d",
-    "skills/zipbox-caddy/SKILL.md": "4ef8227d0bb4a73cb5bf8b5544b5649d615e0e6b5c7c486f38e8581eee4278ef",
-    "skills/zipbox-dns/SKILL.md": "abdc44ffd4174691b841dc8f0a5dab0b26c82ea52e83606f46531b286f075bbe",
-    "skills/zipbox-email/SKILL.md": "6b08c17e7c2d0573328ac1304490f51cd5f12e5ef9639d2f7ca67dc94c86641e",
-    "skills/zipbox-wallet/SKILL.md": "2a26338a4383077109c712a61357ceac3402d044512a358895bb880b6fecaed8",
-    "skills/zipbox-websearch/SKILL.md": "2222263e8f1b879a5ccd0d0deb3c7621b7ade33e143ee536cc269532bf6d7b80",
-    "skills/zipbox-x/SKILL.md": "1531dba70b9528d74d089e9147f45b3decd9a8355cedc6a7406bacd164c8f29e"
+    "skills/zipbox-api-keys/SKILL.md": "8f6a564e52c3bdfb2461168ba6806d378add4a01d504664b4b8d681d5c15bd2d",
+    "skills/zipbox-browser/SKILL.md": "750d4828ea7f78d45bf77f0e680bf7a396a2d0b89bd923f14066ee4c24584d26",
+    "skills/zipbox-caddy/SKILL.md": "68c0efefb5882cfe03ea4b1ad65667d7bcfd3070f45d05a496264a7f6f402415",
+    "skills/zipbox-desktop/SKILL.md": "4aae22d6394522577ca74a7a5bb87ea096c08e06fbdb518361e7f0d9bf06f62d",
+    "skills/zipbox-dns/SKILL.md": "f3ef5f4af65bb5ce263a295c0370ba37794e373d8894522b871d6737b2b95f38",
+    "skills/zipbox-email/SKILL.md": "f069e4c1d8b892a53755143255031e6538849306d256444dd01581939bcce9fc",
+    "skills/zipbox-geo/SKILL.md": "6587b663c0cca9c101c2fbe00afa92755efa65dee6938eaa7100f3e7cc50828e",
+    "skills/zipbox-image/SKILL.md": "9cece720bc498457527f79dc8fd667f96e971865bb626ae40d8d90c60240fb3b",
+    "skills/zipbox-notify/SKILL.md": "5decd7b4b4496376650af731ea8486f1974fc0730b772c4de5572547ade9ad27",
+    "skills/zipbox-wallet/SKILL.md": "bc37e8f69dad2ddfe6222fe3ef3a1b478a42ccb2a8e766a53d08c196cb984786",
+    "skills/zipbox-websearch/SKILL.md": "5eb91d8aafb9cbb38949272845e582afed95d5bea4a3f485472e0c06b3ba24d1",
+    "skills/zipbox-x/SKILL.md": "0694fe895ede0f42d58f8386d2fb7eef322c237dd46f92743026d4075675a9fa"
   }
 }

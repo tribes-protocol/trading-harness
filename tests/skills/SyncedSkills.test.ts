@@ -4,7 +4,7 @@ import { join, relative } from 'path'
 import { describe, expect, it } from 'vitest'
 
 /**
- * Drift guard for the skills vendored from tribes-protocol/ai-harness-setup.
+ * Drift guard for the skills vendored from tribes-protocol/terminal.
  *
  * `bun run skills:upgrade` writes skills/.synced.json = { upstreamSha, files:
  * { path: sha256 } } after prettier has run. Vendored files are machine-written

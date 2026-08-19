@@ -12,7 +12,7 @@ allowed-tools: bash read
 
 # Zipbox X (x.com)
 
-<!-- synced from tribes-protocol/ai-harness-setup — edit there, not here -->
+<!-- synced from tribes-protocol/terminal — edit there, not here -->
 
 Call the X v2 API directly at `api.x.com`. You do **not** hold an X credential: the
 platform injects one at the egress boundary and charges your wallet for what X
@@ -187,5 +187,6 @@ the whole follower graph, report that it is out of budget instead.
 
 ## Related skill
 
-- `zipbox-websearch` (`zipbox-websearch/SKILL.md`) — cheaper for general facts and
-  for anything not specifically about X activity.
+- `zipbox-websearch` (`zipbox-websearch/SKILL.md`) — general facts and anything not
+  specifically about X activity. Read it before searching: your harness may have a
+  free native web search, and the metered fallback is priced there.

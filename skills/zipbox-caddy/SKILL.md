@@ -6,7 +6,7 @@ allowed-tools: bash read
 
 # Caddy web server
 
-<!-- synced from tribes-protocol/ai-harness-setup — edit there, not here -->
+<!-- synced from tribes-protocol/terminal — edit there, not here -->
 
 **Danger first: Caddy is the only thing standing between the browser and this
 machine.** Inside this VM, Caddy terminates TLS on the sandbox's apex hostname
@@ -61,11 +61,12 @@ tribes-caddy add app.hish.zipbox.ai 127.0.0.1:3000
 to a local `<upstream>` (e.g. `127.0.0.1:3000`) and lets Caddy obtain a
 certificate for it.
 
-**Create the DNS record before you add the Caddy site.** Caddy asks a public CA
-(ACME) for a certificate the moment the site loads, and issuance **fails on a
-name that does not resolve** — every failed attempt is a wasted issuance you can
-get rate-limited on. Point the name at this VM first with the `zipbox-dns` skill
-(`zipbox-dns/SKILL.md`), then run `tribes-caddy add`.
+**No DNS step is needed first.** Every name under this sandbox's apex already
+resolves to this VM through a platform wildcard, so `tribes-caddy add` is the
+only command — Caddy asks a public CA (ACME) for a certificate the moment the
+site loads, and issuance needs the name to resolve, which it already does. See
+the `zipbox-dns` skill (`zipbox-dns/SKILL.md`) if you want a name pinned to a
+single stack; that is the only case that needs a record.
 
 ## Removing a site and checking state
 
