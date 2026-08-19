@@ -34,5 +34,15 @@ jobs:
       - name: Skills release digest verification
         run: bun run test:skills-release
 
+      - name: Skills drift check self-test
+        run: bun run test:skills-drift
+
+      # The only step here that talks to the network. It fails the build when the
+      # vendored catalog is behind the published one, and exits clean (with a
+      # warning annotation) when the bucket cannot be reached — a busy upstream is
+      # not drift. See the header of scripts/skills-drift-check.mjs.
+      - name: Skills registry drift vs published catalog
+        run: bun run check:skills-drift
+
       - name: Shared skills inheritance contract
         run: sudo -E sh test/shared-skills-install.test.sh

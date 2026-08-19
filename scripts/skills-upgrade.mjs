@@ -291,8 +291,19 @@ function runManifestPhase(sourceDir, repoRoot, release) {
 
   if (existsSync(manifestPath)) {
     const existing = JSON.parse(readFileSync(manifestPath, 'utf8'))
-    // Identical content under a new upstream sha is not a change worth a PR.
-    if (sameFileSet(existing.files ?? {}, files)) {
+    // Identical content under the same release is not a change worth a PR.
+    //
+    // The content address has to be part of that test, not just the file hashes.
+    // Those hashes are taken AFTER prettier, so an upstream release that only
+    // touched whitespace prettier normalizes away lands here as an unchanged file
+    // set under a NEW contentSha256 — and skipping the write would leave the
+    // manifest pinning a release that is no longer current. scripts/skills-drift-check.mjs
+    // compares exactly that field against latest.json, so it would then go red on
+    // every run with no upgrade able to clear it.
+    if (
+      sameFileSet(existing.files ?? {}, files) &&
+      existing.contentSha256 === release.contentSha256
+    ) {
       console.log('skills:upgrade: vendored content unchanged — leaving manifest untouched')
       return
     }
