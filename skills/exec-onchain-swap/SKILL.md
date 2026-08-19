@@ -147,7 +147,7 @@ addresses plus `evmWalletId` / `solWalletId` from `tribes-cli wallet list`.
 ## Escalation
 
 - `failed`, `partial-route`, or `unknown` without a hash → Execution Lead → the Head of Desk
-  notifies the human (`notify`) — money may be mid-route.
+  notifies the human (`zipbox-notify`) — money may be mid-route.
 - `route-unsupported` or an incomplete instruction → Portfolio Manager.
 - Repeated provider or broadcast failures → Engineering work order via `eng-triage`.
 
@@ -188,4 +188,4 @@ confirmed fill.
 - `exec-order-lifecycle` — venue-order confirmation; this skill owns its own tx polls.
 - `portfolio-reconcile` — folds the confirmed swap into the book.
 - `org-protocol` — journal-only idempotency, envelope, recovery passes.
-- `notify` — human alert when funds are mid-route or unknown.
+- `zipbox-notify` — human alert when funds are mid-route or unknown.

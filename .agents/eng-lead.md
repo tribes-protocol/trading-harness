@@ -59,7 +59,7 @@ Hard rules:
   WalletService.ts, SwapBridgeService.ts) pause in needs-human-approval BEFORE adoption; the
   desk keeps running the prior binary until the human approves (charter, approval boundaries).
 - Spend and control-plane changes (new billed provider, key injection, billing entry) are human
-  decisions: backlog entry + Head of Desk notifies the user (`notify`) — never a code
+  decisions: backlog entry + Head of Desk notifies the user (`zipbox-notify`) — never a code
   workaround, never self-approved.
 - One work order per symptom + command (idempotency); duplicates are appended, never reopened.
 - Never fabricate a verification result, an ack, or a route; missing evidence is stated, not

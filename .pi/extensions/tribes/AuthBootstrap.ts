@@ -98,15 +98,11 @@ function agentProxyTokenPath(): string {
 }
 
 export async function writeAuthEnv(cwd: string): Promise<void> {
-  const { stdout } = await execFileAsync(
-    'bun',
-    [agentProxyTokenPath(), '--force'],
-    {
-      cwd,
-      timeout: MINT_TIMEOUT_MS,
-      maxBuffer: MINT_MAX_BUFFER_BYTES
-    }
-  )
+  const { stdout } = await execFileAsync('bun', [agentProxyTokenPath(), '--force'], {
+    cwd,
+    timeout: MINT_TIMEOUT_MS,
+    maxBuffer: MINT_MAX_BUFFER_BYTES
+  })
 
   const env = await readDotEnv(cwd)
   for (const name of ENV_PASSTHROUGH) {

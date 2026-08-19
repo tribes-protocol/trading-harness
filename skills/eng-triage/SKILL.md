@@ -80,7 +80,7 @@ provider + command + source timestamp + retrieval timestamp per `org-protocol`.
 | Class                  | Signature                                             | Route                                                                                                                         |
 | ---------------------- | ----------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
 | auth                   | unauthorized/expired-token errors from the CLI itself | `tribes-cli login`, retry once (AGENTS.md); still failing → work order to Software Engineer, urgent                           |
-| provider-key-unset     | `key_unset` in the trail; provider key env empty      | Head of Desk → human (`notify`) — key injection is control-plane; backlog entry                                               |
+| provider-key-unset     | `key_unset` in the trail; provider key env empty      | Head of Desk → human (`zipbox-notify`) — key injection is control-plane; backlog entry                                        |
 | rate-limit             | `http_429`; venue/provider budget exhausted           | Not a defect: requester backs off and reuses snapshots per `org-protocol`; recurring → backlog (budget tuning)                |
 | provider-5xx / timeout | `http_5xx`, `timeout`, `http_408`                     | Transient: one retry per the harness rule; persistent → `eng-diagnose`                                                        |
 | schema / parse drift   | `parse_error`; zod messages naming fields             | `eng-diagnose`, then `eng-repair-integration`                                                                                 |
@@ -122,7 +122,7 @@ provider + command + source timestamp + retrieval timestamp per `org-protocol`.
 
 - Routing per the table. Anything needing spend or a control-plane change (new provider key,
   billing entry) → `.tribes/org/workorders/backlog.md` + Head of Desk notifies the human
-  (`notify`).
+  (`zipbox-notify`).
 - Urgent classes (auth broken desk-wide, a money-path command failing) → Engineering Lead
   immediately; the requesting department pauses use of the affected surface meanwhile.
 
@@ -154,4 +154,4 @@ Desk → human (control plane)", urgency normal, plus a backlog entry for the mi
 - `asset-data` — the router whose attempted[] trail is the classification probe.
 - `validate-contradictions` — owner of data-disagreement checks.
 - `org-protocol` — work-order layout, acks, atomic writes.
-- `notify` — human alerts for control-plane classes.
+- `zipbox-notify` — human alerts for control-plane classes.

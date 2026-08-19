@@ -2,14 +2,15 @@
 name: intel-social-sentiment
 description: >-
   Market Intelligence social-monitoring skill that reads X through the metered zipbox-x proxy
-  (recent search, post counts, profiles, timelines) with web-search as the free fallback, and
+  (recent search, post counts, profiles, timelines) with zipbox-websearch as the free fallback,
+  and
   writes spend-capped sentiment observations. Handles: crowd chatter volume and tone on a named
   asset, founder/project account activity, corroborating breaking social claims, and the
   hard cost-awareness rule — read the zipbox-x cost table BEFORE any billed call, size searches
   with counts first, never page beyond budget. Call it when the news cycle needs the social
   read or a claim needs primary-account confirmation. NOT for: analyzed asset headlines
   (use intel-news-collect); dedup and credibility scoring (use intel-news-triage); event odds
-  (use intel-event-catalysts); general web lookups (use web-search).
+  (use intel-event-catalysts); general web lookups (use zipbox-websearch).
 allowed-tools: bash read
 ---
 
@@ -61,8 +62,8 @@ social-only claim can never satisfy the evidence gate by itself.
   - `x_get 2/users/by/username/<handle>` — $0.010 per user.
   - `x_get 2/users/<id>/tweets --data-urlencode 'max_results=10' --data-urlencode
 'exclude=retweets,replies'` — $0.005 per post.
-- Free fallback / pre-check: `tribes-cli web-search search --query "<target> …"` — stdout
-  only (NO --out): redirect to a snapshot file.
+- Free fallback / pre-check: the `zipbox-websearch` skill's Tavily search — stdout only
+  (no `--out` on either transport): redirect to a snapshot file.
 - Cost table, wrapper definition, capability limits, error taxonomy: the `zipbox-x` skill —
   READ its cost table this session before the first billed call.
 
@@ -77,9 +78,23 @@ social-only claim can never satisfy the evidence gate by itself.
 
 ## Procedure
 
-1. Free path first for general chatter: `web-search search`, stdout redirected to
+1. Free path first for general chatter: `zipbox-websearch`, stdout redirected to
    `.tribes/org/snapshots/<UTC>-social-web-<slug>.json`. If it answers the question, write the
    observation from it and STOP — $0 spent.
+
+   ```bash
+   [ -n "${TAVILY_API_KEY:-}" ] || { set -a; . /run/zipbox/placeholders.env; set +a; }
+   curl --fail --silent --show-error --max-time 60 \
+     --request POST 'https://api.tavily.com/search' \
+     --header 'Content-Type: application/json' \
+     --header "Authorization: Bearer $TAVILY_API_KEY" \
+     --data '{"query":"<target> …","max_results":5}' \
+     > ".tribes/org/snapshots/<UTC>-social-web-<slug>.json"
+   ```
+
+   Outside a Tribes sandbox there is no `TAVILY_API_KEY` placeholder; `tribes-cli web-search
+search --query "<target> …"` reaches the same backend and redirects the same way.
+
 2. Plan the billed calls and their worst-case cost; abort to the free path if over budget.
 3. Size first: `counts/recent` ($0.005). Near-zero matches → record the volume fact, skip the
    search entirely.
@@ -124,14 +139,14 @@ social-only claim can never satisfy the evidence gate by itself.
 - `501` (no provider key configured) → not retryable; Engineering work order (`eng-triage`).
 - Empty `data` with a `meta` block → the query matched nothing (floor still billed): rewrite
   once, then record the no-chatter fact and stop.
-- `web-search` failure → retry once, then record `fallback-failed` and report what exists.
+- Web-search failure → retry once, then record `fallback-failed` and report what exists.
 - Idempotency: snapshots are the cache — a re-run for the same target reuses them within the
   `recent` window instead of re-buying pages.
 
 ## Timeouts & rate limits
 
 - Billed X calls: the wrapper carries `--max-time 60`; give the bash call a 90 s timeout.
-- `tribes-cli web-search search`: set a ≥ 120 s bash timeout — proxy searches can be slow.
+- The free web-search fallback: set a ≥ 120 s bash timeout — proxy searches can be slow.
 - Budget: default $0.30 per run, hard cap; one social run per target per cycle; `max_results`
   explicitly set on every list call; follower/following pages (up to $10.00 at 1000 users) are
   out of budget by default — report "out of budget" instead of buying the graph.
@@ -180,7 +195,8 @@ Success: observation `20260730T121200Z-social-hype-chatter.json` — volume fact
 ## Related skills
 
 - `zipbox-x` — wrapper definition, cost table, capability limits, error taxonomy.
-- `web-search` — the free fallback and non-X corroboration path.
+- `zipbox-websearch` — the free fallback and non-X corroboration path. Outside a sandbox,
+  `tribes-cli web-search` is the same backend.
 - `intel-news-collect` — the analyzed-news counterpart to this social read.
 - `intel-news-triage` — consumes corroboration flags for independence counting.
 - `validate-signal-score` — applies the evidence gate social data feeds into.

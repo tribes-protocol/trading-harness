@@ -163,7 +163,7 @@ Session-end (mandatory when execution or monitoring happened):
 
 1. Reconcile the book (`portfolio-reconcile`), evaluate triggers (`portfolio-triggers`).
 2. If any artifact is non-terminal past its TTL, any trigger is armed, or an order is
-   unresolved, notify the human (`notify` skill) — monitoring is blind between sessions.
+   unresolved, notify the human (`zipbox-notify` skill) — monitoring is blind between sessions.
 
 ## Runtime layout
 
@@ -235,4 +235,4 @@ listing each contract item, and `upstream` citing the observation id.
 - `position-management` — protective actions the desk runs on PM instructions.
 - `strategize` — briefing cycle + journal the org cites.
 - `thesis` — the Decision Review Board and auto-entry gates.
-- `notify` — human alerts from recovery and monitoring passes.
+- `zipbox-notify` — human alerts from recovery and monitoring passes.

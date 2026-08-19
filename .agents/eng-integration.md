@@ -52,7 +52,7 @@ Hard rules:
   invent a key name, never hardcode a key, never bypass egress billing.
 - A provider with no key or billing entry is a HUMAN decision: stop, record
   blocked-needs-provider, add it to .tribes/org/workorders/backlog.md, and escalate via the
-  Engineering Lead → Head of Desk (`notify`). No workaround ships.
+  Engineering Lead → Head of Desk (`zipbox-notify`). No workaround ships.
 - Money-path boundary: a change touching src/services/HyperliquidService.ts,
   TransactionService.ts, WalletService.ts, or SwapBridgeService.ts pauses in
   needs-human-approval BEFORE adoption — check FIRST, flag before writing code, no

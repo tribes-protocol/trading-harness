@@ -58,7 +58,7 @@ Hard rules:
   threshold field, limit, observed value, and source stamps.
 - No duplicate open events for the same (position | strategy, kind) — re-running you is
   idempotent. Every event needs a Portfolio Manager ack sidecar; follow up, then escalate.
-- Hard-limit breaches also notify the human (`notify`) via the Head of Desk — after the
+- Hard-limit breaches also notify the human (`zipbox-notify`) via the Head of Desk — after the
   protective request is raised. A position you cannot evaluate is escalated as
   protection-unknown, never assumed safe.
 - `.tribes/privy-wallets.json` is NEVER read.

@@ -43,8 +43,8 @@ a new billed provider stays with the human.
 
 ## Integration
 
-- Docs research: the `web-search` skill (search + one-URL extract); the `browser` skill only
-  when vendor docs are JS-gated.
+- Docs research: the `zipbox-websearch` skill (search + one-URL extract); the `zipbox-browser`
+  skill only when vendor docs are JS-gated.
 - Live testing: the provider's EXISTING tribes-cli read command where one exists (a real
   successful call is what upgrades status to `live-tested`); for a not-yet-integrated
   provider, live-testing waits for the adapter — status stays `docs-reviewed`.
@@ -99,8 +99,8 @@ a new billed provider stays with the human.
 
 ## Timeouts & rate limits
 
-- `web-search` calls: 60 s; JS-gated pages via `browser` per that skill's budget rules. Live
-  tests reuse pass snapshots where possible.
+- Web search calls: 60 s; JS-gated pages via `zipbox-browser` per that skill's budget rules.
+  Live tests reuse pass snapshots where possible.
 
 ## Observability
 
@@ -116,10 +116,22 @@ a new billed provider stays with the human.
 ## Example
 
 ```bash
-# re-verify a provider after an unexplained 429 pattern
-tribes-cli web-search search --query "Nansen API rate limits documentation"
-tribes-cli web-search extract --url https://docs.nansen.ai/api/rate-limits
+# re-verify a provider after an unexplained 429 pattern — see zipbox-websearch/SKILL.md
+[ -n "${TAVILY_API_KEY:-}" ] || { set -a; . /run/zipbox/placeholders.env; set +a; }
+curl --fail --silent --show-error --max-time 60 \
+  --request POST 'https://api.tavily.com/search' \
+  --header 'Content-Type: application/json' \
+  --header "Authorization: Bearer $TAVILY_API_KEY" \
+  --data '{"query":"Nansen API rate limits documentation","max_results":5}'
+curl --fail --silent --show-error --max-time 60 \
+  --request POST 'https://api.tavily.com/extract' \
+  --header 'Content-Type: application/json' \
+  --header "Authorization: Bearer $TAVILY_API_KEY" \
+  --data '{"urls":["https://docs.nansen.ai/api/rate-limits"]}'
 ```
+
+Outside a Tribes sandbox there is no `TAVILY_API_KEY` placeholder; `tribes-cli web-search
+search --query …` and `tribes-cli web-search extract --url …` reach the same backend there.
 
 Success: `docs/org/providers/nansen.md` updated — review date today, per-plan limits
 corrected from the official page (URL recorded), status `live-tested` retained with the prior
@@ -139,5 +151,7 @@ tightened per-minute quota.
 - `eng-triage` — failure classification that may trigger a re-verification.
 - `eng-diagnose` — code-level root cause once docs are ruled out.
 - `org-compliance` — licensing hygiene on the consuming side.
-- `web-search` — official-docs search and extraction.
-- `browser` — JS-gated vendor documentation.
+- `zipbox-websearch` — official-docs search and extraction. Outside a sandbox,
+  `tribes-cli web-search` is the same backend.
+- `zipbox-browser` — JS-gated vendor documentation. Outside a sandbox it has no equivalent, so
+  that hop is unavailable rather than stale.

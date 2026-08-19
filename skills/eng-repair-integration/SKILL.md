@@ -101,7 +101,7 @@ reference slice):
    result and ack to the Engineering Lead.
 8. Money-path boundary: a change touching `src/services/HyperliquidService.ts`,
    `TransactionService.ts`, `WalletService.ts`, or `SwapBridgeService.ts` PAUSES in
-   needs-human-approval BEFORE adoption — Head of Desk notifies the human (`notify`), the desk
+   needs-human-approval BEFORE adoption — Head of Desk notifies the human (`zipbox-notify`), the desk
    keeps running the prior binary, and `bun run bootstrap.sh` is NOT run until explicit
    approval is recorded in the work order.
 
@@ -149,7 +149,7 @@ reference slice):
 
 ## Escalation
 
-- needs-human-approval (money path) → Head of Desk → user (`notify`); prior binary keeps
+- needs-human-approval (money path) → Head of Desk → user (`zipbox-notify`); prior binary keeps
   running until approval.
 - New provider or spend → backlog + Head of Desk → human.
 - Verified change → Engineering Lead → requesting department with the work-order result; the
@@ -186,4 +186,4 @@ fixture provenance, and residual risk ("schema now tolerates extra fields").
 - `eng-triage` — classifies new failures discovered mid-repair.
 - `asset-data` — the router surface most adapter repairs sit behind.
 - `org-protocol` — work-order layout, backlog, acks.
-- `notify` — the human-approval and new-provider escalation channel.
+- `zipbox-notify` — the human-approval and new-provider escalation channel.

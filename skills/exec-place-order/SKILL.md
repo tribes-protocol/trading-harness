@@ -128,7 +128,7 @@ response). Never a fill claim: fills belong to `exec-order-lifecycle`.
 
 - `failed` → Execution Lead → Portfolio Manager (with venue error verbatim).
 - `unknown` unresolved after lifecycle checks → Execution Lead freezes the (dex, coin) and the
-  Head of Desk notifies the human (`notify`).
+  Head of Desk notifies the human (`zipbox-notify`).
 
 ## Example
 

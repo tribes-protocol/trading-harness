@@ -136,7 +136,7 @@ bitcoin` or `tribes-cli hyperliquid list-assets --dex main --out /tmp/smoke-asse
 
 - pass → Engineering Lead → requesting department, with the result and ack.
 - pass on a money-path change → Engineering Lead → Head of Desk → human approval before
-  adoption (`notify`).
+  adoption (`zipbox-notify`).
 - fail → back to the authoring engineer with the named gate; two failed cycles on one work
   order → re-enter `eng-diagnose` with the accumulated evidence.
 

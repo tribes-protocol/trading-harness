@@ -146,7 +146,7 @@ the venue open-order sweep.
 ## Escalation
 
 - Unresolved `unknown` or unreachable venue evidence → Execution Lead freezes the
-  (dex, coin); the Head of Desk notifies the human (`notify`) before the session ends.
+  (dex, coin); the Head of Desk notifies the human (`zipbox-notify`) before the session ends.
 - Fill-vs-expectation discrepancies → Portfolio Manager via `portfolio-reconcile`.
 - Technical venue errors → Engineering work order via `eng-triage`.
 
@@ -182,4 +182,4 @@ is handed to Portfolio Management.
 - `position-management` — protective-exit procedures run on PM instructions.
 - `org-protocol` — unknown rules, recovery passes, envelope, budgets.
 - `hyperliquid` — full flag reference for status, fills, and cancel commands.
-- `notify` — human alert when an unknown cannot be resolved in-session.
+- `zipbox-notify` — human alert when an unknown cannot be resolved in-session.

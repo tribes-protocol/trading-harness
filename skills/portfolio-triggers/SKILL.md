@@ -168,7 +168,7 @@ to LOOSEN; soft floors are Portfolio Manager discretion, still recorded:
 - Protective events → Portfolio Manager → reduce-only instruction (`portfolio-rebalance`) →
   Execution Desk.
 - Hard-limit breaches (drawdown, liquidation distance, allocation) → ALSO the Head of Desk
-  notifies the human (`notify`) — after the protective request is raised, per the charter.
+  notifies the human (`zipbox-notify`) — after the protective request is raised, per the charter.
 - Entry events → Portfolio Manager for the full state-5 contract; no shortcut.
 - Unevaluable positions or repeated data failures → Engineering work order.
 
@@ -201,5 +201,5 @@ human notified (hard limit).
 - `portfolio-rebalance` — turns trigger events into trade instructions.
 - `org-protocol` — envelope, serialization, freshness, recovery.
 - `thesis` — re-evaluation outcomes; protective triggers outrank them.
-- `notify` — human notification on hard-limit breaches.
+- `zipbox-notify` — human notification on hard-limit breaches.
 - `hyperliquid` — read-command reference.

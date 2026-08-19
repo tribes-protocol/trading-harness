@@ -141,7 +141,7 @@ Portfolio Manager's act, taken on this report's evidence.
 ## Escalation
 
 - `discrepancy` → Portfolio Manager: halt the asset. Money unaccounted (ledger or balance
-  unexplained) → Head of Desk notifies the human (`notify`) immediately.
+  unexplained) → Head of Desk notifies the human (`zipbox-notify`) immediately.
 - Missing brackets → protective-instruction request to the Portfolio Manager
   (`portfolio-rebalance` mints; the Execution Desk places).
 - Technical provider failures → Engineering work order (`eng-triage`).
@@ -177,4 +177,4 @@ one position (protective request raised), cursor advanced.
 - `portfolio-rebalance` — the instruction mint fed by this report.
 - `exec-order-lifecycle` — resolves order states before this diff runs.
 - `hyperliquid` — full reference for the read commands.
-- `notify` — human alert when money is unaccounted for.
+- `zipbox-notify` — human alert when money is unaccounted for.

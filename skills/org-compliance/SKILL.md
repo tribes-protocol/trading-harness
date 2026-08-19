@@ -110,7 +110,7 @@ periodic pass writes a work-order-style report under `.tribes/org/workorders/`.
 ## Escalation
 
 - `blocked` → the gated promotion/publication halts; producer department lead + Head of Desk
-  notified. Restricted-list and bypass findings → Head of Desk → the human (`notify`).
+  notified. Restricted-list and bypass findings → Head of Desk → the human (`zipbox-notify`).
 - First-line disagreement → recorded verbatim in the artifact's `dissents[]`; the finding
   stands until the Head of Desk or the human overrules it in writing.
 
@@ -140,4 +140,4 @@ condition: corroborate or drop the claim before the instruction is minted.
 - `intel-news-triage` — the independence rule the source audit enforces.
 - `intel-social-sentiment` — the metered X reads whose claims get audited.
 - `eng-provider-dd` — licensing facts per provider.
-- `notify` — human alerts on blocked and bypass findings.
+- `zipbox-notify` — human alerts on blocked and bypass findings.

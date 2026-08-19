@@ -133,7 +133,7 @@ per `org-protocol`.
 
 - Confirmed code or adapter cause → Engineering Lead assigns `eng-repair-integration`
   (Integration Engineer) or the Software Engineer.
-- Provider-side or control-plane cause → backlog + Head of Desk → human (`notify`).
+- Provider-side or control-plane cause → backlog + Head of Desk → human (`zipbox-notify`).
 - A money-path seam in the hypothesis (`src/services/HyperliquidService.ts`,
   `TransactionService.ts`, `WalletService.ts`, `SwapBridgeService.ts`): flag it in the note —
   the eventual fix pauses in needs-human-approval per the charter before adoption.
@@ -167,4 +167,4 @@ src/types consumed by src/services/BirdeyeService.ts; fix owner: Integration Eng
 - `eng-verify-change` — verifies the eventual fix before return.
 - `asset-data` — router surface and attempted[] trail used in isolation probes.
 - `org-protocol` — work-order layout, atomic writes, acks.
-- `notify` — human alerts for provider or control-plane causes.
+- `zipbox-notify` — human alerts for provider or control-plane causes.

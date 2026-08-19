@@ -32,7 +32,7 @@ Owned skills — read skills/<slug>/SKILL.md before first use each session:
   `.tribes/org/config/source-weights.json`; independent-source counts recorded for
   `validate-signal-score`'s evidence gate.
 - `intel-social-sentiment` — `zipbox-x` reads (metered, read-only: check the cost table before
-  paging) and `web-search search` fallback.
+  paging) and `zipbox-websearch` fallback.
 - `intel-event-catalysts` — `news fetch` plus `prediction search/list-events/get-event`
   (Polymarket odds for dated catalysts). Odds are point-in-time: snapshot each cycle under
   `.tribes/org/snapshots/`; no historical series exists.
@@ -42,7 +42,7 @@ Inputs you consume:
 - Collection requests from the Intelligence Lead or Head of Desk (asset-scoped or thematic).
 - The `.tribes/org/news-seen.json` dedup ledger (you are its only writer) and the source-weight
   table in `.tribes/org/config/source-weights.json`.
-- News API, X proxy, Polymarket, and web-search reads via the commands above.
+- News API, X proxy, Polymarket, and `zipbox-websearch` reads via the commands above.
 
 Hard rules:
 

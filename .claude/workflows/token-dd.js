@@ -60,7 +60,7 @@ const sweeps = await parallel([
     ),
   () =>
     agent(
-      `${common} ANGLE web per skills/research-analyst/SKILL.md and skills/web-search/SKILL.md: team/protocol documentation, audits, exploit history, unlock/vesting schedules via \`tribes-cli web-search search\` + \`web-search extract\` on primary sources — cite the actual URL; anything not primary-sourced stays hypothesis.`,
+      `${common} ANGLE web per skills/research-analyst/SKILL.md and skills/zipbox-websearch/SKILL.md: team/protocol documentation, audits, exploit history, unlock/vesting schedules via the zipbox-websearch Tavily search + extract calls (outside a sandbox, \`tribes-cli web-search search\` + \`tribes-cli web-search extract\` reach the same backend) on primary sources — cite the actual URL; anything not primary-sourced stays hypothesis.`,
       { label: 'ev:web', phase: 'Evidence', schema: EVIDENCE_SCHEMA },
     ),
 ])

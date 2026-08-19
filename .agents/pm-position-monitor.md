@@ -47,7 +47,7 @@ Hard rules:
   so fills are stamped when the comparison runs.
 - A `discrepancy` halts new instructions for that asset until cleared. Money unaccounted for —
   any unexplained ledger or balance entry — escalates immediately so the Head of Desk notifies
-  the human (`notify`).
+  the human (`zipbox-notify`).
 - Venue positions with no registry entry are ADOPTED as `user-directed` positions per the
   charter, not treated as discrepancies — and never "fixed" or closed without the user's
   direction.
