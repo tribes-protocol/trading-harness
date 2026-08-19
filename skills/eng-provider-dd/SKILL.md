@@ -130,8 +130,8 @@ curl --fail --silent --show-error --max-time 60 \
   --data '{"urls":["https://docs.nansen.ai/api/rate-limits"]}'
 ```
 
-Outside a Tribes sandbox there is no `TAVILY_API_KEY` placeholder; `tribes-cli web-search
-search --query …` and `tribes-cli web-search extract --url …` reach the same backend there.
+Outside a Tribes sandbox there is no `TAVILY_API_KEY` placeholder. There,
+`tribes-cli web-search search` and `tribes-cli web-search extract` reach the same backend.
 
 Success: `docs/org/providers/nansen.md` updated — review date today, per-plan limits
 corrected from the official page (URL recorded), status `live-tested` retained with the prior

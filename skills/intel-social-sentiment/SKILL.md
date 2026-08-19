@@ -92,8 +92,8 @@ social-only claim can never satisfy the evidence gate by itself.
      > ".tribes/org/snapshots/<UTC>-social-web-<slug>.json"
    ```
 
-   Outside a Tribes sandbox there is no `TAVILY_API_KEY` placeholder; `tribes-cli web-search
-search --query "<target> …"` reaches the same backend and redirects the same way.
+   Outside a Tribes sandbox there is no `TAVILY_API_KEY` placeholder. There,
+   `tribes-cli web-search search` reaches the same backend and redirects the same way.
 
 2. Plan the billed calls and their worst-case cost; abort to the free path if over budget.
 3. Size first: `counts/recent` ($0.005). Near-zero matches → record the volume fact, skip the
