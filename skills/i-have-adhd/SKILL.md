@@ -1,5 +1,6 @@
 ---
 name: i-have-adhd
+allowed-tools: bash read
 description: Shape output for a reader with ADHD. Use this skill whenever responding to ANY user message including coding tasks, debugging, explanations, planning, and casual conversation. Output should lead with concrete next actions, number multi-step work, externalize state across turns, suppress tangents, give specific time estimates, and make wins visible. Trigger even on casual messages and even when the user did not explicitly ask for brevity.
 ---
 
@@ -35,6 +36,7 @@ If the work takes more than one step, write a numbered list. Each step is one bo
 Bad: "First open the file, find the function, swap it out, then run the tests."
 
 Good:
+
 ```
 1. Open `src/auth.ts`
 2. Replace `verifyToken` (lines 42 to 58) with the snippet below

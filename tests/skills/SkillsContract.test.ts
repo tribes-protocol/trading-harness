@@ -31,6 +31,23 @@ const PRIVY_SNAPSHOT = '.tribes/privy-wallets.json'
 
 const MAX_LINES = 300
 
+// scripts/skills-upgrade.mjs stamps this provenance line after the H1 of every
+// vendored skill, and `bun run format` then pads it with a blank line. Upstream
+// (harnesses/setup/test/skills-contract.test.sh) budgets the SAME 300 lines we
+// do, measured on the file its authors wrote — so counting our own two injected
+// lines against that budget makes the cap unsatisfiable for any upstream doc
+// that uses it fully (zipbox-image: 299 authored, 301 vendored). Measure what
+// upstream wrote; the cap itself is unchanged.
+const SYNC_MARKER = '<!-- synced from tribes-protocol/terminal — edit there, not here -->'
+
+function authoredLineCount(raw: string): number {
+  const lines = raw.trimEnd().split('\n')
+  const marker = lines.indexOf(SYNC_MARKER)
+  if (marker === -1) return lines.length
+  lines.splice(marker, lines[marker + 1] === '' ? 2 : 1)
+  return lines.length
+}
+
 function skillSlugs(): string[] {
   return readdirSync(SKILLS_DIR).filter((entry) => statSync(join(SKILLS_DIR, entry)).isDirectory())
 }
@@ -86,7 +103,7 @@ describe('skill docs contract', () => {
 
       it('has an H1 title and stays within the line cap', () => {
         expect(parsed.body).toMatch(/^\n*# .+/)
-        const lines = parsed.raw.trimEnd().split('\n').length
+        const lines = authoredLineCount(parsed.raw)
         expect(lines, `SKILL.md is ${lines} lines; cap is ${MAX_LINES}`).toBeLessThanOrEqual(
           MAX_LINES
         )
@@ -148,5 +165,69 @@ describe('AGENTS.md routing map', () => {
       if (slug === 'tribes-login') continue
       expect(referenced.has(slug), `routing map is missing skill: ${slug}`).toBe(true)
     }
+  })
+})
+
+/**
+ * Guards the marker exclusion in authoredLineCount above.
+ *
+ * The exclusion exists because the two caps measure different artifacts: terminal
+ * enforces 300 on the file its authors write, and the vendor step hands this repo
+ * that file plus two injected lines. The correct fix is to stop counting the two
+ * injected lines — NOT to raise the cap to 302, which would also let a genuinely
+ * over-long doc through. These cases pin that difference so the "simplification"
+ * fails a test instead of quietly buying 2 lines of slack.
+ *
+ * These cases cannot themselves catch marker drift: they build their fixtures from
+ * SYNC_MARKER, so they stay green whatever it says. The alarm for drift is the real
+ * per-skill cap check above — zipbox-image is 301 raw / 299 authored, so the moment
+ * SYNC_MARKER stops matching what scripts/skills-upgrade.mjs injects, the exclusion
+ * misses, that skill counts 301 > 300, and its case goes red.
+ */
+describe('authored line count', () => {
+  const HEAD_LINES = 8 // frontmatter (5) + blank + H1 + blank
+
+  function vendoredDoc(bodyLines: number, withMarker: boolean): string {
+    const head = [
+      '---',
+      'name: x',
+      'description: d',
+      'allowed-tools: bash read',
+      '---',
+      '',
+      '# X',
+      ''
+    ]
+    const marker = withMarker ? [SYNC_MARKER, ''] : []
+    const body = Array.from({ length: bodyLines }, (_, i) => `line ${i + 1}`)
+    return [...head, ...marker, ...body].join('\n')
+  }
+
+  it('counts a doc that carries no marker exactly as written', () => {
+    const raw = vendoredDoc(10, false)
+    expect(authoredLineCount(raw)).toBe(raw.trimEnd().split('\n').length)
+    expect(authoredLineCount(raw)).toBe(HEAD_LINES + 10)
+  })
+
+  it('subtracts exactly the two injected lines, so a vendored doc counts as authored', () => {
+    const vendored = vendoredDoc(10, true)
+    const authored = vendoredDoc(10, false)
+    expect(vendored.trimEnd().split('\n').length).toBe(HEAD_LINES + 10 + 2)
+    expect(authoredLineCount(vendored)).toBe(authoredLineCount(authored))
+    expect(authoredLineCount(vendored)).toBe(HEAD_LINES + 10)
+  })
+
+  it('still fails a vendored doc whose AUTHORED content exceeds the cap', () => {
+    const raw = vendoredDoc(MAX_LINES + 3 - HEAD_LINES, true)
+    expect(raw.trimEnd().split('\n').length).toBe(MAX_LINES + 5)
+    expect(authoredLineCount(raw)).toBe(MAX_LINES + 3)
+    expect(authoredLineCount(raw)).toBeGreaterThan(MAX_LINES)
+  })
+
+  it('passes a vendored doc that spends its full authored budget', () => {
+    const raw = vendoredDoc(MAX_LINES - HEAD_LINES, true)
+    expect(raw.trimEnd().split('\n').length).toBe(MAX_LINES + 2)
+    expect(authoredLineCount(raw)).toBe(MAX_LINES)
+    expect(authoredLineCount(raw)).toBeLessThanOrEqual(MAX_LINES)
   })
 })
