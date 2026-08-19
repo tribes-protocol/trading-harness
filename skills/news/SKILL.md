@@ -116,6 +116,7 @@ Use only when the CLI path is exhausted (see Error recovery) or the topic has no
 - `prediction` — event odds and market-implied probabilities.
 - `zipbox-websearch` — general web search and the first hop of the fallback chain.
   Outside a sandbox, `tribes-cli web-search` is the same backend.
-- `zipbox-browser` — JS-gated or fetch-blocked pages during fallback.
+- `zipbox-browser` — JS-gated or fetch-blocked pages during fallback. Outside a sandbox it has no
+  equivalent, so that hop is unavailable rather than stale.
 - `spot-trading` — documents `tribes-cli token search` (symbol → chainId + address).
 - `strategize` — consumes this skill's output for full market briefings.

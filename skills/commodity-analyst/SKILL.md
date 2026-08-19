@@ -149,7 +149,8 @@ GAPS: <unavailable source, missing market data, or none>
 - `research-analyst` — cited supply/demand and policy research.
 - `zipbox-websearch` — first fallback hop for commodity headlines. Outside a sandbox,
   `tribes-cli web-search` is the same backend.
-- `zipbox-browser` — only for JS-gated or blocked sources.
+- `zipbox-browser` — only for JS-gated or blocked sources. Outside a sandbox it has no equivalent,
+  so that hop is unavailable rather than stale.
 - `technical-analyst` — trend, volatility, entry, target, and invalidation analysis.
 - `hyperliquid` — all-dex discovery, venue quality, and execution mechanics.
 - `thesis` — judge-led debate for a selected commodity candidate.

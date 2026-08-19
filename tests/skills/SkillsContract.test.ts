@@ -178,9 +178,11 @@ describe('AGENTS.md routing map', () => {
  * over-long doc through. These cases pin that difference so the "simplification"
  * fails a test instead of quietly buying 2 lines of slack.
  *
- * They also pin the coupling: if upstream changes the marker text, or the vendor
- * step starts injecting a third line, the first two cases go red rather than the
- * cap silently drifting.
+ * These cases cannot themselves catch marker drift: they build their fixtures from
+ * SYNC_MARKER, so they stay green whatever it says. The alarm for drift is the real
+ * per-skill cap check above — zipbox-image is 301 raw / 299 authored, so the moment
+ * SYNC_MARKER stops matching what scripts/skills-upgrade.mjs injects, the exclusion
+ * misses, that skill counts 301 > 300, and its case goes red.
  */
 describe('authored line count', () => {
   const HEAD_LINES = 8 // frontmatter (5) + blank + H1 + blank

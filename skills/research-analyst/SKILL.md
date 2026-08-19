@@ -114,6 +114,7 @@ and outlook with a citation per claim.
 - `news` — first stop for market/asset news, catalysts, and sentiment.
 - `zipbox-websearch` — one quick search, reading one known URL, or non-finance topics. Outside
   a sandbox, this skill's own `tribes-cli web-search` commands are the same backend.
-- `zipbox-browser` — deep multi-page reading/crawling and JS-gated or fetch-blocked pages.
+- `zipbox-browser` — deep multi-page reading/crawling and JS-gated or fetch-blocked pages. Outside
+  a sandbox it has no equivalent, so that hop is unavailable rather than stale.
 - `fundamentals-analyst` — structured research profile of one listed coin.
 - `wallet-analyst` — on-chain activity of an address after ENS resolution.

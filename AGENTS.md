@@ -145,7 +145,12 @@ Pick the skill with these tie-breaker rules, in order:
   resort or to read a specific URL → `zipbox-browser` only for JS-gated or fetch-blocked pages.
   Outside a Tribes sandbox `zipbox-websearch` has no credential; `tribes-cli web-search search`
   and `tribes-cli web-search extract` are the same backend and keep working there after
-  `tribes-cli login`. Never reach for `zipbox-browser` to get market/asset news or sentiment
+  `tribes-cli login`. `zipbox-browser` has no such fallback: it assumes the baked sandbox runtime
+  and no `tribes-cli browser` command exists, so outside a Tribes sandbox the browser route is
+  unavailable — say the page needs a browser this environment does not have and answer from the
+  fetch path. A missing baked command outside a sandbox means the runtime was never baked, NOT that
+  the image is stale; never report a stale-sandbox diagnosis there. Never reach for `zipbox-browser`
+  to get market/asset news or sentiment
   (that is `news`) or market, token, or stock data (that is the matching analyst skill) — it is
   for pages the fetch path cannot render, not a way around the finance routing above.
 
