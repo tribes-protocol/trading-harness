@@ -80,9 +80,11 @@ setup_swapfile() {
 setup_swapfile || echo "[bootstrap] swap: setup did not complete (non-fatal, continuing)"
 
 echo "[bootstrap] installing deps (incl. the pinned pi CLI)…"
-# Pi ships as a devDependency -> node_modules/.bin/pi, on PATH via vm-init.
-# --frozen-lockfile uses the committed bun.lock (skips resolution: faster +
-# deterministic); fall back to a normal install if the lockfile is ever stale.
+# Pi ships as a devDependency -> node_modules/.bin/pi (needed for typecheck +
+# the pinned-type tests). The RUNTIME pi the user runs is a real global npm
+# install (see below) so `pi update` self-updates; this bun devDep is only the
+# build-time type source. --frozen-lockfile uses the committed bun.lock (skips
+# resolution: faster + deterministic); fall back to a normal install if stale.
 bun install --frozen-lockfile || bun install
 
 # @solana/web3.js pulls in bigint-buffer, whose native binding is optional.
@@ -104,16 +106,84 @@ fs.writeFileSync(target, source.replace(warning, "        // Native bigint-buffe
 
 quiet_bigint_buffer_warning
 
-# Expose pi at /usr/local/bin/pi so it resolves by name from ANY shell — incl.
-# the interactive `bash -l` the sandbox drops you into between agent runs, whose
-# login-reset PATH drops node_modules/.bin. Vanilla harnesses install pi to
-# /usr/local/bin too (npm -g); match that so `which pi` is identical everywhere.
-# A symlink (not a copy) keeps pi next to its node_modules so its requires still
-# resolve.
-if ln -sf "$PWD/node_modules/.bin/pi" /usr/local/bin/pi 2>/dev/null; then
-  echo "[bootstrap] linked pi -> /usr/local/bin/pi"
+# Install pi as a REAL global npm package so the RUNTIME pi the user runs can
+# self-update (`pi update`). Pi's updater refuses a bun-workspace devDep: it only
+# accepts an install whose package dir sits under a global root — either `npm root
+# -g` or the `<prefix>/lib/node_modules` shape (verified in pi's dist/config.js
+# getSelfUpdateCommand -> isManagedByGlobalPackageManager). npm's global prefix
+# here is /root/.npm-global, so the package lands at
+# /root/.npm-global/lib/node_modules/@earendil-works/pi-coding-agent — the exact
+# `<prefix>/lib/node_modules` shape the updater accepts. /root is persistent for
+# ATA (unlike the read-only harness drive), so the global install sticks and is
+# updatable in place. /root/.npm-global/bin is FIRST on PATH in every shell
+# (agent + login `bash -l`), so this global pi wins over the bun devDep.
+#
+# Pin the version to package.json's devDependency so the two never diverge, and
+# keep the whole step idempotent (skip if the pinned version is already the
+# global one) and NON-FATAL: a registry hiccup must not block boot — pi then
+# still resolves from node_modules/.bin (works, just can't self-update).
+PI_PKG="@earendil-works/pi-coding-agent"
+PI_VERSION="$(node -p "require('./package.json').devDependencies['$PI_PKG']" 2>/dev/null || true)"
+NPM_PREFIX="$(npm config get prefix 2>/dev/null || true)"
+# Hardcode the fallback to npm's real global prefix. Do NOT compute $HOME/.npm-global:
+# the ata branch invokes bootstrap with HOME=/root/workspace, which would resolve to
+# /root/workspace/.npm-global — not where npm installs (that's NPM_CONFIG_PREFIX=/root/.npm-global).
+[ -n "$NPM_PREFIX" ] || NPM_PREFIX="/root/.npm-global"
+
+install_pi_global() {
+  # Reject an empty version and the literal "undefined" node -p prints when the
+  # devDep key is missing; require a numeric leading char so a stray "^"/"~" range
+  # or non-version string never becomes `npm i -g …@undefined`/`@^0.80.3`.
+  case "$PI_VERSION" in
+    [0-9]*) : ;;
+    *)
+      echo "[bootstrap] pi: no usable pinned version from package.json ('$PI_VERSION'); skipping global install"
+      return 1
+      ;;
+  esac
+  PI_GLOBAL_PKG_JSON="$NPM_PREFIX/lib/node_modules/$PI_PKG/package.json"
+  if [ -f "$PI_GLOBAL_PKG_JSON" ]; then
+    CURRENT="$(node -p "require('$PI_GLOBAL_PKG_JSON').version" 2>/dev/null || true)"
+    if [ "$CURRENT" = "$PI_VERSION" ]; then
+      echo "[bootstrap] pi: global install already at $PI_VERSION; skipping"
+      return 0
+    fi
+  fi
+  echo "[bootstrap] pi: installing $PI_PKG@$PI_VERSION globally (npm -g) for self-update support…"
+  npm install -g "$PI_PKG@$PI_VERSION"
+}
+
+install_pi_global \
+  || echo "[bootstrap] pi: global install did not complete (non-fatal); pi still runs from node_modules/.bin"
+
+# Point the stable /usr/local/bin/pi at the RUNTIME pi so `which pi` is identical
+# from ANY shell (incl. a login shell whose reset PATH could drop node_modules/.bin).
+# Prefer the global install (self-updatable); fall back to the bun devDep only if
+# the global install didn't land, so pi always resolves by name. A symlink (not a
+# copy) keeps pi next to its node_modules so its requires still resolve.
+PI_GLOBAL_BIN="$NPM_PREFIX/bin/pi"
+if [ -e "$PI_GLOBAL_BIN" ] || [ -L "$PI_GLOBAL_BIN" ]; then
+  PI_LINK_TARGET="$PI_GLOBAL_BIN"
 else
-  echo "[bootstrap] could not link pi into /usr/local/bin (still on PATH via node_modules/.bin)"
+  # Global install didn't land. Symlink the bun devDep into the writable, PATH-first
+  # npm-global prefix so the SAME pi wins in EVERY shell. Do NOT point at
+  # node_modules/.bin here: the ata agent PATH has no node_modules/.bin, and a REAL
+  # baked pi at /opt/zipbox/harnesses/defaults/bin outranks /usr/local/bin on every
+  # PATH — so `which pi` would split between the agent (baked) and a login shell
+  # (devDep), the exact drift this link exists to prevent. Non-fatal.
+  mkdir -p "$NPM_PREFIX/bin" 2>/dev/null || true
+  if ln -sf "$PWD/node_modules/.bin/pi" "$NPM_PREFIX/bin/pi" 2>/dev/null; then
+    echo "[bootstrap] pi: global install absent; linked devDep -> $NPM_PREFIX/bin/pi (consistent across shells)"
+    PI_LINK_TARGET="$NPM_PREFIX/bin/pi"
+  else
+    echo "[bootstrap] pi: could not link devDep into $NPM_PREFIX/bin; falling back to node_modules/.bin"
+    PI_LINK_TARGET="$PWD/node_modules/.bin/pi"
+  fi
+fi
+if ln -sf "$PI_LINK_TARGET" /usr/local/bin/pi 2>/dev/null; then
+  echo "[bootstrap] linked pi -> $PI_LINK_TARGET"
+else
+  echo "[bootstrap] could not link pi into /usr/local/bin (still on PATH via npm-global/bin or node_modules/.bin)"
 fi
 
 # Pre-install the Pi extensions this agent declares in .pi/agent/settings.json
@@ -137,11 +207,17 @@ for ext in pi-subagents pi-prompt-template-model; do
 done
 
 # NOTE: do NOT run `pi update` here. This repo PINS pi (@earendil-works/
-# pi-coding-agent + pi-tui at 0.79.8) and the .pi extensions are written against
-# that exact API. Updating pi out from under them desyncs the runtime from the
-# pinned extension API and breaks the tribes extension's session_start hook —
+# pi-coding-agent + pi-tui at 0.80.3) and the .pi extensions are written against
+# that exact API. Updating pi out from under them at boot desyncs the runtime from
+# the pinned extension API and breaks the tribes extension's session_start hook —
 # which silently leaves .env unwritten (no bearer token → every proxy/wallet
 # call fails). Bump the pin in package.json + bun.lock instead.
+#
+# What this PR DOES intentionally enable: the RUNTIME pi is now a real global npm
+# install, so a user's own `pi update` (→ 0.80.10+) moves the runtime pi AHEAD of
+# the 0.80.3-pinned devDep and extensions. That user-initiated desync is the
+# shipped feature, not a bug — a future reader shouldn't be surprised that
+# `which pi` can report a version newer than package.json's pin.
 
 ENTRY="src/cli/Tribes.ts"
 # Build artifact. node_modules/.bin is writable and already on PATH in the
