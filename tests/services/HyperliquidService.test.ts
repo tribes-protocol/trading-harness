@@ -331,3 +331,108 @@ describe('HyperliquidService candles', () => {
     })
   })
 })
+
+
+describe('HyperliquidService entry-trigger gate enforcement', () => {
+  async function gateService(): Promise<{ entryGate: import('@/services/EntryGateService').EntryGateService; stateDir: string }> {
+    const { mkdtemp, rm } = await import('node:fs/promises')
+    const { tmpdir } = await import('node:os')
+    const { join } = await import('node:path')
+    const { EntryGateService } = await import('@/services/EntryGateService')
+    const stateDir = await mkdtemp(join(tmpdir(), 'entry-gate-hl-'))
+    const entryGate = new EntryGateService({ stateDir })
+    await entryGate.load()
+    return { entryGate, stateDir }
+  }
+
+  test('refuses a position-increasing order pre-broadcast when the coin gate is not fired', async () => {
+    const { entryGate } = await gateService()
+    const metaAndAssetCtxs = vi.fn().mockResolvedValue([MAIN_META, [MAIN_CONTEXT]])
+    const service = createService({ metaAndAssetCtxs, perpDexs: vi.fn() }) as unknown as {
+      tradePerp: (params: unknown) => Promise<unknown>
+    }
+    // Rebuild with the gate wired in (createService does not inject one).
+    const params: HyperliquidServiceParams = {
+      transaction: {} as HyperliquidServiceParams['transaction'],
+      infoClient: { metaAndAssetCtxs, perpDexs: vi.fn() } as unknown as InfoClient,
+      entryGate
+    }
+    const gated = new HyperliquidService(params)
+
+    await expect(
+      gated.tradePerp({
+        request: {
+          from: '0xbb64c24a6b2ee1185621490d2a1ae06522f15f57',
+          coin: 'BTC',
+          amount: new (await import('bignumber.js')).default(0.001),
+          side: 'long',
+          type: 'market',
+          reduceOnly: false,
+          walletId: 'w'
+        },
+        walletId: 'w'
+      } as never)
+    ).rejects.toThrow('entry trigger gate')
+    expect(metaAndAssetCtxs).toHaveBeenCalled()
+  })
+
+  test('never blocks a reduce-only close (exits pass the gate)', async () => {
+    const { entryGate } = await gateService()
+    const metaAndAssetCtxs = vi.fn().mockResolvedValue([MAIN_META, [MAIN_CONTEXT]])
+    const params: HyperliquidServiceParams = {
+      transaction: {} as HyperliquidServiceParams['transaction'],
+      infoClient: { metaAndAssetCtxs, perpDexs: vi.fn() } as unknown as InfoClient,
+      entryGate
+    }
+    const gated = new HyperliquidService(params)
+
+    // The close proceeds past the gate; it fails downstream at the exchange
+    // layer (no wallet wired in the test), NOT with the gate refusal.
+    const error = await gated
+      .tradePerp({
+        request: {
+          from: '0xbb64c24a6b2ee1185621490d2a1ae06522f15f57',
+          coin: 'BTC',
+          amount: new (await import('bignumber.js')).default(0.001),
+          side: 'short',
+          type: 'market',
+          reduceOnly: true,
+          walletId: 'w'
+        },
+        walletId: 'w'
+      } as never)
+      .then(() => null)
+      .catch((e: unknown) => e)
+    expect(error).not.toBeNull()
+    expect(String(error)).not.toContain('entry trigger gate')
+  })
+
+  test('allows an opening order once the gate is trigger_fired within TTL', async () => {
+    const { entryGate } = await gateService()
+    await entryGate.fireTrigger('main', 'BTC', 60_000)
+    const metaAndAssetCtxs = vi.fn().mockResolvedValue([MAIN_META, [MAIN_CONTEXT]])
+    const params: HyperliquidServiceParams = {
+      transaction: {} as HyperliquidServiceParams['transaction'],
+      infoClient: { metaAndAssetCtxs, perpDexs: vi.fn() } as unknown as InfoClient,
+      entryGate
+    }
+    const gated = new HyperliquidService(params)
+
+    const error = await gated
+      .tradePerp({
+        request: {
+          from: '0xbb64c24a6b2ee1185621490d2a1ae06522f15f57',
+          coin: 'BTC',
+          amount: new (await import('bignumber.js')).default(0.001),
+          side: 'long',
+          type: 'market',
+          reduceOnly: false,
+          walletId: 'w'
+        },
+        walletId: 'w'
+      } as never)
+      .then(() => null)
+      .catch((e: unknown) => e)
+    expect(String(error)).not.toContain('entry trigger gate')
+  })
+})

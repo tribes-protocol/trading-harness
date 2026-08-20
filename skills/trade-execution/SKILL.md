@@ -161,6 +161,7 @@ TP/SL line only if the user explicitly waived exits.
 | Insufficient balance/margin              | Run the `hyperliquid` skill funding flow (`references/funding-paths.md`) with user confirmation, then retry the order once. |
 | Order/leg/sub-order below $10 minimum    | Raise the size, or reduce `--orders` (ladder) / `--duration-minutes` (TWAP), then retry.                                    |
 | Size or price rejected                   | Re-check the `szDecimals` rounding from step 4 against step 1 data, then retry once.                                        |
+| **Entry refused: `entry trigger gate`**  | The coin's gate is not `trigger_fired` within TTL — NO entry may open until the trigger stack fires (or an authority override is granted). Inspect with `hyperliquid entry-gate status --coin <coin>`; do NOT retry a refused entry. Reduce-only exits and cancels are never blocked by the gate. |
 | Any other API failure                    | Retry the same command once; if it fails again, stop and report the error.                                                  |
 
 ## Related skills

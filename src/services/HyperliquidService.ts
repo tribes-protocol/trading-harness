@@ -16,13 +16,14 @@ import {
   type UsdSendSuccessResponse,
   type Withdraw3SuccessResponse
 } from '@nktkas/hyperliquid'
-import { formatPrice, formatSize } from '@nktkas/hyperliquid/utils'
 import { signL1Action } from '@nktkas/hyperliquid/signing'
+import { formatPrice, formatSize } from '@nktkas/hyperliquid/utils'
 import BigNumber from 'bignumber.js'
 import { encodeFunctionData, erc20Abi, parseUnits } from 'viem'
 import { z } from 'zod'
 
 import { unwrapCause } from '@/helpers/Cause'
+import { EntryGateService } from '@/services/EntryGateService'
 import { TransactionService } from '@/services/TransactionService'
 import {
   type BuildBracketExitLegParams,
@@ -34,11 +35,10 @@ import {
   HyperliquidAllPerpAssetsResultSchema,
   type HyperliquidBalancesResult,
   HyperliquidBalancesResultSchema,
-  type HyperliquidCandleInterval,
+  type HyperliquidCancelOrderCommandOptions,
   type HyperliquidCandlesParams,
   type HyperliquidCandlesResult,
   HyperliquidCandlesSchema,
-  type HyperliquidCancelOrderCommandOptions,
   HyperliquidCoinSchema,
   type HyperliquidDepositParams,
   type HyperliquidDepositResult,
@@ -74,10 +74,10 @@ import {
   type HyperliquidPrivyWallet,
   type HyperliquidScaleOrderCommandOptions,
   type HyperliquidServiceParams,
+  type HyperliquidSetLeverageCommandOptions,
   type HyperliquidSignReplayCommandOptions,
   type HyperliquidSignReplayResult,
   HyperliquidSignReplayResultSchema,
-  type HyperliquidSetLeverageCommandOptions,
   type HyperliquidSpotAsset,
   HyperliquidSpotAssetSchema,
   type HyperliquidSpotAssetsResult,
@@ -164,9 +164,12 @@ export class HyperliquidService {
 
   private readonly infoClient: InfoClient
 
+  private readonly entryGate: EntryGateService | null
+
   constructor(params: HyperliquidServiceParams) {
     this.infoClient = params.infoClient ?? new InfoClient({ transport: new HttpTransport() })
     this.transaction = params.transaction
+    this.entryGate = params.entryGate ?? null
   }
 
   async deposit(params: HyperliquidDepositParams): Promise<HyperliquidDepositResult> {
@@ -387,6 +390,11 @@ export class HyperliquidService {
     })
     this.assertPerpEntryAllowed({
       perpAsset,
+      reduceOnly: params.request.reduceOnly
+    })
+    await this.assertEntryGateAllowed({
+      dex,
+      coin: params.request.coin,
       reduceOnly: params.request.reduceOnly
     })
     const marginMode = this.resolveMarginMode({
@@ -692,6 +700,30 @@ export class HyperliquidService {
     }
   }
 
+  /**
+   * Entry-trigger gate (the gate-guard): refuse ANY position-INCREASING order
+   * for a coin whose gate is not trigger_fired within TTL, BEFORE any sign or
+   * broadcast (no fill, no state change). Reduce-only exits and cancels are
+   * never blocked. Missing gate state defaults to stand_by = refuse.
+   */
+  private async assertEntryGateAllowed(params: {
+    dex: string
+    coin: string
+    reduceOnly: boolean
+  }): Promise<void> {
+    if (params.reduceOnly) return
+    if (isNullish(this.entryGate)) return
+    const decision = await this.entryGate.isEntryAllowed(params.dex, params.coin)
+    if (!decision.allowed) {
+      const dexName = params.dex.length > 0 ? params.dex : 'main'
+      throw new Error(
+        `entry trigger gate: ${decision.reason} for ${params.coin} on ${dexName} — ` +
+          `position-increasing order refused before broadcast. Run ` +
+          `hyperliquid entry-gate status --coin ${params.coin} to inspect.`
+      )
+    }
+  }
+
   private resolveMarginMode(params: {
     perpAsset: ResolvedPerpAsset
     requestedMarginMode: 'cross' | 'isolated'
@@ -717,6 +749,11 @@ export class HyperliquidService {
     })
     this.assertPerpEntryAllowed({
       perpAsset,
+      reduceOnly: params.request.reduceOnly
+    })
+    await this.assertEntryGateAllowed({
+      dex,
+      coin: params.request.coin,
       reduceOnly: params.request.reduceOnly
     })
     const asset = this.toOrderAssetFromPerp(perpAsset)
@@ -865,6 +902,11 @@ export class HyperliquidService {
     })
     this.assertPerpEntryAllowed({
       perpAsset,
+      reduceOnly: params.request.reduceOnly
+    })
+    await this.assertEntryGateAllowed({
+      dex,
+      coin: params.request.coin,
       reduceOnly: params.request.reduceOnly
     })
 

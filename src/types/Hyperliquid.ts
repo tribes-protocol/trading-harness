@@ -2,6 +2,7 @@ import type { InfoClient } from '@nktkas/hyperliquid'
 import BigNumber from 'bignumber.js'
 import { z } from 'zod'
 
+import { type EntryGateService } from '@/services/EntryGateService'
 import { type TransactionService } from '@/services/TransactionService'
 import { type EthAddress, EthAddressSchema } from '@/types/Eth'
 import { BigintSchema, BigNumberSchema, type HexString, HexStringSchema } from '@/types/Lang'
@@ -938,6 +939,79 @@ export type HyperliquidSignReplayCommandOptions = z.infer<
   typeof HyperliquidSignReplayCommandOptionsSchema
 >
 
+export const HyperliquidEntryGateStatusSchema = z.enum([
+  'stand_by',
+  'armed_awaiting',
+  'trigger_fired'
+])
+export type HyperliquidEntryGateStatus = z.infer<typeof HyperliquidEntryGateStatusSchema>
+
+// Durable per-coin gate state: what the trigger-watch writes and the entry
+// enforcement reads. firedAt/ttlMs are epoch-ms; a trigger_fired state within
+// its TTL is the only state that lets an entry through.
+export const HyperliquidEntryGateStateSchema = z.object({
+  dex: z.string(),
+  coin: z.string(),
+  status: HyperliquidEntryGateStatusSchema,
+  firedAt: z.number().int().nonnegative().nullish(),
+  ttlMs: z.number().int().positive().nullish(),
+  updatedAt: z.number().int().nonnegative()
+})
+export type HyperliquidEntryGateState = z.infer<typeof HyperliquidEntryGateStateSchema>
+
+export const HyperliquidEntryGateStatesResultSchema = z.object({
+  states: z.array(HyperliquidEntryGateStateSchema)
+})
+export type HyperliquidEntryGateStatesResult = z.infer<
+  typeof HyperliquidEntryGateStatesResultSchema
+>
+
+export const HyperliquidEntryGateStatusCommandOptionsSchema = z.object({
+  coin: z.string().trim().min(1).nullish(),
+  dex: z.string().trim().nullish(),
+  out: z.string().nullish()
+})
+export type HyperliquidEntryGateStatusCommandOptions = z.infer<
+  typeof HyperliquidEntryGateStatusCommandOptionsSchema
+>
+
+export const HyperliquidEntryGateOverrideCommandOptionsSchema = z.object({
+  coin: z.string().trim().min(1),
+  dex: z.string().trim().nullish(),
+  actor: z.string().trim().min(1),
+  reason: z.string().trim().min(1),
+  ttlMs: z.coerce
+    .number()
+    .int()
+    .positive()
+    .default(15 * 60 * 1000),
+  out: z.string().nullish()
+})
+export type HyperliquidEntryGateOverrideCommandOptions = z.infer<
+  typeof HyperliquidEntryGateOverrideCommandOptionsSchema
+>
+
+export const HyperliquidEntryGateOverrideResultSchema = z.object({
+  granted: z.literal(true),
+  dex: z.string(),
+  coin: z.string(),
+  actor: z.string(),
+  reason: z.string(),
+  ttlMs: z.number().int().positive(),
+  firedAt: z.number().int().nonnegative(),
+  journalPath: z.string()
+})
+export type HyperliquidEntryGateOverrideResult = z.infer<
+  typeof HyperliquidEntryGateOverrideResultSchema
+>
+
+export const HyperliquidEntryGateDecisionSchema = z.object({
+  allowed: z.boolean(),
+  state: HyperliquidEntryGateStateSchema,
+  reason: z.string()
+})
+export type HyperliquidEntryGateDecision = z.infer<typeof HyperliquidEntryGateDecisionSchema>
+
 export const HyperliquidSignReplayBaseSchema = z.object({
   kind: z.literal('sign-replay'),
   broadcast: z.literal(false),
@@ -967,7 +1041,6 @@ export type HyperliquidSignReplayResult = z.infer<typeof HyperliquidSignReplayRe
 export type HyperliquidCandleCommandOptions = z.infer<
   typeof HyperliquidCandleCommandOptionsSchema
 >
-
 
 // One perp candle: the shared OHLCV contract (t is epoch ms), matching
 // TaCandleSchema in types/Ta.ts so the ta indicators compute layer is unchanged.
@@ -1000,6 +1073,7 @@ export interface HyperliquidCandlesParams {
 export interface HyperliquidServiceParams {
   readonly transaction: TransactionService
   readonly infoClient?: InfoClient
+  readonly entryGate?: EntryGateService
 }
 
 export interface HyperliquidDepositParams {

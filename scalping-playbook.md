@@ -101,6 +101,28 @@ Before any trigger, scan the Hyperliquid perp with `list-assets --all-dexes` and
 
 ---
 
+## 2.5 Entry-Timer Gate (ENFORCED — no-trigger entry is impossible)
+
+The prose gate is now CODE: every position-INCREASING perp order (`trade-perp`, `scale-perp`,
+`twap-perp` without `--reduce-only`) is REFUSED before sign/broadcast unless the coin's gate is
+`trigger_fired` within its TTL — enforced in `HyperliquidService` (the gate-guard). Missing state
+defaults to `stand_by` = refuse.
+
+```bash
+# Inspect gate state (read-only)
+tribes-cli hyperliquid entry-gate status --coin BTC
+
+# Authority-gated, journaled override (exec-lead | chief only, TTL-limited, default refuse)
+tribes-cli hyperliquid entry-gate override --coin BTC --actor exec-lead --reason "trigger fired but watch wobbled" --ttl-ms 900000
+```
+
+- The trigger-watch flips a coin to `trigger_fired` (via `fireTrigger`) when the §1 confluence
+  stack fires on real perp candles; until that lands, the desk runs refusal-first.
+- Reduce-only exits, cancels, and position-management are NEVER blocked by the gate.
+- Overrides are journaled to `.tribes/entry-gate-journal.jsonl` and expire after the TTL.
+
+---
+
 ## 3. TP/SL Ladder — Exact Math ($500 Margin @ 20×)
 
 ### 3.1 Notional & Target
