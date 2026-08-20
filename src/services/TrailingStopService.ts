@@ -33,6 +33,9 @@ const STOPS_FILENAME = 'trailing-stops.json'
 const HEARTBEAT_FRESH_MS = 45_000
 const STREAM_CONNECT_TIMEOUT_MS = 6_000
 const STREAM_TICK_TIMEOUT_MS = 20_000
+// Poll-mode cadence: when the websocket stream is down/stalled, pace poll ticks
+// at ~10s instead of busy-polling the Info API at HTTP speed.
+const POLL_MS = 10_000
 
 export interface TrailingStopServiceParams {
   readonly stateDir?: string
@@ -434,12 +437,16 @@ export class TrailingStopService {
       const tick = await deps.getMark()
       if (tick === null) {
         // No mark this tick — heartbeat anyway so list sees the loop alive,
-        // and keep watching.
+        // and keep watching (paced by the poll cadence below).
         await this.updateState(id, { heartbeatAt: deps.now() })
+        await this.sleep(POLL_MS)
         continue
       }
       const mark = new BigNumber(tick.mark)
-      if (!mark.isFinite() || !mark.isGreaterThan(0)) continue
+      if (!mark.isFinite() || !mark.isGreaterThan(0)) {
+        await this.sleep(POLL_MS)
+        continue
+      }
 
       if (state.side === 'long') {
         peakOrTrough = BigNumber.maximum(peakOrTrough, mark)
@@ -474,6 +481,13 @@ export class TrailingStopService {
           status: exit.ok ? 'exited' : 'error',
           exit: { ok: exit.ok, message: exit.message }
         })
+      }
+
+      // Pace poll-mode ticks at ~POLL_MS; stream mode (source === 'stream') is
+      // event-driven and needs no sleep. This is the cadence guard Wren flagged:
+      // without it a stalled stream would busy-poll the Info API at HTTP speed.
+      if (tick.source !== 'stream') {
+        await this.sleep(POLL_MS)
       }
     }
   }

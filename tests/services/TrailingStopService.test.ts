@@ -35,7 +35,10 @@ function fakeHyperliquid(): FakeHyperliquid {
   }
 }
 
-async function freshService(fake: FakeHyperliquid, options?: { mark?: string }): Promise<{
+async function freshService(
+  fake: FakeHyperliquid,
+  options?: { mark?: string; sleep?: (ms: number) => Promise<void> }
+): Promise<{
   service: TrailingStopService
   stateDir: string
   hyperliquid: HyperliquidService
@@ -102,7 +105,7 @@ async function freshService(fake: FakeHyperliquid, options?: { mark?: string }):
     infoClient,
     spawnMonitor: () => null,
     now: () => 1_000_000,
-    sleep: async () => undefined
+    sleep: options?.sleep ?? (async () => undefined)
   })
   return { service, stateDir, hyperliquid }
 }
@@ -368,5 +371,39 @@ describe('TrailingStopService monitor loop (runMonitor)', () => {
     const result = await service.runMonitor(armed.state.id, deps)
     expect(result.status).toBe('exited')
     expect(fake.closeCalls).toHaveLength(1)
+  })
+
+  test('poll path paces at POLL_MS when the stream stalls (cadence guard)', async () => {
+    const sleep = vi.fn(async () => undefined)
+    const fake = fakeHyperliquid()
+    fake.positions = [{ dex: 'main', coin: 'BTC', side: 'long', size: '0.02166', entryPx: '69178' }]
+    const { service } = await freshService(fake, { mark: '70000', sleep })
+    const armed = await service.arm({
+      coin: 'BTC',
+      dex: 'main',
+      from: ADDRESS,
+      side: 'long',
+      trail: { kind: 'pct', value: 0.25 },
+      walletId: WALLET_ID
+    })
+    // Drive POLL-mode ticks (source 'poll') so the cadence guard runs: after
+    // each poll tick the loop must sleep POLL_MS. Cancel after the 2nd tick so
+    // the test terminates.
+    let ticks = 0
+    const deps: TrailingStopMonitorDeps = {
+      getMark: vi.fn(async () => {
+        ticks += 1
+        return { mark: '70100', source: 'poll' }
+      }),
+      isCancelled: vi.fn(async () => ticks >= 2),
+      exit: vi.fn(async () => ({ ok: true, message: 'exit', orderId: null })),
+      now: () => 1_000_000
+    }
+    await service.runMonitor(armed.state.id, deps)
+    // The poll branch sleeps POLL_MS between iterations (cadence guard). The
+    // test's sleep is injected, so assert it was called with the poll cadence.
+    expect(sleep).toHaveBeenCalled()
+    const firstArg = vi.mocked(sleep).mock.calls[0]?.[0]
+    expect(firstArg).toBe(10000)
   })
 })
