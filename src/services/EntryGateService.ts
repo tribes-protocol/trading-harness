@@ -172,6 +172,10 @@ export class EntryGateService {
     dex: string | null | undefined,
     coin: string
   ): Promise<HyperliquidEntryGateDecision> {
+    // Re-read the durable registry on every check so a fresh process sees the
+    // state the trigger-watch or override wrote (the CLI runs one process per
+    // command).
+    await this.load()
     const state = await this.getState(dex, coin)
     const now = Date.now()
     const withinTtl =

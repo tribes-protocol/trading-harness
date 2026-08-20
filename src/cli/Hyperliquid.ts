@@ -233,8 +233,9 @@ export function buildHyperliquidCommand(): Command {
       })
     })
 
-  program
-    .command('entry-gate status')
+  const entryGate = program.command('entry-gate')
+  entryGate
+    .command('status')
     .description(
       'Read the entry-trigger gate state for perp coins (stand_by | armed_awaiting | trigger_fired)'
     )
@@ -243,6 +244,7 @@ export function buildHyperliquidCommand(): Command {
     .option('--out <file>', 'Write output JSON to file')
     .action(async (options: unknown): Promise<void> => {
       const request = HyperliquidEntryGateStatusCommandOptionsSchema.parse(options)
+      await entryGateService.load()
       const states = await entryGateService.getStates()
       const filtered = states.states.filter((state) => {
         const dexMatch = isNullish(request.dex) || state.dex === request.dex.trim()
@@ -257,8 +259,8 @@ export function buildHyperliquidCommand(): Command {
       })
     })
 
-  program
-    .command('entry-gate override')
+  entryGate
+    .command('override')
     .description(
       'Authority-gated journaled override: flips a coin gate to trigger_fired for a bounded TTL (actor must be exec-lead or chief)'
     )
