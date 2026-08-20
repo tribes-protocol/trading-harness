@@ -1,3 +1,4 @@
+import { HttpTransport, InfoClient } from '@nktkas/hyperliquid'
 import { Command } from 'commander'
 
 import { API_BASE_URL, API_BEARER_TOKEN, PRIVY_APP_ID } from '@/common/Env'
@@ -24,7 +25,8 @@ export function buildTrailingStopCommand(): Command {
     transaction: transactionService
   })
   const trailingStopService = new TrailingStopService({
-    hyperliquid: hyperliquidService
+    hyperliquid: hyperliquidService,
+    infoClient: new InfoClient({ transport: new HttpTransport() })
   })
 
   const program = new Command('trailing-stop')
