@@ -33,11 +33,18 @@ export function unwrapCause(error: unknown): string {
       lines.push(String(current))
     }
 
-    const cause = (current as { cause?: unknown }).cause
+    const cause = readCause(current)
     if (cause === undefined || cause === null) break
     current = cause
   }
 
   if (lines.length === 0) return String(error)
   return lines.join('  → caused by: ')
+}
+
+function readCause(error: object): unknown {
+  if (error instanceof Error) return error.cause
+  const descriptor = Object.getOwnPropertyDescriptor(error, 'cause')
+  if (descriptor === undefined) return undefined
+  return descriptor.value
 }

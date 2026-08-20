@@ -1153,9 +1153,7 @@ export const HyperliquidSignReplayResultSchema = z.discriminatedUnion('ok', [
 ])
 export type HyperliquidSignReplayResult = z.infer<typeof HyperliquidSignReplayResultSchema>
 
-export type HyperliquidCandleCommandOptions = z.infer<
-  typeof HyperliquidCandleCommandOptionsSchema
->
+export type HyperliquidCandleCommandOptions = z.infer<typeof HyperliquidCandleCommandOptionsSchema>
 
 // One perp candle: the shared OHLCV contract (t is epoch ms), matching
 // TaCandleSchema in types/Ta.ts so the ta indicators compute layer is unchanged.

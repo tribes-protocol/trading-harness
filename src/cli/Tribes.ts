@@ -19,7 +19,6 @@ import { buildCoinCommand } from '@/cli/Coin'
 import { buildEnsCommand } from '@/cli/Ens'
 import { buildExchangesCommand } from '@/cli/Exchanges'
 import { buildHyperliquidCommand } from '@/cli/Hyperliquid'
-import { unwrapCause } from '@/helpers/Cause'
 import { buildLoginCommand } from '@/cli/Login'
 import { buildMacrosCommand } from '@/cli/Macros'
 import { buildMarketCommand } from '@/cli/Market'
@@ -32,10 +31,12 @@ import { buildSpotTradingCommand } from '@/cli/SpotTrading'
 import { buildStocksCommand } from '@/cli/Stocks'
 import { buildTaCommand } from '@/cli/Ta'
 import { buildTokenCommand } from '@/cli/Token'
+import { buildTrailingStopCommand } from '@/cli/TrailingStop'
 import { buildTransactionCommand } from '@/cli/Transaction'
 import { buildWalletCommand } from '@/cli/Wallet'
 import { buildWalletDataCommand } from '@/cli/WalletData'
 import { buildWebSearchCommand } from '@/cli/WebSearch'
+import { unwrapCause } from '@/helpers/Cause'
 
 const VERSION = '1.0.0'
 
@@ -50,6 +51,7 @@ function buildTribesCli(): Command {
   program.addCommand(buildHyperliquidCommand())
   program.addCommand(buildTransactionCommand())
   program.addCommand(buildSpotTradingCommand())
+  program.addCommand(buildTrailingStopCommand())
 
   // Market data + research.
   program.addCommand(buildAssetCommand())
