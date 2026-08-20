@@ -35,13 +35,20 @@ const json = (value: unknown, status = 200): Response =>
     headers: { 'Content-Type': 'application/json' }
   })
 
+const PAGE_SIZE = 8
+
 const server = Bun.serve({
   port: PORT,
   routes: {
-    '/': () => {
-      const trades = journal.list(100, 0)
+    '/': (req) => {
+      const url = new URL(req.url)
+      const rawPage = Number(url.searchParams.get('page') ?? '1')
+      const page = Number.isFinite(rawPage) && rawPage >= 1 ? Math.floor(rawPage) : 1
+      const offset = (page - 1) * PAGE_SIZE
+      const trades = journal.list(PAGE_SIZE, offset)
       const modals = trades.map((t) => tradeModalHtml(t)).join('')
-      const html = feedPageHtml(trades, journal.count(), modals, FEED_CLIENT_SCRIPT)
+      const pageInfo = { page, perPage: PAGE_SIZE, total: journal.count() }
+      const html = feedPageHtml(trades, pageInfo.total, modals, FEED_CLIENT_SCRIPT, pageInfo)
       return new Response(html, {
         status: 200,
         headers: { 'Content-Type': 'text/html; charset=utf-8' }

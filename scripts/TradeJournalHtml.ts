@@ -165,7 +165,43 @@ export function tradeCard(t: JournalTrade): string {
   )
 }
 
-export function feedHtml(trades: readonly JournalTrade[], count: number): string {
+export interface FeedPageInfo {
+  page: number
+  perPage: number
+  total: number
+}
+
+function paginationBar(info: FeedPageInfo): string {
+  const shownPer = info.perPage >= 1 && Number.isFinite(info.perPage) ? info.perPage : info.total
+  const totalPages = Math.max(1, Math.ceil(info.total / shownPer))
+  if (totalPages <= 1) return ''
+  let prev = ''
+  let next = ''
+  if (info.page > 1) {
+    prev = `<a class="tj-pg-btn" href="/?page=${info.page - 1}">&#8592; newer</a>`
+  }
+  if (info.page < totalPages) {
+    next = `<a class="tj-pg-btn" href="/?page=${info.page + 1}">older &#8594;</a>`
+  }
+  const pages = []
+  const win = 1
+  const start = Math.max(1, info.page - win)
+  const end = Math.min(totalPages, info.page + win)
+  for (let i = start; i <= end; i++) {
+    if (i === info.page) {
+      pages.push(`<span class="tj-pg-cur">${i}</span>`)
+    } else {
+      pages.push(`<a class="tj-pg-num" href="/?page=${i}">${i}</a>`)
+    }
+  }
+  return `<nav class="tj-pagi" aria-label="Feed pages"><div class="tj-pg-links">${prev}${pages.join('')}${next}</div><span class="tj-pg-count">${info.total} position${info.total === 1 ? '' : 's'} · page ${info.page}/${totalPages}</span></nav>`
+}
+
+export function feedHtml(
+  trades: readonly JournalTrade[],
+  count: number,
+  page: FeedPageInfo = { page: 1, perPage: Number.MAX_VALUE, total: count }
+): string {
   const cards = trades.map(tradeCard).join('')
   return (
     `<div class="tj-wrap">` +
@@ -175,6 +211,7 @@ export function feedHtml(trades: readonly JournalTrade[], count: number): string
     `<span class="tj-count">${count} position${count === 1 ? '' : 's'}</span>` +
     `</header>` +
     `<div class="tj-feed">${cards}</div>` +
+    paginationBar(page) +
     `</div>`
   )
 }
@@ -187,14 +224,15 @@ export function feedPageHtml(
   trades: readonly JournalTrade[],
   count: number,
   modals: string,
-  clientScript: string
+  clientScript: string,
+  page: FeedPageInfo = { page: 1, perPage: Number.MAX_VALUE, total: count }
 ): string {
   return (
     `<!doctype html><html lang="en"><head><meta charset="utf-8">` +
     `<meta name="viewport" content="width=device-width, initial-scale=1">` +
     `<title>Trade Journal</title>` +
     `<style>${css()}</style>` +
-    `</head><body>${feedHtml(trades, count)}${modals}` +
+    `</head><body>${feedHtml(trades, count, page)}${modals}` +
     `<script>${clientScript}` +
     `</scr` +
     `ipt>` +

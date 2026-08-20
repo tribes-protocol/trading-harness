@@ -226,6 +226,18 @@ a:hover {
 }
 
 /* ---- modal ---- */
+/*
+ * The overlay ships with the hidden attribute and is only shown after a card
+ * click removes it (see FEED_CLIENT_SCRIPT). An explicit [hidden] rule is
+ * required: `.tj-overlay { display: flex }` alone would override the UA
+ * default hidden styling and ship a stuck, unclosable modal over the feed
+ * (reported bug). The [hidden] assertion outranks the base rule, so a page
+ * that loads with overlays hidden stays hidden until JS opens one.
+ */
+.tj-overlay[hidden] {
+  display: none;
+}
+
 .tj-overlay {
   position: fixed;
   inset: 0;
@@ -341,6 +353,55 @@ a:hover {
     opacity: 1;
     transform: none;
   }
+}
+
+/* ---- pagination ---- */
+.tj-pg {
+  margin-top: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding: 10px 0;
+}
+
+.tj-pg-links {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.tj-pg-btn,
+.tj-pg-num {
+  display: inline-block;
+  padding: 6px 12px;
+  border: 1px solid var(--tj-border);
+  border-radius: 8px;
+  color: var(--tj-text);
+  text-decoration: none;
+  background: var(--tj-grey);
+  transition: background 0.12s ease;
+}
+
+.tj-pg-btn:hover,
+.tj-pg-num:hover {
+  background: var(--tj-panel);
+}
+
+.tj-pg-cur {
+  display: inline-block;
+  padding: 6px 12px;
+  border-radius: 8px;
+  font-weight: 600;
+  color: var(--tj-accent);
+  background: var(--tj-panel);
+}
+
+.tj-pg-count {
+  font-size: 0.85rem;
+  color: var(--tj-muted);
 }
 
 @media (max-width: 640px) {
