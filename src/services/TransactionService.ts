@@ -189,7 +189,17 @@ export class TransactionService {
     }
 
     const data: unknown = await response.json()
-    return HexStringSchema.parse(data)
+    try {
+      return HexStringSchema.parse(data)
+    } catch (error) {
+      // Surface the raw terminal body on a malformed success signature so the
+      // desk can see what the backend actually returned instead of an opaque
+      // HexString parse failure.
+      throw new Error(
+        `Failed to parse signEthTypedDataV4 response: ${ensureJsonTreeString(data)}`,
+        { cause: error }
+      )
+    }
   }
 
   private async resolveAuthorizationPrivateKey(): Promise<string> {

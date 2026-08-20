@@ -9,6 +9,7 @@ import {
 import { TransactionService } from '@/services/TransactionService'
 import {
   HyperliquidAdjustMarginCommandOptionsSchema,
+  HyperliquidCandleCommandOptionsSchema,
   HyperliquidCancelOrderCommandOptionsSchema,
   HyperliquidDepositCommandOptionsSchema,
   HyperliquidDexCashTransferCommandOptionsSchema,
@@ -21,6 +22,7 @@ import {
   HyperliquidPerpTradeCommandOptionsSchema,
   HyperliquidScaleOrderCommandOptionsSchema,
   HyperliquidSetLeverageCommandOptionsSchema,
+  HyperliquidSignReplayCommandOptionsSchema,
   HyperliquidSpotCancelOrderCommandOptionsSchema,
   HyperliquidSpotScaleOrderCommandOptionsSchema,
   HyperliquidSpotTradeCommandOptionsSchema,
@@ -192,6 +194,31 @@ export function buildHyperliquidCommand(): Command {
       const response = await hyperliquidService.getOrderBook({
         coin: request.coin,
         depth: request.depth ?? DEFAULT_ORDER_BOOK_DEPTH,
+        dex: request.dex
+      })
+      const output = ensureJsonTreeString(response)
+      await writeOutput({
+        output,
+        outPath: request.out ?? undefined
+      })
+    })
+
+  program
+    .command('candles')
+    .description('OHLCV candle snapshot for a perp coin (shared candle contract)')
+    .requiredOption('--coin <coin>', 'Perp symbol (for example: BTC, ETH, SOL)')
+    .option('--interval <interval>', '1m | 5m (default 1m)', '1m')
+    .option('--start-time <ms>', 'Start of the window as epoch ms')
+    .option('--end-time <ms>', 'End of the window as epoch ms')
+    .option('--dex <dex>', 'Perp dex name (main by default)')
+    .option('--out <file>', 'Write output JSON to file')
+    .action(async (options: unknown): Promise<void> => {
+      const request = HyperliquidCandleCommandOptionsSchema.parse(options)
+      const response = await hyperliquidService.getCandles({
+        coin: request.coin,
+        interval: request.interval,
+        startTime: request.startTime,
+        endTime: request.endTime,
         dex: request.dex
       })
       const output = ensureJsonTreeString(response)
@@ -480,6 +507,32 @@ export function buildHyperliquidCommand(): Command {
     .action(async (options: unknown): Promise<void> => {
       const request = HyperliquidWithdrawCommandOptionsSchema.parse(options)
       const response = await hyperliquidService.withdraw({
+        request,
+        walletId: request.walletId
+      })
+      const output = ensureJsonTreeString(response)
+      await writeOutput({
+        output,
+        outPath: request.out ?? undefined
+      })
+    })
+
+  program
+    .command('sign-replay')
+    .description(
+      'Instrumented single signing replay: signs the exact typed data for a close-shaped perp order WITHOUT broadcasting (no fund movement)'
+    )
+    .requiredOption('--from <address>', 'Signer EVM address (Privy wallet)')
+    .requiredOption('--coin <coin>', 'Perp symbol (for example: BTC, ETH)')
+    .requiredOption('--amount <amount>', 'Order size in base units')
+    .requiredOption('--side <side>', 'Order side: long | short')
+    .option('--type <type>', 'Order type: market | limit (default: market)', 'market')
+    .option('--dex <dex>', 'Perp dex name (main by default)')
+    .requiredOption('--wallet-id <walletId>', 'Privy wallet id')
+    .option('--out <file>', 'Write output JSON to file')
+    .action(async (options: unknown): Promise<void> => {
+      const request = HyperliquidSignReplayCommandOptionsSchema.parse(options)
+      const response = await hyperliquidService.signReplay({
         request,
         walletId: request.walletId
       })

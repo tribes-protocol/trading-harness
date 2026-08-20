@@ -19,6 +19,7 @@ import { buildCoinCommand } from '@/cli/Coin'
 import { buildEnsCommand } from '@/cli/Ens'
 import { buildExchangesCommand } from '@/cli/Exchanges'
 import { buildHyperliquidCommand } from '@/cli/Hyperliquid'
+import { unwrapCause } from '@/helpers/Cause'
 import { buildLoginCommand } from '@/cli/Login'
 import { buildMacrosCommand } from '@/cli/Macros'
 import { buildMarketCommand } from '@/cli/Market'
@@ -98,7 +99,7 @@ function formatCliError(error: unknown): string {
       .join('; ')
   }
   if (error instanceof Error) {
-    return error.message
+    return unwrapCause(error)
   }
   return 'Unknown error'
 }

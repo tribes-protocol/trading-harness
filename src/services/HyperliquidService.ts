@@ -17,10 +17,12 @@ import {
   type Withdraw3SuccessResponse
 } from '@nktkas/hyperliquid'
 import { formatPrice, formatSize } from '@nktkas/hyperliquid/utils'
+import { signL1Action } from '@nktkas/hyperliquid/signing'
 import BigNumber from 'bignumber.js'
 import { encodeFunctionData, erc20Abi, parseUnits } from 'viem'
 import { z } from 'zod'
 
+import { unwrapCause } from '@/helpers/Cause'
 import { TransactionService } from '@/services/TransactionService'
 import {
   type BuildBracketExitLegParams,
@@ -32,6 +34,10 @@ import {
   HyperliquidAllPerpAssetsResultSchema,
   type HyperliquidBalancesResult,
   HyperliquidBalancesResultSchema,
+  type HyperliquidCandleInterval,
+  type HyperliquidCandlesParams,
+  type HyperliquidCandlesResult,
+  HyperliquidCandlesSchema,
   type HyperliquidCancelOrderCommandOptions,
   HyperliquidCoinSchema,
   type HyperliquidDepositParams,
@@ -68,6 +74,9 @@ import {
   type HyperliquidPrivyWallet,
   type HyperliquidScaleOrderCommandOptions,
   type HyperliquidServiceParams,
+  type HyperliquidSignReplayCommandOptions,
+  type HyperliquidSignReplayResult,
+  HyperliquidSignReplayResultSchema,
   type HyperliquidSetLeverageCommandOptions,
   type HyperliquidSpotAsset,
   HyperliquidSpotAssetSchema,
@@ -145,6 +154,10 @@ export interface HyperliquidOrderBookParams {
   readonly depth: number
   readonly dex: string | null | undefined
 }
+
+// When a candle call omits startTime, ask for this wide trailing window and let
+// Hyperliquid return the most recent candle run (capped at a few thousand rows).
+const HYPERLIQUID_CANDLE_DEFAULT_LOOKBACK_MS = 3650 * 24 * 60 * 60 * 1000
 
 export class HyperliquidService {
   private readonly transaction: TransactionService
@@ -396,6 +409,62 @@ export class HyperliquidService {
 
     const orderParams = this.buildPerpOrderParams(params.request, perpAsset)
     return await exchange.order(orderParams)
+  }
+
+  /**
+   * Instrumented single signing replay — NO broadcast, NO fund movement.
+   *
+   * Builds the exact perp order wire a close-shaped order would build (same
+   * builder, same connectionId blob) and runs ONLY the signing half of the
+   * shared path (SDK signL1Action → wallet.signTypedData →
+   * TransactionService.signEthTypedDataV4 → terminal). On failure the FULL
+   * unwrapped cause chain is returned so the real reason surfaces instead of
+   * the SDK's opaque "Failed to sign typed data with viem wallet" wrapper.
+   */
+  async signReplay(
+    params: HyperliquidWithSignerParams<HyperliquidSignReplayCommandOptions>
+  ): Promise<HyperliquidSignReplayResult> {
+    const wallet = this.createPrivyWallet({
+      address: params.request.from,
+      walletId: params.walletId
+    })
+    const nonce = Date.now()
+    const timestamp = Date.now()
+
+    try {
+      const dex = this.normalizeDex(params.request.dex)
+      const perpAsset = await this.resolvePerpAsset({
+        coin: params.request.coin,
+        dex
+      })
+      const orderParams = this.buildPerpOrderParams(params.request, perpAsset)
+      const order = orderParams.orders[0]
+      if (isNullish(order)) {
+        throw new Error('sign-replay: no order leg produced to sign')
+      }
+      const signature = await signL1Action({ wallet, action: order, nonce })
+      return HyperliquidSignReplayResultSchema.parse({
+        kind: 'sign-replay',
+        broadcast: false,
+        coin: params.request.coin,
+        side: params.request.side,
+        nonce,
+        timestamp,
+        ok: true,
+        signature
+      })
+    } catch (error) {
+      return HyperliquidSignReplayResultSchema.parse({
+        kind: 'sign-replay',
+        broadcast: false,
+        coin: params.request.coin,
+        side: params.request.side,
+        nonce,
+        timestamp,
+        ok: false,
+        error: unwrapCause(error)
+      })
+    }
   }
 
   private buildPerpOrderParams(
@@ -1194,6 +1263,35 @@ export class HyperliquidService {
         .slice(0, params.depth)
         .map((level) => ({ px: level.px, sz: level.sz, n: level.n })),
       asks: asks.slice(0, params.depth).map((level) => ({ px: level.px, sz: level.sz, n: level.n }))
+    })
+  }
+
+  async getCandles(params: HyperliquidCandlesParams): Promise<HyperliquidCandlesResult> {
+    const dex = this.normalizeDex(params.dex)
+    const coin =
+      dex.length > 0 && !params.coin.includes(':') ? `${dex}:${params.coin}` : params.coin
+    // The bundled SDK requires a startTime; when the caller omits it, widen the
+    // lookback so Hyperliquid returns the most recent candle run (capped at a few
+    // thousand), which is what the desk's indicator compute needs.
+    const startTime = params.startTime ?? Date.now() - HYPERLIQUID_CANDLE_DEFAULT_LOOKBACK_MS
+    const candles = await this.infoClient.candleSnapshot({
+      coin,
+      interval: params.interval,
+      startTime,
+      endTime: params.endTime ?? undefined
+    })
+    return HyperliquidCandlesSchema.parse({
+      source: 'hyperliquid',
+      interval: params.interval,
+      coin,
+      candles: candles.map((row) => ({
+        t: row.t,
+        o: Number(row.o),
+        h: Number(row.h),
+        l: Number(row.l),
+        c: Number(row.c),
+        v: Number(row.v)
+      }))
     })
   }
 
