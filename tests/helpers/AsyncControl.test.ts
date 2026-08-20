@@ -33,6 +33,15 @@ describe('classifyProviderAbort', () => {
   test('unrelated errors are not provider aborts', () => {
     expect(classifyProviderAbort(new Error('ECONNREFUSED'))).toBe(ProviderAbortClassSchema.NONE)
   })
+
+  test('HTTP rate-limit (429) is recoverable', () => {
+    const http429 = new Error('429 Too Many Requests')
+    http429.name = 'HttpRequestError'
+    expect(classifyProviderAbort(http429)).toBe(ProviderAbortClassSchema.RECOVERABLE)
+    expect(classifyProviderAbort(new Error('rate limit exceeded'))).toBe(
+      ProviderAbortClassSchema.RECOVERABLE
+    )
+  })
 })
 
 describe('retryProviderAware', () => {

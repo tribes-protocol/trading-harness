@@ -177,7 +177,13 @@ export function classifyProviderAbort(error: unknown): ProviderAbortClass {
     identity.includes('provider_error') ||
     identity.includes('route-failed') ||
     identity.includes('mid-turn') ||
-    identity.includes('abort')
+    identity.includes('abort') ||
+    // HTTP rate-limit class: the SDK surfaces 429 as an HttpRequestError whose
+    // message is '429 Too Many Requests'; the account-read path must back off
+    // and retry rather than error out on a burst.
+    identity.includes('429') ||
+    identity.includes('too many requests') ||
+    identity.includes('rate limit')
   ) {
     return ProviderAbortClassSchema.RECOVERABLE
   }
@@ -188,15 +194,20 @@ export function classifyProviderAbort(error: unknown): ProviderAbortClass {
 // 3 attempts). Not used for terminal aborts (never blind-retried).
 const PROVIDER_BACKOFF_MS = [1000, 2000, 5000]
 
+// Provider-abort-aware retry wrapper result config. A named alias (not an inline
+// object-literal generic) so T infers cleanly for SDK methods whose response types
+// resist tuple/generic inference from an inline parameter.
+export interface RetryProviderAwareParams<T> {
+  readonly fn: () => Promise<T>
+  readonly maxRetries?: number
+  readonly logError?: boolean
+}
+
 // Provider-abort-aware retry wrapper for the venue-watch call path: back off and
 // retry definitively-recoverable provider errors; do NOT retry a terminal
 // content_filter (throw through immediately so the caller reseats + reruns
 // instead of replaying an identical rebound).
-export async function retryProviderAware<T>(params: {
-  fn: () => Promise<T>
-  maxRetries?: number
-  logError?: boolean
-}): Promise<T> {
+export async function retryProviderAware<T>(params: RetryProviderAwareParams<T>): Promise<T> {
   const maxRetries = params.maxRetries ?? 3
   const backoffs = PROVIDER_BACKOFF_MS
   let retriesSoFar = 0

@@ -499,3 +499,50 @@ describe('HyperliquidService sizing-lock enforcement', () => {
     expect(String(error)).not.toContain('sizing lock')
   })
 })
+
+describe('HyperliquidService account-read rate-limit resilience', () => {
+  // The SDK surfaces an HTTP 429 as an HttpRequestError whose message is
+  // '429 Too Many Requests'. classifyProviderAbort treats it as RECOVERABLE, so
+  // the account-read wrapper backs off and retries instead of erroring out.
+  function http429(message = '429 Too Many Requests'): Error {
+    const err = new Error(message)
+    err.name = 'HttpRequestError'
+    return err
+  }
+
+  function balancesService(infoClient: Pick<InfoClient, 'clearinghouseState' | 'spotClearinghouseState'>) {
+    const params: HyperliquidServiceParams = {
+      transaction: {} as HyperliquidServiceParams['transaction'],
+      infoClient: infoClient as InfoClient
+    }
+    return new HyperliquidService(params)
+  }
+
+  const PERP_STATE = {
+    marginSummary: { accountValue: '10000', totalNtlPos: '5000', totalRawUsd: '10000', totalMarginUsed: '100' },
+    crossMarginSummary: { accountValue: '10000', totalNtlPos: '5000', totalRawUsd: '10000', totalMarginUsed: '100' },
+    withdrawable: '9000',
+    assetPositions: [],
+    crossMaintenanceMarginUsed: '0',
+    maintenanceMarginUsage: '0'
+  }
+  const SPOT_STATE = { balances: [] }
+
+  test('429 then 200: clearinghouseState backs off and succeeds after a rate-limit burst', async () => {
+    const clearinghouseState = vi
+      .fn()
+      .mockRejectedValueOnce(http429())
+      .mockResolvedValueOnce(PERP_STATE)
+    const spotClearinghouseState = vi.fn().mockResolvedValue(SPOT_STATE)
+    const service = balancesService({ clearinghouseState, spotClearinghouseState })
+
+    const result = await service.listBalances({
+      address: '0xbb64c24a6b2ee1185621490d2a1ae06522f15f57',
+      dex: null
+    })
+
+    expect(clearinghouseState).toHaveBeenCalledTimes(2) // 1st 429, 2nd success
+    expect(result.perp.accountValue).toBe('10000')
+    expect(result.spot).toEqual([])
+  })
+})

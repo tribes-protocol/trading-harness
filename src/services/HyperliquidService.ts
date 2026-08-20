@@ -22,6 +22,7 @@ import BigNumber from 'bignumber.js'
 import { encodeFunctionData, erc20Abi, parseUnits } from 'viem'
 import { z } from 'zod'
 
+import { retryProviderAware } from '@/helpers/AsyncControl'
 import { unwrapCause } from '@/helpers/Cause'
 import { EntryGateService } from '@/services/EntryGateService'
 import { SizingLockService } from '@/services/SizingLockService'
@@ -1065,8 +1066,10 @@ export class HyperliquidService {
     if (normalizedDex.length > 0) perpParams.dex = normalizedDex
 
     const [perpState, spotState] = await Promise.all([
-      this.infoClient.clearinghouseState(perpParams),
-      this.infoClient.spotClearinghouseState({ user: params.address })
+      retryProviderAware({ fn: () => this.infoClient.clearinghouseState(perpParams) }),
+      retryProviderAware({
+        fn: () => this.infoClient.spotClearinghouseState({ user: params.address })
+      })
     ])
 
     const spot = spotState.balances.map((balance) =>
@@ -1103,11 +1106,13 @@ export class HyperliquidService {
         dexNames.map(async (dexName) => {
           const stateParams: HyperliquidInfoUserDexParams = { user: params.address }
           if (dexName.length > 0) stateParams.dex = dexName
-          const state = await this.infoClient.clearinghouseState(stateParams)
+          const state = await retryProviderAware({
+            fn: () => this.infoClient.clearinghouseState(stateParams)
+          })
           return { dexName, state }
         })
       ),
-      this.infoClient.twapHistory({ user: params.address })
+      retryProviderAware({ fn: () => this.infoClient.twapHistory({ user: params.address }) })
     ])
 
     const positions: HyperliquidPerpPosition[] = []
@@ -1193,7 +1198,9 @@ export class HyperliquidService {
       dexNames.map(async (dexName) => {
         const requestParams: HyperliquidInfoUserDexParams = { user: params.address }
         if (dexName.length > 0) requestParams.dex = dexName
-        const orders = await this.infoClient.frontendOpenOrders(requestParams)
+        const orders = await retryProviderAware({
+          fn: () => this.infoClient.frontendOpenOrders(requestParams)
+        })
         return { dexName, orders }
       })
     )
@@ -1215,17 +1222,25 @@ export class HyperliquidService {
   async listFills(params: HyperliquidListFillsParams): Promise<HyperliquidFillsResult> {
     let fills: HyperliquidUserFillWire[]
     if (isNullish(params.startTime)) {
-      fills = await this.infoClient.userFills({
-        user: params.address,
-        aggregateByTime: params.aggregateByTime
+      fills = await retryProviderAware({
+        fn: () =>
+          this.infoClient.userFills({
+            user: params.address,
+            aggregateByTime: params.aggregateByTime
+          })
       })
     } else {
-      fills = await this.infoClient.userFillsByTime({
-        user: params.address,
-        startTime: params.startTime,
-        endTime: params.endTime ?? undefined,
-        aggregateByTime: params.aggregateByTime,
-        reversed: params.reversed
+      const startTime = params.startTime
+      const endTime = params.endTime ?? undefined
+      fills = await retryProviderAware({
+        fn: () =>
+          this.infoClient.userFillsByTime({
+            user: params.address,
+            startTime,
+            endTime,
+            aggregateByTime: params.aggregateByTime,
+            reversed: params.reversed
+          })
       })
     }
 
