@@ -2,6 +2,7 @@ import { Command } from 'commander'
 
 import { API_BASE_URL, API_BEARER_TOKEN, PRIVY_APP_ID } from '@/common/Env'
 import { writeOutput } from '@/helpers/WriteOutput'
+import { EntryGateService } from '@/services/EntryGateService'
 import {
   HyperliquidOrderBookCommandOptionsSchema,
   HyperliquidService
@@ -9,10 +10,12 @@ import {
 import { TransactionService } from '@/services/TransactionService'
 import {
   HyperliquidAdjustMarginCommandOptionsSchema,
-  HyperliquidCandleCommandOptionsSchema,
   HyperliquidCancelOrderCommandOptionsSchema,
+  HyperliquidCandleCommandOptionsSchema,
   HyperliquidDepositCommandOptionsSchema,
   HyperliquidDexCashTransferCommandOptionsSchema,
+  HyperliquidEntryGateOverrideCommandOptionsSchema,
+  HyperliquidEntryGateStatusCommandOptionsSchema,
   HyperliquidListAssetsCommandOptionsSchema,
   HyperliquidListBalancesCommandOptionsSchema,
   HyperliquidListExchangesCommandOptionsSchema,
@@ -35,7 +38,7 @@ import {
   HyperliquidUsdTransferCommandOptionsSchema,
   HyperliquidWithdrawCommandOptionsSchema
 } from '@/types/Hyperliquid'
-import { ensureJsonTreeString } from '@/utils/Lang'
+import { ensureJsonTreeString, isNullish } from '@/utils/Lang'
 
 const VERSION = '1.0.0'
 
@@ -47,8 +50,10 @@ export function buildHyperliquidCommand(): Command {
     apiBearerToken: API_BEARER_TOKEN,
     privyAppId: PRIVY_APP_ID
   })
+  const entryGateService = new EntryGateService()
   const hyperliquidService = new HyperliquidService({
-    transaction: transactionService
+    transaction: transactionService,
+    entryGate: entryGateService
   })
 
   const program = new Command('hyperliquid')
@@ -220,6 +225,57 @@ export function buildHyperliquidCommand(): Command {
         startTime: request.startTime,
         endTime: request.endTime,
         dex: request.dex
+      })
+      const output = ensureJsonTreeString(response)
+      await writeOutput({
+        output,
+        outPath: request.out ?? undefined
+      })
+    })
+
+  program
+    .command('entry-gate status')
+    .description(
+      'Read the entry-trigger gate state for perp coins (stand_by | armed_awaiting | trigger_fired)'
+    )
+    .option('--coin <coin>', 'Filter to one coin')
+    .option('--dex <dex>', 'Perp dex name (main by default)')
+    .option('--out <file>', 'Write output JSON to file')
+    .action(async (options: unknown): Promise<void> => {
+      const request = HyperliquidEntryGateStatusCommandOptionsSchema.parse(options)
+      const states = await entryGateService.getStates()
+      const filtered = states.states.filter((state) => {
+        const dexMatch = isNullish(request.dex) || state.dex === request.dex.trim()
+        const coinMatch =
+          isNullish(request.coin) || state.coin === request.coin.trim().toUpperCase()
+        return dexMatch && coinMatch
+      })
+      const output = ensureJsonTreeString({ states: filtered })
+      await writeOutput({
+        output,
+        outPath: request.out ?? undefined
+      })
+    })
+
+  program
+    .command('entry-gate override')
+    .description(
+      'Authority-gated journaled override: flips a coin gate to trigger_fired for a bounded TTL (actor must be exec-lead or chief)'
+    )
+    .requiredOption('--coin <coin>', 'Perp symbol (for example: BTC)')
+    .option('--dex <dex>', 'Perp dex name (main by default)')
+    .requiredOption('--actor <actor>', 'Override authority (exec-lead | chief)')
+    .requiredOption('--reason <reason>', 'Why the override is being granted')
+    .option('--ttl-ms <ms>', 'TTL in milliseconds (default 900000 = 15 minutes)', '900000')
+    .option('--out <file>', 'Write output JSON to file')
+    .action(async (options: unknown): Promise<void> => {
+      const request = HyperliquidEntryGateOverrideCommandOptionsSchema.parse(options)
+      const response = await entryGateService.override({
+        dex: request.dex,
+        coin: request.coin,
+        actor: request.actor,
+        reason: request.reason,
+        ttlMs: request.ttlMs
       })
       const output = ensureJsonTreeString(response)
       await writeOutput({

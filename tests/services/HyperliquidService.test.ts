@@ -236,3 +236,202 @@ describe('HyperliquidService order book', () => {
     )
   })
 })
+
+describe('HyperliquidService candles', () => {
+  function createCandleService(infoClient: Pick<InfoClient, 'candleSnapshot'>) {
+    const params: HyperliquidServiceParams = {
+      transaction: {} as HyperliquidServiceParams['transaction'],
+      infoClient: infoClient as InfoClient
+    }
+    return new HyperliquidService(params)
+  }
+
+  const ROWS = [
+    {
+      t: 1786000000000,
+      T: 1786000005999,
+      s: 'BTC',
+      i: '1m',
+      o: '69000.5',
+      c: '69100.25',
+      h: '69150.75',
+      l: '68950.0',
+      v: '12.5',
+      n: 33
+    },
+    {
+      t: 1786000006000,
+      T: 1786000011999,
+      s: 'BTC',
+      i: '1m',
+      o: '69100.25',
+      c: '69120.0',
+      h: '69130.5',
+      l: '69090.1',
+      v: '8.25',
+      n: 21
+    }
+  ]
+
+  test('maps SDK rows to the shared candle contract on main', async () => {
+    const candleSnapshot = vi.fn().mockResolvedValue(ROWS)
+    const service = createCandleService({ candleSnapshot })
+
+    const result = await service.getCandles({ coin: 'BTC', interval: '1m', dex: null })
+
+    expect(candleSnapshot).toHaveBeenCalledTimes(1)
+    const calledParams = candleSnapshot.mock.calls[0][0]
+    expect(calledParams.coin).toBe('BTC')
+    expect(calledParams.interval).toBe('1m')
+    expect(typeof calledParams.startTime).toBe('number')
+    expect(result).toEqual({
+      source: 'hyperliquid',
+      interval: '1m',
+      coin: 'BTC',
+      candles: [
+        { t: 1786000000000, o: 69000.5, h: 69150.75, l: 68950.0, c: 69100.25, v: 12.5 },
+        { t: 1786000006000, o: 69100.25, h: 69130.5, l: 69090.1, c: 69120.0, v: 8.25 }
+      ]
+    })
+  })
+
+  test('prefixes the coin with the dex for HIP-3 candles', async () => {
+    const candleSnapshot = vi.fn().mockResolvedValue(ROWS)
+    const service = createCandleService({ candleSnapshot })
+
+    const result = await service.getCandles({ coin: 'SKHX', interval: '5m', dex: 'xyz' })
+
+    expect(candleSnapshot).toHaveBeenCalledWith({
+      coin: 'xyz:SKHX',
+      interval: '5m',
+      startTime: expect.any(Number)
+    })
+    expect(result.coin).toBe('xyz:SKHX')
+    expect(result.interval).toBe('5m')
+    expect(result.candles).toHaveLength(2)
+  })
+
+  test('forwards an explicit startTime window', async () => {
+    const candleSnapshot = vi.fn().mockResolvedValue(ROWS)
+    const service = createCandleService({ candleSnapshot })
+
+    await service.getCandles({
+      coin: 'ETH',
+      interval: '5m',
+      startTime: 1786000000000,
+      endTime: 1786000012000,
+      dex: null
+    })
+
+    expect(candleSnapshot).toHaveBeenCalledWith({
+      coin: 'ETH',
+      interval: '5m',
+      startTime: 1786000000000,
+      endTime: 1786000012000
+    })
+  })
+})
+
+describe('HyperliquidService entry-trigger gate enforcement', () => {
+  async function gateService(): Promise<{ entryGate: import('@/services/EntryGateService').EntryGateService; stateDir: string }> {
+    const { mkdtemp, rm } = await import('node:fs/promises')
+    const { tmpdir } = await import('node:os')
+    const { join } = await import('node:path')
+    const { EntryGateService } = await import('@/services/EntryGateService')
+    const stateDir = await mkdtemp(join(tmpdir(), 'entry-gate-hl-'))
+    const entryGate = new EntryGateService({ stateDir })
+    await entryGate.load()
+    return { entryGate, stateDir }
+  }
+
+  test('refuses a position-increasing order pre-broadcast when the coin gate is not fired', async () => {
+    const { entryGate } = await gateService()
+    const metaAndAssetCtxs = vi.fn().mockResolvedValue([MAIN_META, [MAIN_CONTEXT]])
+    const service = createService({ metaAndAssetCtxs, perpDexs: vi.fn() }) as unknown as {
+      tradePerp: (params: unknown) => Promise<unknown>
+    }
+    // Rebuild with the gate wired in (createService does not inject one).
+    const params: HyperliquidServiceParams = {
+      transaction: {} as HyperliquidServiceParams['transaction'],
+      infoClient: { metaAndAssetCtxs, perpDexs: vi.fn() } as unknown as InfoClient,
+      entryGate
+    }
+    const gated = new HyperliquidService(params)
+
+    await expect(
+      gated.tradePerp({
+        request: {
+          from: '0xbb64c24a6b2ee1185621490d2a1ae06522f15f57',
+          coin: 'BTC',
+          amount: new (await import('bignumber.js')).default(0.001),
+          side: 'long',
+          type: 'market',
+          reduceOnly: false,
+          walletId: 'w'
+        },
+        walletId: 'w'
+      } as never)
+    ).rejects.toThrow('entry trigger gate')
+    expect(metaAndAssetCtxs).toHaveBeenCalled()
+  })
+
+  test('never blocks a reduce-only close (exits pass the gate)', async () => {
+    const { entryGate } = await gateService()
+    const metaAndAssetCtxs = vi.fn().mockResolvedValue([MAIN_META, [MAIN_CONTEXT]])
+    const params: HyperliquidServiceParams = {
+      transaction: {} as HyperliquidServiceParams['transaction'],
+      infoClient: { metaAndAssetCtxs, perpDexs: vi.fn() } as unknown as InfoClient,
+      entryGate
+    }
+    const gated = new HyperliquidService(params)
+
+    // The close proceeds past the gate; it fails downstream at the exchange
+    // layer (no wallet wired in the test), NOT with the gate refusal.
+    const error = await gated
+      .tradePerp({
+        request: {
+          from: '0xbb64c24a6b2ee1185621490d2a1ae06522f15f57',
+          coin: 'BTC',
+          amount: new (await import('bignumber.js')).default(0.001),
+          side: 'short',
+          type: 'market',
+          reduceOnly: true,
+          walletId: 'w'
+        },
+        walletId: 'w'
+      } as never)
+      .then(() => null)
+      .catch((e: unknown) => e)
+    expect(error).not.toBeNull()
+    expect(String(error)).not.toContain('entry trigger gate')
+  })
+
+  test('allows an opening order once the gate is trigger_fired within TTL', async () => {
+    const { entryGate } = await gateService()
+    await entryGate.fireTrigger('main', 'BTC', 60_000)
+    const metaAndAssetCtxs = vi.fn().mockResolvedValue([MAIN_META, [MAIN_CONTEXT]])
+    const params: HyperliquidServiceParams = {
+      transaction: {} as HyperliquidServiceParams['transaction'],
+      infoClient: { metaAndAssetCtxs, perpDexs: vi.fn() } as unknown as InfoClient,
+      entryGate
+    }
+    const gated = new HyperliquidService(params)
+
+    const error = await gated
+      .tradePerp({
+        request: {
+          from: '0xbb64c24a6b2ee1185621490d2a1ae06522f15f57',
+          coin: 'BTC',
+          amount: new (await import('bignumber.js')).default(0.001),
+          side: 'long',
+          type: 'market',
+          reduceOnly: false,
+          walletId: 'w'
+        },
+        walletId: 'w'
+      } as never)
+      .then(() => null)
+      .catch((e: unknown) => e)
+    expect(String(error)).not.toContain('entry trigger gate')
+  })
+})
