@@ -13,6 +13,7 @@ import { resolve } from 'node:path'
 
 import { JournalService } from '@/services/JournalService'
 import { type JournalImportResult, JournalInsertInputSchema } from '@/types/Journal'
+import { ensureJsonTreeString } from '@/utils/Lang'
 
 const DB_PATH = process.argv[2] ?? resolve('/root/workspace/data/trade-journal.sqlite')
 const DROP_DIR = process.argv[3] ?? resolve('/root/workspace/evidence/trade-reports')
@@ -21,7 +22,7 @@ const journal = new JournalService({ dbPath: DB_PATH })
 
 function importFile(file: string, result: JournalImportResult): void {
   try {
-    const raw = JSON.parse(readFileSync(resolve(DROP_DIR, file), 'utf8')) as unknown
+    const raw: unknown = JSON.parse(readFileSync(resolve(DROP_DIR, file), 'utf8'))
     const input = JournalInsertInputSchema.parse(raw)
     journal.upsert(input)
     result.inserted += 1
@@ -41,4 +42,4 @@ try {
   files = []
 }
 for (const file of files) importFile(file, result)
-console.log(JSON.stringify(result))
+console.log(ensureJsonTreeString(result))

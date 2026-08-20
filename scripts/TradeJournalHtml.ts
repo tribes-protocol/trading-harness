@@ -122,7 +122,7 @@ export function sparklineSvg(curve: readonly SparklinePoint[] | null | undefined
   const d = svgPath(points)
   return (
     `<svg viewBox="0 0 100 40" preserveAspectRatio="none" aria-hidden="true">` +
-    `<polyline points="${esc(d.slice(1))}" fill="none" stroke="${stroke}" ` +
+    `<path d="${esc(d)}" fill="none" stroke="${stroke}" ` +
     `stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"/>` +
     `</svg>`
   )
@@ -193,7 +193,7 @@ export function feedPageHtml(
     `<!doctype html><html lang="en"><head><meta charset="utf-8">` +
     `<meta name="viewport" content="width=device-width, initial-scale=1">` +
     `<title>Trade Journal</title>` +
-    `<style>${esc(css())}</style>` +
+    `<style>${css()}</style>` +
     `</head><body>${feedHtml(trades, count)}${modals}` +
     `<script>${clientScript}` +
     `</scr` +

@@ -1,10 +1,29 @@
 import { Database } from 'bun:sqlite'
 
-import { JournalInsertInputSchema, JournalTradeSchema, type JournalInsertInput, type JournalTrade } from '@/types/Journal'
-
+import { type JournalInsertInput, type JournalTrade, JournalTradeSchema } from '@/types/Journal'
 import { ensureJsonTreeString } from '@/utils/Lang'
 
 type JournalRow = Record<string, unknown> | null | undefined
+
+/** Narrow one sqlite row value to a plain object record (no casts). */
+function readRow(value: unknown): Record<string, unknown> | null {
+  if (value === null || value === undefined || typeof value !== 'object') return null
+  if (Array.isArray(value)) return null
+  const out: Record<string, unknown> = {}
+  for (const [key, val] of Object.entries(value)) out[key] = val
+  return out
+}
+
+/** Narrow a sqlite result array to plain object records (no casts). */
+function readRows(value: unknown): Array<Record<string, unknown>> {
+  if (!Array.isArray(value)) return []
+  const out: Array<Record<string, unknown>> = []
+  for (const item of value) {
+    const row = readRow(item)
+    if (row !== null) out.push(row)
+  }
+  return out
+}
 
 function rowToTrade(row: JournalRow): JournalTrade {
   if (row === null || row === undefined) {
@@ -116,26 +135,30 @@ export class JournalService {
         trade.rr ?? null,
         trade.status,
         trade.realizedPnlUsd,
-        trade.report === null || trade.report === undefined ? null : JSON.stringify(trade.report)
+        trade.report === null || trade.report === undefined
+          ? null
+          : ensureJsonTreeString(trade.report)
       )
   }
 
   list(limit: number, offset: number): JournalTrade[] {
-    const rows = this.db
-      .query(`SELECT * FROM trades ORDER BY timestamp DESC LIMIT ? OFFSET ?`)
-      .all(limit, offset) as Array<Record<string, unknown>>
+    const rows = readRows(
+      this.db
+        .query(`SELECT * FROM trades ORDER BY timestamp DESC LIMIT ? OFFSET ?`)
+        .all(limit, offset)
+    )
     return rows.map(rowToTrade)
   }
 
   get(id: string): JournalTrade | null {
-    const raw = this.db.query(`SELECT * FROM trades WHERE id = ?`).get(id)
-    const row = raw === null ? undefined : (raw as Record<string, unknown> | undefined)
-    if (row === undefined) return null
+    const row = readRow(this.db.query(`SELECT * FROM trades WHERE id = ?`).get(id))
+    if (row === null) return null
     return rowToTrade(row)
   }
 
   count(): number {
-    const row = this.db.query(`SELECT COUNT(*) AS n FROM trades`).get() as { n: number }
-    return row.n
+    const row = readRow(this.db.query(`SELECT COUNT(*) AS n FROM trades`).get())
+    const n = row === null ? 0 : Number(row['n'])
+    return Number.isFinite(n) ? n : 0
   }
 }
