@@ -1,5 +1,5 @@
 import { spawn } from 'node:child_process'
-import { openSync } from 'node:fs'
+import { existsSync, openSync } from 'node:fs'
 import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import { resolve } from 'node:path'
 
@@ -54,6 +54,25 @@ function isFileNotFoundError(error: unknown): boolean {
 function normalizeDexName(dex: string | null | undefined): string {
   const trimmed = dex?.trim() ?? ''
   return trimmed.length === 0 || trimmed === 'main' ? 'main' : trimmed
+}
+
+/**
+ * Resolve the argv payload for re-spawning the detached monitor.
+ *
+ * Deployment-dependent: under the compiled binary, process.argv =
+ * [binary, 'trailing-stop', 'monitor', id] so argv[1] is the subcommand and the
+ * child re-execs the binary directly. Under the bun-shim deployment
+ * (exec bun src/cli/Tribes.ts "$@"), process.argv = [bun, <script>,
+ * 'trailing-stop', 'monitor', id] — argv[1] is a real script path the child
+ * MUST receive, or the interpreter tries to load a module literally named
+ * 'trailing-stop' and dies with 'Script not found'.
+ */
+export function resolveMonitorSpawnArgs(argv: readonly string[]): readonly string[] {
+  const entry = argv[1]
+  if (entry !== undefined && existsSync(entry)) {
+    return [entry, 'trailing-stop', 'monitor']
+  }
+  return ['trailing-stop', 'monitor']
 }
 
 /**
@@ -602,7 +621,8 @@ export class TrailingStopService {
       const logPath = resolve(this.stateDir, `trailing-stop-${id}.log`)
       const logFd = openSync(logPath, 'a')
       const binary = process.argv[0] ?? process.execPath
-      const child = spawn(binary, ['trailing-stop', 'monitor', id], {
+      const args = [...resolveMonitorSpawnArgs(process.argv), id]
+      const child = spawn(binary, args, {
         detached: true,
         stdio: ['ignore', logFd, logFd],
         env: process.env

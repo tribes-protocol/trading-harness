@@ -8,6 +8,7 @@ import { describe, expect, test, vi } from 'vitest'
 import { HyperliquidService } from '@/services/HyperliquidService'
 import {
   computeTrailingStop,
+  resolveMonitorSpawnArgs,
   TrailingStopService
 } from '@/services/TrailingStopService'
 import type { TrailingStopMonitorDeps, TrailingStopState } from '@/types/TrailingStop'
@@ -124,6 +125,19 @@ describe('computeTrailingStop (pure trail math)', () => {
   test('px trail: long subtracts, short adds the absolute distance', () => {
     expect(computeTrailingStop('long', new BigNumber(70000), { kind: 'px', value: 120 }).toNumber()).toBe(69880)
     expect(computeTrailingStop('short', new BigNumber(68000), { kind: 'px', value: 120 }).toNumber()).toBe(68120)
+  })
+})
+
+describe('resolveMonitorSpawnArgs (monitor re-spawn argv)', () => {
+  test('compiled binary: argv[1] is the subcommand, spawn the binary directly', () => {
+    const argv = ['/usr/local/bin/tribes-cli', 'trailing-stop', 'monitor', 'stop-1']
+    expect(resolveMonitorSpawnArgs(argv)).toEqual(['trailing-stop', 'monitor'])
+  })
+
+  test('bun shim: argv[1] is the script path, pass it back to the interpreter', () => {
+    const script = join(process.cwd(), 'src', 'cli', 'Tribes.ts')
+    const argv = ['bun', script, 'trailing-stop', 'monitor', 'stop-1']
+    expect(resolveMonitorSpawnArgs(argv)).toEqual([script, 'trailing-stop', 'monitor'])
   })
 })
 
