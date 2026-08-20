@@ -10,6 +10,7 @@ import { TransactionService } from '@/services/TransactionService'
 import {
   HyperliquidAdjustMarginCommandOptionsSchema,
   HyperliquidCancelOrderCommandOptionsSchema,
+  HyperliquidCandleCommandOptionsSchema,
   HyperliquidDepositCommandOptionsSchema,
   HyperliquidDexCashTransferCommandOptionsSchema,
   HyperliquidListAssetsCommandOptionsSchema,
@@ -192,6 +193,31 @@ export function buildHyperliquidCommand(): Command {
       const response = await hyperliquidService.getOrderBook({
         coin: request.coin,
         depth: request.depth ?? DEFAULT_ORDER_BOOK_DEPTH,
+        dex: request.dex
+      })
+      const output = ensureJsonTreeString(response)
+      await writeOutput({
+        output,
+        outPath: request.out ?? undefined
+      })
+    })
+
+  program
+    .command('candles')
+    .description('OHLCV candle snapshot for a perp coin (shared candle contract)')
+    .requiredOption('--coin <coin>', 'Perp symbol (for example: BTC, ETH, SOL)')
+    .option('--interval <interval>', '1m | 5m (default 1m)', '1m')
+    .option('--start-time <ms>', 'Start of the window as epoch ms')
+    .option('--end-time <ms>', 'End of the window as epoch ms')
+    .option('--dex <dex>', 'Perp dex name (main by default)')
+    .option('--out <file>', 'Write output JSON to file')
+    .action(async (options: unknown): Promise<void> => {
+      const request = HyperliquidCandleCommandOptionsSchema.parse(options)
+      const response = await hyperliquidService.getCandles({
+        coin: request.coin,
+        interval: request.interval,
+        startTime: request.startTime,
+        endTime: request.endTime,
         dex: request.dex
       })
       const output = ensureJsonTreeString(response)

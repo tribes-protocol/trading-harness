@@ -33,6 +33,9 @@ import {
   type HyperliquidBalancesResult,
   HyperliquidBalancesResultSchema,
   type HyperliquidCancelOrderCommandOptions,
+  type HyperliquidCandlesParams,
+  type HyperliquidCandlesResult,
+  HyperliquidCandlesSchema,
   HyperliquidCoinSchema,
   type HyperliquidDepositParams,
   type HyperliquidDepositResult,
@@ -145,6 +148,10 @@ export interface HyperliquidOrderBookParams {
   readonly depth: number
   readonly dex: string | null | undefined
 }
+
+// When a candle call omits startTime, ask for this wide trailing window and let
+// Hyperliquid return the most recent candle run (capped at a few thousand rows).
+const HYPERLIQUID_CANDLE_DEFAULT_LOOKBACK_MS = 3650 * 24 * 60 * 60 * 1000
 
 export class HyperliquidService {
   private readonly transaction: TransactionService
@@ -1194,6 +1201,35 @@ export class HyperliquidService {
         .slice(0, params.depth)
         .map((level) => ({ px: level.px, sz: level.sz, n: level.n })),
       asks: asks.slice(0, params.depth).map((level) => ({ px: level.px, sz: level.sz, n: level.n }))
+    })
+  }
+
+  async getCandles(params: HyperliquidCandlesParams): Promise<HyperliquidCandlesResult> {
+    const dex = this.normalizeDex(params.dex)
+    const coin =
+      dex.length > 0 && !params.coin.includes(':') ? `${dex}:${params.coin}` : params.coin
+    // The bundled SDK requires a startTime; when the caller omits it, widen the
+    // lookback so Hyperliquid returns the most recent candle run (capped at a few
+    // thousand), which is what the desk's indicator compute needs.
+    const startTime = params.startTime ?? Date.now() - HYPERLIQUID_CANDLE_DEFAULT_LOOKBACK_MS
+    const candles = await this.infoClient.candleSnapshot({
+      coin,
+      interval: params.interval,
+      startTime,
+      endTime: params.endTime ?? undefined
+    })
+    return HyperliquidCandlesSchema.parse({
+      source: 'hyperliquid',
+      interval: params.interval,
+      coin,
+      candles: candles.map((row) => ({
+        t: row.t,
+        o: Number(row.o),
+        h: Number(row.h),
+        l: Number(row.l),
+        c: Number(row.c),
+        v: Number(row.v)
+      }))
     })
   }
 

@@ -887,6 +887,62 @@ export function normalizeHyperliquidCoin(raw: string): string {
 export const HyperliquidCoinSchema = z.string().min(1).transform(normalizeHyperliquidCoin)
 export type HyperliquidCoin = z.infer<typeof HyperliquidCoinSchema>
 
+export const HyperliquidCandleIntervalSchema = z.enum([
+  '1m',
+  '3m',
+  '5m',
+  '15m',
+  '30m',
+  '1h',
+  '2h',
+  '4h',
+  '8h',
+  '12h',
+  '1d',
+  '3d',
+  '1w',
+  '1M'
+])
+export type HyperliquidCandleInterval = z.infer<typeof HyperliquidCandleIntervalSchema>
+
+export const HyperliquidCandleCommandOptionsSchema = z.object({
+  coin: HyperliquidCoinSchema,
+  interval: HyperliquidCandleIntervalSchema.default('1m'),
+  startTime: z.coerce.number().int().nonnegative().nullish(),
+  endTime: z.coerce.number().int().nonnegative().nullish(),
+  dex: z.string().trim().min(1).nullish(),
+  out: z.string().nullish()
+})
+export type HyperliquidCandleCommandOptions = z.infer<typeof HyperliquidCandleCommandOptionsSchema>
+
+// One perp candle: the shared OHLCV contract (t is epoch ms), matching
+// TaCandleSchema in types/Ta.ts so the ta indicators compute layer is unchanged.
+export const HyperliquidCandleSchema = z.object({
+  t: z.number(),
+  o: z.number(),
+  h: z.number(),
+  l: z.number(),
+  c: z.number(),
+  v: z.number().nullish()
+})
+export type HyperliquidCandle = z.infer<typeof HyperliquidCandleSchema>
+
+export const HyperliquidCandlesSchema = z.object({
+  source: z.literal('hyperliquid'),
+  interval: HyperliquidCandleIntervalSchema,
+  coin: z.string(),
+  candles: z.array(HyperliquidCandleSchema)
+})
+export type HyperliquidCandlesResult = z.infer<typeof HyperliquidCandlesSchema>
+
+export interface HyperliquidCandlesParams {
+  readonly coin: string
+  readonly interval: HyperliquidCandleInterval
+  readonly startTime: number | null | undefined
+  readonly endTime: number | null | undefined
+  readonly dex: string | null | undefined
+}
+
 export interface HyperliquidServiceParams {
   readonly transaction: TransactionService
   readonly infoClient?: InfoClient
