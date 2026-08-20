@@ -1365,7 +1365,9 @@ export class HyperliquidService {
 
   async getCandles(params: HyperliquidCandlesParams): Promise<HyperliquidCandlesResult> {
     const dex = this.normalizeDex(params.dex)
-    const rawCoin = params.coin.includes(':') ? params.coin : `${dex ? `${dex}:` : ''}${params.coin}`
+    const rawCoin = params.coin.includes(':')
+      ? params.coin
+      : `${dex ? `${dex}:` : ''}${params.coin}`
     // Resolve the VENUE-EXACT coin name from the perp meta universe. The venue's
     // canonical symbol case is authoritative (e.g. `kPEPE` on main), and
     // candleSnapshot is case-sensitive — an uppercased `KPEPE` 500s while

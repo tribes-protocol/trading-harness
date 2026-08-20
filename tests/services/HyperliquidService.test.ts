@@ -238,12 +238,29 @@ describe('HyperliquidService order book', () => {
 })
 
 describe('HyperliquidService candles', () => {
-  function createCandleService(infoClient: Pick<InfoClient, 'candleSnapshot'>) {
+  function createCandleService(
+    infoClient: Pick<InfoClient, 'candleSnapshot' | 'metaAndAssetCtxs'>
+  ) {
     const params: HyperliquidServiceParams = {
       transaction: {} as HyperliquidServiceParams['transaction'],
       infoClient: infoClient as InfoClient
     }
     return new HyperliquidService(params)
+  }
+
+  const CANDLE_META = {
+    universe: [
+      { name: 'BTC', szDecimals: 5, maxLeverage: 40, marginTableId: 1 },
+      { name: 'kPEPE', szDecimals: 0, maxLeverage: 10, marginTableId: 1 },
+      { name: 'ETH', szDecimals: 1, maxLeverage: 25, marginTableId: 1 },
+      { name: 'SKHX', szDecimals: 2, maxLeverage: 10, marginTableId: 1 }
+    ],
+    marginTables: [],
+    collateralToken: 0
+  }
+
+  function candleMetaAndAssetCtxs(meta = CANDLE_META): ReturnType<typeof vi.fn> {
+    return vi.fn().mockResolvedValue([meta, []])
   }
 
   const ROWS = [
@@ -275,7 +292,10 @@ describe('HyperliquidService candles', () => {
 
   test('maps SDK rows to the shared candle contract on main', async () => {
     const candleSnapshot = vi.fn().mockResolvedValue(ROWS)
-    const service = createCandleService({ candleSnapshot })
+    const service = createCandleService({
+      candleSnapshot,
+      metaAndAssetCtxs: candleMetaAndAssetCtxs()
+    })
 
     const result = await service.getCandles({ coin: 'BTC', interval: '1m', dex: null })
 
@@ -297,7 +317,15 @@ describe('HyperliquidService candles', () => {
 
   test('prefixes the coin with the dex for HIP-3 candles', async () => {
     const candleSnapshot = vi.fn().mockResolvedValue(ROWS)
-    const service = createCandleService({ candleSnapshot })
+    const meta = {
+      universe: [{ name: 'SKHX', szDecimals: 2, maxLeverage: 10, marginTableId: 1 }],
+      marginTables: [],
+      collateralToken: 0
+    }
+    const service = createCandleService({
+      candleSnapshot,
+      metaAndAssetCtxs: candleMetaAndAssetCtxs(meta)
+    })
 
     const result = await service.getCandles({ coin: 'SKHX', interval: '5m', dex: 'xyz' })
 
@@ -313,7 +341,10 @@ describe('HyperliquidService candles', () => {
 
   test('forwards an explicit startTime window', async () => {
     const candleSnapshot = vi.fn().mockResolvedValue(ROWS)
-    const service = createCandleService({ candleSnapshot })
+    const service = createCandleService({
+      candleSnapshot,
+      metaAndAssetCtxs: candleMetaAndAssetCtxs()
+    })
 
     await service.getCandles({
       coin: 'ETH',
@@ -329,6 +360,38 @@ describe('HyperliquidService candles', () => {
       startTime: 1786000000000,
       endTime: 1786000012000
     })
+  })
+
+  test('resolves a mixed-case venue symbol to its exact case (kPEPE not KPEPE)', async () => {
+    const candleSnapshot = vi.fn().mockResolvedValue(ROWS)
+    const service = createCandleService({
+      candleSnapshot,
+      metaAndAssetCtxs: candleMetaAndAssetCtxs()
+    })
+
+    // The CLI/schema uppercases the input to KPEPE; the service must round-trip
+    // it to the venue-exact kPEPE so candleSnapshot (case-sensitive) succeeds.
+    const result = await service.getCandles({ coin: 'KPEPE', interval: '1m', dex: null })
+
+    expect(candleSnapshot).toHaveBeenCalledWith({
+      coin: 'kPEPE',
+      interval: '1m',
+      startTime: expect.any(Number)
+    })
+    expect(result.coin).toBe('kPEPE')
+  })
+
+  test('fails fast for an unknown coin instead of an opaque 500', async () => {
+    const candleSnapshot = vi.fn()
+    const service = createCandleService({
+      candleSnapshot,
+      metaAndAssetCtxs: candleMetaAndAssetCtxs()
+    })
+
+    await expect(service.getCandles({ coin: 'NOPE', interval: '1m', dex: null })).rejects.toThrow(
+      'unknown perp coin NOPE on dex main'
+    )
+    expect(candleSnapshot).not.toHaveBeenCalled()
   })
 })
 

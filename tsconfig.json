@@ -19,6 +19,6 @@
     "noFallthroughCasesInSwitch": true,
     "forceConsistentCasingInFileNames": true
   },
-  "include": ["src/**/*.ts", ".pi/extensions/**/*.ts"],
+  "include": ["src/**/*.ts", "scripts/**/*.ts", ".pi/extensions/**/*.ts"],
   "exclude": ["node_modules", "runtime", "dist", "src/**/*.test.ts"]
 }
