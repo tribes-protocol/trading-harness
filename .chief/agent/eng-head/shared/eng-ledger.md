@@ -60,3 +60,34 @@ class covered) from a policy-drift commodity skip (slot filled from crypto with 
 The retrospective reads intent, not conflation.
 
 Trace: msg-48cc498c5fc5acfb72435032 (Chief cross-asset ruling), this entry.
+
+---
+
+## 2026-08-20T19:27Z — LIVE 1.5:1 R:R BREACH (exec-risk msg-79be5, ledger integrity watch)
+
+**THE BREACH (recorded as the desk flagged it):** the aggressive-window R:R floor is 1.5:1 (per
+the operating-frame ruling above). LIVE measured at reporting:
+- ETH 1.27:1 — FAIL (below 1.5)
+- MRNA 0.91:1 — FAIL (below 1.5)
+- SOL 2.15:1 — PASS
+
+**THE LEDGER CLASSIFICATION (this is the exact policy-drift vs operator-directed distinction
+the ledger exists to catch):**
+- IF the brackets/fills get RE-LEVELLED to ≥1.5 OR the positions CLOSED → COMPLIANCE.
+- If sub-1.5:1 is HELD after this WITHOUT a signed operator override on record → POLICY DRIFT,
+  and this ledger entry is amended to record it as such.
+
+**RESOLUTION STATE: PENDING** (as of this entry). exec-lead is coordinating re-level vs close
+vs operator-override. This entry is the live marker; the resolution outcome + date will be
+appended below the moment it lands. Until then the OPEN question is whether the sub-1.5 fills
+get re-levelled/closed (clean) or held without override (drift).
+
+Trace: msg-79be5 (exec-risk breach), msg-91a1f88 (Chief ledger instruction), this entry.
+    
+---
+
+## 2026-08-20T19:28Z — [RESOLUTION PENDING — WAITING TO APPEND SUB-1.5 R:R DISPOSITION]
+
+(resolution to be recorded when exec-lead lands the closing decision — re-level / close /
+operator override — with the date and which path was taken.)
+
