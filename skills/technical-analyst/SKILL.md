@@ -2,7 +2,7 @@
 name: technical-analyst
 description: >-
   The indicator and backtest COMPUTATION layer for any candle-bearing asset (crypto tokens,
-  coins, DEX pools, stocks, and perps via the underlying coin's candles). Handles: trend,
+  coins, DEX pools, stocks, and perps via the Hyperliquid candleSnapshot feed). Handles: trend,
   momentum, and volatility indicators (SMA/EMA, RSI, MACD, Bollinger, ATR, VWAP, Stochastic)
   computed locally from OHLCV candles, swing support/resistance levels, multi-indicator
   confluence reads, and long-only backtests of two built-in strategies (SMA cross,
@@ -49,10 +49,9 @@ daily series is ~3 months, not a year, and any regime conclusion must match the 
   Bollinger, ATR, VWAP, Stochastic) on any asset you can get candles for — `ta indicators`.
 - Support/resistance and range context — `ta levels`.
 - A long-only backtest of an SMA cross or RSI mean-revert strategy — `ta backtest`.
-- Perps: pull real Hyperliquid perp candles with `tribes-cli hyperliquid candles`
-  (OHLCV in the shared candle contract, volume in base currency) and compute on those. Only if
-  a perp has no live Hyperliquid feed, compute on the underlying coin's candles (`asset
-  candles` with the coin id or token address) and say so in your answer.
+- Perps: `tribes-cli hyperliquid candles --coin <coin> --interval 1m|5m|...` returns real perp
+  OHLCV (via the info candleSnapshot endpoint) — feed it to `ta indicators --candles-file`.
+  No need to fall back to the on-chain proxy for perps.
 - Commodities: no direct candle source — use an ETF proxy via `asset candles --ticker` (e.g.
   GLD for gold) and state the proxy in your answer.
 - NOT for raw candles or price history as the answer itself — use `fundamentals-analyst` or
