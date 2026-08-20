@@ -177,6 +177,7 @@ Pick the skill with these tie-breaker rules, in order:
 | Hyperliquid markets, perp/HL-spot orders, deposits, all security/commodity trades  | `hyperliquid`          |
 | End-to-end trade with pre/post checks                                              | `trade-execution`      |
 | Stops, leverage, liquidation distance, closing positions                           | `position-management`  |
+| Arm, monitor, and exit a trailing stop on an open perp position                    | `trailing-stop`        |
 | On-chain DEX swap or cross-chain bridge                                            | `spot-trading`         |
 | Broadcast a prepared transaction, check tx status                                  | `zipbox-wallet`        |
 | General web lookup or read one URL                                                 | `zipbox-websearch`     |
@@ -400,3 +401,11 @@ When you show an ETH or SOL address for a token, liquidity pool, or Hyperliquid 
 - Token (Solana): `[label](https://tribes.xyz/solana/token/<address>)`.
 - Pool (EVM): `[label](https://tribes.xyz/<chainId>/pool/<poolAddress>)`.
 - Hyperliquid perp: `[coin](https://tribes.xyz/perps/<coin>)` — e.g. `BTC`, `ETH`, `SOL`.
+
+<!-- BEGIN TRIBES RESOURCE ETIQUETTE -->
+## Shared-resource etiquette
+
+- This machine may share its host with other agents. Keep concurrency conservative and leave capacity for neighboring work.
+- Prefix CPU-intensive external commands such as builds, tests, compression, and bulk processing with `nice -n 10` so they run at reduced scheduling priority.
+- Give non-interactive commands that can wait on a process or network an explicit, task-appropriate timeout. Report a timeout instead of retrying forever.
+<!-- END TRIBES RESOURCE ETIQUETTE -->
