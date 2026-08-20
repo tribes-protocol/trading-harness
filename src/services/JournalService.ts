@@ -2,7 +2,12 @@ import { Database } from 'bun:sqlite'
 
 import type { JournalImportResult, JournalInsertInput, JournalTrade } from '@/types/Journal'
 
-function rowToTrade(row: Record<string, unknown>): JournalTrade {
+type JournalRow = Record<string, unknown> | null | undefined
+
+function rowToTrade(row: JournalRow): JournalTrade {
+  if (row === null || row === undefined) {
+    throw new Error('no trade row')
+  }
   const reportJson = row['report_json']
   const report =
     typeof reportJson === 'string' && reportJson.length > 0 ? (JSON.parse(reportJson) as JournalTrade['report']) : null
@@ -112,9 +117,8 @@ export class JournalService {
   }
 
   get(id: string): JournalTrade | null {
-    const row = this.db.query(`SELECT * FROM trades WHERE id = ?`).get(id) as
-      | Record<string, unknown>
-      | undefined
+    const raw = this.db.query(`SELECT * FROM trades WHERE id = ?`).get(id)
+    const row = raw === null ? undefined : (raw as Record<string, unknown> | undefined)
     if (row === undefined) return null
     return rowToTrade(row)
   }
