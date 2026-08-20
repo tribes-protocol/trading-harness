@@ -129,6 +129,9 @@ export class EntryGateService {
   }
 
   async arm(dex: string | null | undefined, coin: string): Promise<HyperliquidEntryGateState> {
+    // Load the persisted registry first so persist() below writes the union,
+    // not a clobber (the one-process-per-command class).
+    await this.load()
     const state = this.blankState(dex ?? '', coin)
     state.status = 'armed_awaiting'
     state.updatedAt = Date.now()
@@ -138,6 +141,8 @@ export class EntryGateService {
   }
 
   async standBy(dex: string | null | undefined, coin: string): Promise<HyperliquidEntryGateState> {
+    // Load first so a standBy never wipes grants from another process.
+    await this.load()
     const state = this.blankState(dex ?? '', coin)
     this.states.set(this.key(state.dex, state.coin), state)
     await this.persist()
@@ -154,6 +159,9 @@ export class EntryGateService {
     coin: string,
     ttlMs: number = DEFAULT_GATE_TTL_MS
   ): Promise<HyperliquidEntryGateState> {
+    // Load first: the trigger-watch may write a trigger while an override or
+    // another process already holds registry entries — persist must be a merge.
+    await this.load()
     const state = this.blankState(dex ?? '', coin)
     state.status = 'trigger_fired'
     state.firedAt = Date.now()
@@ -225,6 +233,9 @@ export class EntryGateService {
     }
 
     const state = this.blankState(params.dex ?? '', params.coin)
+    // Load the persisted registry so the following persist() writes the true
+    // union — a prior grant (e.g. MRNA) must not be clobbered by this grant.
+    await this.load()
     state.status = 'trigger_fired'
     state.firedAt = Date.now()
     state.ttlMs = params.ttlMs ?? DEFAULT_GATE_TTL_MS

@@ -169,6 +169,42 @@ describe('SizingLockService — authority-gated journaled override', () => {
     expect(decision.reason).toContain('override')
   })
 
+  // CLOBBER REGRESSION (desk P0, 2026-08-20): the sizing override write path
+  // persisted the whole in-memory override map without re-loading the persisted
+  // registry first — so a later grant erased an earlier one (MRNA's sizing
+  // override vanished). Fix loads overrides before set, so persist writes union.
+  test('across-process sizing grants accumulate — ETH then MRNA both persist', async () => {
+    const { service: a, stateDir } = await freshService(['exec-lead', 'chief'])
+    await a.arm({ packageId: 'A-212', version: 'v3', perCoin: [V3_BTC_ENTRY] })
+    await a.override({ dex: 'main', coin: 'ETH', actor: 'exec-lead', reason: 'eth', ttlMs: 60_000 })
+
+    // Fresh process = the second CLI command; must see ETH before writing MRNA.
+    const b = new SizingLockService({ stateDir, overrideActors: ['exec-lead', 'chief'] })
+    await b.arm({ packageId: 'A-212', version: 'v3', perCoin: [V3_BTC_ENTRY] })
+    await b.override({ dex: 'main', coin: 'MRNA', actor: 'exec-lead', reason: 'mrna', ttlMs: 60_000 })
+
+    // Both override gates must be consumed.
+    const eth = await b.isEntrySizeAllowed({
+      dex: 'main',
+      coin: 'ETH',
+      amount: new BigNumber(0.1),
+      referencePrice: new BigNumber(3000)
+    })
+    const mrna = await b.isEntrySizeAllowed({
+      dex: 'main',
+      coin: 'MRNA',
+      amount: new BigNumber(0.1),
+      referencePrice: new BigNumber(100)
+    })
+    expect(eth.allowed).toBe(true)
+    expect(mrna.allowed).toBe(true)
+
+    const raw = JSON.parse(await readFile(join(stateDir, 'sizing-lock-overrides.json'), 'utf8'))
+    const keys = (raw.overrides as { key: string }[]).map((o) => o.key)
+    expect(keys).toContain('main:ETH')
+    expect(keys).toContain('main:MRNA')
+  })
+
   test('override expires after TTL — off-lock refused again', async () => {
     vi.useFakeTimers()
     try {

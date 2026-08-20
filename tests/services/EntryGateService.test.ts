@@ -98,4 +98,46 @@ describe('EntryGateService override (authority-gated, journaled)', () => {
     expect(journal).toContain('exec-lead')
     expect(journal).toContain('watch wobbled')
   })
+
+  // CLOBBER REGRESSION (desk P0, 2026-08-20): each CLI override runs in its own
+  // process with a fresh empty in-memory map, and the write path persisted the
+  // whole map WITHOUT re-loading first — so grant B erased grant A on disk
+  // (the MRNA/ETH flap). The fix loads the persisted registry before set, so
+  // persisting writes the true union. These prove the clobber cannot recur.
+  test('across-process grants accumulate — grant A then grant B, both persist', async () => {
+    const { service: a, stateDir } = await freshService(['exec-lead', 'chief'])
+    await a.override({ dex: 'main', coin: 'ETH', actor: 'exec-lead', reason: 'a', ttlMs: 60_000 })
+
+    // Fresh process = the second CLI command. Must load the persisted ETH grant
+    // before writing MRNA, else MRNA would clobber ETH.
+    const b = new EntryGateService({ stateDir, overrideActors: ['exec-lead', 'chief'] })
+    await b.override({ dex: 'main', coin: 'MRNA', actor: 'exec-lead', reason: 'b', ttlMs: 60_000 })
+
+    const eth = await b.isEntryAllowed('main', 'ETH')
+    const mrna = await b.isEntryAllowed('main', 'MRNA')
+    expect(eth.allowed).toBe(true)
+    expect(mrna.allowed).toBe(true)
+
+    // The persisted file must hold BOTH states.
+    const raw = JSON.parse(await readFile(join(stateDir, 'entry-gate.json'), 'utf8'))
+    const coins = (raw.states as { coin: string }[]).map((s) => s.coin)
+    expect(coins).toContain('ETH')
+    expect(coins).toContain('MRNA')
+  })
+
+  test('re-grant MRNA after an ETH re-invoke — both survive (no clobber)', async () => {
+    const { service: a, stateDir } = await freshService(['exec-lead', 'chief'])
+    await a.override({ dex: 'main', coin: 'ETH', actor: 'exec-lead', reason: 'eth-1', ttlMs: 60_000 })
+    const b = new EntryGateService({ stateDir, overrideActors: ['exec-lead', 'chief'] })
+    await b.override({ dex: 'main', coin: 'MRNA', actor: 'exec-lead', reason: 'mrna', ttlMs: 60_000 })
+
+    // Another re-invoke of ETH (the exact flap: last ETH write wiped MRNA).
+    const c = new EntryGateService({ stateDir, overrideActors: ['exec-lead', 'chief'] })
+    await c.override({ dex: 'main', coin: 'ETH', actor: 'exec-lead', reason: 'eth-2', ttlMs: 60_000 })
+
+    const eth = await c.isEntryAllowed('main', 'ETH')
+    const mrna = await c.isEntryAllowed('main', 'MRNA')
+    expect(eth.allowed).toBe(true)
+    expect(mrna.allowed).toBe(true)
+  })
 })

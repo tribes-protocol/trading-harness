@@ -314,6 +314,10 @@ export class SizingLockService {
     }
     const dex = normalizeDexName(params.dex)
     const coin = normalizeCoinName(params.coin)
+    // Load the persisted override registry + manifest first so persistOverrides()
+    // below writes the union — a prior grant (e.g. MRNA) must survive this grant.
+    await this.loadOverrides()
+    await this.load()
     const ttlMs = params.ttlMs ?? DEFAULT_OVERRIDE_TTL_MS
     const grantedAt = Date.now()
     const key = `${dex}:${coin}`
