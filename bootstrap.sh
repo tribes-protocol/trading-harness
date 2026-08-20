@@ -125,13 +125,22 @@ quiet_bigint_buffer_warning
 PI_PKG="@earendil-works/pi-coding-agent"
 PI_VERSION="$(node -p "require('./package.json').devDependencies['$PI_PKG']" 2>/dev/null || true)"
 NPM_PREFIX="$(npm config get prefix 2>/dev/null || true)"
-[ -n "$NPM_PREFIX" ] || NPM_PREFIX="$HOME/.npm-global"
+# Hardcode the fallback to npm's real global prefix. Do NOT compute $HOME/.npm-global:
+# the ata branch invokes bootstrap with HOME=/root/workspace, which would resolve to
+# /root/workspace/.npm-global — not where npm installs (that's NPM_CONFIG_PREFIX=/root/.npm-global).
+[ -n "$NPM_PREFIX" ] || NPM_PREFIX="/root/.npm-global"
 
 install_pi_global() {
-  if [ -z "$PI_VERSION" ]; then
-    echo "[bootstrap] pi: could not read pinned version from package.json; skipping global install"
-    return 1
-  fi
+  # Reject an empty version and the literal "undefined" node -p prints when the
+  # devDep key is missing; require a numeric leading char so a stray "^"/"~" range
+  # or non-version string never becomes `npm i -g …@undefined`/`@^0.80.3`.
+  case "$PI_VERSION" in
+    [0-9]*) : ;;
+    *)
+      echo "[bootstrap] pi: no usable pinned version from package.json ('$PI_VERSION'); skipping global install"
+      return 1
+      ;;
+  esac
   PI_GLOBAL_PKG_JSON="$NPM_PREFIX/lib/node_modules/$PI_PKG/package.json"
   if [ -f "$PI_GLOBAL_PKG_JSON" ]; then
     CURRENT="$(node -p "require('$PI_GLOBAL_PKG_JSON').version" 2>/dev/null || true)"
@@ -156,7 +165,20 @@ PI_GLOBAL_BIN="$NPM_PREFIX/bin/pi"
 if [ -e "$PI_GLOBAL_BIN" ] || [ -L "$PI_GLOBAL_BIN" ]; then
   PI_LINK_TARGET="$PI_GLOBAL_BIN"
 else
-  PI_LINK_TARGET="$PWD/node_modules/.bin/pi"
+  # Global install didn't land. Symlink the bun devDep into the writable, PATH-first
+  # npm-global prefix so the SAME pi wins in EVERY shell. Do NOT point at
+  # node_modules/.bin here: the ata agent PATH has no node_modules/.bin, and a REAL
+  # baked pi at /opt/zipbox/harnesses/defaults/bin outranks /usr/local/bin on every
+  # PATH — so `which pi` would split between the agent (baked) and a login shell
+  # (devDep), the exact drift this link exists to prevent. Non-fatal.
+  mkdir -p "$NPM_PREFIX/bin" 2>/dev/null || true
+  if ln -sf "$PWD/node_modules/.bin/pi" "$NPM_PREFIX/bin/pi" 2>/dev/null; then
+    echo "[bootstrap] pi: global install absent; linked devDep -> $NPM_PREFIX/bin/pi (consistent across shells)"
+    PI_LINK_TARGET="$NPM_PREFIX/bin/pi"
+  else
+    echo "[bootstrap] pi: could not link devDep into $NPM_PREFIX/bin; falling back to node_modules/.bin"
+    PI_LINK_TARGET="$PWD/node_modules/.bin/pi"
+  fi
 fi
 if ln -sf "$PI_LINK_TARGET" /usr/local/bin/pi 2>/dev/null; then
   echo "[bootstrap] linked pi -> $PI_LINK_TARGET"
@@ -185,11 +207,17 @@ for ext in pi-subagents pi-prompt-template-model; do
 done
 
 # NOTE: do NOT run `pi update` here. This repo PINS pi (@earendil-works/
-# pi-coding-agent + pi-tui at 0.79.8) and the .pi extensions are written against
-# that exact API. Updating pi out from under them desyncs the runtime from the
-# pinned extension API and breaks the tribes extension's session_start hook —
+# pi-coding-agent + pi-tui at 0.80.3) and the .pi extensions are written against
+# that exact API. Updating pi out from under them at boot desyncs the runtime from
+# the pinned extension API and breaks the tribes extension's session_start hook —
 # which silently leaves .env unwritten (no bearer token → every proxy/wallet
 # call fails). Bump the pin in package.json + bun.lock instead.
+#
+# What this PR DOES intentionally enable: the RUNTIME pi is now a real global npm
+# install, so a user's own `pi update` (→ 0.80.10+) moves the runtime pi AHEAD of
+# the 0.80.3-pinned devDep and extensions. That user-initiated desync is the
+# shipped feature, not a bug — a future reader shouldn't be surprised that
+# `which pi` can report a version newer than package.json's pin.
 
 ENTRY="src/cli/Tribes.ts"
 # Build artifact. node_modules/.bin is writable and already on PATH in the
