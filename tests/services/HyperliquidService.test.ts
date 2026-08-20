@@ -170,12 +170,26 @@ describe('HyperliquidService asset inventory', () => {
 })
 
 describe('HyperliquidService order book', () => {
-  function createBookService(infoClient: Pick<InfoClient, 'l2Book'>) {
+  function createBookService(infoClient: Pick<InfoClient, 'l2Book' | 'metaAndAssetCtxs'>) {
     const params: HyperliquidServiceParams = {
       transaction: {} as HyperliquidServiceParams['transaction'],
       infoClient: infoClient as InfoClient
     }
     return new HyperliquidService(params)
+  }
+
+  const BOOK_META = {
+    universe: [
+      { name: 'BTC', szDecimals: 5, maxLeverage: 40, marginTableId: 1 },
+      { name: 'kPEPE', szDecimals: 0, maxLeverage: 10, marginTableId: 1 },
+      { name: 'TSLA', szDecimals: 2, maxLeverage: 20, marginTableId: 1 }
+    ],
+    marginTables: [],
+    collateralToken: 0
+  }
+
+  function bookMetaAndAssetCtxs(): ReturnType<typeof vi.fn> {
+    return vi.fn().mockResolvedValue([BOOK_META, []])
   }
 
   const BOOK = {
@@ -197,7 +211,7 @@ describe('HyperliquidService order book', () => {
 
   test('trims both sides of the book to the requested depth', async () => {
     const l2Book = vi.fn().mockResolvedValue(BOOK)
-    const service = createBookService({ l2Book })
+    const service = createBookService({ l2Book, metaAndAssetCtxs: bookMetaAndAssetCtxs() })
 
     const result = await service.getOrderBook({ coin: 'BTC', depth: 2, dex: null })
 
@@ -217,7 +231,7 @@ describe('HyperliquidService order book', () => {
 
   test('prefixes the coin with the dex for HIP-3 books', async () => {
     const l2Book = vi.fn().mockResolvedValue({ ...BOOK, coin: 'xyz:TSLA' })
-    const service = createBookService({ l2Book })
+    const service = createBookService({ l2Book, metaAndAssetCtxs: bookMetaAndAssetCtxs() })
 
     const result = await service.getOrderBook({ coin: 'TSLA', depth: 10, dex: 'xyz' })
 
@@ -227,12 +241,34 @@ describe('HyperliquidService order book', () => {
     expect(result.asks).toHaveLength(3)
   })
 
+  test('resolves a mixed-case venue symbol to its exact case (kPEPE not KPEPE)', async () => {
+    const l2Book = vi.fn().mockResolvedValue({ ...BOOK, coin: 'kPEPE' })
+    const service = createBookService({ l2Book, metaAndAssetCtxs: bookMetaAndAssetCtxs() })
+
+    const result = await service.getOrderBook({ coin: 'KPEPE', depth: 2, dex: null })
+
+    // l2Book is case-sensitive; the venue-exact kPEPE must be passed, not KPEPE.
+    expect(l2Book).toHaveBeenCalledWith({ coin: 'kPEPE' })
+    expect(result.coin).toBe('kPEPE')
+  })
+
+  test('passes a dex-prefixed coin through unchanged when the meta has no exact match', async () => {
+    const l2Book = vi.fn().mockResolvedValue({ ...BOOK, coin: 'xyz:KORU' })
+    const service = createBookService({ l2Book, metaAndAssetCtxs: bookMetaAndAssetCtxs() })
+
+    const result = await service.getOrderBook({ coin: 'KORU', depth: 2, dex: 'xyz' })
+
+    // KORU is not in BOOK_META; the raw prefixed coin passes through unchanged.
+    expect(l2Book).toHaveBeenCalledWith({ coin: 'xyz:KORU' })
+    expect(result.coin).toBe('xyz:KORU')
+  })
+
   test('throws for an unknown market', async () => {
     const l2Book = vi.fn().mockResolvedValue(null)
-    const service = createBookService({ l2Book })
+    const service = createBookService({ l2Book, metaAndAssetCtxs: bookMetaAndAssetCtxs() })
 
     await expect(service.getOrderBook({ coin: 'NOPE', depth: 10, dex: null })).rejects.toThrow(
-      'unknown coin NOPE on dex main'
+      'unknown perp coin NOPE on dex main'
     )
   })
 })
@@ -392,6 +428,48 @@ describe('HyperliquidService candles', () => {
       'unknown perp coin NOPE on dex main'
     )
     expect(candleSnapshot).not.toHaveBeenCalled()
+  })
+
+  // ORACLE regression (Dex's intel loop): xyz fresh-list coins (xyz:KORU /
+  // xyz:PURRDAT) worked pre-fix and list-assets still shows them, but the
+  // venue-exact resolution threw 'unknown perp coin xyz:KORU on dex xyz'
+  // because the xyz meta universe may not return the exact bare symbol. A
+  // dex-prefixed coin with no meta match must pass through UNCHANGED (pre-fix
+  // behavior); only a bare coin with no match fails fast.
+  test('passes a dex-prefixed coin through unchanged when the xyz meta has no exact match', async () => {
+    const candleSnapshot = vi.fn().mockResolvedValue(ROWS)
+    const service = createCandleService({
+      candleSnapshot,
+      metaAndAssetCtxs: candleMetaAndAssetCtxs()
+    })
+
+    const result = await service.getCandles({ coin: 'KORU', interval: '5m', dex: 'xyz' })
+
+    expect(candleSnapshot).toHaveBeenCalledWith({
+      coin: 'xyz:KORU',
+      interval: '5m',
+      startTime: expect.any(Number)
+    })
+    expect(result.coin).toBe('xyz:KORU')
+  })
+
+  test('still resolves a matched dex-prefixed coin to the venue-exact name', async () => {
+    const candleSnapshot = vi.fn().mockResolvedValue(ROWS)
+    const service = createCandleService({
+      candleSnapshot,
+      metaAndAssetCtxs: candleMetaAndAssetCtxs()
+    })
+
+    const result = await service.getCandles({ coin: 'SKHX', interval: '5m', dex: 'xyz' })
+
+    // SKHX is in the xyz meta universe (CANDLE_META), so it resolves to the
+    // venue-exact name — still prefixed with the dex.
+    expect(candleSnapshot).toHaveBeenCalledWith({
+      coin: 'xyz:SKHX',
+      interval: '5m',
+      startTime: expect.any(Number)
+    })
+    expect(result.coin).toBe('xyz:SKHX')
   })
 })
 

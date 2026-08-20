@@ -1362,8 +1362,14 @@ export class HyperliquidService {
 
   async getOrderBook(params: HyperliquidOrderBookParams): Promise<HyperliquidOrderBookResult> {
     const dex = this.normalizeDex(params.dex)
-    const coin =
-      dex.length > 0 && !params.coin.includes(':') ? `${dex}:${params.coin}` : params.coin
+    const rawCoin = params.coin.includes(':')
+      ? params.coin
+      : `${dex ? `${dex}:` : ''}${params.coin}`
+    // Same venue-exact resolution as getCandles: l2Book is case-sensitive (a
+    // bare uppercased KPEPE 500s while kPEPE returns). Resolve to the venue's
+    // canonical name; dex-prefixed coins pass through unchanged when the meta
+    // universe has no exact match (fresh HIP-3 listings).
+    const coin = await this.resolveVenueCoinName(rawCoin, dex)
     const book = await this.infoClient.l2Book({ coin })
     if (isNullish(book)) {
       throw new Error(`unknown coin ${params.coin} on dex ${this.formatDexName(dex)}`)
@@ -1429,6 +1435,11 @@ export class HyperliquidService {
     const dexPart = colonIdx >= 0 ? rawCoin.slice(0, colonIdx) : ''
     const match = meta.universe.find((asset) => asset.name.toLowerCase() === symbol)
     if (isNullish(match)) {
+      // Dex-prefixed coins (xyz:KORU / xyz:PURRDAT): the HIP-3 meta universe may
+      // not return the exact bare symbol (fresh listings, naming/case mismatch),
+      // but the venue still accepts the raw prefixed coin — pass it through
+      // unchanged (pre-fix behavior) rather than failing the whole read.
+      if (dexPart.length > 0) return rawCoin
       throw new Error(`unknown perp coin ${rawCoin} on dex ${dex || 'main'}`)
     }
     return dexPart.length > 0 ? `${dexPart}:${match.name}` : match.name
