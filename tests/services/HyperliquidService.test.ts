@@ -170,7 +170,7 @@ describe('HyperliquidService asset inventory', () => {
 })
 
 describe('HyperliquidService order book', () => {
-  function createBookService(infoClient: Pick<InfoClient, 'l2Book'>) {
+  function createBookService(infoClient: Pick<InfoClient, 'l2Book' | 'metaAndAssetCtxs'>) {
     const params: HyperliquidServiceParams = {
       transaction: {} as HyperliquidServiceParams['transaction'],
       infoClient: infoClient as InfoClient
@@ -195,9 +195,29 @@ describe('HyperliquidService order book', () => {
     ]
   }
 
+  const MAIN_BOOK_META = {
+    universe: [{ name: 'BTC', szDecimals: 5, maxLeverage: 40, marginTableId: 1 }],
+    marginTables: [],
+    collateralToken: 0
+  }
+
+  const XYZ_BOOK_META = {
+    universe: [
+      { name: 'TSLA', szDecimals: 2, maxLeverage: 20, marginTableId: 1 },
+      { name: 'KORU', szDecimals: 2, maxLeverage: 10, marginTableId: 1 },
+      { name: 'CL', szDecimals: 3, maxLeverage: 10, marginTableId: 1 }
+    ],
+    marginTables: [],
+    collateralToken: 0
+  }
+
+  function bookMeta(meta: unknown): ReturnType<typeof vi.fn> {
+    return vi.fn().mockResolvedValue([meta, []])
+  }
+
   test('trims both sides of the book to the requested depth', async () => {
     const l2Book = vi.fn().mockResolvedValue(BOOK)
-    const service = createBookService({ l2Book })
+    const service = createBookService({ l2Book, metaAndAssetCtxs: bookMeta(MAIN_BOOK_META) })
 
     const result = await service.getOrderBook({ coin: 'BTC', depth: 2, dex: null })
 
@@ -217,7 +237,7 @@ describe('HyperliquidService order book', () => {
 
   test('prefixes the coin with the dex for HIP-3 books', async () => {
     const l2Book = vi.fn().mockResolvedValue({ ...BOOK, coin: 'xyz:TSLA' })
-    const service = createBookService({ l2Book })
+    const service = createBookService({ l2Book, metaAndAssetCtxs: bookMeta(XYZ_BOOK_META) })
 
     const result = await service.getOrderBook({ coin: 'TSLA', depth: 10, dex: 'xyz' })
 
@@ -227,13 +247,27 @@ describe('HyperliquidService order book', () => {
     expect(result.asks).toHaveLength(3)
   })
 
+  test('passes a dex-prefixed xyz coin through raw when its bare symbol is not in the universe', async () => {
+    const l2Book = vi.fn().mockResolvedValue({ ...BOOK, coin: 'xyz:KORU' })
+    const service = createBookService({ l2Book, metaAndAssetCtxs: bookMeta(XYZ_BOOK_META) })
+
+    const result = await service.getOrderBook({ coin: 'KORU', depth: 4, dex: 'xyz' })
+
+    expect(l2Book).toHaveBeenCalledWith({ coin: 'xyz:KORU' })
+    expect(result.coin).toBe('xyz:KORU')
+    expect(result.bids).toHaveLength(3)
+    expect(result.asks).toHaveLength(3)
+  })
+
   test('throws for an unknown market', async () => {
     const l2Book = vi.fn().mockResolvedValue(null)
-    const service = createBookService({ l2Book })
+    const service = createBookService({ l2Book, metaAndAssetCtxs: bookMeta(MAIN_BOOK_META) })
 
+    // A bare unknown coin fails fast in venue-resolution (before l2Book).
     await expect(service.getOrderBook({ coin: 'NOPE', depth: 10, dex: null })).rejects.toThrow(
-      'unknown coin NOPE on dex main'
+      'unknown perp coin NOPE on dex main'
     )
+    expect(l2Book).not.toHaveBeenCalled()
   })
 })
 
@@ -339,6 +373,31 @@ describe('HyperliquidService candles', () => {
     expect(result.candles).toHaveLength(2)
   })
 
+  test('passes a dex-prefixed coin through raw when its bare symbol is not in the universe (KORU)', async () => {
+    const candleSnapshot = vi.fn().mockResolvedValue(ROWS)
+    // xyz universe with only SKHX — KORU is deliberately absent so the passthrough
+    // path runs (pre-fix behavior: the prefixed form is the venue's canonical
+    // address for HIP-3 dex coins even when not in the meta universe).
+    const meta = {
+      universe: [{ name: 'SKHX', szDecimals: 2, maxLeverage: 10, marginTableId: 1 }],
+      marginTables: [],
+      collateralToken: 0
+    }
+    const service = createCandleService({
+      candleSnapshot,
+      metaAndAssetCtxs: candleMetaAndAssetCtxs(meta)
+    })
+
+    const result = await service.getCandles({ coin: 'KORU', interval: '5m', dex: 'xyz' })
+
+    expect(candleSnapshot).toHaveBeenCalledWith({
+      coin: 'xyz:KORU',
+      interval: '5m',
+      startTime: expect.any(Number)
+    })
+    expect(result.coin).toBe('xyz:KORU')
+  })
+
   test('forwards an explicit startTime window', async () => {
     const candleSnapshot = vi.fn().mockResolvedValue(ROWS)
     const service = createCandleService({
@@ -395,9 +454,11 @@ describe('HyperliquidService candles', () => {
   })
 })
 
-
 describe('HyperliquidService entry-trigger gate enforcement', () => {
-  async function gateService(): Promise<{ entryGate: import('@/services/EntryGateService').EntryGateService; stateDir: string }> {
+  async function gateService(): Promise<{
+    entryGate: import('@/services/EntryGateService').EntryGateService
+    stateDir: string
+  }> {
     const { mkdtemp, rm } = await import('node:fs/promises')
     const { tmpdir } = await import('node:os')
     const { join } = await import('node:path')

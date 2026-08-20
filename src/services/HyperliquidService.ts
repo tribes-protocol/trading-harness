@@ -1347,8 +1347,13 @@ export class HyperliquidService {
 
   async getOrderBook(params: HyperliquidOrderBookParams): Promise<HyperliquidOrderBookResult> {
     const dex = this.normalizeDex(params.dex)
-    const coin =
-      dex.length > 0 && !params.coin.includes(':') ? `${dex}:${params.coin}` : params.coin
+    const rawCoin = params.coin.includes(':')
+      ? params.coin
+      : `${dex ? `${dex}:` : ''}${params.coin}`
+    // Resolve the venue-exact coin name (same treatment as getCandles) so
+    // mixed-case symbols (kPEPE) and dex-prefixed xyz coins (KORU/CL/PURRDAT)
+    // round-trip into l2Book instead of throwing or 500ing.
+    const coin = await this.resolveVenueCoinName(rawCoin, dex)
     const book = await this.infoClient.l2Book({ coin })
     if (isNullish(book)) {
       throw new Error(`unknown coin ${params.coin} on dex ${this.formatDexName(dex)}`)
@@ -1403,7 +1408,14 @@ export class HyperliquidService {
    * Resolve the venue-canonical coin name (exact case, optional dex prefix) for
    * a coin symbol. Matches case-insensitively against the perp meta universe and
    * returns the venue's own `name` field, so mixed-case venue symbols (kPEPE)
-   * round-trip with their true case into candleSnapshot.
+   * round-trip with their true case into candleSnapshot / l2Book.
+   *
+   * Passthrough rule: a DEX-PREFIXED coin (xyz:KORU, xyz:CL, xyz:PURRDAT) whose
+   * bare symbol is not in the dex universe is passed through RAW (pre-fix
+   * behavior) — the prefixed form is the venue's canonical address for HIP-3
+   * dex coins and candleSnapshot/l2Book accept it. Only a BARE (unprefixed)
+   * coin with no universe match fails fast with a clear error instead of an
+   * opaque 500.
    */
   private async resolveVenueCoinName(rawCoin: string, dex: string): Promise<string> {
     const metaParams: MetaAndAssetCtxsParameters = {}
@@ -1414,6 +1426,9 @@ export class HyperliquidService {
     const dexPart = colonIdx >= 0 ? rawCoin.slice(0, colonIdx) : ''
     const match = meta.universe.find((asset) => asset.name.toLowerCase() === symbol)
     if (isNullish(match)) {
+      // Dex-prefixed coin with no bare-symbol match: the prefixed form is the
+      // venue's canonical address — pass it through raw (do not throw).
+      if (dexPart.length > 0) return rawCoin
       throw new Error(`unknown perp coin ${rawCoin} on dex ${dex || 'main'}`)
     }
     return dexPart.length > 0 ? `${dexPart}:${match.name}` : match.name
