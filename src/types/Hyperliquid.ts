@@ -1096,15 +1096,21 @@ export type HyperliquidSizingLockOverrideResult = z.infer<
 
 export const HyperliquidSizingLockArmCommandOptionsSchema = z.object({
   packageId: z.string().trim().min(1),
-  version: z.string().trim().min(1),
-  spec: z.record(
-    z.object({
-      dex: z.string().trim().nullish(),
-      notionalUsd: z.coerce.number().positive(),
-      marginUsd: z.coerce.number().positive(),
-      leverage: z.coerce.number().int().positive(),
-      szDecimals: z.coerce.number().int().nonnegative()
-    })
+  ver: z.string().trim().min(1),
+  spec: z.preprocess(
+    (value) => {
+      if (typeof value !== 'string') return value
+      return JSON.parse(value)
+    },
+    z.record(
+      z.object({
+        dex: z.string().trim().nullish(),
+        notionalUsd: z.coerce.number().positive(),
+        marginUsd: z.coerce.number().positive(),
+        leverage: z.coerce.number().int().positive(),
+        szDecimals: z.coerce.number().int().nonnegative()
+      })
+    )
   ),
   out: z.string().nullish()
 })
