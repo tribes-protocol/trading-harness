@@ -36,3 +36,27 @@ carry a pre-fill sizing override (chief-journaled) exactly as the CL/BTC rotatio
 elevated frame changes the risk targets, not the override discipline.
 
 Trace: msg-97084b1a (my read), msg-43e14110 (Chief ruling), this entry.
+
+---
+
+## 2026-08-20T20:00Z — CROSS-ASSET SLOT-4 RULING (Chief msg-48cc, extends the risk-frame mandate)
+
+**CONTEXT:** In the aggressive window, the cross-asset hard rule (AGENTS.md) applies to unscoped
+multi-slot discovery: crypto + securities + commodities coverage. The filled book (SOL+ETH =
+crypto, MRNA = security) had NO commodity. The 4th slot must be a COMMODITY to satisfy cross-asset.
+XRP (crypto) was the manifest-clean alternative exec-lead recommended, but picking it would leave
+the commodity class EMPTY — a cross-asset violation.
+
+**CHIEF RULING (precedent):** slot 4 = NATGAS (commodity), per the cross-asset hard rule.
+
+**THE OPERATOR "ANY CLASS" INTERPRETATION (ledger-critical):** the operator's directive (msg
+pre-dating, interpreted in ADM msg-08e4d) "any asset class" is a NON-SCOPE, not an explicit
+waiver of the cross-asset requirement. It widens WHICH candidates are scan eligible; it does NOT
+drop the class-coverage obligation. Absent an explicit operator redirect to XRP, NATGAS is the
+guardrail-compliant slot-4 pick. If the operator intends XRP, they must say so directly.
+
+**PURPOSE (ledger commit):** distinguishes the guardrail-compliant commodity pick (NATGAS,
+class covered) from a policy-drift commodity skip (slot filled from crypto with the class empty).
+The retrospective reads intent, not conflation.
+
+Trace: msg-48cc498c5fc5acfb72435032 (Chief cross-asset ruling), this entry.
