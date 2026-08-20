@@ -115,7 +115,8 @@ export class JournalService {
           notional_usd = excluded.notional_usd, margin_usd = excluded.margin_usd,
           leverage = excluded.leverage, stop_px = excluded.stop_px, target_px = excluded.target_px,
           risk_usd = excluded.risk_usd, risk_pct_account = excluded.risk_pct_account,
-          rr = excluded.rr, realized_pnl_usd = excluded.realized_pnl_usd, report_json = excluded.report_json`
+          rr = excluded.rr, status = excluded.status,
+          realized_pnl_usd = excluded.realized_pnl_usd, report_json = excluded.report_json`
       )
       .run(
         trade.id,
