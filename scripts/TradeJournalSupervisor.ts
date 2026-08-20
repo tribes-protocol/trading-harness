@@ -10,7 +10,7 @@
  * Invoke: nohup bun scripts/TradeJournalSupervisor.ts > /tmp/tj-supervisor.log 2>&1 &
  *         (or via an init/supervisor that restarts THIS on boot)
  */
-import { spawn } from 'node:child_process'
+import { execFileSync, spawn } from 'node:child_process'
 import { existsSync, readFileSync, writeFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 
@@ -36,6 +36,31 @@ writeFileSync(LOCK, String(process.pid))
 let serverChild: ReturnType<typeof spawn> | null = null
 let fillChild: ReturnType<typeof spawn> | null = null
 
+/**
+ * Reclaim :PORT so a server child can bind cleanly on a restart. If a foreign
+ * process (a prior supervisor's server, or a leftover) still holds the port,
+ * the child would fail to bind and the supervisor would restart-loop.
+ */
+async function reclaimPort(port: string): Promise<void> {
+  try {
+    const list = execFileSync('ps', ['aux'], { encoding: 'utf8' })
+    for (const line of list.split('\n')) {
+      if (!line.includes('TradeJournalServer') || !line.includes(port)) continue
+      const pid = Number(line.trim().split(/\s+/)[0])
+      if (Number.isNaN(pid) || pid === (serverChild?.pid ?? -1)) continue
+      try {
+        process.kill(pid, 0)
+        console.error(`[supervisor] reclaiming port ${port}: killing stale server pid ${pid}`)
+        process.kill(pid, 'SIGTERM')
+      } catch {
+        // process already gone
+      }
+    }
+  } catch {
+    // ps unavailable — server will fail to bind and retry; not fatal.
+  }
+}
+
 function startServer(): void {
   console.error(`[supervisor] starting server :${PORT} db=${DB_PATH}`)
   serverChild = spawn('bun', [SERVER, PORT, DB_PATH], {
@@ -45,8 +70,13 @@ function startServer(): void {
   serverChild.stdout?.on('data', (chunk: Buffer) => process.stderr.write(`[server] ${chunk}`))
   serverChild.stderr?.on('data', (chunk: Buffer) => process.stderr.write(`[server] ${chunk}`))
   serverChild.on('exit', (code, signal) => {
-    console.error(`[supervisor] server exited code=${code} signal=${signal}; restarting in 2s`)
-    setTimeout(startServer, 2000)
+    console.error(
+      `[supervisor] server exited code=${code} signal=${signal}; reclaiming + restarting in 2s`
+    )
+    setTimeout(async () => {
+      await reclaimPort(PORT)
+      startServer()
+    }, 2000)
   })
 }
 
