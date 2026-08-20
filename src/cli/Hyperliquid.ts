@@ -306,13 +306,7 @@ export function buildHyperliquidCommand(): Command {
     )
     .option('--out <file>', 'Write output JSON to file')
     .action(async (options: unknown): Promise<void> => {
-      const raw = options as { spec?: string; ver?: string }
-      const spec = typeof raw.spec === 'string' ? (JSON.parse(raw.spec) as Record<string, unknown>) : {}
-      const request = HyperliquidSizingLockArmCommandOptionsSchema.parse({
-        ...(options as object),
-        version: raw.ver ?? '',
-        spec
-      })
+      const request = HyperliquidSizingLockArmCommandOptionsSchema.parse(options)
       const perCoin = Object.entries(request.spec).map(([coin, value]) => ({
         coin,
         dex: value.dex ?? 'main',
@@ -323,7 +317,7 @@ export function buildHyperliquidCommand(): Command {
       }))
       const response = await sizingLockService.arm({
         packageId: request.packageId,
-        version: request.version,
+        version: request.ver,
         perCoin
       })
       const output = ensureJsonTreeString(response)
