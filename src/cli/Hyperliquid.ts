@@ -11,6 +11,7 @@ import {
   HyperliquidAdjustMarginCommandOptionsSchema,
   HyperliquidCandleCommandOptionsSchema,
   HyperliquidCancelOrderCommandOptionsSchema,
+  HyperliquidCandleCommandOptionsSchema,
   HyperliquidDepositCommandOptionsSchema,
   HyperliquidDexCashTransferCommandOptionsSchema,
   HyperliquidListAssetsCommandOptionsSchema,

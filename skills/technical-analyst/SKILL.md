@@ -49,8 +49,10 @@ daily series is ~3 months, not a year, and any regime conclusion must match the 
   Bollinger, ATR, VWAP, Stochastic) on any asset you can get candles for — `ta indicators`.
 - Support/resistance and range context — `ta levels`.
 - A long-only backtest of an SMA cross or RSI mean-revert strategy — `ta backtest`.
-- Perps: no Hyperliquid candles command exists — compute on the underlying coin's candles
-  (`asset candles` with the coin id or token address) and say so in your answer.
+- Perps: pull real Hyperliquid perp candles with `tribes-cli hyperliquid candles`
+  (OHLCV in the shared candle contract, volume in base currency) and compute on those. Only if
+  a perp has no live Hyperliquid feed, compute on the underlying coin's candles (`asset
+  candles` with the coin id or token address) and say so in your answer.
 - Commodities: no direct candle source — use an ETF proxy via `asset candles --ticker` (e.g.
   GLD for gold) and state the proxy in your answer.
 - NOT for raw candles or price history as the answer itself — use `fundamentals-analyst` or

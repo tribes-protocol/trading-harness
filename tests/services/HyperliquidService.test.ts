@@ -236,3 +236,98 @@ describe('HyperliquidService order book', () => {
     )
   })
 })
+
+describe('HyperliquidService candles', () => {
+  function createCandleService(infoClient: Pick<InfoClient, 'candleSnapshot'>) {
+    const params: HyperliquidServiceParams = {
+      transaction: {} as HyperliquidServiceParams['transaction'],
+      infoClient: infoClient as InfoClient
+    }
+    return new HyperliquidService(params)
+  }
+
+  const ROWS = [
+    {
+      t: 1786000000000,
+      T: 1786000005999,
+      s: 'BTC',
+      i: '1m',
+      o: '69000.5',
+      c: '69100.25',
+      h: '69150.75',
+      l: '69050.0',
+      v: '12.5',
+      n: 33
+    },
+    {
+      t: 1786000006000,
+      T: 1786000011999,
+      s: 'BTC',
+      i: '1m',
+      o: '69100.25',
+      c: '69120.0',
+      h: '69130.5',
+      l: '69090.1',
+      v: '8.25',
+      n: 21
+    }
+  ]
+
+  test('maps SDK rows to the shared candle contract on main', async () => {
+    const candleSnapshot = vi.fn().mockResolvedValue(ROWS)
+    const service = createCandleService({ candleSnapshot })
+
+    const result = await service.getCandles({ coin: 'BTC', interval: '1m', dex: null })
+
+    expect(candleSnapshot).toHaveBeenCalledTimes(1)
+    const calledParams = candleSnapshot.mock.calls[0][0]
+    expect(calledParams.coin).toBe('BTC')
+    expect(calledParams.interval).toBe('1m')
+    expect(typeof calledParams.startTime).toBe('number')
+    expect(result).toEqual({
+      source: 'hyperliquid',
+      interval: '1m',
+      coin: 'BTC',
+      candles: [
+        { t: 1786000000000, o: 69000.5, h: 69150.75, l: 69050.0, c: 69100.25, v: 12.5 },
+        { t: 1786000006000, o: 69100.25, h: 69130.5, l: 69090.1, c: 69120.0, v: 8.25 }
+      ]
+    })
+  })
+
+  test('prefixes the coin with the dex for HIP-3 candles', async () => {
+    const candleSnapshot = vi.fn().mockResolvedValue(ROWS)
+    const service = createCandleService({ candleSnapshot })
+
+    const result = await service.getCandles({ coin: 'SKHX', interval: '5m', dex: 'xyz' })
+
+    expect(candleSnapshot).toHaveBeenCalledWith({
+      coin: 'xyz:SKHX',
+      interval: '5m',
+      startTime: expect.any(Number)
+    })
+    expect(result.coin).toBe('xyz:SKHX')
+    expect(result.interval).toBe('5m')
+    expect(result.candles).toHaveLength(2)
+  })
+
+  test('forwards an explicit startTime window', async () => {
+    const candleSnapshot = vi.fn().mockResolvedValue(ROWS)
+    const service = createCandleService({ candleSnapshot })
+
+    await service.getCandles({
+      coin: 'ETH',
+      interval: '5m',
+      startTime: 1786000000000,
+      endTime: 1786000012000,
+      dex: null
+    })
+
+    expect(candleSnapshot).toHaveBeenCalledWith({
+      coin: 'ETH',
+      interval: '5m',
+      startTime: 1786000000000,
+      endTime: 1786000012000
+    })
+  })
+})
