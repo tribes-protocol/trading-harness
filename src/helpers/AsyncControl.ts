@@ -139,3 +139,108 @@ export function retryForever<T>({
 }): Promise<T> {
   return retry({ fn, maxRetries: Infinity, ms })
 }
+
+// ---------------------------------------------------------------------------
+// Provider-abort-aware retry classification (provider-reliability advisory)
+//
+// A mid-turn provider abort is only recoverable when retrying the SAME call is
+// warranted. `content_filter` is NOT: a blind identical replay re-symptoms the
+// boundary hit instead of recovering — it needs a session reseat + RERUN, not a
+// retry. The classifier below distinguishes recoverable (timeout, provider_error,
+// route-failed/transient) from terminal (content_filter, non-recoverable at the
+// call layer) so the venue-watch path can back off the former and never
+// blind-retry the latter.
+// ---------------------------------------------------------------------------
+
+export const ProviderAbortClassSchema = {
+  NONE: 'none',
+  RECOVERABLE: 'recoverable',
+  TERMINAL: 'terminal'
+} as const
+export type ProviderAbortClass =
+  (typeof ProviderAbortClassSchema)[keyof typeof ProviderAbortClassSchema]
+
+function errorIdentity(error: unknown): string {
+  if (error instanceof Error) return `${error.name} ${error.message}`
+  return String(error)
+}
+
+// Classify a provider/route abort into a retry decision. content_filter is the
+// one terminal case: no retry at the call layer — reseat + rerun required.
+export function classifyProviderAbort(error: unknown): ProviderAbortClass {
+  const identity = errorIdentity(error).toLowerCase()
+  if (identity.includes('content_filter') || identity.includes('content filter')) {
+    return ProviderAbortClassSchema.TERMINAL
+  }
+  if (isTimeoutError(error)) return ProviderAbortClassSchema.RECOVERABLE
+  if (
+    identity.includes('provider_error') ||
+    identity.includes('route-failed') ||
+    identity.includes('mid-turn') ||
+    identity.includes('abort')
+  ) {
+    return ProviderAbortClassSchema.RECOVERABLE
+  }
+  return ProviderAbortClassSchema.NONE
+}
+
+// Variable backoff for recoverable provider aborts: 1s, 2s, then 5s, capped (max
+// 3 attempts). Not used for terminal aborts (never blind-retried).
+const PROVIDER_BACKOFF_MS = [1000, 2000, 5000]
+
+// Provider-abort-aware retry wrapper for the venue-watch call path: back off and
+// retry definitively-recoverable provider errors; do NOT retry a terminal
+// content_filter (throw through immediately so the caller reseats + reruns
+// instead of replaying an identical rebound).
+export async function retryProviderAware<T>(params: {
+  fn: () => Promise<T>
+  maxRetries?: number
+  logError?: boolean
+}): Promise<T> {
+  const maxRetries = params.maxRetries ?? 3
+  const backoffs = PROVIDER_BACKOFF_MS
+  let retriesSoFar = 0
+
+  return await new Promise<T>((resolve, reject) => {
+    const attempt = (): void => {
+      params
+        .fn()
+        .then(resolve)
+        .catch((error: unknown) => {
+          if (isShutdownRequested()) {
+            reject(new ShutdownError())
+            return
+          }
+          const attemptIndex = Math.min(retriesSoFar, backoffs.length - 1)
+          const backoffMs = backoffs[attemptIndex] ?? 1000
+          const cls = classifyProviderAbort(error)
+          if (cls === ProviderAbortClassSchema.TERMINAL) {
+            reject(error)
+            return
+          }
+          if (cls !== ProviderAbortClassSchema.RECOVERABLE) {
+            reject(error)
+            return
+          }
+          if (retriesSoFar >= maxRetries) {
+            reject(error)
+            return
+          }
+          if (params.logError !== false) {
+            console.error('Provider abort — backing off', error, { module: 'async-control' })
+          }
+          retriesSoFar += 1
+          const timer = setTimeout(() => {
+            removeListener()
+            attempt()
+          }, backoffMs)
+          const removeListener = addShutdownListener(() => {
+            clearTimeout(timer)
+            reject(new ShutdownError())
+          })
+        })
+    }
+
+    attempt()
+  })
+}

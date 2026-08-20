@@ -7,6 +7,7 @@ import type { InfoClient, MetaAndAssetCtxsParameters } from '@nktkas/hyperliquid
 import { SubscriptionClient, WebSocketTransport } from '@nktkas/hyperliquid'
 import BigNumber from 'bignumber.js'
 
+import { retryProviderAware } from '@/helpers/AsyncControl'
 import { HyperliquidService } from '@/services/HyperliquidService'
 import { type EthAddress } from '@/types/Eth'
 import {
@@ -567,7 +568,12 @@ export class TrailingStopService {
     try {
       const metaParams: MetaAndAssetCtxsParameters = {}
       if (dex !== 'main') metaParams.dex = dex
-      const [meta, ctxs] = await this.infoClient.metaAndAssetCtxs(metaParams)
+      const [meta, ctxs] = await retryProviderAware({
+        fn: async () => {
+          if (this.infoClient === null) throw new Error('infoClient unavailable for venue read')
+          return await this.infoClient.metaAndAssetCtxs(metaParams)
+        }
+      })
       const index = meta.universe.findIndex((asset) => {
         const name = asset.name.toLowerCase()
         return (
