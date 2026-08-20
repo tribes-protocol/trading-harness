@@ -3,6 +3,7 @@ import BigNumber from 'bignumber.js'
 import { z } from 'zod'
 
 import { type EntryGateService } from '@/services/EntryGateService'
+import { type SizingLockService } from '@/services/SizingLockService'
 import { type TransactionService } from '@/services/TransactionService'
 import { type EthAddress, EthAddressSchema } from '@/types/Eth'
 import { BigintSchema, BigNumberSchema, type HexString, HexStringSchema } from '@/types/Lang'
@@ -1012,6 +1013,114 @@ export const HyperliquidEntryGateDecisionSchema = z.object({
 })
 export type HyperliquidEntryGateDecision = z.infer<typeof HyperliquidEntryGateDecisionSchema>
 
+// ---- Sizing-lock: operative-package manifest + entry-size validation ----
+
+// One coin's locked entry sizing inside an operative package version.
+export const HyperliquidSizingEntrySchema = z.object({
+  coin: z.string(),
+  dex: z.string().default('main'),
+  notionalUsd: z.number().positive(),
+  marginUsd: z.number().positive(),
+  leverage: z.number().int().positive(),
+  szDecimals: z.number().int().nonnegative()
+})
+export type HyperliquidSizingEntry = z.infer<typeof HyperliquidSizingEntrySchema>
+
+// One versioned package record. supersededAt null = the operative version.
+export const HyperliquidPackageManifestRecordSchema = z.object({
+  packageId: z.string().trim().min(1),
+  version: z.string().trim().min(1),
+  supersededAt: z.number().int().nonnegative().nullish(),
+  perCoin: z.array(HyperliquidSizingEntrySchema)
+})
+export type HyperliquidPackageManifestRecord = z.infer<
+  typeof HyperliquidPackageManifestRecordSchema
+>
+
+// The operative-package manifest file: every package version the desk armed,
+// with supersession recorded as a field so "operative at execution time" is a
+// lookup, not a convention.
+export const HyperliquidPackageManifestSchema = z.object({
+  records: z.array(HyperliquidPackageManifestRecordSchema)
+})
+export type HyperliquidPackageManifest = z.infer<typeof HyperliquidPackageManifestSchema>
+
+export const HyperliquidSizingLockDecisionSchema = z.object({
+  allowed: z.boolean(),
+  reason: z.string(),
+  operative: HyperliquidPackageManifestRecordSchema.nullish(),
+  entry: HyperliquidSizingEntrySchema.nullish(),
+  actualNotionalUsd: z.number().nullish(),
+  lockedNotionalUsd: z.number().nullish()
+})
+export type HyperliquidSizingLockDecision = z.infer<typeof HyperliquidSizingLockDecisionSchema>
+
+export const HyperliquidSizingLockStatusCommandOptionsSchema = z.object({
+  coin: z.string().trim().min(1).nullish(),
+  dex: z.string().trim().nullish(),
+  out: z.string().nullish()
+})
+export type HyperliquidSizingLockStatusCommandOptions = z.infer<
+  typeof HyperliquidSizingLockStatusCommandOptionsSchema
+>
+
+export const HyperliquidSizingLockOverrideCommandOptionsSchema = z.object({
+  coin: z.string().trim().min(1),
+  dex: z.string().trim().nullish(),
+  actor: z.string().trim().min(1),
+  reason: z.string().trim().min(1),
+  ttlMs: z.coerce
+    .number()
+    .int()
+    .positive()
+    .default(15 * 60 * 1000),
+  out: z.string().nullish()
+})
+export type HyperliquidSizingLockOverrideCommandOptions = z.infer<
+  typeof HyperliquidSizingLockOverrideCommandOptionsSchema
+>
+
+export const HyperliquidSizingLockOverrideResultSchema = z.object({
+  granted: z.literal(true),
+  dex: z.string(),
+  coin: z.string(),
+  actor: z.string(),
+  reason: z.string(),
+  ttlMs: z.number().int().positive(),
+  grantedAt: z.number().int().nonnegative(),
+  journalPath: z.string()
+})
+export type HyperliquidSizingLockOverrideResult = z.infer<
+  typeof HyperliquidSizingLockOverrideResultSchema
+>
+
+export const HyperliquidSizingLockArmCommandOptionsSchema = z.object({
+  packageId: z.string().trim().min(1),
+  version: z.string().trim().min(1),
+  spec: z.record(
+    z.object({
+      dex: z.string().trim().nullish(),
+      notionalUsd: z.coerce.number().positive(),
+      marginUsd: z.coerce.number().positive(),
+      leverage: z.coerce.number().int().positive(),
+      szDecimals: z.coerce.number().int().nonnegative()
+    })
+  ),
+  out: z.string().nullish()
+})
+export type HyperliquidSizingLockArmCommandOptions = z.infer<
+  typeof HyperliquidSizingLockArmCommandOptionsSchema
+>
+
+export const HyperliquidSizingLockArmResultSchema = z.object({
+  armed: z.literal(true),
+  packageId: z.string(),
+  version: z.string(),
+  superseded: z.array(z.string()).nullish(),
+  manifestPath: z.string()
+})
+export type HyperliquidSizingLockArmResult = z.infer<typeof HyperliquidSizingLockArmResultSchema>
+
 export const HyperliquidSignReplayBaseSchema = z.object({
   kind: z.literal('sign-replay'),
   broadcast: z.literal(false),
@@ -1074,6 +1183,7 @@ export interface HyperliquidServiceParams {
   readonly transaction: TransactionService
   readonly infoClient?: InfoClient
   readonly entryGate?: EntryGateService
+  readonly sizingLock?: SizingLockService
 }
 
 export interface HyperliquidDepositParams {

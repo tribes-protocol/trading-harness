@@ -24,6 +24,7 @@ import { z } from 'zod'
 
 import { unwrapCause } from '@/helpers/Cause'
 import { EntryGateService } from '@/services/EntryGateService'
+import { SizingLockService } from '@/services/SizingLockService'
 import { TransactionService } from '@/services/TransactionService'
 import {
   type BuildBracketExitLegParams,
@@ -166,10 +167,13 @@ export class HyperliquidService {
 
   private readonly entryGate: EntryGateService | null
 
+  private readonly sizingLock: SizingLockService | null
+
   constructor(params: HyperliquidServiceParams) {
     this.infoClient = params.infoClient ?? new InfoClient({ transport: new HttpTransport() })
     this.transaction = params.transaction
     this.entryGate = params.entryGate ?? null
+    this.sizingLock = params.sizingLock ?? null
   }
 
   async deposit(params: HyperliquidDepositParams): Promise<HyperliquidDepositResult> {
@@ -395,6 +399,13 @@ export class HyperliquidService {
     await this.assertEntryGateAllowed({
       dex,
       coin: params.request.coin,
+      reduceOnly: params.request.reduceOnly
+    })
+    await this.assertSizingLockAllowed({
+      dex,
+      coin: params.request.coin,
+      amount: params.request.amount,
+      referencePrice: perpAsset.referencePrice,
       reduceOnly: params.request.reduceOnly
     })
     const marginMode = this.resolveMarginMode({
@@ -724,6 +735,36 @@ export class HyperliquidService {
     }
   }
 
+  /**
+   * Sizing-lock: refuse a position-INCREASING order whose notional is not
+   * locked to the operative package manifest (no manifest, no coin entry,
+   * off-lock beyond ±2%, or superseded manifest), BEFORE any sign/broadcast.
+   */
+  private async assertSizingLockAllowed(params: {
+    dex: string
+    coin: string
+    amount: BigNumber
+    referencePrice: BigNumber
+    reduceOnly: boolean
+  }): Promise<void> {
+    if (params.reduceOnly) return
+    if (isNullish(this.sizingLock)) return
+    const decision = await this.sizingLock.isEntrySizeAllowed({
+      dex: params.dex,
+      coin: params.coin,
+      amount: params.amount,
+      referencePrice: params.referencePrice
+    })
+    if (!decision.allowed) {
+      const dexName = params.dex.length > 0 ? params.dex : 'main'
+      throw new Error(
+        `sizing lock: ${decision.reason} for ${params.coin} on ${dexName} — ` +
+          `position-increasing order refused before broadcast. Run ` +
+          `hyperliquid sizing-lock status --coin ${params.coin} to inspect.`
+      )
+    }
+  }
+
   private resolveMarginMode(params: {
     perpAsset: ResolvedPerpAsset
     requestedMarginMode: 'cross' | 'isolated'
@@ -754,6 +795,13 @@ export class HyperliquidService {
     await this.assertEntryGateAllowed({
       dex,
       coin: params.request.coin,
+      reduceOnly: params.request.reduceOnly
+    })
+    await this.assertSizingLockAllowed({
+      dex,
+      coin: params.request.coin,
+      amount: params.request.amount,
+      referencePrice: perpAsset.referencePrice,
       reduceOnly: params.request.reduceOnly
     })
     const asset = this.toOrderAssetFromPerp(perpAsset)
@@ -907,6 +955,13 @@ export class HyperliquidService {
     await this.assertEntryGateAllowed({
       dex,
       coin: params.request.coin,
+      reduceOnly: params.request.reduceOnly
+    })
+    await this.assertSizingLockAllowed({
+      dex,
+      coin: params.request.coin,
+      amount: params.request.amount,
+      referencePrice: perpAsset.referencePrice,
       reduceOnly: params.request.reduceOnly
     })
 

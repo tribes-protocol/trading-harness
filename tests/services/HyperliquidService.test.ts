@@ -436,3 +436,66 @@ describe('HyperliquidService entry-trigger gate enforcement', () => {
     expect(String(error)).not.toContain('entry trigger gate')
   })
 })
+
+describe('HyperliquidService sizing-lock enforcement', () => {
+  async function gateGatedService(): Promise<{ gated: HyperliquidService }> {
+    const { mkdtemp } = await import('node:fs/promises')
+    const { tmpdir } = await import('node:os')
+    const { join } = await import('node:path')
+    const { SizingLockService } = await import('@/services/SizingLockService')
+    const { EntryGateService } = await import('@/services/EntryGateService')
+    const stateDir = await mkdtemp(join(tmpdir(), 'sizing-lock-hl-'))
+    const sizingLock = new SizingLockService({ stateDir })
+    await sizingLock.load()
+    const entryGate = new EntryGateService({ stateDir })
+    await entryGate.load()
+    const metaAndAssetCtxs = vi.fn().mockResolvedValue([MAIN_META, [MAIN_CONTEXT]])
+    const params: HyperliquidServiceParams = {
+      transaction: {} as HyperliquidServiceParams['transaction'],
+      infoClient: { metaAndAssetCtxs, perpDexs: vi.fn() } as unknown as InfoClient,
+      entryGate,
+      sizingLock
+    }
+    return { gated: new HyperliquidService(params), entryGate, sizingLock }
+  }
+
+  test('refuses an off-lock entry size pre-broadcast (no operative manifest = refuse)', async () => {
+    const { gated, entryGate } = await gateGatedService()
+    // Gate must be fired so the SIZING check is what refuses (gate-first ordering).
+    await entryGate.fireTrigger('main', 'BTC', 60_000)
+    await expect(
+      gated.tradePerp({
+        request: {
+          from: '0xbb64c24a6b2ee1185621490d2a1ae06522f15f57',
+          coin: 'BTC',
+          amount: new (await import('bignumber.js')).default(0.02166),
+          side: 'long',
+          type: 'market',
+          reduceOnly: false,
+          walletId: 'w'
+        },
+        walletId: 'w'
+      } as never)
+    ).rejects.toThrow('sizing lock')
+  })
+
+  test('never blocks a reduce-only close (sizing lock applies to entries only)', async () => {
+    const { gated } = await gateGatedService()
+    const error = await gated
+      .tradePerp({
+        request: {
+          from: '0xbb64c24a6b2ee1185621490d2a1ae06522f15f57',
+          coin: 'BTC',
+          amount: new (await import('bignumber.js')).default(0.02166),
+          side: 'short',
+          type: 'market',
+          reduceOnly: true,
+          walletId: 'w'
+        },
+        walletId: 'w'
+      } as never)
+      .then(() => null)
+      .catch((e: unknown) => e)
+    expect(String(error)).not.toContain('sizing lock')
+  })
+})

@@ -7,6 +7,7 @@ import {
   HyperliquidOrderBookCommandOptionsSchema,
   HyperliquidService
 } from '@/services/HyperliquidService'
+import { SizingLockService } from '@/services/SizingLockService'
 import { TransactionService } from '@/services/TransactionService'
 import {
   HyperliquidAdjustMarginCommandOptionsSchema,
@@ -26,6 +27,9 @@ import {
   HyperliquidScaleOrderCommandOptionsSchema,
   HyperliquidSetLeverageCommandOptionsSchema,
   HyperliquidSignReplayCommandOptionsSchema,
+  HyperliquidSizingLockArmCommandOptionsSchema,
+  HyperliquidSizingLockOverrideCommandOptionsSchema,
+  HyperliquidSizingLockStatusCommandOptionsSchema,
   HyperliquidSpotCancelOrderCommandOptionsSchema,
   HyperliquidSpotScaleOrderCommandOptionsSchema,
   HyperliquidSpotTradeCommandOptionsSchema,
@@ -51,9 +55,11 @@ export function buildHyperliquidCommand(): Command {
     privyAppId: PRIVY_APP_ID
   })
   const entryGateService = new EntryGateService()
+  const sizingLockService = new SizingLockService()
   const hyperliquidService = new HyperliquidService({
     transaction: transactionService,
-    entryGate: entryGateService
+    entryGate: entryGateService,
+    sizingLock: sizingLockService
   })
 
   const program = new Command('hyperliquid')
@@ -273,6 +279,97 @@ export function buildHyperliquidCommand(): Command {
     .action(async (options: unknown): Promise<void> => {
       const request = HyperliquidEntryGateOverrideCommandOptionsSchema.parse(options)
       const response = await entryGateService.override({
+        dex: request.dex,
+        coin: request.coin,
+        actor: request.actor,
+        reason: request.reason,
+        ttlMs: request.ttlMs
+      })
+      const output = ensureJsonTreeString(response)
+      await writeOutput({
+        output,
+        outPath: request.out ?? undefined
+      })
+    })
+
+  const sizingLock = program.command('sizing-lock')
+  sizingLock
+    .command('arm')
+    .description(
+      'Desk arms (or supersedes) an operative package: writes the versioned manifest the order path reads (previous operative version becomes superseded)'
+    )
+    .requiredOption('--package-id <id>', 'Package id (for example: A-212)')
+    .requiredOption('--ver <version>', 'Package version (for example: v3)')
+    .requiredOption(
+      '--spec <json>',
+      'JSON object keyed by coin: {"BTC":{"notionalUsd":3182.70,"marginUsd":212.18,"leverage":20,"szDecimals":5}}'
+    )
+    .option('--out <file>', 'Write output JSON to file')
+    .action(async (options: unknown): Promise<void> => {
+      const raw = options as { spec?: string; ver?: string }
+      const spec = typeof raw.spec === 'string' ? (JSON.parse(raw.spec) as Record<string, unknown>) : {}
+      const request = HyperliquidSizingLockArmCommandOptionsSchema.parse({
+        ...(options as object),
+        version: raw.ver ?? '',
+        spec
+      })
+      const perCoin = Object.entries(request.spec).map(([coin, value]) => ({
+        coin,
+        dex: value.dex ?? 'main',
+        notionalUsd: value.notionalUsd,
+        marginUsd: value.marginUsd,
+        leverage: value.leverage,
+        szDecimals: value.szDecimals
+      }))
+      const response = await sizingLockService.arm({
+        packageId: request.packageId,
+        version: request.version,
+        perCoin
+      })
+      const output = ensureJsonTreeString(response)
+      await writeOutput({
+        output,
+        outPath: request.out ?? undefined
+      })
+    })
+
+  sizingLock
+    .command('status')
+    .description('Read the operative-package manifest and which coins have a locked entry size')
+    .option('--coin <coin>', 'Filter to one coin')
+    .option('--dex <dex>', 'Perp dex name (main by default)')
+    .option('--out <file>', 'Write output JSON to file')
+    .action(async (options: unknown): Promise<void> => {
+      const request = HyperliquidSizingLockStatusCommandOptionsSchema.parse(options)
+      await sizingLockService.load()
+      const operative = await sizingLockService.getOperative()
+      const coins = (operative?.perCoin ?? []).filter((entry) => {
+        const dexMatch = isNullish(request.dex) || entry.dex === request.dex.trim()
+        const coinMatch =
+          isNullish(request.coin) || entry.coin === request.coin.trim().toUpperCase()
+        return dexMatch && coinMatch
+      })
+      const output = ensureJsonTreeString({ operative, coins })
+      await writeOutput({
+        output,
+        outPath: request.out ?? undefined
+      })
+    })
+
+  sizingLock
+    .command('override')
+    .description(
+      'Authority-gated journaled re-size override: lets a deliberate off-lock size through for a bounded TTL (actor must be exec-lead or chief)'
+    )
+    .requiredOption('--coin <coin>', 'Perp symbol (for example: BTC)')
+    .option('--dex <dex>', 'Perp dex name (main by default)')
+    .requiredOption('--actor <actor>', 'Override authority (exec-lead | chief)')
+    .requiredOption('--reason <reason>', 'Why the override is being granted')
+    .option('--ttl-ms <ms>', 'TTL in milliseconds (default 900000 = 15 minutes)', '900000')
+    .option('--out <file>', 'Write output JSON to file')
+    .action(async (options: unknown): Promise<void> => {
+      const request = HyperliquidSizingLockOverrideCommandOptionsSchema.parse(options)
+      const response = await sizingLockService.override({
         dex: request.dex,
         coin: request.coin,
         actor: request.actor,
