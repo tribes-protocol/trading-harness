@@ -31,9 +31,10 @@ tribes-cli ta indicators --candles-file /tmp/<coin>-5m.json --set ema,atr
 ```
 
 **Indicator params:**
+
 - **RSI(14)** — 1m candles
-- **Bollinger Bands(20,2)** — 1m candles  
-- **VWAP** — 1m candles  
+- **Bollinger Bands(20,2)** — 1m candles
+- **VWAP** — 1m candles
 - **ATR(14)** — 5m candles (volatility filter + stop sizing)
 - **EMA stack** — 5m candles (9, 21, 50). Note: `ta indicators` surfaces EMA20/50 natively; treat EMA9 as the short-term trend proxy by eyeballing the 1m EMA alignment or computing locally if needed.
 
@@ -50,7 +51,7 @@ A long fires when **ALL** of the following are true simultaneously:
 5. **5m EMA context:** the 5m EMA stack is either **bullish** (EMA9 > EMA21 > EMA50) OR **flat-bullish** (all three within 0.3% of each other). Dead-cross (9 < 21 < 50) = veto.
 6. **ATR volatility gate:** 5m ATR(14) expressed as % of price is **between 0.10% and 0.50%**. Below 0.10% = dead market; above 0.50% = too choppy.
 
-> **Plain-English trigger:** *"Price tags lower Bollinger + RSI < 35 while trading below VWAP, then reclaims VWAP on a volume spike, with the 5m EMA stack flat or up."*
+> **Plain-English trigger:** _"Price tags lower Bollinger + RSI < 35 while trading below VWAP, then reclaims VWAP on a volume spike, with the 5m EMA stack flat or up."_
 
 ### 1.3 Exact Short-Entry Formula
 
@@ -63,7 +64,7 @@ A short fires when **ALL** of the following are true simultaneously:
 5. **5m EMA context:** the 5m EMA stack is either **bearish** (EMA9 < EMA21 < EMA50) OR **flat-bearish** (all three within 0.3% of each other). Golden-cross (9 > 21 > 50) = veto.
 6. **ATR volatility gate:** same as long: 5m ATR(14) % of price must be **0.10%–0.50%**.
 
-> **Plain-English trigger:** *"Price tags upper Bollinger + RSI > 65 while trading above VWAP, then breaks back below VWAP on a volume spike, with the 5m EMA stack flat or down."*
+> **Plain-English trigger:** _"Price tags upper Bollinger + RSI > 65 while trading above VWAP, then breaks back below VWAP on a volume spike, with the 5m EMA stack flat or down."_
 
 ### 1.4 ATR-Based Stop Sizing
 
@@ -88,14 +89,14 @@ A short fires when **ALL** of the following are true simultaneously:
 
 Before any trigger, scan the Hyperliquid perp with `list-assets --all-dexes` and verify:
 
-| Filter | Threshold | Why |
-|--------|-----------|-----|
-| `dayNtlVlm` | ≥ **$5,000,000** | Enough two-sided flow to fill tight stops |
-| `openInterest` | ≥ **$1,000,000** | Confirms active positioning |
-| `impactPxs` spread | < **0.15%** for intended size | Slippage on entry/exit must not eat edge |
-| `referencePx` vs `oraclePx` vs `midPx` | All within **0.10%** | Rejects stale or manipulated prints |
-| `isDelisted` | `false` | Non-negotiable |
-| `maxLeverage` offered | ≥ **10×** | Scalping regime needs magnification |
+| Filter                                 | Threshold                     | Why                                       |
+| -------------------------------------- | ----------------------------- | ----------------------------------------- |
+| `dayNtlVlm`                            | ≥ **$5,000,000**              | Enough two-sided flow to fill tight stops |
+| `openInterest`                         | ≥ **$1,000,000**              | Confirms active positioning               |
+| `impactPxs` spread                     | < **0.15%** for intended size | Slippage on entry/exit must not eat edge  |
+| `referencePx` vs `oraclePx` vs `midPx` | All within **0.10%**          | Rejects stale or manipulated prints       |
+| `isDelisted`                           | `false`                       | Non-negotiable                            |
+| `maxLeverage` offered                  | ≥ **10×**                     | Scalping regime needs magnification       |
 
 **Actionable preference:** candidates with `dayNtlVlm` > $20M and impact spread < 0.08% rank above everything else. If no candidate clears the table, do not trade — flat is a position.
 
@@ -127,14 +128,14 @@ tribes-cli hyperliquid entry-gate override --coin BTC --actor exec-lead --reason
 
 ### 3.1 Notional & Target
 
-| Variable | Value |
-|----------|-------|
-| Posted margin | $500 |
-| Leverage | 20× |
-| Notional size | **$10,000** |
+| Variable           | Value                     |
+| ------------------ | ------------------------- |
+| Posted margin      | $500                      |
+| Leverage           | 20×                       |
+| Notional size      | **$10,000**               |
 | Gross daily target | **+$50** (+10% of margin) |
-| Hard stop-loss | **−$25** (−5% of margin) |
-| R:R ratio | **2:1** |
+| Hard stop-loss     | **−$25** (−5% of margin)  |
+| R:R ratio          | **2:1**                   |
 
 ### 3.2 Price-Distance Math at 20×
 
@@ -142,17 +143,18 @@ A 0.25% price move on $10,000 notional = $25 P&L = 5% of margin.
 A 0.50% price move = $50 P&L = 10% of margin.
 
 Therefore:
+
 - **SL distance:** **−0.25%** from entry (hard; may be adjusted by ATR within 0.20%–0.30% bounds).
 - **TP distances:** ladder below sums to **+0.50%** equivalent on the blended position.
 
 ### 3.3 Three-Rung Scaled TP
 
-| Rung | % of Position Closed | Price % from Entry | P&L on That Slice | % of Margin Captured |
-|------|----------------------|--------------------|-------------------|----------------------|
-| **TP1** | 50% | **+0.30%** | $5,000 × 0.003 = **$15** | **3.0%** |
-| **TP2** | 30% | **+0.50%** | $3,000 × 0.005 = **$15** | **3.0%** |
-| **TP3** | 20% | **+1.00%** | $2,000 × 0.010 = **$20** | **4.0%** |
-| **Total** | **100%** | — | **$50** | **10.0%** |
+| Rung      | % of Position Closed | Price % from Entry | P&L on That Slice        | % of Margin Captured |
+| --------- | -------------------- | ------------------ | ------------------------ | -------------------- |
+| **TP1**   | 50%                  | **+0.30%**         | $5,000 × 0.003 = **$15** | **3.0%**             |
+| **TP2**   | 30%                  | **+0.50%**         | $3,000 × 0.005 = **$15** | **3.0%**             |
+| **TP3**   | 20%                  | **+1.00%**         | $2,000 × 0.010 = **$20** | **4.0%**             |
+| **Total** | **100%**             | —                  | **$50**                  | **10.0%**            |
 
 ### 3.4 SL Management
 
@@ -183,14 +185,14 @@ tribes-cli trade-perp --coin <COIN> --side sell --sz <sz*0.20> --reduce-only --l
 
 ### 4.1 The Numbers
 
-| Item | Value |
-|------|-------|
-| Margin per trade | $500 |
-| SL per full stop | −$25 (5% of margin) |
-| Max full stops allowed | **2** |
-| Max entries allowed | **4** (hard ceiling, regardless of outcome) |
-| Fee budget | ~$10/day (2 round-trips × ~$3.50 + overhead) |
-| Net daily target after fees | **~$40** |
+| Item                        | Value                                        |
+| --------------------------- | -------------------------------------------- |
+| Margin per trade            | $500                                         |
+| SL per full stop            | −$25 (5% of margin)                          |
+| Max full stops allowed      | **2**                                        |
+| Max entries allowed         | **4** (hard ceiling, regardless of outcome)  |
+| Fee budget                  | ~$10/day (2 round-trips × ~$3.50 + overhead) |
+| Net daily target after fees | **~$40**                                     |
 
 ### 4.2 Accounting Rules
 
@@ -214,12 +216,12 @@ Before every entry, journal: coin, entry px, SL px, TP ladder pxs, which criteri
 
 ### 5.1 Per-Market Max Leverage
 
-| Hyperliquid `maxLeverage` | Playbook Leverage | Rationale |
-|---------------------------|-------------------|-----------|
-| ≥ 25× | **20×** (hard cap) | Maximum magnification within regime |
-| 15× – 24× | **15×** | Room below max for buffer |
-| 10× – 14× | **10×** | Default floor; still viable |
-| 5× – 9× | **Skip** | Insufficient for $50/day target on $500 margin |
+| Hyperliquid `maxLeverage` | Playbook Leverage  | Rationale                                      |
+| ------------------------- | ------------------ | ---------------------------------------------- |
+| ≥ 25×                     | **20×** (hard cap) | Maximum magnification within regime            |
+| 15× – 24×                 | **15×**            | Room below max for buffer                      |
+| 10× – 14×                 | **10×**            | Default floor; still viable                    |
+| 5× – 9×                   | **Skip**           | Insufficient for $50/day target on $500 margin |
 
 **Global ceiling:** never exceed **20×**, even if the venue offers 50×.
 
@@ -234,9 +236,9 @@ Before every entry, journal: coin, entry px, SL px, TP ladder pxs, which criteri
 ### 5.3 Position Sizing with Concurrency
 
 | Concurrent Positions | Margin per Position | Notional per Position (20×) |
-|----------------------|---------------------|------------------------------|
-| 1 | $500 | $10,000 |
-| 2 | $250 each | $5,000 each |
+| -------------------- | ------------------- | --------------------------- |
+| 1                    | $500                | $10,000                     |
+| 2                    | $250 each           | $5,000 each                 |
 
 When splitting, recalculate the TP/SL price levels for the smaller notional. The R:R stays 2:1; the absolute dollar target per trade drops proportionally. The daily loss cap remains $50 across both positions combined.
 

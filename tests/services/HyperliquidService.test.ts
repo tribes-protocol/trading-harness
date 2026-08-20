@@ -332,9 +332,11 @@ describe('HyperliquidService candles', () => {
   })
 })
 
-
 describe('HyperliquidService entry-trigger gate enforcement', () => {
-  async function gateService(): Promise<{ entryGate: import('@/services/EntryGateService').EntryGateService; stateDir: string }> {
+  async function gateService(): Promise<{
+    entryGate: import('@/services/EntryGateService').EntryGateService
+    stateDir: string
+  }> {
     const { mkdtemp, rm } = await import('node:fs/promises')
     const { tmpdir } = await import('node:os')
     const { join } = await import('node:path')
