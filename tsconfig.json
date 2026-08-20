@@ -9,7 +9,7 @@
     "skipLibCheck": true,
     "resolveJsonModule": true,
     "noImplicitAny": true,
-    "types": ["node"],
+    "types": ["node", "bun-types"],
     "baseUrl": ".",
     "paths": { "@/*": ["./src/*"] },
     "allowImportingTsExtensions": true,
