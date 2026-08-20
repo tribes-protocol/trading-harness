@@ -1380,8 +1380,15 @@ export class HyperliquidService {
 
   async getCandles(params: HyperliquidCandlesParams): Promise<HyperliquidCandlesResult> {
     const dex = this.normalizeDex(params.dex)
-    const coin =
-      dex.length > 0 && !params.coin.includes(':') ? `${dex}:${params.coin}` : params.coin
+    const rawCoin = params.coin.includes(':')
+      ? params.coin
+      : `${dex ? `${dex}:` : ''}${params.coin}`
+    // Resolve the VENUE-EXACT coin name from the perp meta universe. The venue's
+    // canonical symbol case is authoritative (e.g. `kPEPE` on main), and
+    // candleSnapshot is case-sensitive — an uppercased `KPEPE` 500s while
+    // `kPEPE` returns. Resolving also fails fast with a clear message for a
+    // symbol that is not actually listed (instead of an opaque 500).
+    const coin = await this.resolveVenueCoinName(rawCoin, dex)
     // The bundled SDK requires a startTime; when the caller omits it, widen the
     // lookback so Hyperliquid returns the most recent candle run (capped at a few
     // thousand), which is what the desk's indicator compute needs.
@@ -1405,6 +1412,26 @@ export class HyperliquidService {
         v: Number(row.v)
       }))
     })
+  }
+
+  /**
+   * Resolve the venue-canonical coin name (exact case, optional dex prefix) for
+   * a coin symbol. Matches case-insensitively against the perp meta universe and
+   * returns the venue's own `name` field, so mixed-case venue symbols (kPEPE)
+   * round-trip with their true case into candleSnapshot.
+   */
+  private async resolveVenueCoinName(rawCoin: string, dex: string): Promise<string> {
+    const metaParams: MetaAndAssetCtxsParameters = {}
+    if (dex.length > 0) metaParams.dex = dex
+    const [meta] = await this.infoClient.metaAndAssetCtxs(metaParams)
+    const colonIdx = rawCoin.indexOf(':')
+    const symbol = (colonIdx >= 0 ? rawCoin.slice(colonIdx + 1) : rawCoin).toLowerCase()
+    const dexPart = colonIdx >= 0 ? rawCoin.slice(0, colonIdx) : ''
+    const match = meta.universe.find((asset) => asset.name.toLowerCase() === symbol)
+    if (isNullish(match)) {
+      throw new Error(`unknown perp coin ${rawCoin} on dex ${dex || 'main'}`)
+    }
+    return dexPart.length > 0 ? `${dexPart}:${match.name}` : match.name
   }
 
   private directionToPerpFlag(direction: HyperliquidUsdClassDirection): boolean {
