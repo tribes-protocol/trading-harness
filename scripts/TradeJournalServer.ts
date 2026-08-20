@@ -42,13 +42,40 @@ const server = Bun.serve({
   routes: {
     '/': (req) => {
       const url = new URL(req.url)
+      const rawStatus = url.searchParams.get('status')
+      const status =
+        rawStatus !== null && ['open', 'filled', 'closed', 'stopped', 'tp_hit'].includes(rawStatus)
+          ? rawStatus
+          : null
+      const rawAll = url.searchParams.get('all')
+      const all = rawAll === '1' || rawAll === 'true'
       const rawPage = Number(url.searchParams.get('page') ?? '1')
       const page = Number.isFinite(rawPage) && rawPage >= 1 ? Math.floor(rawPage) : 1
-      const offset = (page - 1) * PAGE_SIZE
-      const trades = journal.list(PAGE_SIZE, offset)
+      const perPage = all ? 500 : PAGE_SIZE
+      const offset = (page - 1) * perPage
+      const trades =
+        status === null
+          ? journal.list(perPage, offset)
+          : journal.listByStatus(status, perPage, offset)
       const modals = trades.map((t) => tradeModalHtml(t)).join('')
-      const pageInfo = { page, perPage: PAGE_SIZE, total: journal.count() }
-      const html = feedPageHtml(trades, pageInfo.total, modals, FEED_CLIENT_SCRIPT, pageInfo)
+      const byStatus = journal.countByStatus()
+      const statusCounts = {
+        open: byStatus['open'] ?? 0,
+        filled: byStatus['filled'] ?? 0,
+        stopped: byStatus['stopped'] ?? 0,
+        tp_hit: byStatus['tp_hit'] ?? 0,
+        closed: byStatus['closed'] ?? 0
+      }
+      const allTotal = journal.count()
+      const shownTotal = status === null ? allTotal : (byStatus[status] ?? 0)
+      const pageInfo = {
+        page,
+        perPage,
+        total: allTotal,
+        status: status ?? undefined,
+        statusCounts
+      }
+      const html = feedPageHtml(trades, shownTotal, modals, FEED_CLIENT_SCRIPT, pageInfo)
       return new Response(html, {
         status: 200,
         headers: { 'Content-Type': 'text/html; charset=utf-8' }
@@ -80,8 +107,23 @@ const server = Bun.serve({
       const url = new URL(req.url)
       const limit = Math.min(Number(url.searchParams.get('limit') ?? '20'), 100)
       const offset = Math.max(Number(url.searchParams.get('offset') ?? '0'), 0)
-      const trades = journal.list(limit, offset)
-      return json({ trades, count: trades.length, offset, limit })
+      const rawStatus = url.searchParams.get('status')
+      const status =
+        rawStatus && ['open', 'filled', 'closed', 'stopped', 'tp_hit'].includes(rawStatus)
+          ? rawStatus
+          : undefined
+      const trades =
+        status === undefined
+          ? journal.list(limit, offset)
+          : journal.listByStatus(status, limit, offset)
+      return json({
+        trades,
+        count: trades.length,
+        offset,
+        limit,
+        status: status ?? undefined,
+        totals: { ...journal.countByStatus(), all: journal.count() }
+      })
     },
 
     '/api/trades/:id': (req) => {

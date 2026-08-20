@@ -147,28 +147,69 @@ export function cardSparkline(report: JournalReport | null | undefined): string 
 
 export function tradeCard(t: JournalTrade): string {
   const pnl = t.realizedPnlUsd ?? 0
+  const stop = t.stopPx !== null && t.stopPx !== undefined ? esc(t.stopPx) : '—'
+  const target = t.targetPx !== null && t.targetPx !== undefined ? esc(t.targetPx) : '—'
   return (
-    `<article class="trade-card" data-id="${esc(t.id)}" tabindex="0" ` +
+    `<article class="trade-card tl-row" data-id="${esc(t.id)}" tabindex="0" ` +
     `aria-label="${esc(t.ticker)} ${esc(t.side)} trade report">` +
-    `<div class="tc-head">` +
-    `<span class="tc-side">${esc(t.side)} · ${esc(t.ticker)}</span>` +
-    `<span class="tc-status">${esc(statusLabel(t.status))}</span>` +
+    `<div class="tl-rail"><span class="tl-dot ${esc(pnlClass(pnl))}"></span></div>` +
+    `<div class="tl-body">` +
+    `<div class="tl-id">` +
+    `<span class="tl-ticker">${esc(t.ticker)}</span>` +
+    `<span class="tl-side ${esc(t.side)}">${esc(t.side)}</span>` +
+    `<span class="tc-status ${esc(statusTone(t.status))}">${esc(statusLabel(t.status))}</span>` +
+    `<span class="tl-time">opened ${esc(formatWhen(t.timestamp))}</span>` +
     `</div>` +
-    `<div class="tc-row"><span class="tc-ticker">${esc(t.ticker)}</span>` +
-    `<span class="tc-entry">@${esc(t.entryPrice)}</span></div>` +
-    `<div class="tc-metrics">` +
-    `<span class="tc-pnl ${pnlClass(pnl)}">${esc(formatPnlUsd(pnl))}</span>` +
-    `<span class="tc-size">size ${esc(formatSize(t.sizeBase))}</span>` +
+    `<div class="tl-main">` +
+    `<div class="tl-metrics">` +
+    `<span class="tl-entry">@${esc(t.entryPrice)}</span>` +
+    `<span class="tl-size">${esc(formatSize(t.sizeBase))} ${esc(t.ticker)}</span>` +
+    `<span class="tl-notional">$${esc(t.notionalUsd)}</span>` +
+    `</div>` +
+    `<div class="tl-pnl ${pnlClass(pnl)}">${esc(formatPnlUsd(pnl))}</div>` +
+    `</div>` +
+    `<div class="tl-bracket">` +
+    `<span class="tl-b-label">stop</span><span class="tl-b-val">${stop}</span>` +
+    `<span class="tl-b-divider">&#8594;</span>` +
+    `<span class="tl-b-label">target</span><span class="tl-b-val">${target}</span>` +
     `</div>` +
     `<div class="tc-spark">${cardSparkline(t.report)}</div>` +
+    `</div>` +
     `</article>`
   )
+}
+
+function statusTone(status: string): string {
+  switch (status) {
+    case 'tp_hit':
+      return 'tp_hit'
+    case 'open':
+      return 'open'
+    case 'filled':
+      return 'filled'
+    case 'closed':
+      return 'closed'
+    case 'stopped':
+      return 'stopped'
+    default:
+      return 'open'
+  }
 }
 
 export interface FeedPageInfo {
   page: number
   perPage: number
   total: number
+  status?: string | null
+  statusCounts?: Record<string, number>
+}
+
+function statusFilterLink(status: string | null, label: string, info: FeedPageInfo): string {
+  const active =
+    info.status === status ||
+    (status === null && (info.status === undefined || info.status === null || info.status === ''))
+  const href = status === null ? '/' : `/?status=${status}`
+  return `<a class="tj-filter${active ? ' tj-filter-cur' : ''}" href="${href}">${label}</a>`
 }
 
 function paginationBar(info: FeedPageInfo): string {
@@ -203,6 +244,31 @@ export function feedHtml(
   page: FeedPageInfo = { page: 1, perPage: Number.MAX_VALUE, total: count }
 ): string {
   const cards = trades.map(tradeCard).join('')
+  const sc = page.statusCounts ?? {}
+  const allCount = page.statusCounts
+    ? (sc['open'] ?? 0) +
+      (sc['filled'] ?? 0) +
+      (sc['stopped'] ?? 0) +
+      (sc['tp_hit'] ?? 0) +
+      (sc['closed'] ?? 0)
+    : page.total
+  const countLine =
+    `<div class="tj-countline">` +
+    `<strong>${esc(String(allCount))} positions on record</strong>` +
+    (page.statusCounts
+      ? ` · open ${sc['open'] ?? 0} · filled ${sc['filled'] ?? 0} · stopped ${sc['stopped'] ?? 0} · tp-hit ${sc['tp_hit'] ?? 0} · closed ${sc['closed'] ?? 0}`
+      : '') +
+    `</div>`
+  const filterRow =
+    `<div class="tj-filters">` +
+    statusFilterLink(null, 'all', page) +
+    statusFilterLink('open', 'open', page) +
+    statusFilterLink('filled', 'filled', page) +
+    statusFilterLink('stopped', 'stopped', page) +
+    statusFilterLink('tp_hit', 'TP hit', page) +
+    statusFilterLink('closed', 'closed', page) +
+    `<a class="tj-filter" href="/?all=1">all records</a>` +
+    `</div>`
   return (
     `<div class="tj-wrap">` +
     `<header class="tj-head">` +
@@ -210,6 +276,8 @@ export function feedHtml(
     `<p class="tj-sub">Every position, decision and outcome on record.</p></div>` +
     `<span class="tj-count">${count} position${count === 1 ? '' : 's'}</span>` +
     `</header>` +
+    filterRow +
+    countLine +
     `<div class="tj-feed">${cards}</div>` +
     paginationBar(page) +
     `</div>`

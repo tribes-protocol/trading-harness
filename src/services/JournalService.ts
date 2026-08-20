@@ -150,6 +150,28 @@ export class JournalService {
     return rows.map(rowToTrade)
   }
 
+  listByStatus(status: string, limit: number, offset: number): JournalTrade[] {
+    const rows = readRows(
+      this.db
+        .query(`SELECT * FROM trades WHERE status = ? ORDER BY timestamp DESC LIMIT ? OFFSET ?`)
+        .all(status, limit, offset)
+    )
+    return rows.map(rowToTrade)
+  }
+
+  countByStatus(): Record<string, number> {
+    const rows = readRows(
+      this.db.query(`SELECT status, COUNT(*) AS n FROM trades GROUP BY status`).all()
+    )
+    const out: Record<string, number> = {}
+    for (const row of rows) {
+      const status = String(row['status'] ?? '')
+      const n = Number(row['n'] ?? 0)
+      if (status.length > 0 && Number.isFinite(n)) out[status] = n
+    }
+    return out
+  }
+
   get(id: string): JournalTrade | null {
     const row = readRow(this.db.query(`SELECT * FROM trades WHERE id = ?`).get(id))
     if (row === null) return null
