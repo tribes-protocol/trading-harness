@@ -31,9 +31,9 @@ import { type JournalInsertInput, JournalInsertInputSchema } from '@/types/Journ
 // Constants
 // ---------------------------------------------------------------------------
 
-const STREAM_FRESH_TIMEOUT_MS = 2000
 const RECONNECT_BACKOFF_MS = 1000
 const RECONNECT_BACKOFF_MAX_MS = 8000
+const POLL_GRACE_MS = 5000
 
 const DB_PATH = process.argv[2] ?? resolve('/root/workspace/data/trade-journal.sqlite')
 
@@ -180,6 +180,7 @@ export function runTradeFillSupervisor(deps: {
 
   let running = false
   let stopRequested = false
+  let wsLive = false
   let transport: WebSocketTransport | null = null
   let subscription: ISubscription | null = null
 
@@ -194,39 +195,56 @@ export function runTradeFillSupervisor(deps: {
   }
 
   const subscribeOnce = async (): Promise<void> => {
-    transport = new WebSocketTransport()
-    const subClient = new SubscriptionClient({ transport })
-    subscription = await subClient.userFills(
-      { user: deps.address, aggregateByTime: false },
-      (data) => {
-        const eventFills = data.fills
-        if (Array.isArray(eventFills)) writeFills(eventFills)
-      }
-    )
+    try {
+      transport = new WebSocketTransport()
+      const subClient = new SubscriptionClient({ transport })
+      subscription = await subClient.userFills(
+        { user: deps.address, aggregateByTime: false },
+        (data) => {
+          const eventFills = data.fills
+          if (Array.isArray(eventFills)) writeFills(eventFills)
+        }
+      )
+      // Stream reached — a glossary fast-path is live; fails back to REST reconcile.
+      wsLive = true
+    } catch {
+      // WS subscribe rejected/closed — this is NOT a journal-loss. The REST
+      // reconcile loop below is the durable no-miss path that catches every gap.
+      wsLive = false
+      transport = null
+      subscription = null
+    }
   }
 
   const run = async (): Promise<void> => {
+    // No-miss guarantee rides the RELIABLE REST reconcile on a short cadence — the
+    // ws fill stream is an opportunistic fast path (it FAILS outright for some
+    // venue/address combos). A REST poll every POLL_MS is what catches a fill the
+    // ws would otherwise miss (and already caught NATGAS).
+    let wsTried = false
     let backoff = RECONNECT_BACKOFF_MS
     while (running && !stopRequested) {
-      try {
+      // Best-effort: try to arm a live ws stream once; if it fails, rely on REST.
+      if (!wsTried) {
+        wsTried = true
         await subscribeOnce()
+        console.error(
+          `realtime capture: ws fast-path ${wsLive ? 'LIVE' : 'failed—REST reconcile authoritative'}`
+        )
+      }
+      // REST reconcile — the always-on guarantee. Pulls all fills since epoch and
+      // upserts any missing (idempotent), so no window can silently drop a fill.
+      try {
+        const t0 = now()
+        await reconcileOnBoot(deps.journal, deps.info, deps.address)
+        const latencyMs = now() - t0
+        if (latencyMs > 250) console.error(`reconcile took ${latencyMs}ms`)
         backoff = RECONNECT_BACKOFF_MS
-
-        // Stream is live. The SDK resubscribes on a transient drop, so we wait for
-        // either a fresh fill or a TERMINAL failureSignal (permanent disconnect that
-        // the SDK could not restore). A timeout just re-enters a fresh cycle so an idle
-        // reconnect still re-reconciles venue gaps on the next pass.
-        const deadline = now() + STREAM_FRESH_TIMEOUT_MS
-        while (running && !stopRequested && now() < deadline) {
-          if (subscription !== null && subscription.failureSignal.aborted) break
-          await sleep(100)
-        }
-        await sleep(Math.min(backoff, RECONNECT_BACKOFF_MAX_MS))
       } catch (err) {
         onError(err)
-        await sleep(Math.min(backoff, RECONNECT_BACKOFF_MAX_MS))
         backoff = Math.min(backoff * 2, RECONNECT_BACKOFF_MAX_MS)
       }
+      await sleep(Math.min(POLL_GRACE_MS, RECONNECT_BACKOFF_MAX_MS))
     }
   }
 
