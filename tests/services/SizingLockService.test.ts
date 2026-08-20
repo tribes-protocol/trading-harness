@@ -194,4 +194,65 @@ describe('SizingLockService — authority-gated journaled override', () => {
       vi.useRealTimers()
     }
   })
+
+  // ORACLE regression (Desi's attempt 3): a sizing-lock override granted by one
+  // CLI process MUST be consumed by a SEPARATE process's order-path check. The
+  // original defect: the override lived only in memory, so a fresh process never
+  // saw it — the grant was persisted+journaled but the check refused identically.
+  test('ORACLE attempt-3: override granted in one process is consumed by a fresh-process check', async () => {
+    const { service: granter, stateDir } = await freshService(['exec-lead', 'chief'])
+    await granter.arm({ packageId: 'A-212', version: 'v3', perCoin: [V3_BTC_ENTRY] })
+    const grant = await granter.override({
+      dex: 'main',
+      coin: 'BTC',
+      actor: 'exec-lead',
+      reason: 'desk override for the authorized entry',
+      ttlMs: 60_000
+    })
+    expect(grant.granted).toBe(true)
+
+    // A fresh process (new instance, same stateDir) runs the order-path check.
+    const checker = new SizingLockService({ stateDir, overrideActors: ['exec-lead', 'chief'] })
+    const decision = await checker.isEntrySizeAllowed({
+      dex: 'main',
+      coin: 'BTC',
+      amount: new BigNumber(0.0259), // $1,791 — below package v3, would be off-lock without the override
+      referencePrice: new BigNumber(71913)
+    })
+    expect(decision.allowed).toBe(true)
+    expect(decision.reason).toContain('override')
+  })
+
+  // ORACLE regression (Desi's attempt 4 / Path A): arming a new package version
+  // supersedes the old and the check validates against the CURRENT operative
+  // version — no override needed. This path already worked, must stay green.
+  test('ORACLE attempt-4: arm supersedes and the check passes against the new operative version', async () => {
+    const { service } = await freshService()
+    await service.arm({ packageId: 'A-212', version: 'v3', perCoin: [V3_BTC_ENTRY] })
+    // Desk arms v3-PATHA with a lock matched to the intended trade notional.
+    await service.arm({
+      packageId: 'A-212',
+      version: 'v3-PATHA',
+      perCoin: [
+        {
+          coin: 'BTC',
+          dex: 'main',
+          notionalUsd: 1863.26,
+          marginUsd: 93.16,
+          leverage: 20,
+          szDecimals: 5
+        }
+      ]
+    })
+    const operative = await service.getOperative()
+    expect(operative?.version).toBe('v3-PATHA')
+    const decision = await service.isEntrySizeAllowed({
+      dex: 'main',
+      coin: 'BTC',
+      amount: new BigNumber(0.0259),
+      referencePrice: new BigNumber(71913) // ≈ $1,862 — within ±2% of the new lock
+    })
+    expect(decision.allowed).toBe(true)
+    expect(decision.reason).toContain('v3-PATHA')
+  })
 })

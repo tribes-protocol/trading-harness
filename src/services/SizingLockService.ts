@@ -20,6 +20,7 @@ import { ensureJsonTreeString, isNullish } from '@/utils/Lang'
 
 const DEFAULT_STATE_DIR = resolve(process.cwd(), '.tribes')
 const MANIFEST_FILENAME = 'operative-package.json'
+const OVERRIDES_FILENAME = 'sizing-lock-overrides.json'
 const JOURNAL_FILENAME = 'sizing-lock-journal.jsonl'
 const DEFAULT_SIZE_TOLERANCE = 0.02 // ±2% absorbs tick rounding on szDecimals
 const DEFAULT_OVERRIDE_TTL_MS = 15 * 60 * 1000
@@ -32,6 +33,15 @@ export interface SizingLockServiceParams {
   readonly stateDir?: string
   readonly overrideActors?: readonly string[]
   readonly tolerance?: number
+}
+
+// One persisted sizing override: an authority-gated grant that is TTL-windowed
+// and consumed by the order path (mirroring the entry-gate override registry).
+export interface SizingLockOverrideRecord {
+  readonly key: string
+  readonly until: number
+  readonly actor: string
+  readonly reason: string
 }
 
 function isFileNotFoundError(error: unknown): boolean {
@@ -76,17 +86,20 @@ export class SizingLockService {
 
   private manifest: HyperliquidPackageManifest
 
-  private overrides: Map<string, { until: number; actor: string; reason: string }>
+  private overrides: Map<string, SizingLockOverrideRecord>
 
   constructor(params: SizingLockServiceParams = {}) {
     this.stateDir = params.stateDir ?? DEFAULT_STATE_DIR
     this.manifestPath = resolve(this.stateDir, MANIFEST_FILENAME)
+    this.overridesPath = resolve(this.stateDir, OVERRIDES_FILENAME)
     this.journalPath = resolve(this.stateDir, JOURNAL_FILENAME)
     this.overrideActors = params.overrideActors ?? DEFAULT_OVERRIDE_ACTORS
     this.tolerance = params.tolerance ?? DEFAULT_SIZE_TOLERANCE
     this.manifest = HyperliquidPackageManifestSchema.parse({ records: [] })
     this.overrides = new Map()
   }
+
+  private readonly overridesPath: string
 
   private async persistManifest(): Promise<void> {
     await mkdir(this.stateDir, { recursive: true })
@@ -112,6 +125,38 @@ export class SizingLockService {
       )
     }
     this.manifest = HyperliquidPackageManifestSchema.parse(JSON.parse(text))
+  }
+
+  private async persistOverrides(): Promise<void> {
+    await mkdir(this.stateDir, { recursive: true })
+    await writeFile(
+      this.overridesPath,
+      ensureJsonTreeString({ overrides: [...this.overrides.values()] }),
+      {
+        encoding: 'utf8',
+        mode: 0o600
+      }
+    )
+  }
+
+  /** Load the durable override registry so a fresh process (one per CLI command)
+   * sees an authority-gated grant written by another process. */
+  private async loadOverrides(): Promise<void> {
+    let text: string
+    try {
+      text = await readFile(this.overridesPath, 'utf8')
+    } catch (error) {
+      if (isFileNotFoundError(error)) {
+        this.overrides = new Map()
+        return
+      }
+      throw new Error(
+        `Unable to read sizing-lock override registry at ${this.overridesPath}: ` +
+          `${error instanceof Error ? error.message : String(error)}`
+      )
+    }
+    const parsed: { overrides: SizingLockOverrideRecord[] } = JSON.parse(text)
+    this.overrides = new Map(parsed.overrides.map((o) => [o.key, o]))
   }
 
   private operative(): HyperliquidPackageManifestRecord | null {
@@ -182,6 +227,7 @@ export class SizingLockService {
     referencePrice: BigNumber
   }): Promise<HyperliquidSizingLockDecision> {
     await this.load()
+    await this.loadOverrides()
     const dex = normalizeDexName(params.dex)
     const coin = normalizeCoinName(params.coin)
 
@@ -270,11 +316,14 @@ export class SizingLockService {
     const coin = normalizeCoinName(params.coin)
     const ttlMs = params.ttlMs ?? DEFAULT_OVERRIDE_TTL_MS
     const grantedAt = Date.now()
-    this.overrides.set(`${dex}:${coin}`, {
+    const key = `${dex}:${coin}`
+    this.overrides.set(key, {
+      key,
       until: grantedAt + ttlMs,
       actor,
       reason: params.reason.trim()
     })
+    await this.persistOverrides()
 
     const journalEntry = {
       ts: grantedAt,
