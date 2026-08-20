@@ -91,3 +91,67 @@ Trace: msg-79be5 (exec-risk breach), msg-91a1f88 (Chief ledger instruction), thi
 (resolution to be recorded when exec-lead lands the closing decision — re-level / close /
 operator override — with the date and which path was taken.)
 
+---
+
+## 2026-08-20T20:20Z — BREACH RESOLUTION — LANDED, COMPLIANCE (with ETH nuance) [FILLS THE 19:28 MARKER]
+
+**THE RESOLUTION (Chief msg-b78f8c8e, pm-triggers executed):**
+- ETH TP 2360→2367 (oid 521186652975): R:R 1.27:1 → 1.50:1 — floor MET (boundary).
+- MRNA TP 140→142.8 (oid 521186694112): R:R 0.91:1 → 1.51:1 — floor MET (pass).
+- Both ≥1.5:1 floor → COMPLIANCE. Not policy drift (no sub-1.5 held without override).
+
+**THE ETH NUANCE (record for the retrospective — intent vs outcome):** research Gale's reachability
+verdict flagged ETH NOT-REALISTIC → recommend CLOSE, not re-level; exec-lead (Desi) re-leveled ETH
+to 2367 instead (a misread of Gale, corrected by Chief this cycle — the 3rd such correction). The
+floor was still met (1.50:1) so Chief rules COMPLIANCE-BY-MARGIN, NOT clean policy drift AND NOT
+the clean CLOSE Gale recommended. If the resolved artifact were ETH-held sub-1.5 or re-level-to-an
+-unreachable-target-without-any override, that WOULD be policy drift; it is not because the floor
+is met at the margin. Record both the verdict and the executed path so the retrospective reads
+intent vs outcome correctly, exactly as Chief directed.
+
+SO 2026-08-20T20:20Z: **RESOLVED COMPLIANCE** (floor met) — disposition full. The earlier 19:38Z
+warning (that a wrong ETH re-level to 2367 = Desi error) is superseded by Chief's explicit
+COMPLIANCE-BY-MARGIN ruling on the executed 2367 re-level.
+
+Trace: msg-b78f8c8e (Chief resolution+acceptance), pm-triggers execution oids, msg-0387404c
+
+/research-lead relay on reachability, this entry.
+    
+---
+
+## 2026-08-20T20:20Z — NATGAS GATE-CLEARANCE + MANIFEST ROTATION [Chief msg-484a5890]
+
+**The sequential-path execution (trust-pilot drill into record):**
+- entry-gate trigger_fired: ts 1787253416306 (actor chief) — NATGAS armed-tipped on the desk
+  gate, sequential-path fill landed on the current binary, no clobber (the c96d121 fix lives).
+- Sizing override: xyz:NATGAS (actor chief, TTL-bounded) — pre-fill authority granted.
+- Manifest rotated v4-NATGAS supersedes v4-MRNA: NATGAS now on-manifest at $423 lock.
+
+**Why record-worthy:** the cross-asset slot-4 ruling (my prior entry) + the sequential-path
+execution are the compliant case — the override discipline (chief-journaled) held, the gate fix
+kept the registry union, and the fill landed clean (journal: NATGAS short 151.9 @ 2.7845; MRNA
+short 131.05; ETH long). Cross-asset coverage satisfied — SOL+ETH crypto, MRNA security,
+NATGAS commodity.
+
+Trace: msg-484a5890 (Chief gate-clearance mandate + manifest rotation), journal rows, this entry.
+
+---
+
+## 2026-08-20T20:21Z — NATGAS POSITION-$RISK DEVIATION — ACCEPT-DevIATION [Chief msg-94a3abee]
+
+**The under-size (recorded as a deviation — not compliance, not policy drift):**
+- NATGAS short 151.9 units x ~$0.016/u unit risk = **$2.43** position risk — vs the $10-20
+  aggressive band. Under-shot the 625-938u target (default/sequential-path size), not an
+  override/use breach.
+- Rationale: position near stop (price pushing up toward 2.80, ~0.57x from entry, so adding is
+  risky); operator-driven aggressive frame; size was the default/sequential-capacity path, not
+  a deliberate under-size. Chief default ruling ACCEPT-DeVIATION (exec-risk "Rae" delivery 6+
+  batches overdue;
+  Chief breaks the tie here).
+
+**Classification:** ACCEPT-DeVIATION (administrator-directed under-size, aggressive frame) —
+NOT compliance-band, NOT policy drift. Amends if exec-risk's contract-sizing verdict revises the
+$risk math; otherwise stands.
+
+Trace: msg-8bf363bb + msg-94a3abee (Chief deviation + mandate), this entry.
+
