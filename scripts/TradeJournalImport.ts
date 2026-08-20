@@ -12,7 +12,7 @@ import { readdirSync, readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 
 import { JournalService } from '@/services/JournalService'
-import { JournalInsertInputSchema, type JournalImportResult } from '@/types/Journal'
+import { type JournalImportResult, JournalInsertInputSchema } from '@/types/Journal'
 
 const DB_PATH = process.argv[2] ?? resolve('/root/workspace/data/trade-journal.sqlite')
 const DROP_DIR = process.argv[3] ?? resolve('/root/workspace/evidence/trade-reports')

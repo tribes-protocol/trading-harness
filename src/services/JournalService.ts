@@ -1,6 +1,8 @@
 import { Database } from 'bun:sqlite'
 
-import type { JournalImportResult, JournalInsertInput, JournalTrade } from '@/types/Journal'
+import { JournalInsertInputSchema, JournalTradeSchema, type JournalInsertInput, type JournalTrade } from '@/types/Journal'
+
+import { ensureJsonTreeString } from '@/utils/Lang'
 
 type JournalRow = Record<string, unknown> | null | undefined
 
@@ -10,13 +12,17 @@ function rowToTrade(row: JournalRow): JournalTrade {
   }
   const reportJson = row['report_json']
   const report =
-    typeof reportJson === 'string' && reportJson.length > 0 ? (JSON.parse(reportJson) as JournalTrade['report']) : null
-  return {
+    typeof reportJson === 'string' && reportJson.length > 0
+      ? JournalTradeSchema.shape.report.parse(JSON.parse(reportJson))
+      : null
+  const status = row['status']
+  const side = row['side']
+  return JournalTradeSchema.parse({
     id: String(row['id']),
     timestamp: Number(row['timestamp']),
     ticker: String(row['ticker']),
     dex: String(row['dex'] ?? ''),
-    side: row['side'] as JournalTrade['side'],
+    side: side === 'long' || side === 'short' ? side : 'long',
     entryPrice: Number(row['entry_price']),
     sizeBase: Number(row['size_base']),
     notionalUsd: Number(row['notional_usd']),
@@ -27,10 +33,17 @@ function rowToTrade(row: JournalRow): JournalTrade {
     riskUsd: row['risk_usd'] === null ? undefined : Number(row['risk_usd']),
     riskPctAccount: row['risk_pct_account'] === null ? undefined : Number(row['risk_pct_account']),
     rr: row['rr'] === null ? undefined : Number(row['rr']),
-    status: row['status'] as JournalTrade['status'],
+    status:
+      status === 'open' ||
+      status === 'filled' ||
+      status === 'closed' ||
+      status === 'stopped' ||
+      status === 'tp_hit'
+        ? status
+        : 'open',
     realizedPnlUsd: Number(row['realized_pnl_usd']),
     report
-  }
+  })
 }
 
 export interface JournalServiceParams {
@@ -83,7 +96,7 @@ export class JournalService {
           notional_usd = excluded.notional_usd, margin_usd = excluded.margin_usd,
           leverage = excluded.leverage, stop_px = excluded.stop_px, target_px = excluded.target_px,
           risk_usd = excluded.risk_usd, risk_pct_account = excluded.risk_pct_account,
-          rr = excluded.rr, realized_pnl_usd = excluded.realized_pnl_usd, report_json = excluded.report_json`,
+          rr = excluded.rr, realized_pnl_usd = excluded.realized_pnl_usd, report_json = excluded.report_json`
       )
       .run(
         trade.id,
@@ -109,9 +122,7 @@ export class JournalService {
 
   list(limit: number, offset: number): JournalTrade[] {
     const rows = this.db
-      .query(
-        `SELECT * FROM trades ORDER BY timestamp DESC LIMIT ? OFFSET ?`,
-      )
+      .query(`SELECT * FROM trades ORDER BY timestamp DESC LIMIT ? OFFSET ?`)
       .all(limit, offset) as Array<Record<string, unknown>>
     return rows.map(rowToTrade)
   }

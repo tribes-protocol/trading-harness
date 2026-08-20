@@ -5,13 +5,7 @@ import { z } from 'zod'
 // Schema v1.0 per the ingest spec (eng-head/shared/trade-journal-ingest-schema.md).
 // ---------------------------------------------------------------------------
 
-export const JournalTradeStatusSchema = z.enum([
-  'open',
-  'filled',
-  'closed',
-  'stopped',
-  'tp_hit'
-])
+export const JournalTradeStatusSchema = z.enum(['open', 'filled', 'closed', 'stopped', 'tp_hit'])
 export type JournalTradeStatus = z.infer<typeof JournalTradeStatusSchema>
 
 export const JournalSourceSchema = z.object({

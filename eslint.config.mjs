@@ -35,6 +35,7 @@ const prettierConfig = {
 const NODE_GLOBALS = {
   console: 'readonly',
   process: 'readonly',
+  Bun: 'readonly',
   Buffer: 'readonly',
   fetch: 'readonly',
   setTimeout: 'readonly',

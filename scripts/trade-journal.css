@@ -1,0 +1,359 @@
+/* Trade-journal feed redesign — scoped styles.
+ * System font stack, no CDN, offline-safe, card grid + modal. */
+
+:root {
+  --tj-bg: #0f1115;
+  --tj-panel: #171a21;
+  --tj-panel-2: #1d212b;
+  --tj-border: #2a2f3a;
+  --tj-text: #e6e9ef;
+  --tj-muted: #9aa3b2;
+  --tj-accent: #6ea8fe;
+  --tj-green: #4ade80;
+  --tj-red: #f87171;
+  --tj-amber: #fbbf24;
+  --tj-blue: #60a5fa;
+  --tj-grey: #94a3b8;
+  --tj-radius: 12px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--tj-bg);
+  color: var(--tj-text);
+  font-family: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial,
+    sans-serif;
+  font-size: 15px;
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+}
+
+a {
+  color: var(--tj-accent);
+  text-decoration: none;
+}
+
+a:hover {
+  text-decoration: underline;
+}
+
+.tj-wrap {
+  max-width: 1120px;
+  margin: 0 auto;
+  padding: 32px 24px 64px;
+}
+
+.tj-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 8px;
+}
+
+.tj-title {
+  font-size: 1.65rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  margin: 0;
+}
+
+.tj-sub {
+  color: var(--tj-muted);
+  font-size: 0.9rem;
+  margin: 4px 0 0;
+}
+
+.tj-count {
+  color: var(--tj-muted);
+  font-size: 0.85rem;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* ---- card grid ---- */
+.tj-feed {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 16px;
+  margin-top: 24px;
+}
+
+.trade-card {
+  background: var(--tj-panel);
+  border: 1px solid var(--tj-border);
+  border-radius: var(--tj-radius);
+  padding: 16px;
+  cursor: pointer;
+  transition: border-color 0.15s ease, transform 0.15s ease, background 0.15s ease;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.trade-card:hover {
+  border-color: var(--tj-accent);
+  transform: translateY(-1px);
+  background: var(--tj-panel-2);
+}
+
+.tc-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.tc-side {
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--tj-muted);
+}
+
+.tc-status {
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  padding: 3px 8px;
+  border-radius: 999px;
+  border: 1px solid transparent;
+}
+
+.tc-status.open,
+.tc-status.filled {
+  color: var(--tj-blue);
+  border-color: color-mix(in srgb, var(--tj-blue) 40%, transparent);
+  background: color-mix(in srgb, var(--tj-blue) 12%, transparent);
+}
+
+.tc-status.closed,
+.tc-status.tp_hit {
+  color: var(--tj-green);
+  border-color: color-mix(in srgb, var(--tj-green) 40%, transparent);
+  background: color-mix(in srgb, var(--tj-green) 12%, transparent);
+}
+
+.tc-status.stopped {
+  color: var(--tj-red);
+  border-color: color-mix(in srgb, var(--tj-red) 40%, transparent);
+  background: color-mix(in srgb, var(--tj-red) 12%, transparent);
+}
+
+.tc-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.tc-ticker {
+  font-size: 1.15rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.tc-entry {
+  color: var(--tj-muted);
+  font-family: ui-monospace, 'SF Mono', SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.8rem;
+}
+
+.tc-metrics {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.tc-pnl {
+  font-size: 1.25rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+}
+
+.tc-pnl.pos {
+  color: var(--tj-green);
+}
+
+.tc-pnl.neg {
+  color: var(--tj-red);
+}
+
+.tc-pnl.flat {
+  color: var(--tj-muted);
+}
+
+.tc-size {
+  color: var(--tj-muted);
+  font-size: 0.8rem;
+  font-family: ui-monospace, 'SF Mono', SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+.tc-spark {
+  margin-top: 2px;
+  height: 44px;
+}
+
+.tc-spark svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.tc-spark .no-curve {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: var(--tj-muted);
+  font-size: 0.75rem;
+  gap: 6px;
+}
+
+.tc-spark .no-curve .dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--tj-grey);
+}
+
+/* ---- modal ---- */
+.tj-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(8, 10, 14, 0.72);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  z-index: 50;
+  animation: tj-fade 0.15s ease;
+}
+
+.tj-modal {
+  background: var(--tj-panel);
+  border: 1px solid var(--tj-border);
+  border-radius: 14px;
+  max-width: 720px;
+  width: 100%;
+  max-height: 86vh;
+  overflow-y: auto;
+  padding: 24px 26px 28px;
+  position: relative;
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.5);
+  animation: tj-rise 0.18s ease;
+}
+
+.tj-modal-close {
+  position: absolute;
+  top: 12px;
+  right: 14px;
+  background: none;
+  border: none;
+  color: var(--tj-muted);
+  font-size: 1.3rem;
+  line-height: 1;
+  cursor: pointer;
+  padding: 6px;
+  border-radius: 6px;
+}
+
+.tj-modal-close:hover {
+  color: var(--tj-text);
+  background: var(--tj-panel-2);
+}
+
+.tj-modal h2 {
+  margin: 0 0 4px;
+  font-size: 1.35rem;
+  letter-spacing: -0.01em;
+}
+
+.tj-modal .tm-sub {
+  color: var(--tj-muted);
+  font-size: 0.85rem;
+  margin-bottom: 18px;
+}
+
+.tj-modal h3 {
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--tj-muted);
+  margin: 20px 0 6px;
+}
+
+.tj-modal p {
+  margin: 0 0 10px;
+  color: var(--tj-text);
+}
+
+.tj-modal .tm-mono {
+  font-family: ui-monospace, 'SF Mono', SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.85rem;
+  color: var(--tj-muted);
+}
+
+.tj-modal .tm-sources {
+  margin: 0;
+  padding-left: 18px;
+}
+
+.tj-modal .tm-sources li {
+  margin-bottom: 6px;
+  font-size: 0.88rem;
+}
+
+.tj-modal .tm-spark {
+  margin-top: 4px;
+  height: 72px;
+}
+
+.tj-modal .tm-spark svg {
+  width: 100%;
+  height: 100%;
+}
+
+@keyframes tj-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes tj-rise {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.99);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@media (max-width: 640px) {
+  .tj-wrap {
+    padding: 20px 14px 48px;
+  }
+
+  .tj-head {
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .tj-modal {
+    padding: 20px 18px 24px;
+  }
+}

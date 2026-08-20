@@ -10,9 +10,19 @@
  * Served behind tribes-caddy at trades.sparkling-mantis.zbox.sh.
  *
  * Invoke: bun scripts/TradeJournalServer.ts [port] [dbPath]
+ *
+ * Feed redesign (m3.1): '/' renders a modern card feed (server-rendered,
+ * escaped, inline SVG sparkline from report.equityCurve with a dot fallback)
+ * plus server-rendered report modals opened by a small inline client script.
+ * The /api/trades JSON contract is untouched.
  */
-import { JournalService } from '@/services/JournalService'
 import { resolve } from 'node:path'
+
+import { JournalService } from '@/services/JournalService'
+import { ensureJsonTreeString } from '@/utils/Lang'
+
+import { feedPageHtml } from './TradeJournalHtml'
+import { FEED_CLIENT_SCRIPT, renderReportBody, tradeModalHtml } from './TradeJournalModal'
 
 const PORT = Number(process.argv[2] ?? '3100')
 const DB_PATH = process.argv[3] ?? resolve('/root/workspace/data/trade-journal.sqlite')
@@ -20,81 +30,41 @@ const DB_PATH = process.argv[3] ?? resolve('/root/workspace/data/trade-journal.s
 const journal = new JournalService({ dbPath: DB_PATH })
 
 const json = (value: unknown, status = 200): Response =>
-  new Response(JSON.stringify(value), {
+  new Response(ensureJsonTreeString(value), {
     status,
     headers: { 'Content-Type': 'application/json' }
   })
 
-const html = (body: string, status = 200): Response =>
-  new Response(`<!doctype html><html><head><meta charset="utf-8">`
-    + `<title>Trade Journal</title>`
-    + `<style>body{font-family:system-ui,sans-serif;margin:2rem;max-width:72rem}h1{font-size:1.4rem}table{width:100%;border-collapse:collapse}td,th{border:1px solid #ddd;padding:6px 8px;font-size:.85rem}tr:nth-child(2n){background:#fafafa}a{color:#1a5fb4}.muted{color:#777}.mono{font-family:ui-monospace;font-size:.85rem}</style>`
-    + `</head><body>${body}</body></html>`, {
-    status,
-    headers: { 'Content-Type': 'text/html; charset=utf-8' }
-  })
-
-// Escape a value for safe inline rendering in HTML.
-const esc = (v: unknown): string => {
-  const s = v === null || v === undefined ? '' : String(v)
-  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;').replace(/'/g, '&#39;')
-}
-
-// Render one trade row for the paginated feed table.
-function tradeRow(t: { id: string; timestamp: number; ticker: string; side: string; entryPrice: number; sizeBase: number; status: string; realizedPnlUsd: number }): string {
-  const when = new Date(t.timestamp).toISOString().replace('T', ' ').slice(0, 16)
-  return `<tr><td><a href="/trades/${esc(t.id)}">${esc(t.ticker)}</a></td>`
-    + `<td>${esc(t.side)}</td>`
-    + `<td>${esc(when)}</td>`
-    + `<td>${esc(t.entryPrice)}</td>`
-    + `<td>${esc(t.sizeBase)}</td>`
-    + `<td>${esc(t.status)}</td>`
-    + `<td class=mono>${esc(t.realizedPnlUsd)}</td></tr>`
-}
-
 const server = Bun.serve({
   port: PORT,
   routes: {
-    '/': (req) => {
-      const url = new URL(req.url)
-      const limit = Math.min(Math.max(Number(url.searchParams.get('limit') ?? '20'), 1), 100)
-      const offset = Math.max(Number(url.searchParams.get('offset') ?? '0'), 0)
-      const trades = journal.list(limit, offset)
-      const rows = trades.map(tradeRow).join('')
-      const prev = offset > 0
-        ? `<a href="/?limit=${limit}&offset=${Math.max(offset - limit, 0)}">&#8592; prev</a>` : ''
-      const next = trades.length === limit
-        ? `<a href="/?limit=${limit}&offset=${offset + limit}">next &#8594;</a>` : ''
-      return html(`<h1>Trade Journal</h1>`
-        + `<p class=muted>${journal.count()} positions on record</p>`
-        + `<table><thead><tr><th>ticker</th><th>side</th><th>opened</th><th>entry</th><th>size</th><th>status</th><th>pnl</th></tr></thead>`
-        + `<tbody>${rows}</tbody></table>`
-        + `<p>${prev} ${next}</p>`
-        + `<p class=muted>Skip to the API: <a href=/api/trades>json</a></p>`)
+    '/': () => {
+      const trades = journal.list(100, 0)
+      const modals = trades.map((t) => tradeModalHtml(t)).join('')
+      const html = feedPageHtml(trades, journal.count(), modals, FEED_CLIENT_SCRIPT)
+      return new Response(html, {
+        status: 200,
+        headers: { 'Content-Type': 'text/html; charset=utf-8' }
+      })
     },
 
     '/trades/:id': (req) => {
-      const id = (req.params as { id?: string })['id']
+      const id = req.params['id']
       const trade = id === undefined ? null : journal.get(id)
-      if (trade === null) return html('<h1>Not found</h1><p><a href="/">&#8592; back to feed</a></p>', 404)
-      const when = new Date(trade.timestamp).toISOString().replace('T', ' ').slice(0, 16)
-      const report = trade.report
-      const thesis = report?.thesis ?? '—'
-      const bias = report?.bias ?? '—'
-      const rr = report?.rr ?? null
-      const eq = report?.accountSnapshot
-      const eqLine = eq ? `${eq.date} equity $${eq.equityUsd}${eq.withdrawableUsd != null ? ` / withdraw $${eq.withdrawableUsd}` : ''}` : '—'
-      return html(`<p><a href="/">&#8592; back to feed</a></p>`
-        + `<h1>${esc(trade.ticker)} · ${esc(trade.side)}</h1>`
-        + `<p class=muted>${esc(when)} · ${esc(trade.status)} · pnl <span class=mono>${esc(trade.realizedPnlUsd)}</span></p>`
-        + `<p><b>entry</b> ${esc(trade.entryPrice)} · <b>size</b> ${esc(trade.sizeBase)} · <b>notional</b> ${esc(trade.notionalUsd)} · <b>margin</b> ${esc(trade.marginUsd)} · <b>lev</b> ${esc(trade.leverage)}</p>`
-        + `<p><b>entry price</b> ${esc(trade.entryPrice)} · <b>stop</b> ${esc(trade.stopPx ?? '—')} · <b>target</b> ${esc(trade.targetPx ?? '—')}</p>`
-        + `<h3>Thesis</h3><p>${esc(thesis)}</p>`
-        + `<h3>bias</h3><p>${esc(bias)}${rr != null ? ` · R:R ${esc(rr)}` : ''}</p>`
-        + `<h3>account snapshot</h3><p>${esc(eqLine)}</p>`
-        + `<h3>sources</h3>`
-        + `<ul>${(report?.sources ?? []).map(s => `<li>${esc(s.reason)}${s.url ? ` (<a href="${esc(s.url)}">src</a>)` : ''}</li>`).join('')}</ul>`)
+      if (trade === null) {
+        return new Response('<h1>Not found</h1><p><a href="/">&#8592; back to feed</a></p>', {
+          status: 404,
+          headers: { 'Content-Type': 'text/html; charset=utf-8' }
+        })
+      }
+      const body = renderReportBody(trade)
+      const page = feedPageHtml([trade], 1, tradeModalHtml(trade), FEED_CLIENT_SCRIPT)
+      // Detail page shows the report body + a back link; reuse the feed shell.
+      const withBody = page.replace('<div class="tj-wrap">', `<div class="tj-wrap">` + body)
+      return new Response(withBody, {
+        status: 200,
+        headers: { 'Content-Type': 'text/html; charset=utf-8' }
+      })
     },
 
     '/health': () => json({ ok: true, trades: journal.count() }),
@@ -108,7 +78,7 @@ const server = Bun.serve({
     },
 
     '/api/trades/:id': (req) => {
-      const id = (req.params as { id?: string })['id']
+      const id = req.params['id']
       if (id === undefined) return json({ error: 'missing id' }, 400)
       const trade = journal.get(id)
       if (trade === null) return json({ error: 'not found' }, 404)
