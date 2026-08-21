@@ -791,3 +791,139 @@ describe('HyperliquidService bracket side-guard (inverted-stop prevention)', () 
     expect(err).not.toContain('UNSAFE_BRACKET')
   })
 })
+describe('HyperliquidService ghost-fill pair detector + post-fill read-guard', () => {
+  const ADDR = '0xbb64c24a6b2ee1185621490d2a1ae06522f15f57'
+  const SZ = '0.2199'
+
+  function wireFill(partial: {
+    oid: number
+    side: 'B' | 'A'
+    time: number
+    px?: string
+    sz?: string
+    coin?: string
+  }) {
+    return {
+      coin: partial.coin ?? 'ETH',
+      px: partial.px ?? '2400',
+      sz: partial.sz ?? SZ,
+      side: partial.side,
+      time: partial.time,
+      startPosition: '0',
+      dir: 'Open Long',
+      closedPnl: '0',
+      hash: `0x${'ab'.repeat(32)}`,
+      oid: partial.oid,
+      crossed: true,
+      fee: '0',
+      feeToken: 'USDC',
+      tid: partial.oid + 1,
+      twapId: null
+    }
+  }
+
+  function buildGuardService(overrides: {
+    userFills?: unknown[]
+    clearinghouseState?: unknown
+  }): HyperliquidService {
+    const metaAndAssetCtxs = vi.fn().mockResolvedValue([MAIN_META, [MAIN_CONTEXT]])
+    const infoClient = {
+      metaAndAssetCtxs,
+      perpDexs: vi.fn().mockResolvedValue([]),
+      userFills: vi.fn().mockResolvedValue(overrides.userFills ?? []),
+      userFillsByTime: vi.fn().mockResolvedValue(overrides.userFills ?? []),
+      spotMetaAndAssetCtxs: vi.fn().mockResolvedValue([{ tokens: [], universe: [] }, []]),
+      clearinghouseState: vi
+        .fn()
+        .mockResolvedValue(
+          overrides.clearinghouseState ?? { assetPositions: [], crossMarginSummary: {} }
+        ),
+      twapHistory: vi.fn().mockResolvedValue([])
+    } as unknown as InfoClient
+    const params: HyperliquidServiceParams = {
+      transaction: {} as HyperliquidServiceParams['transaction'],
+      infoClient
+    }
+    return new HyperliquidService(params)
+  }
+
+  test('paired fills + flat positions → fills-without-position with pair evidence', async () => {
+    const service = buildGuardService({
+      userFills: [
+        wireFill({ oid: 924, side: 'B', time: 1_000_000, px: '2400' }),
+        wireFill({ oid: 926, side: 'A', time: 1_000_100, px: '2399.9' })
+      ],
+      clearinghouseState: { assetPositions: [], crossMarginSummary: {} }
+    })
+    const guard = await service.verifyPostFillPosition({ address: ADDR as `0x${string}`, coin: 'ETH' })
+    expect(guard.verdict).toBe('fills-without-position')
+    expect(guard.warning).toContain('FILL_WITHOUT_POSITION')
+    expect(guard.pairs).toHaveLength(1)
+    expect(guard.pairs?.[0]?.buyOrderId).toBe(924)
+    expect(guard.pairs?.[0]?.sellOrderId).toBe(926)
+  })
+
+  test('single-leg fill + live position → position-exists (normal ack)', async () => {
+    const service = buildGuardService({
+      userFills: [wireFill({ oid: 924, side: 'B', time: 1_000_000 })],
+      clearinghouseState: {
+        assetPositions: [
+          {
+            position: {
+              coin: 'ETH',
+              szi: SZ,
+              entryPx: '2400',
+              positionValue: '527.76',
+              unrealizedPnl: '0',
+              returnOnEquity: '0',
+              liquidationPx: null,
+              leverage: { value: 20, type: 'cross' },
+              marginUsed: '26.39',
+              maxLeverage: 25
+            }
+          }
+        ],
+        crossMarginSummary: {}
+      }
+    })
+    const guard = await service.verifyPostFillPosition({ address: ADDR as `0x${string}`, coin: 'ETH' })
+    expect(guard.verdict).toBe('position-exists')
+    expect(guard.position?.coin).toBe('ETH')
+    expect(guard.warning).toBeUndefined()
+  })
+
+  test('no recent fills + flat → no-recent-fills (nothing to verify)', async () => {
+    const service = buildGuardService({
+      userFills: [],
+      clearinghouseState: { assetPositions: [], crossMarginSummary: {} }
+    })
+    const guard = await service.verifyPostFillPosition({ address: ADDR as `0x${string}`, coin: 'ETH' })
+    expect(guard.verdict).toBe('no-recent-fills')
+  })
+
+  test('guard never throws and never cancels — read-only by construction', async () => {
+    const service = buildGuardService({
+      userFills: [wireFill({ oid: 924, side: 'B', time: 1_000_000 })],
+      clearinghouseState: { assetPositions: [], crossMarginSummary: {} }
+    })
+    // The service has no cancel path at all: verifyPostFillPosition only calls
+    // listPositions + listFills (reads). It resolves without throwing even when
+    // the position is flat.
+    const guard = await service.verifyPostFillPosition({ address: ADDR as `0x${string}`, coin: 'ETH' })
+    expect(guard.verdict).toBe('fills-without-position')
+  })
+
+  test('detectRoundTripPairs surfaces the same pair with both legs', async () => {
+    const service = buildGuardService({
+      userFills: [
+        wireFill({ oid: 924, side: 'B', time: 1_000_000, px: '2400' }),
+        wireFill({ oid: 926, side: 'A', time: 1_000_100, px: '2399.9' })
+      ]
+    })
+    const result = await service.detectRoundTripPairs({ address: ADDR as `0x${string}` })
+    expect(result.pairs).toHaveLength(1)
+    expect(result.pairs[0]?.size).toBe(SZ)
+    expect(result.pairs[0]?.buyPx).toBe('2400')
+    expect(result.pairs[0]?.sellPx).toBe('2399.9')
+  })
+})

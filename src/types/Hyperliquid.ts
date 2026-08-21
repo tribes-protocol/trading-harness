@@ -684,6 +684,8 @@ export const HyperliquidListFillsCommandOptionsSchema = z
     endTime: z.coerce.number().int().nonnegative().nullish(),
     aggregateByTime: z.boolean().default(false),
     reversed: z.boolean().default(false),
+    pairDetect: z.boolean().default(false),
+    pairWindowMs: z.coerce.number().int().positive().default(1000),
     out: z.string().nullish()
   })
   .superRefine((value, ctx) => {
@@ -708,6 +710,17 @@ export const HyperliquidListFillsCommandOptionsSchema = z
   })
 export type HyperliquidListFillsCommandOptions = z.infer<
   typeof HyperliquidListFillsCommandOptionsSchema
+>
+
+export const HyperliquidVerifyFillCommandOptionsSchema = z.object({
+  address: EthAddressSchema,
+  coin: z.string().trim().min(1),
+  dex: z.string().trim().nullish(),
+  windowMs: z.coerce.number().int().positive().default(1000),
+  out: z.string().nullish()
+})
+export type HyperliquidVerifyFillCommandOptions = z.infer<
+  typeof HyperliquidVerifyFillCommandOptionsSchema
 >
 
 export const HyperliquidFillLiquidationSchema = z.object({
@@ -746,6 +759,32 @@ export const HyperliquidFillsResultSchema = z.object({
   fills: z.array(HyperliquidFillSchema)
 })
 export type HyperliquidFillsResult = z.infer<typeof HyperliquidFillsResultSchema>
+
+/**
+ * One detected equal-size buy/sell round-trip pair: the fills feed honestly
+ * reports both legs, but clearing nets them to a zero position — an
+ * open+immediate-flatten that never leaves exposure. Surfaced so the desk
+ * never re-fires into the class expecting a live position.
+ */
+export const HyperliquidFillPairSchema = z.object({
+  coin: z.string(),
+  dex: z.string(),
+  size: z.string(),
+  buyOrderId: z.number().int().nonnegative(),
+  sellOrderId: z.number().int().nonnegative(),
+  buyPx: z.string(),
+  sellPx: z.string(),
+  buyTimestamp: z.number().int().nonnegative(),
+  sellTimestamp: z.number().int().nonnegative(),
+  gapMs: z.number().int().nonnegative()
+})
+export type HyperliquidFillPair = z.infer<typeof HyperliquidFillPairSchema>
+
+export const HyperliquidFillPairsResultSchema = z.object({
+  address: EthAddressSchema,
+  pairs: z.array(HyperliquidFillPairSchema)
+})
+export type HyperliquidFillPairsResult = z.infer<typeof HyperliquidFillPairsResultSchema>
 
 export interface HyperliquidUserFillWire {
   readonly coin: string
@@ -803,6 +842,24 @@ export const HyperliquidPerpPositionSchema = z.object({
   maxLeverage: z.number()
 })
 export type HyperliquidPerpPosition = z.infer<typeof HyperliquidPerpPositionSchema>
+
+/**
+ * Post-fill position read-guard verdict: a fill ack is not "live" until the
+ * position actually exists (list-positions). `fillsWithoutPosition` carries the
+ * paired-leg evidence so the desk sees a net-zero round-trip, not a dropped
+ * fill. Read-only — the guard never cancels, never re-fires. Defined after
+ * HyperliquidPerpPositionSchema (it references the position).
+ */
+export const HyperliquidPostFillGuardResultSchema = z.object({
+  address: EthAddressSchema,
+  coin: z.string(),
+  dex: z.string(),
+  verdict: z.enum(['position-exists', 'fills-without-position', 'no-recent-fills']),
+  warning: z.string().nullish(),
+  pairs: z.array(HyperliquidFillPairSchema).nullish(),
+  position: HyperliquidPerpPositionSchema.nullish()
+})
+export type HyperliquidPostFillGuardResult = z.infer<typeof HyperliquidPostFillGuardResultSchema>
 
 export const HyperliquidPerpTwapOrderSchema = z.object({
   dex: z.string(),

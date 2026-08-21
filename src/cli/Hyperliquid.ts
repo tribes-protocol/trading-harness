@@ -40,6 +40,7 @@ import {
   HyperliquidTwapOrderCommandOptionsSchema,
   HyperliquidUsdClassTransferCommandOptionsSchema,
   HyperliquidUsdTransferCommandOptionsSchema,
+  HyperliquidVerifyFillCommandOptionsSchema,
   HyperliquidWithdrawCommandOptionsSchema
 } from '@/types/Hyperliquid'
 import { ensureJsonTreeString, isNullish } from '@/utils/Lang'
@@ -154,17 +155,55 @@ export function buildHyperliquidCommand(): Command {
       '--reversed',
       'Return newest fills first (only with --start-time; default is oldest first)'
     )
+    .option(
+      '--pair-detect',
+      'Detect equal-size buy/sell round-trip pairs (open+immediate-flatten) and add a pairs field'
+    )
+    .option('--pair-window-ms <ms>', 'Round-trip pair window in ms (default 1000)', '1000')
     .option('--out <file>', 'Write output JSON to file')
     .action(async (options: unknown): Promise<void> => {
       const request = HyperliquidListFillsCommandOptionsSchema.parse(options)
-      const response = await hyperliquidService.listFills({
+      const fillsResult = await hyperliquidService.listFills({
         address: request.address,
         startTime: request.startTime,
         endTime: request.endTime,
         aggregateByTime: request.aggregateByTime,
         reversed: request.reversed
       })
-      const output = ensureJsonTreeString(response)
+      let output: unknown = fillsResult
+      if (request.pairDetect) {
+        const pairs = await hyperliquidService.detectRoundTripPairs({
+          address: request.address,
+          startTime: request.startTime ?? undefined,
+          endTime: request.endTime ?? undefined,
+          windowMs: request.pairWindowMs
+        })
+        output = { ...fillsResult, pairs: pairs.pairs }
+      }
+      await writeOutput({
+        output: ensureJsonTreeString(output),
+        outPath: request.out ?? undefined
+      })
+    })
+
+  program
+    .command('verify-fill')
+    .description(
+      'Post-fill position read-guard: verify a fill ack left a live position (read-only, never cancels/refires)'
+    )
+    .requiredOption('--address <address>', 'Hyperliquid account address to inspect')
+    .requiredOption('--coin <coin>', 'Perp coin (for example: ETH)')
+    .option('--dex <dex>', 'Perp dex name (main by default)')
+    .option('--window-ms <ms>', 'Round-trip pair window in ms (default 1000)', '1000')
+    .option('--out <file>', 'Write output JSON to file')
+    .action(async (options: unknown): Promise<void> => {
+      const request = HyperliquidVerifyFillCommandOptionsSchema.parse(options)
+      const guard = await hyperliquidService.verifyPostFillPosition({
+        address: request.address,
+        coin: request.coin,
+        dex: request.dex
+      })
+      const output = ensureJsonTreeString(guard)
       await writeOutput({
         output,
         outPath: request.out ?? undefined
@@ -716,9 +755,21 @@ export function buildHyperliquidCommand(): Command {
         request,
         walletId: request.walletId
       })
-      const output = ensureJsonTreeString(response)
+      let output: unknown = response
+      // Post-fill position read-guard: for a position-OPENING order, verify the
+      // position actually exists before the desk trusts the ack. Additive +
+      // read-only (never cancels/refires). Reduce-only closes end flat by
+      // design and are skipped.
+      if (!request.reduceOnly) {
+        const guard = await hyperliquidService.verifyPostFillPosition({
+          address: request.from,
+          coin: request.coin,
+          dex: request.dex
+        })
+        output = { ...response, postFill: guard }
+      }
       await writeOutput({
-        output,
+        output: ensureJsonTreeString(output),
         outPath: request.out ?? undefined
       })
     })

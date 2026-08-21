@@ -49,6 +49,8 @@ import {
   type HyperliquidExchange,
   HyperliquidExchangeSchema,
   type HyperliquidFill,
+  type HyperliquidFillPairsResult,
+  HyperliquidFillPairsResultSchema,
   HyperliquidFillSchema,
   type HyperliquidFillsResult,
   HyperliquidFillsResultSchema,
@@ -73,6 +75,8 @@ import {
   HyperliquidPerpTwapOrderSchema,
   type HyperliquidPositionsResult,
   HyperliquidPositionsResultSchema,
+  type HyperliquidPostFillGuardResult,
+  HyperliquidPostFillGuardResultSchema,
   type HyperliquidPrivyWallet,
   type HyperliquidScaleOrderCommandOptions,
   type HyperliquidServiceParams,
@@ -115,6 +119,7 @@ import {
 import { type HexString } from '@/types/Lang'
 import { type EthSignTypedData } from '@/types/Tx'
 import { isNullish } from '@/utils/Lang'
+import { findRoundTripPairs } from '@/utils/RoundTripPairs'
 
 const ARBITRUM_USDC_DECIMALS = 6
 const MIN_HYPERLIQUID_DEPOSIT_USDC = '5'
@@ -1306,6 +1311,101 @@ export class HyperliquidService {
     return HyperliquidFillsResultSchema.parse({
       address: params.address,
       fills: fills.map((fill) => this.mapUserFill(fill, spotPairByCoin))
+    })
+  }
+
+  /**
+   * Round-trip pair detector over a fills window: identical-size buy/sell legs
+   * close together are an open+immediate-flatten that clearing nets to ZERO
+   * position. The fills feed reports both legs honestly; the desk must not
+   * re-fire into this class expecting exposure. Read-only — no cancel/refire.
+   */
+  async detectRoundTripPairs(params: {
+    address: HexString
+    startTime?: number
+    endTime?: number
+    windowMs?: number
+  }): Promise<HyperliquidFillPairsResult> {
+    const fillsResult = await this.listFills({
+      address: params.address,
+      startTime: params.startTime,
+      endTime: params.endTime,
+      aggregateByTime: true,
+      reversed: false
+    })
+    const pairs = findRoundTripPairs(fillsResult.fills, params.windowMs ?? 1000)
+    return HyperliquidFillPairsResultSchema.parse({
+      address: params.address,
+      pairs
+    })
+  }
+
+  /**
+   * Post-fill position read-guard: a fill ack is not "live" until the position
+   * actually exists. Reads the fills window AND list-positions; if fills show a
+   * coin but the position is flat, emits `fills-without-position` with the
+   * paired-leg evidence (net-zero round-trip, not a dropped fill). Read-only —
+   * never cancels, never re-fires, never throws on a legit flat (reduce-only /
+   * stopped-out closes are flat by design).
+   */
+  async verifyPostFillPosition(params: {
+    address: HexString
+    coin: string
+    dex?: string | null
+    windowMs?: number
+    startTime?: number
+  }): Promise<HyperliquidPostFillGuardResult> {
+    const normalizedDex = this.formatDexName(this.normalizeDex(params.dex))
+    const positions = await this.listPositions({
+      address: params.address,
+      dex: normalizedDex,
+      allDexes: false
+    })
+    const normalizedCoin = params.coin.trim().toUpperCase()
+    const position = positions.positions.find((p) => p.coin === normalizedCoin) ?? null
+    if (position !== null) {
+      return HyperliquidPostFillGuardResultSchema.parse({
+        address: params.address,
+        coin: normalizedCoin,
+        dex: normalizedDex,
+        verdict: 'position-exists',
+        position
+      })
+    }
+
+    // Position flat — check whether recent fills explain it (round-trip pair)
+    // or whether there is simply nothing to verify.
+    const fillsResult = await this.listFills({
+      address: params.address,
+      startTime: params.startTime ?? Date.now() - 60 * 60 * 1000,
+      endTime: undefined,
+      aggregateByTime: true,
+      reversed: false
+    })
+    const coinFills = fillsResult.fills.filter(
+      (fill) => fill.coin === normalizedCoin && fill.dex === normalizedDex
+    )
+    if (coinFills.length === 0) {
+      return HyperliquidPostFillGuardResultSchema.parse({
+        address: params.address,
+        coin: normalizedCoin,
+        dex: normalizedDex,
+        verdict: 'no-recent-fills'
+      })
+    }
+    const pairs = findRoundTripPairs(coinFills, params.windowMs ?? 1000)
+    return HyperliquidPostFillGuardResultSchema.parse({
+      address: params.address,
+      coin: normalizedCoin,
+      dex: normalizedDex,
+      verdict: 'fills-without-position',
+      warning:
+        `FILL_WITHOUT_POSITION: ${coinFills.length} fill(s) for ${normalizedCoin} on ` +
+        `${normalizedDex} but no live position — net-zero round-trip? ` +
+        (pairs.length > 0
+          ? `${pairs.length} equal-size buy/sell pair(s) detected.`
+          : 'no equal-size pair detected — verify the ticket before re-firing.'),
+      pairs: pairs.length > 0 ? pairs : null
     })
   }
 
