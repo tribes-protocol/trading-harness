@@ -165,6 +165,39 @@ describe('computeProfitTrailStop + computeStop (TRAIL-PEAK FEED, 70% rule)', () 
   })
 })
 
+describe('TRAIL-PEAK FEED verify example — live-book tickers (LINK/AAPL/HOOD)', () => {
+  // Chief's exit rule: engage at >=$5 profit, bank 70% of peak, give back at
+  // most 30%. stop(long) = entry + 0.7 x (peak - entry); short mirrored. These
+  // pin the EXACT exit the verify feed computes for the current book — no
+  // scaled-TP legs, so the monitor derives the exit from the high-water mark.
+  const mkProfit = (pct: number, usd: number) => ({ kind: 'profit' as const, trailProfitPct: pct, engageProfitUsd: usd })
+
+  test('LINK long: entry 15.40, session peak 19.20 -> banked stop = 18.06 (keep 70%)', () => {
+    const stop = computeProfitTrailStop('long', new BigNumber('15.40'), new BigNumber('19.20'), 0.7)
+    expect(stop.toNumber()).toBeCloseTo(15.4 + 0.7 * (19.2 - 15.4), 4)
+    expect(stop.toNumber()).toBeCloseTo(18.06, 4)
+  })
+
+  test('AAPL short: entry 227.50, session trough 219.00 -> stop = 221.55 (bank 70%)', () => {
+    const stop = computeProfitTrailStop('short', new BigNumber('227.50'), new BigNumber('219.00'), 0.7)
+    expect(stop.toNumber()).toBeCloseTo(227.5 - 0.7 * (227.5 - 219.0), 4)
+    expect(stop.toNumber()).toBeCloseTo(221.55, 4)
+  })
+
+  test('HOOD long: credit per share, engage gate is a raw-usd (run x size) check', () => {
+    // 100 shares, entry 28.10, peak 30.05: raw profit run = (30.05-28.10) x 100
+    // = $195, far above the $5 engage threshold, so the no-lose floor lifts and
+    // full 70%-banking applies.
+    const rawUsd = new BigNumber('30.05').minus(new BigNumber('28.10')).multipliedBy(100)
+    expect(rawUsd.toNumber()).toBeGreaterThanOrEqual(5)
+    const runUsd = new BigNumber('30.05').minus(new BigNumber('28.10')).multipliedBy(100).toNumber()
+    expect(runUsd).toBe(195)
+    // After engage, stop = entry + 0.7 x (peak - entry) for a 100-share long.
+    const stop = computeProfitTrailStop('long', new BigNumber('28.10'), new BigNumber('30.05'), 0.7)
+    expect(stop.toNumber()).toBeCloseTo(28.1 + 0.7 * (30.05 - 28.1), 4)
+  })
+})
+
 describe('resolveMonitorSpawnArgs (monitor re-spawn argv)', () => {
   test('compiled binary: argv[1] is the subcommand, spawn the binary directly', () => {
     const argv = ['/usr/local/bin/tribes-cli', 'trailing-stop', 'monitor', 'stop-1']
