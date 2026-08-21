@@ -90,8 +90,12 @@ tribes-cli hyperliquid list-balances --address <evm-address>
 
 ### 5. Risk
 
-- Apply the `position-management` defaults: every new perp entry carries a stop-loss (`--sl-px`)
-  unless the user explicitly waives it.
+- Apply the `position-management` defaults (desk play): EVERY new perp entry carries the
+  mandatory $15 SL / $30 TP bracket (`--sl-px`/`--tp-px`) — no naked positions. Compute the
+  bracket per position-management (2:1 geometry, rounded to `szDecimals`).
+- Sides: LONG OR SHORT — both directions in scope; never default to long-only.
+- Slot accounting: 4 slots max, all occupied. When a slot closes, refill the SAME position slot
+  immediately (one of the 4 arms, either direction). Size to $90–100 margin per slot.
 - Sanity-check leverage: requested `--leverage` MUST be ≤ the asset's `maxLeverage` from step 1
   and consistent with the `position-management` leverage policy.
 
@@ -120,6 +124,34 @@ tribes-cli hyperliquid trade-perp \
 ```
 
 Flag details and order types live in the `hyperliquid` skill (`references/order-types.md`).
+
+Example — long a resolved perp with a technical target and invalidation:
+
+```bash
+tribes-cli hyperliquid trade-perp \
+  --dex <resolved-dex> \
+  --coin <resolved-coin> \
+  --side long \
+  --type market \
+  --amount <base-units> \
+  --tp-px <technical-target-px> \
+  --sl-px <technical-invalidation-px> \
+  --cloid <ticket-cloid> \
+  --from <evm-address> \
+  --wallet-id <evmWalletId>
+```
+
+### 6b. Per-ticket cloid (idempotency)
+
+Assign ONE `cloid` (`0x` + 32 hex) per ticket BEFORE any order command and keep it for the
+whole ticket life — the entry and every retry of THAT ticket reuse the SAME cloid, so a
+retry-on-ambiguous-ack is deduped by the venue instead of double-filling.
+- Generate once per ticket: `cloid=$(cat /dev/urandom | od -An -N16 -tx1 | tr -d ' \n' |
+  sed 's/^\(..\).*/0x &/'` — or reuse the ticket's existing cloid when re-sending.
+- NEVER mint a fresh cloid on a retry of the same ticket — that defeats the dedupe.
+- `trade-spot` accepts the same `--cloid`; add it identically.
+- A re-fire that REUSES the same cloid is ignored by the venue (dedupe); a distinct cloid is a
+  new order. Confirm the venue response for the resting/dup fill before assuming a re-fire is new.
 
 ### 7. VERIFY (MANDATORY, immediately after placing)
 

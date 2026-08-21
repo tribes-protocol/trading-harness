@@ -45,18 +45,27 @@ signed commands.
 6. `wallet-data pnl` prints structured JSON over a fixed 30-day window — parse it, and state
    the window when reporting PnL.
 
-## Risk policy defaults
+## Risk policy defaults (desk play — supersedes all prior risk rules)
 
-These are DEFAULTS: the user MAY override any of them explicitly; record overrides in your report.
+These are the desk's CURRENT operative rules (Chief directive):
 
-- Every new perp entry carries a stop-loss (bracket `--sl-px` on `trade-perp`) unless the user
-  explicitly waives it.
-- Liquidation distance: when the buffer is too thin for the asset's normal volatility, warn and
-  propose `adjust-margin --direction add` or reducing size with a reduce-only order.
-- Leverage and exposure: there is no desk percentage or leverage ceiling. Select them case by
-  case from market quality, expected impact, free margin, liquidation exposure, and correlated
-  positions; never exceed the asset's exchange-enforced `maxLeverage` from `list-assets`.
-- Margin mode: isolated for high-leverage or illiquid perps, cross for hedged books.
+- **4 slots MAX, all occupied at all times.** When a slot closes, refill it immediately — the
+  book never sits half-empty.
+- **Margin per trade: $90–100** (size to fit the account; $90 if margin is tight).
+- **Stop-loss: $15 max loss per trade** — place the SL so the position loses at most $15.
+- **Take-profit: $30 scaled (min target)** — scale/trail higher as the move extends. R:R = 2:1.
+- **LONG OR SHORT — both directions, always.** There is always an opportunity in one direction;
+  never default to long-only momentum.
+- **Every order carries the $15 SL / $30 TP bracket. No naked positions. No tight premature TP —
+  winners run past $30.**
+- Leverage and exposure: no desk percentage or leverage ceiling beyond the play's $15 SL / $30 TP
+  geometry; select leverage case by case from market quality, expected impact, free margin, and
+  liquidation exposure — never exceed the asset's exchange-enforced `maxLeverage` from
+  `list-assets`.
+- Compute the bracket: `sl-px` so that `|entry - slPx| × size × (1/leverage applied) ≤ $15` and
+  `tp-px` so that `|tpPx - entry| × size ≥ $30` (2:1 geometry). Round to the venue `szDecimals`.
+
+Overrides: the user MAY override any of these explicitly; record overrides in your report.
 
 ## Procedures
 
