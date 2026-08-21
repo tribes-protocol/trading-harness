@@ -6,7 +6,13 @@ import { type EntryGateService } from '@/services/EntryGateService'
 import { type SizingLockService } from '@/services/SizingLockService'
 import { type TransactionService } from '@/services/TransactionService'
 import { type EthAddress, EthAddressSchema } from '@/types/Eth'
-import { BigintSchema, BigNumberSchema, type HexString, HexStringSchema } from '@/types/Lang'
+import {
+  BigintSchema,
+  BigNumberSchema,
+  CloidSchema,
+  type HexString,
+  HexStringSchema
+} from '@/types/Lang'
 import { type EthSignTypedData } from '@/types/Tx'
 import { isNullish } from '@/utils/Lang'
 
@@ -293,6 +299,7 @@ export const HyperliquidPerpTradeCommandOptionsSchema = z
     leverage: z.coerce.number().int().positive().nullish(),
     dex: z.string().trim().nullish(),
     walletId: z.string().trim().min(1),
+    cloid: CloidSchema.nullish(),
     out: z.string().nullish()
   })
   .superRefine((value, ctx) => {
@@ -429,6 +436,7 @@ export const HyperliquidSpotTradeCommandOptionsSchema = z
     price: BigNumberSchema.nullish(),
     tif: HyperliquidPerpTifSchema.default('Gtc'),
     walletId: z.string().trim().min(1),
+    cloid: CloidSchema.nullish(),
     out: z.string().nullish()
   })
   .superRefine((value, ctx) => {
@@ -1320,6 +1328,8 @@ export interface PerpOrderWire {
   readonly s: string
   readonly r: boolean
   readonly t: PerpOrderTypeField
+  /** Client order id — the venue dedupes on it (a re-fire reusing the same cloid is ignored). */
+  readonly c?: string
 }
 
 export interface BuildBracketExitLegParams {
@@ -1329,6 +1339,7 @@ export interface BuildBracketExitLegParams {
   readonly exitIsBuy: boolean
   readonly perpAsset: ResolvedPerpAsset
   readonly size: string
+  readonly cloid?: string
 }
 
 export const ResolvedOrderAssetSchema = z.object({

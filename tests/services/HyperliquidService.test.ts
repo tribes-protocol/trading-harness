@@ -4,8 +4,11 @@ import { describe, expect, test, vi } from 'vitest'
 import { HyperliquidService } from '@/services/HyperliquidService'
 import {
   HyperliquidListAssetsCommandOptionsSchema,
+  HyperliquidPerpTradeCommandOptionsSchema,
+  HyperliquidSpotTradeCommandOptionsSchema,
   type HyperliquidServiceParams
 } from '@/types/Hyperliquid'
+import { CloidSchema } from '@/types/Lang'
 
 const MAIN_META = {
   universe: [
@@ -166,6 +169,87 @@ describe('HyperliquidService asset inventory', () => {
       market: 'perp',
       allDexes: true
     })
+  })
+})
+
+describe('cloid pass-through (venue dedupe)', () => {
+  const VALID_CLOID = '0x0123456789abcdef0123456789abcdef'
+  const OTHER_CLOID = '0xfedcba9876543210fedcba9876543210'
+
+  test('CloidSchema accepts 0x + 32 hex and rejects malformed ids', () => {
+    expect(CloidSchema.safeParse(VALID_CLOID).success).toBe(true)
+    expect(CloidSchema.safeParse('0x1234').success).toBe(false) // too short
+    expect(CloidSchema.safeParse('1234567890abcdef1234567890abcdef').success).toBe(false) // no 0x
+    expect(CloidSchema.safeParse(`${VALID_CLOID}ff`).success).toBe(false) // 35 chars
+  })
+
+  test('trade-perp options thread a caller cloid through unchanged', () => {
+    const parsed = HyperliquidPerpTradeCommandOptionsSchema.parse({
+      from: '0xbb64c24a6b2ee1185621490d2a1ae06522f15f57',
+      coin: 'ETH',
+      amount: '0.1',
+      side: 'long',
+      cloid: VALID_CLOID,
+      walletId: 'w'
+    })
+    expect(parsed.cloid).toBe(VALID_CLOID)
+    expect(HyperliquidPerpTradeCommandOptionsSchema.safeParse({ ...parsed, cloid: 'bad' }).success).toBe(
+      false
+    )
+  })
+
+  test('trade-spot options thread a caller cloid through unchanged', () => {
+    const parsed = HyperliquidSpotTradeCommandOptionsSchema.parse({
+      from: '0xbb64c24a6b2ee1185621490d2a1ae06522f15f57',
+      pair: 'HYPE/USDC',
+      amount: '1',
+      side: 'buy',
+      cloid: VALID_CLOID,
+      walletId: 'w'
+    })
+    expect(parsed.cloid).toBe(VALID_CLOID)
+  })
+
+  test('distinct cloids are distinct orders; same cloid is a dedupe (schema-level contract)', () => {
+    // The venue keys on `c`: two tickets with the SAME cloid resolve to the same
+    // wire id (a re-fire is ignored); distinct cloids are different orders.
+    const a = HyperliquidPerpTradeCommandOptionsSchema.parse({
+      from: '0xbb64c24a6b2ee1185621490d2a1ae06522f15f57',
+      coin: 'ETH',
+      amount: '0.1',
+      side: 'long',
+      cloid: VALID_CLOID,
+      walletId: 'w'
+    })
+    const b = HyperliquidPerpTradeCommandOptionsSchema.parse({
+      from: '0xbb64c24a6b2ee1185621490d2a1ae06522f15f57',
+      coin: 'ETH',
+      amount: '0.1',
+      side: 'long',
+      cloid: VALID_CLOID,
+      walletId: 'w'
+    })
+    const c = HyperliquidPerpTradeCommandOptionsSchema.parse({
+      from: '0xbb64c24a6b2ee1185621490d2a1ae06522f15f57',
+      coin: 'ETH',
+      amount: '0.1',
+      side: 'long',
+      cloid: OTHER_CLOID,
+      walletId: 'w'
+    })
+    expect(a.cloid).toBe(b.cloid) // same cloid -> same wire id -> venue dedupes
+    expect(c.cloid).not.toBe(a.cloid) // distinct cloid -> distinct order
+  })
+
+  test('no cloid supplied -> normal path unchanged (cloid absent)', () => {
+    const parsed = HyperliquidPerpTradeCommandOptionsSchema.parse({
+      from: '0xbb64c24a6b2ee1185621490d2a1ae06522f15f57',
+      coin: 'ETH',
+      amount: '0.1',
+      side: 'long',
+      walletId: 'w'
+    })
+    expect(parsed.cloid).toBeUndefined()
   })
 })
 

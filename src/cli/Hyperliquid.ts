@@ -795,6 +795,10 @@ export function buildHyperliquidCommand(): Command {
     .option('--reduce-only', 'Place reduce-only order')
     .option('--margin-mode <mode>', 'Margin mode: cross | isolated', 'cross')
     .option('--leverage <leverage>', 'Set leverage before order (integer)')
+    .option(
+      '--cloid <cloid>',
+      'Client order id (0x + 32 hex): reuse the SAME id per ticket/retry so the venue dedupes a re-fire'
+    )
     .option('--dex <dex>', 'Perp dex name (main by default)')
     .requiredOption('--wallet-id <walletId>', 'Privy wallet id')
     .option('--out <file>', 'Write output JSON to file')
@@ -838,6 +842,10 @@ export function buildHyperliquidCommand(): Command {
     .option('--type <type>', 'Order type: market | limit', 'market')
     .option('--price <price>', 'Limit price (required when --type limit)')
     .option('--tif <tif>', 'Time in force for limit orders: Gtc | Ioc | Alo', 'Gtc')
+    .option(
+      '--cloid <cloid>',
+      'Client order id (0x + 32 hex): reuse the SAME id per ticket/retry so the venue dedupes a re-fire'
+    )
     .requiredOption('--wallet-id <walletId>', 'Privy wallet id')
     .option('--out <file>', 'Write output JSON to file')
     .action(async (options: unknown): Promise<void> => {

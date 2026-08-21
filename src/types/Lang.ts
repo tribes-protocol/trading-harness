@@ -22,6 +22,17 @@ export const HexStringSchema = z.custom<`0x${string}`>(
 
 export type HexString = z.infer<typeof HexStringSchema>
 
+/**
+ * Hyperliquid client order id (cloid): `0x` + 32 hex chars = 34 characters.
+ * The venue dedupes on it — a re-fire that reuses the SAME cloid is ignored,
+ * which is how a desk retry avoids double-fill without a fresh nonce.
+ */
+export const CloidSchema = z
+  .string()
+  .regex(/^0x[0-9a-fA-F]{32}$/, 'cloid must be 0x + 32 hex chars (34 total)')
+
+export type Cloid = z.infer<typeof CloidSchema>
+
 export const BigNumberSchema = z
   .union([z.string(), z.number(), z.instanceof(BigNumber)])
   .transform<BigNumber>((val) => {

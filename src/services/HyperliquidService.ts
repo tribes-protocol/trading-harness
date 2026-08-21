@@ -543,7 +543,8 @@ export class HyperliquidService {
               tif: request.tif,
               triggerPx: request.triggerPx,
               szDecimals: perpAsset.szDecimals
-            })
+            }),
+            ...(isNullish(request.cloid) ? {} : { c: request.cloid })
           }
         ],
         grouping: 'na'
@@ -567,7 +568,8 @@ export class HyperliquidService {
         p: entryPrice,
         s: size,
         r: false,
-        t: { limit: { tif: request.type === 'market' ? 'Ioc' : 'Gtc' } }
+        t: { limit: { tif: request.type === 'market' ? 'Ioc' : 'Gtc' } },
+        ...(isNullish(request.cloid) ? {} : { c: request.cloid })
       }
     ]
 
@@ -591,7 +593,8 @@ export class HyperliquidService {
           limitPx: request.tpLimitPx,
           exitIsBuy,
           perpAsset,
-          size
+          size,
+          cloid: request.cloid ?? undefined
         })
       )
     }
@@ -604,7 +607,8 @@ export class HyperliquidService {
           limitPx: request.slLimitPx,
           exitIsBuy,
           perpAsset,
-          size
+          size,
+          cloid: request.cloid ?? undefined
         })
       )
     }
@@ -1182,7 +1186,8 @@ export class HyperliquidService {
             limit: {
               tif: this.resolveOrderTif({ orderType: params.request.type, tif: params.request.tif })
             }
-          }
+          },
+          ...(isNullish(params.request.cloid) ? {} : { c: params.request.cloid })
         }
       ],
       grouping: 'na'
