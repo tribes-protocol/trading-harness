@@ -1150,3 +1150,129 @@ describe('HyperliquidService ghost-fill pair detector + post-fill read-guard', (
     expect(result.pairs[0]?.sellPx).toBe('2399.9')
   })
 })
+
+describe('HyperliquidService order-path flatten guard (COIN rule)', () => {
+  async function flattenService(opts: {
+    coin: string
+    liveSide: 'long' | 'short'
+    directive?: boolean
+  }): Promise<{ svc: HyperliquidService; cleanup: () => Promise<void> }> {
+    const { SizingLockService } = await import('@/services/SizingLockService')
+    const { mkdtemp, rm } = await import('node:fs/promises')
+    const { tmpdir } = await import('node:os')
+    const { join } = await import('node:path')
+    const stateDir = await mkdtemp(join(tmpdir(), 'flatten-guard-'))
+    const sizingLock = new SizingLockService({ stateDir, overrideActors: ['exec-lead', 'chief'] })
+    await sizingLock.load()
+    if (opts.directive) {
+      await sizingLock.override({
+        dex: 'main',
+        coin: opts.coin,
+        actor: 'chief',
+        reason: 'user directive: close + re-place COUN at new spec',
+        ttlMs: 60_000
+      })
+    }
+    // Live position on the venue for the coin.
+    const clearinghouseState = vi.fn().mockResolvedValue({
+      assetPositions: [
+        {
+          position: {
+            coin: opts.coin,
+            szi: opts.liveSide === 'long' ? '5.27' : '-5.27',
+            entryPx: '180.09',
+            positionValue: '948.11',
+            unrealizedPnl: '0',
+            returnOnEquity: '0',
+            liquidationPx: null,
+            leverage: { value: 20, type: 'cross' },
+            marginUsed: '94.8',
+            maxLeverage: 30
+          }
+        }
+      ],
+      crossMarginSummary: {}
+    })
+    // Meta universe must include the test coin (resolvePerpAsset needs it).
+    const meta = {
+      universe: [
+        { name: 'BTC', szDecimals: 5, maxLeverage: 40, marginTableId: 1 },
+        { name: 'COUN', szDecimals: 2, maxLeverage: 30, marginTableId: 1 }
+      ],
+      marginTables: [],
+      collateralToken: 0
+    }
+    const metaAndAssetCtxs = vi.fn().mockResolvedValue([
+      meta,
+      [MAIN_CONTEXT, { prevDayPx: '178', dayNtlVlm: '2', markPx: '180.09', midPx: '180.09', funding: '0', openInterest: '1', premium: '0', oraclePx: '180.09', impactPxs: ['180.1', '180.08'], dayBaseVlm: '2' }]
+    ])
+    const infoClient = {
+      metaAndAssetCtxs,
+      perpDexs: vi.fn().mockResolvedValue([]),
+      spotMetaAndAssetCtxs: vi.fn().mockResolvedValue([{ tokens: [], universe: [] }, []]),
+      clearinghouseState,
+      twapHistory: vi.fn().mockResolvedValue([]),
+      userFills: vi.fn().mockResolvedValue([]),
+      userFillsByTime: vi.fn().mockResolvedValue([]),
+      frontendOpenOrders: vi.fn().mockResolvedValue([])
+    } as unknown as InfoClient
+    const params: HyperliquidServiceParams = {
+      transaction: {} as HyperliquidServiceParams['transaction'],
+      infoClient,
+      sizingLock
+    }
+    const svc = new HyperliquidService(params)
+    return { svc, cleanup: () => rm(stateDir, { recursive: true, force: true }) }
+  }
+
+  test('a closing reduce-only order on a live position is REFUSED without a user directive', async () => {
+    const { svc, cleanup } = await flattenService({ coin: 'COUN', liveSide: 'long' })
+    const Big = await import('bignumber.js').then((m) => m.default)
+    try {
+      const error = await svc
+        .tradePerp({
+          request: {
+            from: '0xbb64c24a6b2ee1185621490d2a1ae06522f15f57',
+            coin: 'COUN',
+            amount: new Big(5.27),
+            side: 'short',
+            type: 'market',
+            reduceOnly: true,
+            walletId: 'w'
+          },
+          walletId: 'w'
+        } as never)
+        .then(() => null)
+        .catch((e: unknown) => String(e))
+      expect(error).toContain('flatten guard')
+      expect(error).toContain('user directive')
+    } finally {
+      await cleanup()
+    }
+  })
+
+  test('the same close PASSES when a chief journaled user directive exists', async () => {
+    const { svc, cleanup } = await flattenService({ coin: 'COUN', liveSide: 'long', directive: true })
+    const Big = await import('bignumber.js').then((m) => m.default)
+    try {
+      const error = await svc
+        .tradePerp({
+          request: {
+            from: '0xbb64c24a6b2ee1185621490d2a1ae06522f15f57',
+            coin: 'COUN',
+            amount: new Big(5.27),
+            side: 'short',
+            type: 'market',
+            reduceOnly: true,
+            walletId: 'w'
+          },
+          walletId: 'w'
+        } as never)
+        .then(() => null)
+        .catch((e: unknown) => String(e))
+      expect(String(error)).not.toContain('flatten guard')
+    } finally {
+      await cleanup()
+    }
+  })
+})

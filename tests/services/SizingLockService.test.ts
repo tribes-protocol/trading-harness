@@ -468,3 +468,123 @@ describe('SizingLockService arm-collision — resting entry + reduce-only', () =
     await rm(stateDir, { recursive: true, force: true })
   })
 })
+
+function parseRecordsJournal(file: string): unknown[] {
+  // JournalL: pretty-printed JSON records separated by a newline. Split on
+  // record boundaries: each record STARTS at '{' and ends at the matching
+  // top-level '}\n' (the next record's opening brace on its own line).
+  const out: unknown[] = []
+  let start = 0
+  let depth = 0
+  for (let i = 0; i < file.length; i++) {
+    const ch = file[i]
+    if (ch === '{') depth += 1
+    else if (ch === '}') {
+      depth -= 1
+      if (depth === 0) {
+        const next = file[i + 1]
+        if (next === '\n' || next === '\r' || i === file.length - 1) {
+          out.push(JSON.parse(file.slice(start, i + 1)))
+          start = i + 2
+          depth = 0
+        }
+      }
+    }
+  }
+  return out
+}
+
+describe('SizingLockService arm-journaling + order-path flatten guard', () => {
+  test('every arm() call appends an arm journal line with actor, ts, coin, old->new margin', async () => {
+    const stateDir = await mkdtemp(join(tmpdir(), 'sizing-arm-journal-'))
+    const service = new SizingLockService({
+      stateDir,
+      overrideActors: ['exec-lead', 'chief'],
+      armCollisionCheck: async () => ({ livePosition: false, inFlightFill: false })
+    })
+    await service.load()
+    await service.arm({
+      packageId: 'A-1',
+      version: 'v14-COIN60',
+      perCoin: [{ coin: 'COIN', dex: 'main', notionalUsd: 60, marginUsd: 60, leverage: 20, szDecimals: 4 }],
+      address: '0xbb64c24a6b2ee1185621490d2a1ae06522f15f57' as `0x${string}`
+    })
+    const journal = await readFile(join(stateDir, 'sizing-lock-journal.jsonl'), 'utf8')
+    const entry = parseRecordsJournal(journal).find((e) => e.kind === 'arm')
+    expect(entry.kind).toBe('arm')
+    expect(entry.version).toBe('v14-COIN60')
+    expect(entry.delta[0].coin).toBe('COIN')
+    expect(entry.delta[0].newMarginUsd).toBe(60)
+    await rm(stateDir, { recursive: true, force: true })
+  })
+
+  test('arm journal records old->new margin on a re-arm (v13 950 -> v14 600)', async () => {
+    const stateDir = await mkdtemp(join(tmpdir(), 'sizing-arm-journal2-'))
+    const service = new SizingLockService({
+      stateDir,
+      overrideActors: ['exec-lead', 'chief'],
+      armCollisionCheck: async () => ({ livePosition: false, inFlightFill: false })
+    })
+    await service.load()
+    await service.arm({
+      packageId: 'A-1',
+      version: 'v13',
+      perCoin: [{ coin: 'COIN', dex: 'main', notionalUsd: 95, marginUsd: 95, leverage: 20, szDecimals: 4 }],
+      address: '0xbb64c24a6b2ee1185621490d2a1ae06522f26f57' as `0x${string}`
+    })
+    await service.arm({
+      packageId: 'A-1',
+      version: 'v14',
+      perCoin: [{ coin: 'COIN', dex: 'main', notionalUsd: 60, marginUsd: 60, leverage: 20, szDecimals: 4 }],
+      address: '0xbb64c24a6b2ee1185621490d2a1ae06522f26f57' as `0x${string}`
+    })
+    const journal = await readFile(join(stateDir, 'sizing-lock-journal.jsonl'), 'utf8')
+    const records = parseRecordsJournal(journal)
+    const v14 = records.find((e) => e.version === 'v14')
+    expect(v14).toBeTruthy()
+    expect(v14.delta[0].oldMarginUsd).toBe(95)
+    expect(v14.delta[0].newMarginUsd).toBe(60)
+    await rm(stateDir, { recursive: true, force: true })
+  })
+
+  test('hasActiveFlattenDirective reflects a live chief/exec-lead override for the coin', async () => {
+    const stateDir = await mkdtemp(join(tmpdir(), 'sizing-flatten-directive-'))
+    const service = new SizingLockService({ stateDir, overrideActors: ['exec-lead', 'chief'] })
+    await service.load()
+    expect(await service.hasActiveFlattenDirective('main', 'COIN')).toBe(false)
+    await service.override({
+      dex: 'main',
+      coin: 'COIN',
+      actor: 'chief',
+      reason: 'user directive: close + re-place COIN at new spec',
+      ttlMs: 60_000
+    })
+    expect(await service.hasActiveFlattenDirective('main', 'COIN')).toBe(true)
+    await rm(stateDir, { recursive: true, force: true })
+  })
+
+  test('user-directive-through-Chef arm override ALLOWED + journaled (deliberate close)', async () => {
+    const stateDir = await mkdtemp(join(tmpdir(), 'sizing-arm-directive-'))
+    const service = new SizingLockService({
+      stateDir,
+      overrideActors: ['exec-lead', 'chief'],
+      armCollisionCheck: async () => ({ livePosition: true, inFlightFill: false })
+    })
+    await service.load()
+    await service.arm({ packageId: 'A-1', version: 'v1', perCoin: [{ coin: 'COIN', dex: 'main', notionalUsd: 95, marginUsd: 95, leverage: 20, szDecimals: 4 }] })
+    const armed = await service.arm({
+      packageId: 'A-1',
+      version: 'v14',
+      perCoin: [{ coin: 'COIN', dex: 'main', notionalUsd: 60, marginUsd: 60, leverage: 20, szDecimals: 4 }],
+      address: '0xbb64c24a6b2ee1185621490d2a1ae06522f26f57' as `0x${string}`,
+      overrideActor: 'chief',
+      overrideReason: 'user directive: deliberate close + re-place COIN at new spec'
+    })
+    expect(armed.version).toBe('v14')
+    const journal = await readFile(join(stateDir, 'sizing-lock-journal.jsonl'), 'utf8')
+    const entry = parseRecordsJournal(journal).find((e) => e.kind === 'arm-collision-override')
+    expect(entry.kind).toBe('arm-collision-override')
+    expect(entry.actor).toBe('chief')
+    await rm(stateDir, { recursive: true, force: true })
+  })
+})

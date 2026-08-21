@@ -81,11 +81,11 @@ import {
   type HyperliquidScaleOrderCommandOptions,
   type HyperliquidServiceParams,
   type HyperliquidSetLeverageCommandOptions,
-  type HyperliquidSizingLockArmCollision,
-  HyperliquidSizingLockArmCollisionSchema,
   type HyperliquidSignReplayCommandOptions,
   type HyperliquidSignReplayResult,
   HyperliquidSignReplayResultSchema,
+  type HyperliquidSizingLockArmCollision,
+  HyperliquidSizingLockArmCollisionSchema,
   type HyperliquidSpotAsset,
   HyperliquidSpotAssetSchema,
   type HyperliquidSpotAssetsResult,
@@ -434,6 +434,14 @@ export class HyperliquidService {
       coin: params.request.coin,
       amount: params.request.amount,
       referencePrice: perpAsset.referencePrice,
+      reduceOnly: params.request.reduceOnly
+    })
+    await this.assertNoUnauthorizedFlatten({
+      address: params.request.from,
+      dex,
+      coin: params.request.coin,
+      side: params.request.side,
+      amount: params.request.amount,
       reduceOnly: params.request.reduceOnly
     })
     const marginMode = this.resolveMarginMode({
@@ -902,6 +910,50 @@ export class HyperliquidService {
     }
   }
 
+  /**
+   * ORDER-PATH FLATTEN GUARD (the same arm-collision discipline on the
+   * broadcast side): an armed-bracketed live position is not flattened /
+   * re-placed without the user's explicit directive through Chief. Refuses a
+   * position-DECREASING or reversing perp order (a reduce-only close, or an
+   * opposite-side order that would net the position) when: (a) the coin has a
+   * LIVE position on the venue, and (b) no active user-directive override is
+   * journaled (sizing-lock override registry). Reduce-only exits that fully
+   * close a position in exactly the user's intended direction may pass when a
+   * directive exists; otherwise default-refuse.
+   */
+  private async assertNoUnauthorizedFlatten(params: {
+    address: HexString
+    dex: string
+    coin: string
+    side: 'long' | 'short'
+    amount: BigNumber
+    reduceOnly: boolean
+  }): Promise<void> {
+    if (!params.reduceOnly) return
+    if (isNullish(this.sizingLock)) return
+    const positions = await this.listPositions({
+      address: params.address,
+      dex: params.dex,
+      allDexes: false
+    })
+    const pos = positions.positions.find((p) => p.coin === params.coin.toUpperCase())
+    if (isNullish(pos)) return // no live position -> nothing to flatten
+    // A reduce-only order in the SAME direction as the position cannot flatten
+    // it (it reduces; it does not close the wrong way).
+    const orderFlattens =
+      (pos.side === 'long' && params.side === 'short') ||
+      (pos.side === 'short' && params.side === 'long')
+    if (!orderFlattens) return
+    const directive = await this.sizingLock.hasActiveFlattenDirective(params.dex, params.coin)
+    if (directive) return
+    throw new Error(
+      `flatten guard: ${params.coin} has a LIVE ${pos.side} position; a closing / otherwise ` +
+        `re-placing ${params.side} reduce-only order would flatten it WITHOUT a user directive ` +
+        `through Chief (COIN rule). An armed-bracketed live position is not flattened. ` +
+        `Get the directive journaled (sizing-lock override by chief/exec-lead) first.`
+    )
+  }
+
   private resolveMarginMode(params: {
     perpAsset: ResolvedPerpAsset
     requestedMarginMode: 'cross' | 'isolated'
@@ -939,6 +991,14 @@ export class HyperliquidService {
       coin: params.request.coin,
       amount: params.request.amount,
       referencePrice: perpAsset.referencePrice,
+      reduceOnly: params.request.reduceOnly
+    })
+    await this.assertNoUnauthorizedFlatten({
+      address: params.request.from,
+      dex,
+      coin: params.request.coin,
+      side: params.request.side,
+      amount: params.request.amount,
       reduceOnly: params.request.reduceOnly
     })
     const asset = this.toOrderAssetFromPerp(perpAsset)

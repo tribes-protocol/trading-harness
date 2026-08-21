@@ -284,6 +284,43 @@ export class SizingLockService {
       records: [...keptRecords, newRecord]
     })
     await this.persistManifest()
+
+    // ARM()-JOURNALING: every arm call appends an audit line (actor, ts,
+    // package, old->new margin per coin) — closes the missing-log gap behind
+    // the v13->v14 rewrite that hid the COIN flatten trigger.
+    const nowIso = new Date().toISOString()
+    const freshlySuperseded = keptRecords.filter(
+      (r) => !isNullish(r.supersededAt) && r.supersededAt === now
+    )
+    const activeMap = new Map(
+      freshlySuperseded.flatMap((r) => r.perCoin).map((p) => [entryKey(p), p])
+    )
+    const delta = params.perCoin.map((p) => {
+      const key = entryKey(p)
+      const old = activeMap.get(key)
+      return {
+        dex: normalizeDexName(p.dex),
+        coin: normalizeCoinName(p.coin),
+        oldMarginUsd: old?.marginUsd ?? null,
+        newMarginUsd: p.marginUsd
+      }
+    })
+    const armJournal = {
+      ts: now,
+      at: nowIso,
+      actor: params.overrideActor?.trim() ?? 'chief',
+      kind: 'arm',
+      packageId: params.packageId,
+      version: params.version,
+      superseded: supersededVersions,
+      delta
+    }
+    await mkdir(this.stateDir, { recursive: true })
+    await appendFile(this.journalPath, `${ensureJsonTreeString(armJournal)}\n`, {
+      encoding: 'utf8',
+      mode: 0o600
+    })
+
     return HyperliquidSizingLockArmResultSchema.parse({
       armed: true,
       packageId: params.packageId,
@@ -291,6 +328,19 @@ export class SizingLockService {
       superseded: supersededVersions.length > 0 ? supersededVersions : null,
       manifestPath: this.manifestPath
     })
+  }
+
+  /**
+   * Active user-directive override for a coin (the escape hatch: a chief /
+   * exec-lead journaled re-arm/close directive while a live position exists).
+   * The order-path flatten guard consults this — an armed live position is not
+   * flattened without it.
+   */
+  async hasActiveFlattenDirective(dex: string | null | undefined, coin: string): Promise<boolean> {
+    await this.loadOverrides()
+    const key = `${normalizeDexName(dex)}:${normalizeCoinName(coin)}`
+    const override = this.overrides.get(key)
+    return !isNullish(override) && override.until > Date.now()
   }
 
   /**
