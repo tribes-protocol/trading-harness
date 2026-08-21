@@ -1216,6 +1216,8 @@ export const HyperliquidSizingLockArmCollisionSchema = z.object({
   livePosition: z.boolean(),
   inFlightFill: z.boolean(),
   restingEntry: z.boolean(),
+  twapInFlight: z.boolean().default(false),
+  openTwapLegs: z.number().int().nonnegative().default(0),
   note: z.string().nullish()
 })
 export type HyperliquidSizingLockArmCollision = z.infer<

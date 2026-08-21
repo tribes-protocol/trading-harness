@@ -588,3 +588,107 @@ describe('SizingLockService arm-journaling + order-path flatten guard', () => {
     await rm(stateDir, { recursive: true, force: true })
   })
 })
+
+describe('SizingLockService TWAP-in-flight + slot-cap guard (CXMT over-cap class)', () => {
+  const ADDR = '0xbb64c24a6b2ee1185621490d2a1ae06522f15f57'
+
+  async function twapService(
+    verdicts: Record<
+      string,
+      { livePosition?: boolean; twapInFlight?: boolean; openTwapLegs?: number }
+    >,
+    slotCap = 4
+  ): Promise<{ service: SizingLockService; stateDir: string }> {
+    const stateDir = await mkdtemp(join(tmpdir(), 'sizing-twap-cap-'))
+    const service = new SizingLockService({
+      stateDir,
+      overrideActors: ['exec-lead', 'chief'],
+      slotCap,
+      armCollisionCheck: async (params: { address: string; dex: string; coin: string }) => {
+        const v = verdicts[params.coin] ?? {
+          livePosition: false,
+          inFlightFill: false,
+          twapInFlight: false,
+          openTwapLegs: 0
+        }
+        return {
+          livePosition: v.livePosition ?? false,
+          inFlightFill: false,
+          twapInFlight: v.twapInFlight ?? false,
+          openTwapLegs: v.openTwapLegs ?? 0
+        }
+      }
+    })
+    await service.load()
+    return { service, stateDir }
+  }
+
+  const COIN_ENTRY = {
+    coin: 'COIN',
+    dex: 'main',
+    notionalUsd: 95,
+    marginUsd: 95,
+    leverage: 20,
+    szDecimals: 4
+  }
+
+  test('arm a coin with an IN-FLIGHT TWAP is REFUSED', async () => {
+    const { service, stateDir } = await twapService({ COIN: { twapInFlight: true } })
+    await service.arm({ packageId: 'A-1', version: 'v1', perCoin: [COIN_ENTRY] })
+    await expect(
+      service.arm({
+        packageId: 'A-1',
+        version: 'v14',
+        perCoin: [COIN_ENTRY],
+        address: ADDR
+      })
+    ).rejects.toThrow('IN-FLIGHT TWAP')
+    await rm(stateDir, { recursive: true, force: true })
+  })
+
+  test('cap-count: a TWAP ladder over the slot cap is REFUSED (CXMT 15-leg case)', async () => {
+    const { service, stateDir } = await twapService({ CXMT: { openTwapLegs: 15 } }, 4)
+    await service.arm({ packageId: 'A-1', version: 'v1', perCoin: [COIN_ENTRY] })
+    await expect(
+      service.arm({
+        packageId: 'A-1',
+        version: 'v14',
+        perCoin: [{ ...COIN_ENTRY, coin: 'CXMT' }],
+        address: ADDR
+      })
+    ).rejects.toThrow('slot-cap guard')
+    await rm(stateDir, { recursive: true, force: true })
+  })
+
+  test('within-cap TWAP passes (no refusal when open legs fit the slot cap)', async () => {
+    const { service, stateDir } = await twapService({ COIN: { livePosition: false, openTwapLegs: 1 } }, 4)
+    await service.arm({ packageId: 'A-1', version: 'v1', perCoin: [COIN_ENTRY] })
+    const armed = await service.arm({
+      packageId: 'A-1',
+      version: 'v14',
+      perCoin: [COIN_ENTRY],
+      address: ADDR
+    })
+    expect(armed.version).toBe('v14')
+    await rm(stateDir, { recursive: true, force: true })
+  })
+
+  test('authority override force-arms over the over-cap ladder + journaled', async () => {
+    const { service, stateDir } = await twapService({ CXMT: { openTwapLegs: 15 } }, 4)
+    await service.arm({ packageId: 'A-1', version: 'v1', perCoin: [COIN_ENTRY] })
+    const armed = await service.arm({
+      packageId: 'A-1',
+      version: 'v14',
+      perCoin: [{ ...COIN_ENTRY, coin: 'CXMT' }],
+      address: ADDR,
+      overrideActor: 'exec-lead',
+      overrideReason: 'user directive: force the over-cap ladder at Chief go'
+    })
+    expect(armed.version).toBe('v14')
+    const journal = await readFile(join(stateDir, 'sizing-lock-journal.jsonl'), 'utf8')
+    expect(journal).toContain('slot-cap-override')
+    expect(journal).toContain('exec-lead')
+    await rm(stateDir, { recursive: true, force: true })
+  })
+})
+

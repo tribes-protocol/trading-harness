@@ -39,7 +39,15 @@ export type SizingLockArmCollisionCheck = (params: {
   address: HexString
   dex: string
   coin: string
-}) => Promise<{ livePosition: boolean; inFlightFill: boolean; note?: string | null }>
+}) => Promise<{
+  livePosition: boolean
+  inFlightFill: boolean
+  /** An activated TWAP ladder is running for this coin (the TWAP-in-flight class). */
+  twapInFlight?: boolean
+  /** Open TWAP legs (the over-cap ladder class); default 0 when the check is silent. */
+  openTwapLegs?: number
+  note?: string | null
+}>
 
 export interface SizingLockServiceParams {
   readonly stateDir?: string
@@ -53,6 +61,13 @@ export interface SizingLockServiceParams {
    * venue access.
    */
   readonly armCollisionCheck?: SizingLockArmCollisionCheck
+  /**
+   * TWAP/slot cap-count guard (the CXMT over-cap class): arming is refused
+   * when an activated TWAP is in-flight for a coin, or when the open TWAP
+   * legs would exceed the slot cap (default 4, the Play-v2 book cap). An
+   * authority override (chief/exec-lead) still force-arms, journaled.
+   */
+  readonly slotCap?: number
 }
 
 // One persisted sizing override: an authority-gated grant that is TTL-windowed
@@ -106,6 +121,8 @@ export class SizingLockService {
 
   private readonly tolerance: number
 
+  private readonly slotCap: number
+
   private manifest: HyperliquidPackageManifest
 
   private overrides: Map<string, SizingLockOverrideRecord>
@@ -118,6 +135,7 @@ export class SizingLockService {
     this.journalPath = resolve(this.stateDir, JOURNAL_FILENAME)
     this.overrideActors = params.overrideActors ?? DEFAULT_OVERRIDE_ACTORS
     this.tolerance = params.tolerance ?? DEFAULT_SIZE_TOLERANCE
+    this.slotCap = params.slotCap ?? 4
     this.manifest = HyperliquidPackageManifestSchema.parse({ records: [] })
     this.overrides = new Map()
   }
@@ -218,6 +236,11 @@ export class SizingLockService {
   }): Promise<HyperliquidSizingLockArmResult> {
     await this.load()
     if (!isNullish(this.armCollisionCheck) && !isNullish(params.address)) {
+      // TWAP/SLOT CAP-COUNT (the CXMT over-cap class): count the open TWAP
+      // legs across every coin this package arms against the slot cap. A TWAP
+      // ladder that would exceed the cap is refused-or-split before arming.
+      let totalOpenTwapLegs = 0
+      let totalLivePositions = 0
       for (const entry of params.perCoin) {
         const dex = normalizeDexName(entry.dex)
         const coin = normalizeCoinName(entry.coin)
@@ -226,17 +249,22 @@ export class SizingLockService {
           dex,
           coin
         })
-        const blocked = collision.livePosition || collision.inFlightFill
+        totalOpenTwapLegs += collision.openTwapLegs ?? 0
+        if (collision.livePosition) totalLivePositions += 1
+        const twapInFlight = collision.twapInFlight ?? false
+        const blocked = collision.livePosition || collision.inFlightFill || twapInFlight
         if (blocked) {
           const actor = params.overrideActor?.trim()
           const forced = !isNullish(actor) && ARM_COLLISION_OVERRIDE_ACTORS.includes(actor)
           if (!forced) {
+            const parts: string[] = []
+            if (collision.livePosition) parts.push('a LIVE position')
+            if (collision.inFlightFill) parts.push('an IN-FLIGHT fill')
+            if (twapInFlight) parts.push('an IN-FLIGHT TWAP')
             throw new Error(
               `sizing-lock arm refused for ${coin} on ${dex}: ` +
-                `arm-collision guard — the coin has ` +
-                `${collision.livePosition ? 'a LIVE position' : ''}` +
-                `${collision.inFlightFill ? `${collision.livePosition ? ' and ' : ''}an IN-FLIGHT fill` : ''}` +
-                `; a re-arm would flatten it (COIN ghost class). ` +
+                `arm-collision guard — the coin has ${parts.join(' and ')}` +
+                `; a re-arm would flatten it (COIN ghost / TWAP-in-flight class). ` +
                 `Deliberate close: re-run arm with --override-actor chief/exec-lead + ` +
                 `--override-reason to force the re-arm (journaled).`
             )
@@ -245,7 +273,7 @@ export class SizingLockService {
           const journalEntry = {
             ts,
             actor,
-            kind: 'arm-collision-override',
+            kind: twapInFlight ? 'twap-in-flight-override' : 'arm-collision-override',
             dex,
             coin,
             version: params.version,
@@ -257,6 +285,63 @@ export class SizingLockService {
             mode: 0o600
           })
         }
+      }
+      // Slot-cap check across the full package: open TWAP legs (net of this
+      // arm's coins being replaced in-place) must not exceed the slot cap.
+      // The over-cap ladder (e.g. CXMT 15-leg/111.2 > 4-slot cap) is refused.
+      if (totalLivePositions >= this.slotCap) {
+        const actor = params.overrideActor?.trim()
+        const forced = !isNullish(actor) && ARM_COLLISION_OVERRIDE_ACTORS.includes(actor)
+        if (!forced) {
+          throw new Error(
+            `sizing-lock arm refused: slot-cap guard — ${totalLivePositions} live ` +
+              `position(s) already meet the ${this.slotCap}-slot cap; this arm would ` +
+              `overload the book (CXMT over-cap class). Re-run with ` +
+              `--override-actor chief/exec-lead + --override-reason to force (journaled).`
+          )
+        }
+        const ts = Date.now()
+        await mkdir(this.stateDir, { recursive: true })
+        await appendFile(
+          this.journalPath,
+          `${ensureJsonTreeString({
+            ts,
+            actor,
+            kind: 'slot-cap-override',
+            livePositions: totalLivePositions,
+            slotCap: this.slotCap,
+            version: params.version,
+            reason: (params.overrideReason ?? 'over-cap force-arm').trim()
+          })}\n`,
+          { encoding: 'utf8', mode: 0o600 }
+        )
+      } else if (totalOpenTwapLegs > this.slotCap) {
+        const actor = params.overrideActor?.trim()
+        const forced = !isNullish(actor) && ARM_COLLISION_OVERRIDE_ACTORS.includes(actor)
+        if (!forced) {
+          throw new Error(
+            `sizing-lock arm refused: slot-cap guard — ${totalOpenTwapLegs} open TWAP ` +
+              `leg(s) exceed the ${this.slotCap}-slot cap; a TWAP ladder here ` +
+              `would overload the book (CXMT 15-leg over-cap class). Re-run with ` +
+              `--override-actor chief/exec-lead + --override-reason to force (journaled), ` +
+              `or split the ladder to fit the cap.`
+          )
+        }
+        const ts = Date.now()
+        await mkdir(this.stateDir, { recursive: true })
+        await appendFile(
+          this.journalPath,
+          `${ensureJsonTreeString({
+            ts,
+            actor,
+            kind: 'slot-cap-override',
+            openTwapLegs: totalOpenTwapLegs,
+            slotCap: this.slotCap,
+            version: params.version,
+            reason: (params.overrideReason ?? 'over-cap force-arm').trim()
+          })}\n`,
+          { encoding: 'utf8', mode: 0o600 }
+        )
       }
     }
     const now = Date.now()

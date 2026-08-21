@@ -1601,11 +1601,16 @@ export class HyperliquidService {
   }): Promise<HyperliquidSizingLockArmCollision> {
     const normalizedDex = this.formatDexName(this.normalizeDex(params.dex))
     const normalizedCoin = params.coin.trim().toUpperCase()
-    const livePosition = await this.listPositions({
+    const positions = await this.listPositions({
       address: params.address,
       dex: normalizedDex,
       allDexes: false
-    }).then((r) => r.positions.some((p) => p.coin === normalizedCoin))
+    })
+    const livePosition = positions.positions.some((p) => p.coin === normalizedCoin)
+    const twapInFlight = positions.twapOrders.some(
+      (t) => t.coin === normalizedCoin && t.dex === normalizedDex
+    )
+    const openTwapLegs = positions.twapOrders.filter((t) => t.dex === normalizedDex).length
     const restingEntry = await this.listOpenOrders({
       address: params.address,
       dex: normalizedDex,
@@ -1624,12 +1629,13 @@ export class HyperliquidService {
     }).then((r) =>
       r.fills.some((f) => f.coin === normalizedCoin && f.dex === normalizedDex && f.crossed)
     )
-    const collision = { livePosition, inFlightFill, restingEntry }
+    const collision = { livePosition, inFlightFill, restingEntry, twapInFlight, openTwapLegs }
     const note =
-      livePosition || inFlightFill || restingEntry
+      livePosition || inFlightFill || restingEntry || twapInFlight
         ? `coin ${normalizedCoin} on ${normalizedDex} has ` +
           `${livePosition ? 'a LIVE position' : ''}${inFlightFill ? ', an IN-FLIGHT fill' : ''}` +
-          `${restingEntry ? ', a RESTING entry' : ''} — re-arm refused (arm-collision guard)`
+          `${restingEntry ? ', a RESTING entry' : ''}${twapInFlight ? ', an IN-FLIGHT TWAP' : ''}` +
+          ` — re-arm refused (arm-collision guard)`
         : null
     return HyperliquidSizingLockArmCollisionSchema.parse({ ...collision, note })
   }
