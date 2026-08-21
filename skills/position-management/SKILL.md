@@ -56,6 +56,10 @@ These are the desk's CURRENT operative rules (Chief directive):
 - **Take-profit: $30 scaled (min target)** — scale/trail higher as the move extends. R:R = 2:1.
 - **LONG OR SHORT — both directions, always.** There is always an opportunity in one direction;
   never default to long-only momentum.
+- **Macro is a live slot-fill input.** A rising dollar (DXY) is risk-off: prefer SHORT-side setups
+  on fading/extended momentum names and fresh longs only in dollar-resisting names (real-yield /
+  commodity-linked / just-turned beaten-down names). Cooling momentum (falling RSI off highs) is
+  a short candidate when structure breaks, not an automatic long.
 - **Every order carries the $15 SL / $30 TP bracket. No naked positions. No tight premature TP —
   winners run past $30.**
 - Leverage and exposure: no desk percentage or leverage ceiling beyond the play's $15 SL / $30 TP
