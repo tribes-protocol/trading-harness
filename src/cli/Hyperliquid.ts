@@ -56,12 +56,30 @@ export function buildHyperliquidCommand(): Command {
     privyAppId: PRIVY_APP_ID
   })
   const entryGateService = new EntryGateService()
-  const sizingLockService = new SizingLockService()
+  // The arm-collision guard needs the live-venue read, but SizingLockService is
+  // constructed before HyperliquidService (which depends on it). Resolve the
+  // venue read lazily through a mutable ref so the guard is active for every
+  // arm call without a construction-order dependency.
+  let hyperliquidServiceRef: HyperliquidService | null = null
+  const sizingLockService = new SizingLockService({
+    armCollisionCheck: async (params: { address: `0x${string}`; dex: string; coin: string }) => {
+      const hl = hyperliquidServiceRef
+      if (isNullish(hl)) {
+        return { livePosition: false, inFlightFill: false }
+      }
+      return await hl.checkSizingArmCollision({
+        address: params.address,
+        dex: params.dex,
+        coin: params.coin
+      })
+    }
+  })
   const hyperliquidService = new HyperliquidService({
     transaction: transactionService,
     entryGate: entryGateService,
     sizingLock: sizingLockService
   })
+  hyperliquidServiceRef = hyperliquidService
 
   const program = new Command('hyperliquid')
   program.description('Execution CLI for Hyperliquid').version(VERSION)
@@ -357,6 +375,15 @@ export function buildHyperliquidCommand(): Command {
       '--spec <json>',
       'JSON object keyed by coin: {"BTC":{"notionalUsd":3182.70,"marginUsd":212.18,"leverage":20,"szDecimals":5}}'
     )
+    .option(
+      '--address <address>',
+      'Account address to check for arm collisions (live position / in-flight fill); omit to arm without the venue guard'
+    )
+    .option(
+      '--override-actor <actor>',
+      'Force the arm past the collision guard (chief | exec-lead only) — the deliberate-close path'
+    )
+    .option('--override-reason <reason>', 'Why the forced re-arm is happening (journaled)')
     .option('--out <file>', 'Write output JSON to file')
     .action(async (options: unknown): Promise<void> => {
       const request = HyperliquidSizingLockArmCommandOptionsSchema.parse(options)
@@ -374,7 +401,10 @@ export function buildHyperliquidCommand(): Command {
       const response = await svc.arm({
         packageId: request.packageId,
         version: request.ver,
-        perCoin
+        perCoin,
+        address: request.address ?? undefined,
+        overrideActor: request.overrideActor ?? undefined,
+        overrideReason: request.overrideReason ?? undefined
       })
       const output = ensureJsonTreeString(response)
       await writeOutput({

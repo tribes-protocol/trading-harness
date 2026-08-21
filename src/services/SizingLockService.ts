@@ -29,10 +29,30 @@ const DEFAULT_OVERRIDE_TTL_MS = 15 * 60 * 1000
 // override): exec-lead (Desi) or chief only, default-refuse.
 const DEFAULT_OVERRIDE_ACTORS = ['exec-lead', 'chief']
 
+// The arm-collision guard permits a re-arm for a LIVE/IN-FLIGHT coin ONLY when
+// an override actor (chief/exec-lead) explicitly journals the deliberate close.
+const ARM_COLLISION_OVERRIDE_ACTORS = ['chief', 'exec-lead']
+
+import type { HexString } from '@/types/Lang'
+
+export type SizingLockArmCollisionCheck = (params: {
+  address: HexString
+  dex: string
+  coin: string
+}) => Promise<{ livePosition: boolean; inFlightFill: boolean; note?: string | null }>
+
 export interface SizingLockServiceParams {
   readonly stateDir?: string
   readonly overrideActors?: readonly string[]
   readonly tolerance?: number
+  /**
+   * At-arm live-venue collision check (the COIN ghost-flatten class): a
+   * manifest re-arm must not flatten a coin with a live position / in-flight
+   * fill / resting entry. Injected by the CLI wiring (reads the venue). When
+   * absent, arm() is non-guarded (pure manifest write) for callers with no
+   * venue access.
+   */
+  readonly armCollisionCheck?: SizingLockArmCollisionCheck
 }
 
 // One persisted sizing override: an authority-gated grant that is TTL-windowed
@@ -76,6 +96,8 @@ function entryKey(entry: HyperliquidSizingEntry): string {
 export class SizingLockService {
   private readonly stateDir: string
 
+  private readonly armCollisionCheck: SizingLockArmCollisionCheck | undefined
+
   private readonly manifestPath: string
 
   private readonly journalPath: string
@@ -90,6 +112,7 @@ export class SizingLockService {
 
   constructor(params: SizingLockServiceParams = {}) {
     this.stateDir = params.stateDir ?? resolveTradesStateDir()
+    this.armCollisionCheck = params.armCollisionCheck
     this.manifestPath = resolve(this.stateDir, MANIFEST_FILENAME)
     this.overridesPath = resolve(this.stateDir, OVERRIDES_FILENAME)
     this.journalPath = resolve(this.stateDir, JOURNAL_FILENAME)
@@ -174,13 +197,68 @@ export class SizingLockService {
   /**
    * Desk arms (or supersedes) a package: the new version becomes operative and
    * every older record is marked superseded at now.
+   *
+   * ARM-COLLISION GUARD (the COIN ghost-flatten class): every coin in the new
+   * package is checked against the live venue before the manifest is written.
+   * A coin with a LIVE position, an IN-FLIGHT fill, or a RESTING entry is
+   * REFUSED unless an authority actor (chief/exec-lead) forces the re-arm via
+   * `overrideActor` — the deliberate-close path, journaled. This prevents the
+   * arming process itself from flattening a live position (COIN open 180.09 +
+   * close 180.07 ghost was a $95->$60 re-arm landing on an in-flight $95 fire).
    */
   async arm(params: {
     packageId: string
     version: string
     perCoin: HyperliquidSizingEntry[]
+    /** Account to venue-check for arm collisions (live position / in-flight). */
+    address?: HexString
+    /** Authority override for the collision guard (chief | exec-lead only). */
+    overrideActor?: string
+    overrideReason?: string
   }): Promise<HyperliquidSizingLockArmResult> {
     await this.load()
+    if (!isNullish(this.armCollisionCheck) && !isNullish(params.address)) {
+      for (const entry of params.perCoin) {
+        const dex = normalizeDexName(entry.dex)
+        const coin = normalizeCoinName(entry.coin)
+        const collision = await this.armCollisionCheck({
+          address: params.address,
+          dex,
+          coin
+        })
+        const blocked = collision.livePosition || collision.inFlightFill
+        if (blocked) {
+          const actor = params.overrideActor?.trim()
+          const forced = !isNullish(actor) && ARM_COLLISION_OVERRIDE_ACTORS.includes(actor)
+          if (!forced) {
+            throw new Error(
+              `sizing-lock arm refused for ${coin} on ${dex}: ` +
+                `arm-collision guard — the coin has ` +
+                `${collision.livePosition ? 'a LIVE position' : ''}` +
+                `${collision.inFlightFill ? `${collision.livePosition ? ' and ' : ''}an IN-FLIGHT fill` : ''}` +
+                `; a re-arm would flatten it (COIN ghost class). ` +
+                `Deliberate close: re-run arm with --override-actor chief/exec-lead + ` +
+                `--override-reason to force the re-arm (journaled).`
+            )
+          }
+          const ts = Date.now()
+          const journalEntry = {
+            ts,
+            actor,
+            kind: 'arm-collision-override',
+            dex,
+            coin,
+            version: params.version,
+            reason: (params.overrideReason ?? 'deliberate close + re-arm').trim()
+          }
+          await mkdir(this.stateDir, { recursive: true })
+          await appendFile(this.journalPath, `${ensureJsonTreeString(journalEntry)}\n`, {
+            encoding: 'utf8',
+            mode: 0o600
+          })
+        }
+      }
+    }
     const now = Date.now()
     const supersededVersions: string[] = []
     const keptRecords: HyperliquidPackageManifestRecord[] = []

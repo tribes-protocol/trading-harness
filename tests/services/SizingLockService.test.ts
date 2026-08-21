@@ -339,3 +339,132 @@ describe('SizingLockService — anchored state dir (cwd-independent)', () => {
     }
   })
 })
+describe('SizingLockService arm-collision guard (COIN ghost-flatten class)', () => {
+  const ADDR = '0xbb64c24a6b2ee1185621490d2a1ae06522f15f57'
+
+  // A service whose armCollisionCheck returns a programmable verdict per coin.
+  async function collisionService(verdicts: Record<string, { livePosition?: boolean; inFlightFill?: boolean }>): Promise<{
+    service: SizingLockService
+    stateDir: string
+  }> {
+    const stateDir = await mkdtemp(join(tmpdir(), 'sizing-arm-collision-'))
+    const service = new SizingLockService({
+      stateDir,
+      overrideActors: ['exec-lead', 'chief'],
+      armCollisionCheck: async (params: { address: string; dex: string; coin: string }) => {
+        const v = verdicts[params.coin] ?? { livePosition: false, inFlightFill: false }
+        return { livePosition: v.livePosition ?? false, inFlightFill: v.inFlightFill ?? false }
+      }
+    })
+    await service.load()
+    return { service, stateDir }
+  }
+
+  const COIN_ENTRY = { coin: 'COIN', dex: 'main', notionalUsd: 95, marginUsd: 95, leverage: 20, szDecimals: 4 }
+  const COIN_ENTRY_60 = { ...COIN_ENTRY, notionalUsd: 60, marginUsd: 60 }
+
+  test('re-arm a coin with a LIVE position is REFUSED', async () => {
+    const { service } = await collisionService({ COIN: { livePosition: true } })
+    await service.arm({ packageId: 'A-1', version: 'v1', perCoin: [COIN_ENTRY] })
+    await expect(
+      service.arm({ packageId: 'A-1', version: 'v14', perCoin: [COIN_ENTRY_60], address: ADDR })
+    ).rejects.toThrow('arm-collision guard')
+  })
+
+  test('re-arm with NO live position passes', async () => {
+    const { service } = await collisionService({})
+    await service.arm({ packageId: 'A-1', version: 'v1', perCoin: [COIN_ENTRY], address: ADDR })
+    const armed = await service.arm({
+      packageId: 'A-1',
+      version: 'v14',
+      perCoin: [COIN_ENTRY_60],
+      address: ADDR
+    })
+    expect(armed.armed).toBe(true)
+    expect(armed.version).toBe('v14')
+  })
+
+  test('re-arm with IN-FLIGHT fill is REFUSED (the COIN $95->$60 repro)', async () => {
+    const { service } = await collisionService({ COIN: { inFlightFill: true } })
+    await service.arm({ packageId: 'A-1', version: 'v1', perCoin: [COIN_ENTRY] })
+    await expect(
+      service.arm({ packageId: 'A-1', version: 'v14', perCoin: [COIN_ENTRY_60], address: ADDR })
+    ).rejects.toThrow('IN-FLIGHT')
+  })
+
+  test('live-position + explicit chief/exec-lead override passes + journaled', async () => {
+    const { service, stateDir } = await collisionService({ COIN: { livePosition: true } })
+    await service.arm({ packageId: 'A-1', version: 'v1', perCoin: [COIN_ENTRY] })
+    const armed = await service.arm({
+      packageId: 'A-1',
+      version: 'v14',
+      perCoin: [COIN_ENTRY_60],
+      address: ADDR,
+      overrideActor: 'exec-lead',
+      overrideReason: 'deliberate close + re-arm at new spec'
+    })
+    expect(armed.version).toBe('v14')
+    const journal = await readFile(join(stateDir, 'sizing-lock-journal.jsonl'), 'utf8')
+    expect(journal).toContain('arm-collision-override')
+    expect(journal).toContain('exec-lead')
+  })
+
+  test('non-authority override actor cannot force the collision guard', async () => {
+    const { service } = await collisionService({ COIN: { livePosition: true } })
+    await service.arm({ packageId: 'A-1', version: 'v1', perCoin: [COIN_ENTRY] })
+    await expect(
+      service.arm({
+        packageId: 'A-1',
+        version: 'v14',
+        perCoin: [COIN_ENTRY_60],
+        address: ADDR,
+        overrideActor: 'runa',
+        overrideReason: 'not allowed'
+      })
+    ).rejects.toThrow('arm-collision guard')
+  })
+
+  test('no address -> no venue guard (manifest-only arm unchanged)', async () => {
+    const { service } = await collisionService({ COIN: { livePosition: true } })
+    const armed = await service.arm({ packageId: 'A-1', version: 'v14', perCoin: [COIN_ENTRY_60] })
+    expect(armed.version).toBe('v14')
+  })
+})
+
+describe('SizingLockService arm-collision — resting entry + reduce-only', () => {
+  test('a resting entry (bracket) alone does NOT block a size-matched re-arm', async () => {
+    const stateDir = await mkdtemp(join(tmpdir(), 'sizing-arm-resting-'))
+    const service = new SizingLockService({
+      stateDir,
+      overrideActors: ['exec-lead', 'chief'],
+      armCollisionCheck: async () => ({ livePosition: false, inFlightFill: false, restingEntry: true })
+    })
+    await service.load()
+    const armed = await service.arm({
+      packageId: 'A-1',
+      version: 'v14',
+      perCoin: [{ coin: 'COIN', dex: 'main', notionalUsd: 95, marginUsd: 95, leverage: 20, szDecimals: 4 }],
+      address: '0xbb64c24a6b2ee1185621490d2a1ae06522f15f57'
+    })
+    expect(armed.version).toBe('v14')
+    await rm(stateDir, { recursive: true, force: true })
+  })
+
+  test('the guard only governs arm — reduce-only exits / closes are untouched', async () => {
+    // SizingLockService has no order/cancel path; the guard is scoped to arm().
+    // isEntrySizeAllowed skips nothing for reduce-only in the ORDER path (the
+    // HyperliquidService.assertSizingLockAllowed returns early on reduceOnly).
+    // This test documents the seam: arm() accepts an override actor, so a
+    // deliberate close-then-rearm is possible without any exit being blocked.
+    const stateDir = await mkdtemp(join(tmpdir(), 'sizing-arm-ro-'))
+    const service = new SizingLockService({ stateDir, overrideActors: ['exec-lead', 'chief'] })
+    await service.load()
+    const armed = await service.arm({
+      packageId: 'A-1',
+      version: 'v1',
+      perCoin: [{ coin: 'COIN', dex: 'main', notionalUsd: 95, marginUsd: 95, leverage: 20, szDecimals: 4 }]
+    })
+    expect(armed.armed).toBe(true)
+    await rm(stateDir, { recursive: true, force: true })
+  })
+})

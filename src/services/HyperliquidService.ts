@@ -81,6 +81,8 @@ import {
   type HyperliquidScaleOrderCommandOptions,
   type HyperliquidServiceParams,
   type HyperliquidSetLeverageCommandOptions,
+  type HyperliquidSizingLockArmCollision,
+  HyperliquidSizingLockArmCollisionSchema,
   type HyperliquidSignReplayCommandOptions,
   type HyperliquidSignReplayResult,
   HyperliquidSignReplayResultSchema,
@@ -1524,6 +1526,52 @@ export class HyperliquidService {
           : 'no equal-size pair detected — verify the ticket before re-firing.'),
       pairs: pairs.length > 0 ? pairs : null
     })
+  }
+
+  /**
+   * Arm-collision guard read (the COIN ghost-flatten class): a manifest re-arm
+   * must not flatten a coin that a fill/position currently protects. Live read
+   * of positions + open orders + the recent fills window for ONE coin. Returns
+   * the collision verdict the SizingLockService.arm guard refuses on. Read-only.
+   */
+  async checkSizingArmCollision(params: {
+    address: HexString
+    coin: string
+    dex?: string | null
+  }): Promise<HyperliquidSizingLockArmCollision> {
+    const normalizedDex = this.formatDexName(this.normalizeDex(params.dex))
+    const normalizedCoin = params.coin.trim().toUpperCase()
+    const livePosition = await this.listPositions({
+      address: params.address,
+      dex: normalizedDex,
+      allDexes: false
+    }).then((r) => r.positions.some((p) => p.coin === normalizedCoin))
+    const restingEntry = await this.listOpenOrders({
+      address: params.address,
+      dex: normalizedDex,
+      allDexes: false
+    }).then((r) =>
+      r.orders.some(
+        (o) => o.coin === normalizedCoin && o.market === 'perp' && !o.reduceOnly && !o.isTrigger
+      )
+    )
+    const inFlightFill = await this.listFills({
+      address: params.address,
+      startTime: Date.now() - 5 * 60 * 1000,
+      endTime: undefined,
+      aggregateByTime: true,
+      reversed: false
+    }).then((r) =>
+      r.fills.some((f) => f.coin === normalizedCoin && f.dex === normalizedDex && f.crossed)
+    )
+    const collision = { livePosition, inFlightFill, restingEntry }
+    const note =
+      livePosition || inFlightFill || restingEntry
+        ? `coin ${normalizedCoin} on ${normalizedDex} has ` +
+          `${livePosition ? 'a LIVE position' : ''}${inFlightFill ? ', an IN-FLIGHT fill' : ''}` +
+          `${restingEntry ? ', a RESTING entry' : ''} — re-arm refused (arm-collision guard)`
+        : null
+    return HyperliquidSizingLockArmCollisionSchema.parse({ ...collision, note })
   }
 
   private async resolveAllDexNames(): Promise<string[]> {

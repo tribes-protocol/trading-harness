@@ -1187,6 +1187,9 @@ export const HyperliquidSizingLockArmCommandOptionsSchema = z.object({
     )
   ),
   stateDir: z.string().nullish(),
+  address: EthAddressSchema.nullish(),
+  overrideActor: z.string().trim().nullish(),
+  overrideReason: z.string().trim().nullish(),
   out: z.string().nullish()
 })
 export type HyperliquidSizingLockArmCommandOptions = z.infer<
@@ -1201,6 +1204,23 @@ export const HyperliquidSizingLockArmResultSchema = z.object({
   manifestPath: z.string()
 })
 export type HyperliquidSizingLockArmResult = z.infer<typeof HyperliquidSizingLockArmResultSchema>
+
+/**
+ * Arm-collision guard verdict (the COIN ghost-flatten class): a manifest re-arm
+ * must not flatten a coin that currently has a LIVE position, an IN-FLIGHT fill,
+ * or a resting entry. At-arm read via list-positions + list-open-orders +
+ * list-fills. A re-arm for a held coin is refused unless a chief/desi override
+ * (journaled deliberate close path) grants it.
+ */
+export const HyperliquidSizingLockArmCollisionSchema = z.object({
+  livePosition: z.boolean(),
+  inFlightFill: z.boolean(),
+  restingEntry: z.boolean(),
+  note: z.string().nullish()
+})
+export type HyperliquidSizingLockArmCollision = z.infer<
+  typeof HyperliquidSizingLockArmCollisionSchema
+>
 
 export const HyperliquidSignReplayBaseSchema = z.object({
   kind: z.literal('sign-replay'),
