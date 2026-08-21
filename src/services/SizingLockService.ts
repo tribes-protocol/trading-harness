@@ -3,6 +3,7 @@ import { resolve } from 'node:path'
 
 import BigNumber from 'bignumber.js'
 
+import { resolveTradesStateDir } from '@/common/Env'
 import {
   type HyperliquidPackageManifest,
   type HyperliquidPackageManifestRecord,
@@ -18,7 +19,6 @@ import {
 } from '@/types/Hyperliquid'
 import { ensureJsonTreeString, isNullish } from '@/utils/Lang'
 
-const DEFAULT_STATE_DIR = resolve(process.cwd(), '.tribes')
 const MANIFEST_FILENAME = 'operative-package.json'
 const OVERRIDES_FILENAME = 'sizing-lock-overrides.json'
 const JOURNAL_FILENAME = 'sizing-lock-journal.jsonl'
@@ -89,7 +89,7 @@ export class SizingLockService {
   private overrides: Map<string, SizingLockOverrideRecord>
 
   constructor(params: SizingLockServiceParams = {}) {
-    this.stateDir = params.stateDir ?? DEFAULT_STATE_DIR
+    this.stateDir = params.stateDir ?? resolveTradesStateDir()
     this.manifestPath = resolve(this.stateDir, MANIFEST_FILENAME)
     this.overridesPath = resolve(this.stateDir, OVERRIDES_FILENAME)
     this.journalPath = resolve(this.stateDir, JOURNAL_FILENAME)
@@ -351,6 +351,8 @@ export class SizingLockService {
       reason: params.reason.trim(),
       ttlMs,
       grantedAt,
+      stateDir: this.stateDir,
+      statePath: this.overridesPath,
       journalPath: this.journalPath
     })
   }

@@ -1,6 +1,7 @@
 import { appendFile, mkdir, readFile, writeFile } from 'node:fs/promises'
 import { resolve } from 'node:path'
 
+import { resolveTradesStateDir } from '@/common/Env'
 import {
   type HyperliquidEntryGateDecision,
   HyperliquidEntryGateDecisionSchema,
@@ -14,7 +15,6 @@ import {
 } from '@/types/Hyperliquid'
 import { ensureJsonTreeString, isNullish } from '@/utils/Lang'
 
-const DEFAULT_STATE_DIR = resolve(process.cwd(), '.tribes')
 const GATE_STATE_FILENAME = 'entry-gate.json'
 const GATE_JOURNAL_FILENAME = 'entry-gate-journal.jsonl'
 const DEFAULT_GATE_TTL_MS = 15 * 60 * 1000
@@ -67,7 +67,7 @@ export class EntryGateService {
   private states: Map<string, HyperliquidEntryGateState>
 
   constructor(params: EntryGateServiceParams = {}) {
-    this.stateDir = params.stateDir ?? DEFAULT_STATE_DIR
+    this.stateDir = params.stateDir ?? resolveTradesStateDir()
     this.statePath = resolve(this.stateDir, GATE_STATE_FILENAME)
     this.journalPath = resolve(this.stateDir, GATE_JOURNAL_FILENAME)
     this.overrideActors = params.overrideActors ?? DEFAULT_OVERRIDE_ACTORS
@@ -265,6 +265,8 @@ export class EntryGateService {
       reason: params.reason.trim(),
       ttlMs: state.ttlMs,
       firedAt: state.firedAt,
+      stateDir: this.stateDir,
+      statePath: this.statePath,
       journalPath: this.journalPath
     })
   }

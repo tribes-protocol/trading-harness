@@ -970,6 +970,7 @@ export type HyperliquidEntryGateStatesResult = z.infer<
 export const HyperliquidEntryGateStatusCommandOptionsSchema = z.object({
   coin: z.string().trim().min(1).nullish(),
   dex: z.string().trim().nullish(),
+  stateDir: z.string().nullish(),
   out: z.string().nullish()
 })
 export type HyperliquidEntryGateStatusCommandOptions = z.infer<
@@ -986,6 +987,7 @@ export const HyperliquidEntryGateOverrideCommandOptionsSchema = z.object({
     .int()
     .positive()
     .default(15 * 60 * 1000),
+  stateDir: z.string().nullish(),
   out: z.string().nullish()
 })
 export type HyperliquidEntryGateOverrideCommandOptions = z.infer<
@@ -1000,6 +1002,8 @@ export const HyperliquidEntryGateOverrideResultSchema = z.object({
   reason: z.string(),
   ttlMs: z.number().int().positive(),
   firedAt: z.number().int().nonnegative(),
+  stateDir: z.string(),
+  statePath: z.string(),
   journalPath: z.string()
 })
 export type HyperliquidEntryGateOverrideResult = z.infer<
@@ -1058,6 +1062,7 @@ export type HyperliquidSizingLockDecision = z.infer<typeof HyperliquidSizingLock
 export const HyperliquidSizingLockStatusCommandOptionsSchema = z.object({
   coin: z.string().trim().min(1).nullish(),
   dex: z.string().trim().nullish(),
+  stateDir: z.string().nullish(),
   out: z.string().nullish()
 })
 export type HyperliquidSizingLockStatusCommandOptions = z.infer<
@@ -1074,6 +1079,7 @@ export const HyperliquidSizingLockOverrideCommandOptionsSchema = z.object({
     .int()
     .positive()
     .default(15 * 60 * 1000),
+  stateDir: z.string().nullish(),
   out: z.string().nullish()
 })
 export type HyperliquidSizingLockOverrideCommandOptions = z.infer<
@@ -1088,6 +1094,8 @@ export const HyperliquidSizingLockOverrideResultSchema = z.object({
   reason: z.string(),
   ttlMs: z.number().int().positive(),
   grantedAt: z.number().int().nonnegative(),
+  stateDir: z.string(),
+  statePath: z.string(),
   journalPath: z.string()
 })
 export type HyperliquidSizingLockOverrideResult = z.infer<
@@ -1112,6 +1120,7 @@ export const HyperliquidSizingLockArmCommandOptionsSchema = z.object({
       })
     )
   ),
+  stateDir: z.string().nullish(),
   out: z.string().nullish()
 })
 export type HyperliquidSizingLockArmCommandOptions = z.infer<

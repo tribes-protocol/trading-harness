@@ -1,3 +1,6 @@
+import { homedir } from 'node:os'
+import { resolve } from 'node:path'
+
 import { ensureString } from '@/utils/Lang'
 
 const NODE_ENV = process.env.NODE_ENV
@@ -52,3 +55,24 @@ export const COIN_GECKO_PRO_API_KEY = process.env.COIN_GECKO_PRO_API_KEY ?? ''
 export const BIRDEYE_API_KEY = process.env.BIRDEYE_API_KEY ?? ''
 export const NANSEN_API_KEY = process.env.NANSEN_API_KEY ?? ''
 export const MARKETSTACK_API_KEY = process.env.MARKETSTACK_API_KEY ?? ''
+
+/**
+ * Anchored, absolute on-disk state root for the durable entry-gate / sizing
+ * state (entry-gate.json, the sizing manifest, and their journals). Anchor to
+ * this, NEVER process.cwd(): a cwd-relative default let an override run from a
+ * foreign cwd silently write a stray `.tribes` the order path never read — that
+ * is exactly how the desk's BTC slot-1 override stranded (states:[] at order
+ * time despite the desk believing it was journaled; a /tmp/rel-ob/.tribes still
+ * exists).
+ *
+ * Precedence: TRIBES_STATE_DIR env wins outright; else $HOME/workspace/.tribes
+ * (the sandbox clones the harness into /root/workspace per AGENTS.md, so this
+ * keeps today's /root/workspace/.tribes production store); else $HOME/.tribes.
+ * Every choice is absolute, so the writer CLI and the order path resolve the
+ * SAME path no matter what cwd each process boots in.
+ */
+export function resolveTradesStateDir(): string {
+  const explicit = process.env.TRIBES_STATE_DIR?.trim()
+  if (explicit !== undefined && explicit.length > 0) return resolve(explicit)
+  return resolve(homedir(), 'workspace', '.tribes')
+}

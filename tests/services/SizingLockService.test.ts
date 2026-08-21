@@ -292,3 +292,50 @@ describe('SizingLockService — authority-gated journaled override', () => {
     expect(decision.reason).toContain('v3-PATHA')
   })
 })
+
+describe('SizingLockService — anchored state dir (cwd-independent)', () => {
+  test('arm+override from a foreign cwd lands in the anchored store and a fresh order-path read sees it', async () => {
+    const anchor = await mkdtemp(join(tmpdir(), 'sizing-anchor-'))
+    const foreign = await mkdtemp(join(tmpdir(), 'sizing-foreign-'))
+    const savedCwd = process.cwd()
+    vi.stubEnv('TRIBES_STATE_DIR', anchor)
+    try {
+      process.chdir(foreign)
+
+      // Writer CLI process: no explicit stateDir — must resolve to the anchored store.
+      const writer = new SizingLockService()
+      const armed = await writer.arm({ packageId: 'A-212', version: 'v3', perCoin: [V3_BTC_ENTRY] })
+      expect(armed.manifestPath).toBe(join(anchor, 'operative-package.json'))
+      const grant = await writer.override({
+        dex: 'main',
+        coin: 'BTC',
+        actor: 'exec-lead',
+        reason: 'foreign-cwd re-size',
+        ttlMs: 60_000
+      })
+      expect(grant.stateDir).toBe(anchor)
+      expect(grant.statePath).toBe(join(anchor, 'sizing-lock-overrides.json'))
+
+      // The write must NOT have landed in the foreign cwd (the old bug).
+      await expect(
+        readFile(join(foreign, '.tribes', 'operative-package.json'), 'utf8')
+      ).rejects.toThrow('ENOENT')
+
+      // Order-path process: fresh instance, same anchored default — sees manifest + override.
+      const reader = new SizingLockService()
+      const decision = await reader.isEntrySizeAllowed({
+        dex: 'main',
+        coin: 'BTC',
+        amount: new BigNumber(0.0259),
+        referencePrice: new BigNumber(71913)
+      })
+      expect(decision.allowed).toBe(true)
+      expect(decision.reason).toContain('override')
+    } finally {
+      process.chdir(savedCwd)
+      vi.unstubAllEnvs()
+      await rm(anchor, { recursive: true, force: true })
+      await rm(foreign, { recursive: true, force: true })
+    }
+  })
+})

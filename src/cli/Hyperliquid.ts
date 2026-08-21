@@ -247,11 +247,18 @@ export function buildHyperliquidCommand(): Command {
     )
     .option('--coin <coin>', 'Filter to one coin')
     .option('--dex <dex>', 'Perp dex name (main by default)')
+    .option(
+      '--stateDir <dir>',
+      'State dir override (default: anchored TRIBES_STATE_DIR or $HOME/workspace/.tribes)'
+    )
     .option('--out <file>', 'Write output JSON to file')
     .action(async (options: unknown): Promise<void> => {
       const request = HyperliquidEntryGateStatusCommandOptionsSchema.parse(options)
-      await entryGateService.load()
-      const states = await entryGateService.getStates()
+      const svc = request.stateDir
+        ? new EntryGateService({ stateDir: request.stateDir })
+        : entryGateService
+      await svc.load()
+      const states = await svc.getStates()
       const filtered = states.states.filter((state) => {
         const dexMatch = isNullish(request.dex) || state.dex === request.dex.trim()
         const coinMatch =
@@ -275,10 +282,17 @@ export function buildHyperliquidCommand(): Command {
     .requiredOption('--actor <actor>', 'Override authority (exec-lead | chief)')
     .requiredOption('--reason <reason>', 'Why the override is being granted')
     .option('--ttl-ms <ms>', 'TTL in milliseconds (default 900000 = 15 minutes)', '900000')
+    .option(
+      '--stateDir <dir>',
+      'State dir override (default: anchored TRIBES_STATE_DIR or $HOME/workspace/.tribes)'
+    )
     .option('--out <file>', 'Write output JSON to file')
     .action(async (options: unknown): Promise<void> => {
       const request = HyperliquidEntryGateOverrideCommandOptionsSchema.parse(options)
-      const response = await entryGateService.override({
+      const svc = request.stateDir
+        ? new EntryGateService({ stateDir: request.stateDir })
+        : entryGateService
+      const response = await svc.override({
         dex: request.dex,
         coin: request.coin,
         actor: request.actor,
@@ -307,6 +321,9 @@ export function buildHyperliquidCommand(): Command {
     .option('--out <file>', 'Write output JSON to file')
     .action(async (options: unknown): Promise<void> => {
       const request = HyperliquidSizingLockArmCommandOptionsSchema.parse(options)
+      const svc = request.stateDir
+        ? new SizingLockService({ stateDir: request.stateDir })
+        : sizingLockService
       const perCoin = Object.entries(request.spec).map(([coin, value]) => ({
         coin,
         dex: value.dex ?? 'main',
@@ -315,7 +332,7 @@ export function buildHyperliquidCommand(): Command {
         leverage: value.leverage,
         szDecimals: value.szDecimals
       }))
-      const response = await sizingLockService.arm({
+      const response = await svc.arm({
         packageId: request.packageId,
         version: request.ver,
         perCoin
@@ -332,11 +349,18 @@ export function buildHyperliquidCommand(): Command {
     .description('Read the operative-package manifest and which coins have a locked entry size')
     .option('--coin <coin>', 'Filter to one coin')
     .option('--dex <dex>', 'Perp dex name (main by default)')
+    .option(
+      '--stateDir <dir>',
+      'State dir override (default: anchored TRIBES_STATE_DIR or $HOME/workspace/.tribes)'
+    )
     .option('--out <file>', 'Write output JSON to file')
     .action(async (options: unknown): Promise<void> => {
       const request = HyperliquidSizingLockStatusCommandOptionsSchema.parse(options)
-      await sizingLockService.load()
-      const operative = await sizingLockService.getOperative()
+      const svc = request.stateDir
+        ? new SizingLockService({ stateDir: request.stateDir })
+        : sizingLockService
+      await svc.load()
+      const operative = await svc.getOperative()
       const coins = (operative?.perCoin ?? []).filter((entry) => {
         const dexMatch = isNullish(request.dex) || entry.dex === request.dex.trim()
         const coinMatch =
@@ -360,10 +384,17 @@ export function buildHyperliquidCommand(): Command {
     .requiredOption('--actor <actor>', 'Override authority (exec-lead | chief)')
     .requiredOption('--reason <reason>', 'Why the override is being granted')
     .option('--ttl-ms <ms>', 'TTL in milliseconds (default 900000 = 15 minutes)', '900000')
+    .option(
+      '--stateDir <dir>',
+      'State dir override (default: anchored TRIBES_STATE_DIR or $HOME/workspace/.tribes)'
+    )
     .option('--out <file>', 'Write output JSON to file')
     .action(async (options: unknown): Promise<void> => {
       const request = HyperliquidSizingLockOverrideCommandOptionsSchema.parse(options)
-      const response = await sizingLockService.override({
+      const svc = request.stateDir
+        ? new SizingLockService({ stateDir: request.stateDir })
+        : sizingLockService
+      const response = await svc.override({
         dex: request.dex,
         coin: request.coin,
         actor: request.actor,

@@ -4,6 +4,7 @@ import { join } from 'node:path'
 
 import { describe, expect, test, vi } from 'vitest'
 
+import { resolveTradesStateDir } from '@/common/Env'
 import { EntryGateService } from '@/services/EntryGateService'
 
 async function freshService(overrideActors?: readonly string[]): Promise<{
@@ -139,5 +140,58 @@ describe('EntryGateService override (authority-gated, journaled)', () => {
     const mrna = await c.isEntryAllowed('main', 'MRNA')
     expect(eth.allowed).toBe(true)
     expect(mrna.allowed).toBe(true)
+  })
+})
+
+describe('EntryGateService — anchored state dir (cwd-independent)', () => {
+  test('resolveTradesStateDir honors TRIBES_STATE_DIR and returns an absolute path', async () => {
+    const anchor = await mkdtemp(join(tmpdir(), 'gate-anchor-'))
+    vi.stubEnv('TRIBES_STATE_DIR', anchor)
+    try {
+      expect(resolveTradesStateDir()).toBe(anchor)
+      expect(resolveTradesStateDir()).toMatch(/^\//)
+    } finally {
+      vi.unstubAllEnvs()
+      await rm(anchor, { recursive: true, force: true })
+    }
+  })
+
+  test('override from a foreign cwd lands in the anchored store and a fresh order-path read sees it', async () => {
+    const anchor = await mkdtemp(join(tmpdir(), 'gate-anchor-'))
+    const foreign = await mkdtemp(join(tmpdir(), 'gate-foreign-'))
+    const savedCwd = process.cwd()
+    vi.stubEnv('TRIBES_STATE_DIR', anchor)
+    try {
+      process.chdir(foreign)
+
+      // Writer CLI process: no explicit stateDir — must resolve to the anchored store.
+      const writer = new EntryGateService()
+      const result = await writer.override({
+        dex: 'main',
+        coin: 'BTC',
+        actor: 'exec-lead',
+        reason: 'foreign-cwd override',
+        ttlMs: 60_000
+      })
+      expect(result.stateDir).toBe(anchor)
+      expect(result.statePath).toBe(join(anchor, 'entry-gate.json'))
+      expect(result.journalPath).toBe(join(anchor, 'entry-gate-journal.jsonl'))
+
+      // The write must NOT have landed in the foreign cwd (the old bug).
+      await expect(readFile(join(foreign, '.tribes', 'entry-gate.json'), 'utf8')).rejects.toThrow(
+        'ENOENT'
+      )
+
+      // Order-path process: fresh instance, same anchored default — sees the flip.
+      const reader = new EntryGateService()
+      const decision = await reader.isEntryAllowed('main', 'BTC')
+      expect(decision.allowed).toBe(true)
+      expect(decision.state.status).toBe('trigger_fired')
+    } finally {
+      process.chdir(savedCwd)
+      vi.unstubAllEnvs()
+      await rm(anchor, { recursive: true, force: true })
+      await rm(foreign, { recursive: true, force: true })
+    }
   })
 })
