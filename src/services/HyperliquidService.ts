@@ -125,6 +125,26 @@ const HYPERLIQUID_MAINNET_SIGNATURE_CHAIN_ID = '0xa4b1'
 const MIN_HYPERLIQUID_ORDER_NOTIONAL_USD = 10
 const HYPERLIQUID_TWAP_INTERVAL_SECONDS = 30
 
+/**
+ * A bracket (tp/sl) order whose stop or target is inverted relative to the
+ * SIDE and the RESOLVED entry price — e.g. a long with slPx >= entry, or a
+ * short with slPx <= entry. The venue would accept this as-is (a long
+ * stop above the entry only ever fires after a loss already exceeded), so
+ * we refuse BEFORE sign + broadcast. Same guard family as the
+ * entry-gate/sizing locks in the order path.
+ */
+export class BracketGuardError extends Error {
+  constructor(side: 'long' | 'short', leg: 'slPx' | 'tpPx', entryPrice: string, legPx: string) {
+    const isSl = leg === 'slPx'
+    const expected = side === 'long' ? (isSl ? 'below' : 'above') : isSl ? 'above' : 'below'
+    super(
+      `UNSAFE_BRACKET: ${side} ${leg} ${legPx} is not ${expected} the resolved entry ${entryPrice} — ` +
+        `an inverted bracket would ride the entry the venue fills. Refusing before sign/broadcast.`
+    )
+    this.name = 'BracketGuardError'
+  }
+}
+
 // L2 order book snapshot via the info endpoint ({type: 'l2Book', coin}).
 // https://hyperliquid.gitbook.io/hyperliquid-docs/for-developers/api/info-endpoint#l2-book-snapshot
 export const HyperliquidOrderBookLevelSchema = z.object({
@@ -546,6 +566,18 @@ export class HyperliquidService {
       }
     ]
 
+    // Bracket side-guard: the stop/target must sit on the correct side of the
+    // RESOLVED entry the entry leg rides (not the raw ticket number — kills the
+    // stale-ref/slippage class too). Equality is not protection: refuse.
+    if (!isNullish(request.slPx) && !isNullish(request.tpPx)) {
+      this.assertSafeBracket(isBuy, entryPrice, request.slPx, 'slPx')
+      this.assertSafeBracket(isBuy, entryPrice, request.tpPx, 'tpPx')
+    } else if (!isNullish(request.slPx)) {
+      this.assertSafeBracket(isBuy, entryPrice, request.slPx, 'slPx')
+    } else if (!isNullish(request.tpPx)) {
+      this.assertSafeBracket(isBuy, entryPrice, request.tpPx, 'tpPx')
+    }
+
     if (!isNullish(request.tpPx)) {
       orders.push(
         this.buildBracketExitLeg({
@@ -573,6 +605,31 @@ export class HyperliquidService {
     }
 
     return { orders, grouping: 'normalTpsl' }
+  }
+
+  /**
+   * Bracket side-guard: refuse an inverted stop/target before it reaches the
+   * venue. Long: sl < entry < tp. Short: sl > entry > tp. Equality is not
+   * protection — equal-to-entry is rejected the same as inverted. The
+   * comparison runs against the RESOLVED entry the entry leg rides, so a
+   * stale/off-band slip reference is caught too.
+   */
+  private assertSafeBracket(
+    isBuy: boolean,
+    entryPrice: string,
+    legPx: BigNumber,
+    leg: 'slPx' | 'tpPx'
+  ): void {
+    const entry = new BigNumber(entryPrice)
+    const px = legPx
+    const isSl = leg === 'slPx'
+    // Long: stop below entry, target above. Short: mirrored.
+    const invalidForLong = isSl ? !px.isLessThan(entry) : !px.isGreaterThan(entry)
+    const invalidForShort = isSl ? !px.isGreaterThan(entry) : !px.isLessThan(entry)
+    const invalid = isBuy ? invalidForLong : invalidForShort
+    if (invalid) {
+      throw new BracketGuardError(isBuy ? 'long' : 'short', leg, entry.toFixed(), px.toFixed())
+    }
   }
 
   private buildScaleOrderParams(params: BuildScaleOrdersParams): OrderParameters {

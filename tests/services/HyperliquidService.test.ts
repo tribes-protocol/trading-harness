@@ -687,3 +687,107 @@ describe('HyperliquidService account-read rate-limit resilience', () => {
     expect(result.spot).toEqual([])
   })
 })
+
+describe('HyperliquidService bracket side-guard (inverted-stop prevention)', () => {
+  async function bracketService(): Promise<{ gated: HyperliquidService; cleanup: () => Promise<void> }> {
+    const { mkdtemp, rm } = await import('node:fs/promises')
+    const { tmpdir } = await import('node:os')
+    const { join } = await import('node:path')
+    const { EntryGateService } = await import('@/services/EntryGateService')
+    const stateDir = await mkdtemp(join(tmpdir(), 'bracket-guard-'))
+    const entryGate = new EntryGateService({ stateDir })
+    await entryGate.fireTrigger('main', 'BTC', 60_000)
+    const metaAndAssetCtxs = vi.fn().mockResolvedValue([MAIN_META, [MAIN_CONTEXT]])
+    const params: HyperliquidServiceParams = {
+      transaction: {} as HyperliquidServiceParams['transaction'],
+      infoClient: { metaAndAssetCtxs, perpDexs: vi.fn() } as unknown as InfoClient,
+      entryGate
+    }
+    const gated = new HyperliquidService(params)
+    return {
+      gated,
+      cleanup: () => rm(stateDir, { recursive: true, force: true })
+    }
+  }
+
+  const Big = () => import('bignumber.js').then((m) => m.default)
+
+  // Limit orders: entry resolves to the exact limit price (104500), so the
+  // guard compares against a deterministic entry.
+  async function attemptBracket(opts: {
+    side: 'long' | 'short'
+    slPx?: string
+    tpPx?: string
+    reduceOnly?: boolean
+  }): Promise<string> {
+    const { gated, cleanup } = await bracketService()
+    try {
+      const BN = await Big()
+      const error = await gated
+        .tradePerp({
+          request: {
+            from: '0xbb64c24a6b2ee1185621490d2a1ae06522f15f57',
+            coin: 'BTC',
+            amount: new BN(0.001),
+            side: opts.side,
+            type: 'limit',
+            price: new BN(104500),
+            slPx: opts.slPx === undefined ? undefined : new BN(opts.slPx),
+            tpPx: opts.tpPx === undefined ? undefined : new BN(opts.tpPx),
+            reduceOnly: opts.reduceOnly ?? false,
+            walletId: 'w'
+          },
+          walletId: 'w'
+        } as never)
+        .then(() => null)
+        .catch((e: unknown) => String(e))
+      return error ?? 'NO-ERROR'
+    } finally {
+      await cleanup()
+    }
+  }
+
+  test('long slPx above entry is rejected (inverted stop)', async () => {
+    const err = await attemptBracket({ side: 'long', slPx: '104600', tpPx: '105000' })
+    expect(err).toContain('UNSAFE_BRACKET')
+    expect(err).toContain('slPx')
+  })
+
+  test('long tpPx below entry is rejected (inverted target)', async () => {
+    const err = await attemptBracket({ side: 'long', slPx: '104000', tpPx: '104400' })
+    expect(err).toContain('UNSAFE_BRACKET')
+    expect(err).toContain('tpPx')
+  })
+
+  test('short slPx below entry is rejected (inverted stop)', async () => {
+    const err = await attemptBracket({ side: 'short', slPx: '104000', tpPx: '104000' })
+    expect(err).toContain('UNSAFE_BRACKET')
+    expect(err).toContain('slPx')
+  })
+
+  test('short tpPx above entry is rejected (inverted target)', async () => {
+    const err = await attemptBracket({ side: 'short', slPx: '105000', tpPx: '105000' })
+    expect(err).toContain('UNSAFE_BRACKET')
+    expect(err).toContain('tpPx')
+  })
+
+  test('equal-to-entry is rejected — equality is not protection', async () => {
+    const err = await attemptBracket({ side: 'long', slPx: '104500', tpPx: '105000' })
+    expect(err).toContain('UNSAFE_BRACKET')
+  })
+
+  test('valid long bracket (sl < entry < tp) passes the guard', async () => {
+    const err = await attemptBracket({ side: 'long', slPx: '104000', tpPx: '105000' })
+    expect(err).not.toContain('UNSAFE_BRACKET')
+  })
+
+  test('valid short bracket (sl > entry > tp) passes the guard', async () => {
+    const err = await attemptBracket({ side: 'short', slPx: '105000', tpPx: '104000' })
+    expect(err).not.toContain('UNSAFE_BRACKET')
+  })
+
+  test('reduce-only non-bracket order is unaffected by the guard', async () => {
+    const err = await attemptBracket({ side: 'long', reduceOnly: true })
+    expect(err).not.toContain('UNSAFE_BRACKET')
+  })
+})
