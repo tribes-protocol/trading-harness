@@ -1156,7 +1156,8 @@ describe('HyperliquidService order-path flatten guard (COIN rule)', () => {
     coin: string
     liveSide: 'long' | 'short'
     directive?: boolean
-  }): Promise<{ svc: HyperliquidService; cleanup: () => Promise<void> }> {
+    journalDirective?: boolean
+  }): Promise<{ svc: HyperliquidService; cleanup: () => Promise<void>; stateDir: string }> {
     const { SizingLockService } = await import('@/services/SizingLockService')
     const { mkdtemp, rm } = await import('node:fs/promises')
     const { tmpdir } = await import('node:os')
@@ -1172,6 +1173,25 @@ describe('HyperliquidService order-path flatten guard (COIN rule)', () => {
         reason: 'user directive: close + re-place COUN at new spec',
         ttlMs: 60_000
       })
+    }
+    if (opts.journalDirective) {
+      // Reproduce the LINK ratchet path: the Chief directive reached the audit
+      // JOURNAL (arm-collision-override / arm kind), NOT the override registry.
+      const { appendFile, mkdir } = await import('node:fs/promises')
+      await mkdir(stateDir, { recursive: true })
+      await appendFile(
+        join(stateDir, 'sizing-lock-journal.jsonl'),
+        `${JSON.stringify({
+          ts: Date.now(),
+          actor: 'chief',
+          kind: 'arm-collision-override',
+          dex: 'main',
+          coin: opts.coin,
+          version: 'v14',
+          reason: 'user directive: LINK ratchet / reduce-only trail per Chief'
+        })}\n`,
+        'utf8'
+      )
     }
     // Live position on the venue for the coin.
     const clearinghouseState = vi.fn().mockResolvedValue({
@@ -1197,14 +1217,19 @@ describe('HyperliquidService order-path flatten guard (COIN rule)', () => {
     const meta = {
       universe: [
         { name: 'BTC', szDecimals: 5, maxLeverage: 40, marginTableId: 1 },
-        { name: 'COUN', szDecimals: 2, maxLeverage: 30, marginTableId: 1 }
+        { name: 'COUN', szDecimals: 2, maxLeverage: 30, marginTableId: 1 },
+        { name: 'LINK', szDecimals: 3, maxLeverage: 30, marginTableId: 1 }
       ],
       marginTables: [],
       collateralToken: 0
     }
     const metaAndAssetCtxs = vi.fn().mockResolvedValue([
       meta,
-      [MAIN_CONTEXT, { prevDayPx: '178', dayNtlVlm: '2', markPx: '180.09', midPx: '180.09', funding: '0', openInterest: '1', premium: '0', oraclePx: '180.09', impactPxs: ['180.1', '180.08'], dayBaseVlm: '2' }]
+      [
+        MAIN_CONTEXT,
+        { prevDayPx: '178', dayNtlVlm: '2', markPx: '180.09', midPx: '180.09', funding: '0', openInterest: '1', premium: '0', oraclePx: '180.09', impactPxs: ['180.1', '180.08'], dayBaseVlm: '2' },
+        { prevDayPx: '10.9', dayNtlVlm: '2', markPx: '11.5', midPx: '11.5', funding: '0', openInterest: '1', premium: '0', oraclePx: '11.5', impactPxs: ['11.51', '11.49'], dayBaseVlm: '2' }
+      ]
     ])
     const infoClient = {
       metaAndAssetCtxs,
@@ -1222,7 +1247,7 @@ describe('HyperliquidService order-path flatten guard (COIN rule)', () => {
       sizingLock
     }
     const svc = new HyperliquidService(params)
-    return { svc, cleanup: () => rm(stateDir, { recursive: true, force: true }) }
+    return { svc, cleanup: () => rm(stateDir, { recursive: true, force: true }), stateDir }
   }
 
   test('a closing reduce-only order on a live position is REFUSED without a user directive', async () => {
@@ -1271,6 +1296,61 @@ describe('HyperliquidService order-path flatten guard (COIN rule)', () => {
         .then(() => null)
         .catch((e: unknown) => String(e))
       expect(String(error)).not.toContain('flatten guard')
+    } finally {
+      await cleanup()
+    }
+  })
+
+  test('LINK ratchet: a JOURNALED chief directive (not the registry) lets the reduce-only stop place', async () => {
+    const { svc, cleanup } = await flattenService({
+      coin: 'LINK',
+      liveSide: 'long',
+      journalDirective: true
+    })
+    const Big = await import('bignumber.js').then((m) => m.default)
+    try {
+      const error = await svc
+        .tradePerp({
+          request: {
+            from: '0xbb64c24a6b2ee1185621490d2a1ae06522f15f57',
+            coin: 'LINK',
+            amount: new Big(1),
+            side: 'short',
+            type: 'market',
+            reduceOnly: true,
+            walletId: 'w'
+          },
+          walletId: 'w'
+        } as never)
+        .then(() => null)
+        .catch((e: unknown) => String(e))
+      // The journaled chief directive must be honored -> the ratchet places.
+      expect(String(error)).not.toContain('flatten guard')
+    } finally {
+      await cleanup()
+    }
+  })
+
+  test('LINK ratchet with NO directive (neither registry nor journal) is still REFUSED', async () => {
+    const { svc, cleanup } = await flattenService({ coin: 'LINK', liveSide: 'long' })
+    const Big = await import('bignumber.js').then((m) => m.default)
+    try {
+      const error = await svc
+        .tradePerp({
+          request: {
+            from: '0xbb64c24a6b2ee1185621490d2a1ae06522f15f57',
+            coin: 'LINK',
+            amount: new Big(1),
+            side: 'short',
+            type: 'market',
+            reduceOnly: true,
+            walletId: 'w'
+          },
+          walletId: 'w'
+        } as never)
+        .then(() => null)
+        .catch((e: unknown) => String(e))
+      expect(String(error)).toContain('flatten guard')
     } finally {
       await cleanup()
     }

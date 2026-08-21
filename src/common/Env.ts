@@ -1,5 +1,5 @@
 import { homedir } from 'node:os'
-import { resolve } from 'node:path'
+import { dirname, resolve } from 'node:path'
 
 import { ensureString } from '@/utils/Lang'
 
@@ -75,4 +75,13 @@ export function resolveTradesStateDir(): string {
   const explicit = process.env.TRIBES_STATE_DIR?.trim()
   if (explicit !== undefined && explicit.length > 0) return resolve(explicit)
   return resolve(homedir(), 'workspace', '.tribes')
+}
+
+/**
+ * Anchored workspace root (the parent of the state dir, where the project
+ * `.env` and the git workspace live). Also never cwd: resolved relative to the
+ * state dir so a foreign-cwd invocation finds the same repo files.
+ */
+export function resolveWorkspaceRoot(): string {
+  return dirname(resolveTradesStateDir())
 }

@@ -83,6 +83,12 @@ function isFileNotFoundError(error: unknown): boolean {
   return typeof error === 'object' && error !== null && 'code' in error && error.code === 'ENOENT'
 }
 
+/** Type guard: `v` is a plain object (record). Lets JSON journal lines be
+ * narrowed without a type assertion (the repo enforces assertionStyle never). */
+function isRecord(v: unknown): v is Record<string, unknown> {
+  return typeof v === 'object' && v !== null && !Array.isArray(v)
+}
+
 function normalizeDexName(dex: string | null | undefined): string {
   const trimmed = dex?.trim() ?? ''
   return trimmed.length === 0 || trimmed === 'main' ? 'main' : trimmed
@@ -420,12 +426,88 @@ export class SizingLockService {
    * exec-lead journaled re-arm/close directive while a live position exists).
    * The order-path flatten guard consults this — an armed live position is not
    * flattened without it.
+   *
+   * Consults BOTH stores that can carry the directive, because the desk writes
+   * it through two paths and the guard must not miss either:
+   *   1. the durable override REGISTRY (sizing-lock-overrides.json, set by
+   *      `override()` with an explicit `until` TTL), and
+   *   2. the audit JOURNAL (sizing-lock-journal.jsonl) — an `arm()` collision
+   *      override (kind arm-collision-override / twap-in-flight / slot-cap /
+   *      plain `override`) by chief/exec-lead for this coin, honored within the
+   *      override TTL window.
+   * The LINK ratchet failure was path 2: the Chief directive was journaled but
+   * `hasActiveFlattenDirective` only read the registry, so the flatten guard
+   * refused a journaled reduce-only ratchet.
    */
   async hasActiveFlattenDirective(dex: string | null | undefined, coin: string): Promise<boolean> {
     await this.loadOverrides()
     const key = `${normalizeDexName(dex)}:${normalizeCoinName(coin)}`
     const override = this.overrides.get(key)
-    return !isNullish(override) && override.until > Date.now()
+    if (!isNullish(override) && override.until > Date.now()) return true
+    return await this.hasJournaledDirective(dex, coin)
+  }
+
+  /**
+   * Scan the audit journal for a recent chief/exec-lead directive on this coin
+   * (within the override TTL window). The journal is the write-behind of both
+   * `override()` and `arm()` collision overrides, so a directive that only ever
+   * hit the journal is still honored.
+   */
+  private async hasJournaledDirective(
+    dex: string | null | undefined,
+    coin: string
+  ): Promise<boolean> {
+    const targetDex = normalizeDexName(dex)
+    const targetCoin = normalizeCoinName(coin)
+    const cutoff = Date.now() - DEFAULT_OVERRIDE_TTL_MS
+    let text: string
+    try {
+      text = await readFile(this.journalPath, 'utf8')
+    } catch {
+      return false
+    }
+    for (const line of text.split('\n')) {
+      const trimmed = line.trim()
+      if (trimmed.length === 0) continue
+      let parsed: unknown
+      try {
+        parsed = JSON.parse(trimmed)
+      } catch {
+        continue
+      }
+      if (!isRecord(parsed)) continue
+      const entry = parsed
+      const ts = typeof entry.ts === 'number' ? entry.ts : 0
+      const actor = typeof entry.actor === 'string' ? entry.actor.trim() : ''
+      if (ts < cutoff) continue
+      if (actor !== 'chief' && actor !== 'exec-lead') continue
+      const kind = typeof entry.kind === 'string' ? entry.kind : 'override'
+      // Plain override() journal line: {ts, actor, dex, coin, reason, ttlMs}.
+      if (
+        kind === 'override' &&
+        normalizeDexName(String(entry.dex ?? '')) === targetDex &&
+        normalizeCoinName(String(entry.coin ?? '')) === targetCoin
+      ) {
+        return true
+      }
+      // arm()-path override kinds carry the directive inside delta[]
+      // (arm-collision-override / twap-in-flight-override / slot-cap-override) or
+      // the arm journal's delta list.
+      const rawDelta = entry.delta
+      const delta: Array<Record<string, unknown>> = Array.isArray(rawDelta)
+        ? rawDelta.filter((d): d is Record<string, unknown> => typeof d === 'object' && d !== null)
+        : []
+      if (
+        (kind === 'arm-collision-override' ||
+          kind === 'twap-in-flight-override' ||
+          kind === 'arm') &&
+        (delta.some((d) => normalizeCoinName(String(d.coin ?? '')) === targetCoin) ||
+          normalizeCoinName(String(entry.coin ?? '')) === targetCoin)
+      ) {
+        return true
+      }
+    }
+    return false
   }
 
   /**

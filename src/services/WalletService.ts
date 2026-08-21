@@ -1,5 +1,5 @@
 import { mkdir, readFile, writeFile } from 'node:fs/promises'
-import { dirname, resolve } from 'node:path'
+import { dirname } from 'node:path'
 
 import {
   createAssociatedTokenAccountInstruction,
@@ -11,7 +11,7 @@ import { encodeFunctionData, erc20Abi } from 'viem'
 
 import { API_BASE_URL, API_BEARER_TOKEN } from '@/common/Env'
 import { fetchTerminalApi } from '@/helpers/TerminalApiRequest'
-import { WALLET_SNAPSHOT_PATH } from '@/helpers/WalletSnapshot'
+import { resolveWalletSnapshotPath } from '@/helpers/WalletSnapshot'
 import type { AgentWalletSnapshot } from '@/types/Privy'
 import { AgentWalletSnapshotSchema } from '@/types/Privy'
 import { NATIVE_MINT, type SolInstruction, SolInstructionSchema } from '@/types/Solana'
@@ -26,16 +26,13 @@ import { ensureJsonTreeString, isNullish } from '@/utils/Lang'
 import { isSolanaWalletAddress } from '@/utils/Solana'
 
 interface WalletServiceParams {
-  readonly cwd: string
   readonly solConnection: Connection
 }
 
 export class WalletService {
-  private readonly cwd: string
   private readonly solConnection: Connection
 
   constructor(params: WalletServiceParams) {
-    this.cwd = params.cwd
     this.solConnection = params.solConnection
   }
 
@@ -181,7 +178,7 @@ export class WalletService {
   }
 
   private async readWalletSnapshot(): Promise<AgentWalletSnapshot[] | null> {
-    const path = resolve(this.cwd, WALLET_SNAPSHOT_PATH)
+    const path = resolveWalletSnapshotPath()
     try {
       const text = await readFile(path, 'utf8')
       const parsed: unknown = JSON.parse(text)
@@ -192,7 +189,7 @@ export class WalletService {
   }
 
   private async writeWalletSnapshot(snapshot: AgentWalletSnapshot[]): Promise<void> {
-    const path = resolve(this.cwd, WALLET_SNAPSHOT_PATH)
+    const path = resolveWalletSnapshotPath()
     await mkdir(dirname(path), { recursive: true })
     await writeFile(path, `${ensureJsonTreeString(snapshot)}\n`, 'utf8')
   }

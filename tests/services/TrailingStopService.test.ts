@@ -96,8 +96,18 @@ async function freshService(
     metaAndAssetCtxs: vi.fn(async () => {
       const mark = options?.mark ?? '70000'
       return [
-        { universe: [{ name: 'BTC', szDecimals: 5, maxLeverage: 40, marginTableId: 1 }], marginTables: [], collateralToken: 0 },
-        [{ prevDayPx: '69000', dayNtlVlm: '0', markPx: mark, midPx: mark, funding: '0', openInterest: '0', premium: null, oraclePx: mark }]
+        {
+          universe: [
+            { name: 'BTC', szDecimals: 5, maxLeverage: 40, marginTableId: 1 },
+            { name: 'LINK', szDecimals: 3, maxLeverage: 30, marginTableId: 1 }
+          ],
+          marginTables: [],
+          collateralToken: 0
+        },
+        [
+          { prevDayPx: '69000', dayNtlVlm: '0', markPx: mark, midPx: mark, funding: '0', openInterest: '0', premium: null, oraclePx: mark },
+          { prevDayPx: '10.9', dayNtlVlm: '0', markPx: mark, midPx: mark, funding: '0', openInterest: '0', premium: null, oraclePx: mark }
+        ]
       ]
     })
   } as unknown as Parameters<ConstructorParameters<typeof TrailingStopService>[0]>['infoClient']
@@ -552,5 +562,27 @@ describe('TrailingStopService profit-trail engine (engage gate + no-lose)', () =
       expect(s).toBeGreaterThanOrEqual(69178 - 0.5)
     }
     expect(stopsSeen.length).toBeGreaterThanOrEqual(3)
+  })
+
+  test('profit-trail ARM on a live LINK long places clean (no flatten-guard gap)', async () => {
+    const fake = fakeHyperliquid()
+    fake.positions = [{ dex: 'main', coin: 'LINK', side: 'long', size: '78.7', entryPx: '11.40' }]
+    const { service } = await freshService(fake, { mark: '11.518' })
+    const result = await service.arm({
+      coin: 'LINK',
+      dex: 'main',
+      from: ADDRESS,
+      side: 'long',
+      trail: { kind: 'profit', trailProfitPct: 0.3, engageProfitUsd: 5 },
+      walletId: WALLET_ID
+    })
+    // The arm path issues NO reduce-only order (it only computes + records the
+    // stop), so it cannot hit the flatten guard / consumption gap — it places
+    // clean on the live LINK long, regardless of directive.
+    expect(result.armed).toBe(true)
+    expect(result.state.coin).toBe('LINK')
+    expect(result.state.side).toBe('long')
+    // No reduce-only close was issued at arm time (the monitor exits later).
+    expect(fake.closeCalls).toHaveLength(0)
   })
 })

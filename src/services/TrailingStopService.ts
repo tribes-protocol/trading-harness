@@ -7,6 +7,7 @@ import type { InfoClient, MetaAndAssetCtxsParameters } from '@nktkas/hyperliquid
 import { SubscriptionClient, WebSocketTransport } from '@nktkas/hyperliquid'
 import BigNumber from 'bignumber.js'
 
+import { resolveTradesStateDir } from '@/common/Env'
 import { retryProviderAware } from '@/helpers/AsyncControl'
 import { HyperliquidService } from '@/services/HyperliquidService'
 import { type EthAddress } from '@/types/Eth'
@@ -29,7 +30,7 @@ import {
 } from '@/types/TrailingStop'
 import { ensureJsonTreeString, isNullish } from '@/utils/Lang'
 
-const DEFAULT_STATE_DIR = resolve(process.cwd(), '.tribes')
+const DEFAULT_STATE_DIR = resolveTradesStateDir()
 const STOPS_FILENAME = 'trailing-stops.json'
 const HEARTBEAT_FRESH_MS = 45_000
 const STREAM_CONNECT_TIMEOUT_MS = 6_000

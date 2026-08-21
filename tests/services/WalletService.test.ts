@@ -60,15 +60,15 @@ describe('WalletService', () => {
     vi.stubGlobal('fetch', fetchSpy)
 
     const { WalletService } = await import('@/services/WalletService')
-    const cwd = await mkdtemp(join(tmpdir(), 'wallet-skill-test-'))
+    const stateDir = await mkdtemp(join(tmpdir(), 'wallet-state-'))
+    vi.stubEnv('TRIBES_STATE_DIR', stateDir)
     try {
       const walletService = new WalletService({
-        cwd,
         solConnection: createMockSolConnection()
       })
       await walletService.listWallets()
     } finally {
-      await rm(cwd, { recursive: true, force: true })
+      await rm(stateDir, { recursive: true, force: true })
     }
 
     const headers = new Headers(capturedInit?.headers)
@@ -136,21 +136,15 @@ describe('WalletService', () => {
     vi.stubGlobal('fetch', fetchSpy)
 
     const { WalletService } = await import('@/services/WalletService')
-    const cwd = await mkdtemp(join(tmpdir(), 'wallet-skill-test-'))
-    try {
-      const walletService = new WalletService({
-        cwd,
-        solConnection: createMockSolConnection()
-      })
-      const assets = await walletService.listAssets({
-        walletAddresses: ['0x1111111111111111111111111111111111111111'],
-        chainIds: undefined
-      })
-      expect(assets.assets[0]?.pnl?.pnl.total_usd.toNumber()).toBe(30)
-      expect(assets.summary.pnl.total_usd.toNumber()).toBe(150)
-    } finally {
-      await rm(cwd, { recursive: true, force: true })
-    }
+    const walletService = new WalletService({
+      solConnection: createMockSolConnection()
+    })
+    const assets = await walletService.listAssets({
+      walletAddresses: ['0x1111111111111111111111111111111111111111'],
+      chainIds: undefined
+    })
+    expect(assets.assets[0]?.pnl?.pnl.total_usd.toNumber()).toBe(30)
+    expect(assets.summary.pnl.total_usd.toNumber()).toBe(150)
 
     const headers = new Headers(capturedInit?.headers)
     expect(capturedUrl).toContain('/user/assets?')
@@ -166,7 +160,6 @@ describe('WalletService', () => {
 
     const { WalletService } = await import('@/services/WalletService')
     const walletService = new WalletService({
-      cwd: process.cwd(),
       solConnection: createMockSolConnection()
     })
     const response = walletService.buildEthTransfer({
@@ -191,7 +184,6 @@ describe('WalletService', () => {
 
     const { WalletService } = await import('@/services/WalletService')
     const walletService = new WalletService({
-      cwd: process.cwd(),
       solConnection: createMockSolConnection()
     })
     const response = walletService.buildEthTransfer({
@@ -217,7 +209,6 @@ describe('WalletService', () => {
 
     const { WalletService } = await import('@/services/WalletService')
     const walletService = new WalletService({
-      cwd: process.cwd(),
       solConnection: createMockSolConnection()
     })
     const response = await walletService.buildSolTransfer({
@@ -240,7 +231,6 @@ describe('WalletService', () => {
     const mockConnection = createMockSolConnection({ destinationAccountExists: false })
     const { WalletService } = await import('@/services/WalletService')
     const walletService = new WalletService({
-      cwd: process.cwd(),
       solConnection: mockConnection
     })
     const response = await walletService.buildSolTransfer({
