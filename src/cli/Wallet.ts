@@ -14,7 +14,7 @@ import { ensureJsonTreeString } from '@/utils/Lang'
 const VERSION = '1.0.0'
 
 export function buildWalletCommand(): Command {
-  const walletService = new WalletService({ cwd: process.cwd(), solConnection: SOL_CONNECTION })
+  const walletService = new WalletService({ solConnection: SOL_CONNECTION })
 
   const program = new Command('wallet')
   program.description('Wallet CLI').version(VERSION)

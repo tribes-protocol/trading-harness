@@ -1,9 +1,10 @@
 import { randomUUID } from 'node:crypto'
 import { mkdir, readFile, writeFile } from 'node:fs/promises'
-import { dirname, resolve } from 'node:path'
+import { dirname, join } from 'node:path'
 
 import { decodeJwt, importPKCS8, SignJWT } from 'jose'
 
+import { resolveTradesStateDir } from '@/common/Env'
 import { readAgentAuthorizationKey } from '@/helpers/AuthKey'
 import {
   type AgentAuthorizationKey,
@@ -17,7 +18,12 @@ import { ensureJsonTreeString, isNullish } from '@/utils/Lang'
 const TOKEN_TTL = '7d'
 const LOGIN_PROOF_TTL = '5m'
 const TOKEN_REFRESH_BUFFER_SECONDS = 60
-const TOKEN_CACHE_PATH = resolve(process.cwd(), '.tribes/jwt-token-cache.json')
+
+// Anchored to the canonical state dir (never cwd) — the JWT token cache must
+// resolve the same durable path no matter which cwd the CLI boots in.
+function tokenCachePath(): string {
+  return join(resolveTradesStateDir(), 'jwt-token-cache.json')
+}
 
 let memoryCache: JwtTokenCache | null = null
 
@@ -73,7 +79,7 @@ function isReusableCache(params: IsReusableCacheParams): boolean {
 
 async function readDiskCache(): Promise<JwtTokenCache | null> {
   try {
-    const text = await readFile(TOKEN_CACHE_PATH, 'utf8')
+    const text = await readFile(tokenCachePath(), 'utf8')
     const parsed: unknown = JSON.parse(text)
     return JwtTokenCacheSchema.parse(parsed)
   } catch {
@@ -82,8 +88,8 @@ async function readDiskCache(): Promise<JwtTokenCache | null> {
 }
 
 async function writeDiskCache(params: WriteDiskCacheParams): Promise<void> {
-  await mkdir(dirname(TOKEN_CACHE_PATH), { recursive: true })
-  await writeFile(TOKEN_CACHE_PATH, ensureJsonTreeString(params.cache), {
+  await mkdir(dirname(tokenCachePath()), { recursive: true })
+  await writeFile(tokenCachePath(), ensureJsonTreeString(params.cache), {
     encoding: 'utf8',
     mode: 0o600
   })
