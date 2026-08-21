@@ -91,7 +91,52 @@ export function computeTrailingStop(
       ? peakOrTrough.multipliedBy(1 - factor)
       : peakOrTrough.multipliedBy(1 + factor)
   }
-  return side === 'long' ? peakOrTrough.minus(trail.value) : peakOrTrough.plus(trail.value)
+  if (trail.kind === 'px') {
+    return side === 'long' ? peakOrTrough.minus(trail.value) : peakOrTrough.plus(trail.value)
+  }
+  // profit trail is resolved by computeStop (needs the entry); this is a
+  // defensive fallback only reached if computeStop is bypassed.
+  return peakOrTrough
+}
+
+/**
+ * TRAIL-PEAK FEED + PROFIT-TRAIL ENGINE core: the exact banked stop.
+ * stop sits `bank` of the way from entry to the extreme:
+ *   long:  entry + bank x (peak - entry)
+ *   short: entry - bank x (entry - trough)
+ * This is the 70% rule with bank 0.7 (trail-profit-pct 0.3): the monitor
+ * computes entry + 0.7 x (peak - entry) exactly, and the feed exposes it.
+ */
+export function computeProfitTrailStop(
+  side: TrailingStopSide,
+  entryPx: BigNumber,
+  peakOrTrough: BigNumber,
+  bank: number
+): BigNumber {
+  if (side === 'long') {
+    const run = peakOrTrough.minus(entryPx)
+    return entryPx.plus(run.multipliedBy(bank))
+  }
+  const run = entryPx.minus(peakOrTrough)
+  return entryPx.minus(run.multipliedBy(bank))
+}
+
+/**
+ * Compute the live stop for a trail config against the session high-water.
+ * Profit-trail: entry + bank x (peak - entry) — the 70% banking rule. Normal
+ * pct/px trails ride the peak itself as before.
+ */
+export function computeStop(
+  side: TrailingStopSide,
+  entryPx: BigNumber,
+  peakOrTrough: BigNumber,
+  trail: TrailingStopTrailConfig
+): BigNumber {
+  if (trail.kind === 'profit') {
+    const bank = 1 - trail.trailProfitPct
+    return computeProfitTrailStop(side, entryPx, peakOrTrough, bank)
+  }
+  return computeTrailingStop(side, peakOrTrough, trail)
 }
 
 /**
@@ -173,6 +218,22 @@ export class TrailingStopService {
     return updated
   }
 
+  /**
+   * Profit-trail engage gate: the position must have banked at least the
+   * engage-profit threshold in raw profit dollars (price run x size) before
+   * the no-lose floor lifts. Long: (peak - entryPx) x size; short mirrored.
+   */
+  private engageMet(state: TrailingStopState, peakOrTrough: BigNumber): boolean {
+    if (state.trail.kind !== 'profit') return true
+    const entryPx = new BigNumber(state.entryPx)
+    const size = new BigNumber(state.sizeAtArm)
+    const rawUsd =
+      state.side === 'long'
+        ? peakOrTrough.minus(entryPx).multipliedBy(size)
+        : entryPx.minus(peakOrTrough).multipliedBy(size)
+    return rawUsd.isGreaterThanOrEqualTo(state.trail.engageProfitUsd)
+  }
+
   // ---- arm ----
 
   async arm(params: {
@@ -207,7 +268,7 @@ export class TrailingStopService {
     // Seed peak/trough from entry (the plan: peak = running max seeded by
     // entry). No-lose arm guard: reject if the initial stop already crosses the
     // current mark, i.e. arming a stop that would trigger immediately.
-    const initialStop = computeTrailingStop(params.side, entryPx, params.trail)
+    const initialStop = computeStop(params.side, entryPx, entryPx, params.trail)
     const mark = await this.fetchMark(coin, dex)
     if (mark === null) {
       throw new Error(`unable to read a live mark for ${coin} on ${dex} to arm the trailing stop`)
@@ -229,7 +290,7 @@ export class TrailingStopService {
     // arming on a position that is already in profit does not trigger instantly.
     const seeded =
       params.side === 'long' ? BigNumber.maximum(entryPx, mark) : BigNumber.minimum(entryPx, mark)
-    const stop = computeTrailingStop(params.side, seeded, params.trail)
+    const stop = computeStop(params.side, entryPx, seeded, params.trail)
 
     const id = `${coin.toLowerCase()}-${params.side}-${this.now()}`
     const now = this.now()
@@ -473,7 +534,15 @@ export class TrailingStopService {
       } else {
         peakOrTrough = BigNumber.minimum(peakOrTrough, mark)
       }
-      stop = computeTrailingStop(state.side, peakOrTrough, state.trail)
+      stop = computeStop(state.side, new BigNumber(state.entryPx), peakOrTrough, state.trail)
+      // NO-LOSE GUARD (profit-trail): the stop never tightens below THE ENTRY
+      // until the position has banked the engage-profit threshold. The engine
+      // only starts giving back after the threshold is met — banked profits
+      // are kept, never given back. This holds for long (stop >= entry) and
+      // short (stop <= entry) alike.
+      if (state.trail.kind === 'profit' && !this.engageMet(state, peakOrTrough)) {
+        stop = new BigNumber(state.entryPx)
+      }
 
       await this.updateState(id, {
         peakOrTrough: peakOrTrough.toFixed(),

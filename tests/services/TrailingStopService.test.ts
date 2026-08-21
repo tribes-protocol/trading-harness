@@ -7,6 +7,8 @@ import { describe, expect, test, vi } from 'vitest'
 
 import { HyperliquidService } from '@/services/HyperliquidService'
 import {
+  computeProfitTrailStop,
+  computeStop,
   computeTrailingStop,
   resolveMonitorSpawnArgs,
   TrailingStopService
@@ -125,6 +127,41 @@ describe('computeTrailingStop (pure trail math)', () => {
   test('px trail: long subtracts, short adds the absolute distance', () => {
     expect(computeTrailingStop('long', new BigNumber(70000), { kind: 'px', value: 120 }).toNumber()).toBe(69880)
     expect(computeTrailingStop('short', new BigNumber(68000), { kind: 'px', value: 120 }).toNumber()).toBe(68120)
+  })
+})
+
+describe('computeProfitTrailStop + computeStop (TRAIL-PEAK FEED, 70% rule)', () => {
+  test('long: entry + bank x (peak - entry) with bank 0.7 (trail-profit-pct 0.3)', () => {
+    const entry = new BigNumber(100)
+    const peak = new BigNumber(120)
+    // bank 0.7 -> stop = 100 + 0.7 x (120-100) = 114
+    expect(computeProfitTrailStop('long', entry, peak, 0.7).toNumber()).toBe(114)
+  })
+
+  test('short: entry - bank x (entry - trough) is mirrored', () => {
+    const entry = new BigNumber(100)
+    const trough = new BigNumber(80)
+    // bank 0.7 -> stop = 100 - 0.7 x (100-80) = 86
+    expect(computeProfitTrailStop('short', entry, trough, 0.7).toNumber()).toBe(86)
+  })
+
+  test('computeStop dispatches profit to the banked entry-relative stop', () => {
+    const entry = new BigNumber(100)
+    const peak = new BigNumber(120)
+    const stop = computeStop('long', entry, peak, {
+      kind: 'profit',
+      trailProfitPct: 0.3,
+      engageProfitUsd: 5
+    })
+    expect(stop.toNumber()).toBe(114)
+  })
+
+  test('computeStop falls to the pct form for pct trails (unchanged)', () => {
+    const stop = computeStop('long', new BigNumber(100), new BigNumber(120), {
+      kind: 'pct',
+      value: 0.25
+    })
+    expect(stop.toNumber()).toBeCloseTo(120 * 0.9975, 4)
   })
 })
 
@@ -419,5 +456,68 @@ describe('TrailingStopService monitor loop (runMonitor)', () => {
     expect(sleep).toHaveBeenCalled()
     const firstArg = vi.mocked(sleep).mock.calls[0]?.[0]
     expect(firstArg).toBe(10000)
+  })
+})
+
+describe('TrailingStopService profit-trail engine (engage gate + no-lose)', () => {
+  test('arms a profit trail with stop seeded at the entry (no-lose floor)', async () => {
+    const fake = fakeHyperliquid()
+    fake.positions = [{ dex: 'main', coin: 'BTC', side: 'long', size: '0.02166', entryPx: '69178' }]
+    const { service } = await freshService(fake, { mark: '70000' })
+    const result = await service.arm({
+      coin: 'BTC',
+      dex: 'main',
+      from: ADDRESS,
+      side: 'long',
+      trail: { kind: 'profit', trailProfitPct: 0.3, engageProfitUsd: 5 },
+      walletId: WALLET_ID
+    })
+    expect(result.armed).toBe(true)
+    // Seed = max(entry 69178, mark 70000) = 70000. Profit-trail seeded peak at
+    // the better of entry/mark -> stop = entry + 0.7 x (peak - entry).
+    const entry = new BigNumber(69178)
+    const peak = new BigNumber(70000)
+    const expected = entry.plus(new BigNumber(0.7).multipliedBy(peak.minus(entry)))
+    expect(new BigNumber(result.state.stopPx).toNumber()).toBeCloseTo(expected.toNumber(), 2)
+  })
+
+  test('monitor holds the stop at the entry (no-lose) until engage-profit is banked', async () => {
+    const fake = fakeHyperliquid()
+    fake.positions = [{ dex: 'main', coin: 'BTC', side: 'long', size: '0.02166', entryPx: '69178' }]
+    const { service } = await freshService(fake, { mark: '69190' })
+    const armed = await service.arm({
+      coin: 'BTC',
+      dex: 'main',
+      from: ADDRESS,
+      side: 'long',
+      trail: { kind: 'profit', trailProfitPct: 0.3, engageProfitUsd: 5 },
+      walletId: WALLET_ID
+    })
+    // 0.02166 size, entry 69178. Engage = 5 raw profit -> price run needed
+    // 5 / 0.02166 = ~230.85. Ticks stay far below that, so the stop must not
+    // leave the entry floor (no giving back before the threshold).
+    const marks = ['69200', '69250', '69300']
+    const stopsSeen: number[] = []
+    const deps: TrailingStopMonitorDeps = {
+      getMark: vi.fn(async () => {
+        const m = marks.shift()
+        if (m === undefined) return null
+        const current = (await service.list()).stops[0]
+        if (current !== undefined) stopsSeen.push(Number(current.stopPx))
+        return { mark: m, source: 'stream' }
+      }),
+      isCancelled: vi.fn(async () => marks.length === 0),
+      exit: vi.fn(async () => ({ ok: true, message: 'no exit expected in this test' })),
+      now: () => 1_000_000
+    }
+    const result = await service.runMonitor(armed.state.id, deps)
+    expect(result.status).toBe('cancelled')
+    // No-lose: every stop computed while under the engage threshold stays at
+    // (or very near) the entry 69178 — the monitor must not tighten below a
+    // give-back floor before the threshold is banked.
+    for (const s of stopsSeen) {
+      expect(s).toBeGreaterThanOrEqual(69178 - 0.5)
+    }
+    expect(stopsSeen.length).toBeGreaterThanOrEqual(3)
   })
 })

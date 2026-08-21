@@ -48,6 +48,14 @@ export function buildTrailingStopCommand(): Command {
     .requiredOption('--side <side>', 'Position side: long | short')
     .option('--trail-pct <pct>', 'Trail as decimal percent (for example: 0.25 = 0.25%)')
     .option('--trail-px <px>', 'Trail as absolute price distance')
+    .option(
+      '--trail-profit-pct <pct>',
+      'Profit-trail: trail fraction of the peak-to-entry run (for example: 0.3 = trail 30%, bank 70%)'
+    )
+    .option(
+      '--engage-profit <usd>',
+      'Profit-trail: only start giving back once the position has banked this many profit dollars'
+    )
     .requiredOption('--wallet-id <walletId>', 'Privy wallet id')
     .option('--out <file>', 'Write output JSON to file')
     .action(async (options: unknown): Promise<void> => {
@@ -55,7 +63,16 @@ export function buildTrailingStopCommand(): Command {
       const trail =
         request.trailPx !== null && request.trailPx !== undefined
           ? { kind: 'px' as const, value: request.trailPx }
-          : { kind: 'pct' as const, value: request.trailPct ?? 0 }
+          : request.trailProfitPct !== null &&
+              request.trailProfitPct !== undefined &&
+              request.engageProfit !== null &&
+              request.engageProfit !== undefined
+            ? {
+                kind: 'profit' as const,
+                trailProfitPct: request.trailProfitPct,
+                engageProfitUsd: request.engageProfit
+              }
+            : { kind: 'pct' as const, value: request.trailPct ?? 0 }
       const response = await trailingStopService.arm({
         coin: request.coin,
         dex: request.dex,

@@ -7,7 +7,17 @@ import { EthAddressSchema } from '@/types/Eth'
 // matches the playbook's ATR-bounded stops.
 export const TrailingStopTrailConfigSchema = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('pct'), value: z.number().positive() }),
-  z.object({ kind: z.literal('px'), value: z.number().positive() })
+  z.object({ kind: z.literal('px'), value: z.number().positive() }),
+  // PROFIT-TRAIL ENGINE (user rule, native mode): trail a fraction of the
+  // PEAK-TO-ENTRY run once a position passes the engage-profit threshold in
+  // dollars. bank = 1 − trailProfitPct (0.30 trails 30%, banking 70% of the
+  // run). stop(long) = entry + bank×(peak−entry); short mirrored. No-lose:
+  // the stop never crosses the entry until engaged.
+  z.object({
+    kind: z.literal('profit'),
+    trailProfitPct: z.number().positive().lt(0.95),
+    engageProfitUsd: z.number().positive()
+  })
 ])
 export type TrailingStopTrailConfig = z.infer<typeof TrailingStopTrailConfigSchema>
 
@@ -62,17 +72,26 @@ export const TrailingStopArmCommandOptionsSchema = z
     side: TrailingStopSideSchema,
     trailPct: z.coerce.number().positive().nullish(),
     trailPx: z.coerce.number().positive().nullish(),
+    trailProfitPct: z.coerce.number().positive().lt(0.95).nullish(),
+    engageProfit: z.coerce.number().positive().nullish(),
     walletId: z.string().trim().min(1),
     out: z.string().nullish()
   })
   .superRefine((value, ctx) => {
     const hasPct = value.trailPct !== null && value.trailPct !== undefined
     const hasPx = value.trailPx !== null && value.trailPx !== undefined
-    if (hasPct === hasPx) {
+    const hasProfit =
+      value.trailProfitPct !== null &&
+      value.trailProfitPct !== undefined &&
+      value.engageProfit !== null &&
+      value.engageProfit !== undefined
+    const modeCount = [hasPct, hasPx, hasProfit].filter(Boolean).length
+    if (modeCount !== 1) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         path: ['trail'],
-        message: 'exactly one of --trail-pct or --trail-px is required'
+        message:
+          'exactly one trail mode: --trail-pct, --trail-px, or BOTH --trail-profit-pct + --engage-profit'
       })
     }
   })
