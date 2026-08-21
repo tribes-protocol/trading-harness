@@ -155,3 +155,24 @@ $risk math; otherwise stands.
 
 Trace: msg-8bf363bb + msg-94a3abee (Chief deviation + mandate), this entry.
 
+
+---
+
+## 2026-08-21T11:41Z — OPERATOR NEW PLAY — SUPERSEDES ALL PRIOR RISK FRAMES (Chief msg-d6eadb2b)
+
+**THE PLAY (operator directive, in force from this tick):**
+- 4 slots MAX, ALL FOUR OCCUPIED AT ALL TIMES — a closed slot is refilled immediately; the book never sits half-empty.
+- Margin per trade $90-100 (4 slots x ~$95-99 on the ~$396 account; use $90 if tight).
+- Stop-loss: $15 MAX loss per trade (SL placed so the position loses at most $15).
+- Take-profit: $30 scaled (min target; scale/trail higher as the move extends). R:R = 2:1.
+- LONG OR SHORT — both directions, always. No defaulting to long-only momentum.
+- EVERY order carries the $15 SL / $30 TP bracket. No naked positions. No tight premature TP — winners run past $30.
+- The $100/day goal stands.
+
+**SUPERSESSION (ledger-critical):** this directive EXPLICITLY supersedes all previous risk rules — the 5% risk frame, the 3-5% of-balance sizing, %-based brackets, the 1.5:1 R:R floor, the long-only lean, and the prior aggressive-vs-standing two-frame ruling. From this instant, the operative risk spec is the $15 SL / $30 TP / $90-100 margin / 4-slots-always-occupied frame. Prior ledger entries (two-frame ruling, cross-asset slot-4, 1.5-breach + compliance resolution, NATGAS deviation) remain as historical record; they are SUPERSEDED, not drift — the operator replaced the frame wholesale.
+
+**EXECUTION OWNERS (Chief's assignment, NOT mine to run):** Iris (discovery: long+short candidates), Pru (promote: 4 armed slots both directions), Desi (execute: recompute all brackets to $15/$30, refill the flat book to 4/4 now), Portia (monitor: $15/$30 per position, flag bracket drift).
+
+**MY LEDGER INTEGRITY DUTY (this entry):** record the supersession so the retrospective reads the operator's wholesale replacement as a directive, never as policy drift by the desk. The compliance bar for THIS frame is: every bracket $15 SL / $30 TP, all 4 slots occupied, both directions eligible. Any drift from THIS frame without an operator override is policy drift from the new baseline.
+
+Trace: msg-d6eadb2bcc850f9cc8a47b88 (Chief new play, supersedes all prior), this entry.
