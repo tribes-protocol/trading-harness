@@ -755,21 +755,9 @@ export function buildHyperliquidCommand(): Command {
         request,
         walletId: request.walletId
       })
-      let output: unknown = response
-      // Post-fill position read-guard: for a position-OPENING order, verify the
-      // position actually exists before the desk trusts the ack. Additive +
-      // read-only (never cancels/refires). Reduce-only closes end flat by
-      // design and are skipped.
-      if (!request.reduceOnly) {
-        const guard = await hyperliquidService.verifyPostFillPosition({
-          address: request.from,
-          coin: request.coin,
-          dex: request.dex
-        })
-        output = { ...response, postFill: guard }
-      }
+      const output = ensureJsonTreeString(response)
       await writeOutput({
-        output: ensureJsonTreeString(output),
+        output,
         outPath: request.out ?? undefined
       })
     })
@@ -816,9 +804,26 @@ export function buildHyperliquidCommand(): Command {
         request,
         walletId: request.walletId
       })
-      const output = ensureJsonTreeString(response)
+      let output: unknown = response
+      // Post-fill read-guard + SL re-anchor (never cancels/refires): for a
+      // position-OPENING order verify the position exists AND, when a bracket
+      // (slPx/tpPx) was placed, re-anchor the stop relative to the actual fill
+      // price — if the fill slipped through the intended stop, the verdict
+      // surfaces a reject + re-stage instead of trusting the ack.
+      if (!request.reduceOnly) {
+        const guard = await hyperliquidService.verifyPostFillPosition({
+          address: request.from,
+          coin: request.coin,
+          dex: request.dex,
+          slPx: request.slPx,
+          tpPx: request.tpPx,
+          entryRef: request.price,
+          side: request.side
+        })
+        output = { ...response, postFill: guard }
+      }
       await writeOutput({
-        output,
+        output: ensureJsonTreeString(output),
         outPath: request.out ?? undefined
       })
     })

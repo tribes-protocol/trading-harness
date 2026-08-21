@@ -857,7 +857,8 @@ export const HyperliquidPostFillGuardResultSchema = z.object({
   verdict: z.enum(['position-exists', 'fills-without-position', 'no-recent-fills']),
   warning: z.string().nullish(),
   pairs: z.array(HyperliquidFillPairSchema).nullish(),
-  position: HyperliquidPerpPositionSchema.nullish()
+  position: HyperliquidPerpPositionSchema.nullish(),
+  slReanchored: z.string().nullish()
 })
 export type HyperliquidPostFillGuardResult = z.infer<typeof HyperliquidPostFillGuardResultSchema>
 

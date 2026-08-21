@@ -637,6 +637,74 @@ export class HyperliquidService {
     }
   }
 
+  /**
+   * SL RE-ANCHOR TO ACTUAL FILL (Chief's fill-slip class).
+   *
+   * A limit entry can fill at a price different from the intended band (a long
+   * limit fills at or below the band when the market moves through it). The SL
+   * was anchored to the intended band, so a fill below the band can leave the
+   * SL ABOVE the actual fill — inverted relative to the real position, and it
+   * triggers instantly. This recomputes the SL relative to the ACTUAL fill:
+   *
+   * - long:  re-anchoredSL = actualFill - slDistance (preserves the risk
+   *   distance from the intended band).
+   * - short: re-anchoredSL = actualFill + slDistance.
+   *
+   * If the fill already gapped THROUGH the intended SL (long: fill <= slPx —
+   * the stop line was crossed before/at the fill; short: fill >= slPx), no
+   * safe re-anchor exists at the intended risk distance — the ticket must be
+   * REJECTED + re-staged, never broadcast an inverted stop. Equality is also
+   * not protection.
+   *
+   * Returns the re-anchored trigger (string) or throws BracketGuardError.
+   * Pure computation — read-only, never broadcasts, never cancels.
+   */
+  reanchorBracketStop(params: {
+    side: 'long' | 'short'
+    entryRef: string
+    slPx: BigNumber
+    actualFillPx: BigNumber
+  }): string {
+    const entry = new BigNumber(params.entryRef)
+    const sl = params.slPx
+    const fill = params.actualFillPx
+    if (!fill.isFinite() || !fill.isGreaterThan(0)) {
+      throw new BracketGuardError(params.side, 'slPx', fill.toFixed(), 'invalid fill')
+    }
+
+    // The intended risk distance (band-to-stop), always positive. For a long
+    // the SL sits below the intended band (entry - sl); for a short it sits
+    // above (sl - entry).
+    const distance = params.side === 'long' ? entry.minus(sl) : sl.minus(entry)
+    if (distance.lte(0)) {
+      // The direction guard should already have caught this; belt-and-braces.
+      throw new BracketGuardError(params.side, 'slPx', entry.toFixed(), sl.toFixed())
+    }
+
+    if (params.side === 'long') {
+      // Fill slipped BELOW the intended SL -> the SL would sit above the fill.
+      if (fill.isLessThan(sl)) {
+        throw new BracketGuardError(
+          'long',
+          'slPx',
+          sl.toFixed(),
+          `fill ${fill.toFixed()} slipped through the stop — reject + re-stage`
+        )
+      }
+      return new BigNumber(fill).minus(distance).toFixed()
+    }
+    // short: fill gapped ABOVE the intended stop -> the SL would sit below fill.
+    if (fill.isGreaterThan(sl)) {
+      throw new BracketGuardError(
+        'short',
+        'slPx',
+        sl.toFixed(),
+        `fill ${fill.toFixed()} gapped through the stop — reject + re-stage`
+      )
+    }
+    return new BigNumber(fill).plus(distance).toFixed()
+  }
+
   private buildScaleOrderParams(params: BuildScaleOrdersParams): OrderParameters {
     const { asset, marketType } = params
     const legCount = params.orders
@@ -1354,6 +1422,10 @@ export class HyperliquidService {
     dex?: string | null
     windowMs?: number
     startTime?: number
+    side?: 'long' | 'short'
+    slPx?: BigNumber | null
+    tpPx?: BigNumber | null
+    entryRef?: BigNumber | null
   }): Promise<HyperliquidPostFillGuardResult> {
     const normalizedDex = this.formatDexName(this.normalizeDex(params.dex))
     const positions = await this.listPositions({
@@ -1364,6 +1436,46 @@ export class HyperliquidService {
     const normalizedCoin = params.coin.trim().toUpperCase()
     const position = positions.positions.find((p) => p.coin === normalizedCoin) ?? null
     if (position !== null) {
+      // SL re-anchor to ACTUAL fill: the position's entryPx is the fill price.
+      // When a bracket was placed, re-anchor the stop relative to the real
+      // entry — if the fill slipped through the intended stop, the SL would be
+      // inverted; surface a reject + re-stage verdict instead of trusting it.
+      if (params.side !== undefined && params.slPx !== undefined && params.slPx !== null) {
+        const fill = new BigNumber(position.entryPx)
+        const intended = params.entryRef ?? fill
+        try {
+          const reanchored = this.reanchorBracketStop({
+            side: params.side,
+            entryRef: intended.toFixed(),
+            slPx: params.slPx,
+            actualFillPx: fill
+          })
+          return HyperliquidPostFillGuardResultSchema.parse({
+            address: params.address,
+            coin: normalizedCoin,
+            dex: normalizedDex,
+            verdict: 'position-exists',
+            position,
+            slReanchored: reanchored,
+            warning:
+              `SL_REANCHOR: stop recomputed relative to actual fill ${fill.toFixed()} ` +
+              `(intended band ${intended.toFixed()}, original SL ${params.slPx.toFixed()}) — ` +
+              `re-anchored stop ${reanchored} if you want the same risk distance.`
+          })
+        } catch (error) {
+          if (error instanceof BracketGuardError) {
+            return HyperliquidPostFillGuardResultSchema.parse({
+              address: params.address,
+              coin: normalizedCoin,
+              dex: normalizedDex,
+              verdict: 'position-exists',
+              position,
+              warning: `FILL_SLIP_INVERSION: ${error.message} — reject + re-stage, never broadcast an inverted stop.`
+            })
+          }
+          throw error
+        }
+      }
       return HyperliquidPostFillGuardResultSchema.parse({
         address: params.address,
         coin: normalizedCoin,

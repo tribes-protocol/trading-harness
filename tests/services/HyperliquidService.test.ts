@@ -791,6 +791,73 @@ describe('HyperliquidService bracket side-guard (inverted-stop prevention)', () 
     expect(err).not.toContain('UNSAFE_BRACKET')
   })
 })
+
+describe('HyperliquidService SL re-anchor to actual fill (fill-slip class)', () => {
+  // The ETH case: long limit band 2,405-2,412, SL 2,402 (below band — correct
+  // against the INTENDED entry), but the limit FILLED at 2,399.5 (below the
+  // band) — the SL ended up ABOVE the actual fill -> inverted. The re-anchor
+  // RECOMPUTES the stop against the actual fill; if the fill gapped through
+  // the stop, reject + re-stage (never broadcast an inverted stop).
+  const Big = () => import('bignumber.js').then((m) => m.default)
+
+  async function reanchorService(): Promise<{ service: HyperliquidService }> {
+    const service = createService({
+      metaAndAssetCtxs: vi.fn().mockResolvedValue([MAIN_META, [MAIN_CONTEXT]]),
+      perpDexs: vi.fn().mockResolvedValue([])
+    })
+    return { service }
+  }
+
+  test('limit fill below the band with SL above fill -> rejected (re-stage)', async () => {
+    const { service } = await reanchorService()
+    const BN = await Big()
+    expect(() =>
+      service.reanchorBracketStop({
+        side: 'long',
+        entryRef: '2405', // intended band bottom
+        slPx: new BN(2402), // stop below the intended band
+        actualFillPx: new BN(2399.5) // fill slipped below the band AND the stop
+      })
+    ).toThrow(/reject \+ re-stage/)
+  })
+
+  test('limit fill inside the band -> re-anchors SL relative to the actual fill', async () => {
+    const { service } = await reanchorService()
+    const BN = await Big()
+    const reanchored = service.reanchorBracketStop({
+      side: 'long',
+      entryRef: '2405',
+      slPx: new BN('2402'),
+      actualFillPx: new BN('2404')
+    })
+    expect(new BN(reanchored).isEqualTo('2401')).toBe(true)
+  })
+
+  test('short fill above the band with SL below -> rejected (re-stage)', async () => {
+    const { service } = await reanchorService()
+    const BN = await Big()
+    expect(() =>
+      service.reanchorBracketStop({
+        side: 'short',
+        entryRef: '2405',
+        slPx: new BN('2408'),
+        actualFillPx: new BN('2410')
+      })
+    ).toThrow(/gapped through the stop/)
+  })
+
+  test('short fill inside the band -> re-anchors above the actual fill', async () => {
+    const { service } = await reanchorService()
+    const BN = await Big()
+    const reanchored = service.reanchorBracketStop({
+      side: 'short',
+      entryRef: '2405',
+      slPx: new BN('2408'),
+      actualFillPx: new BN('2406') // fill 2406, band 2405, stop 2408 — same 3pt risk
+    })
+    expect(new BN(reanchored).isEqualTo('2409')).toBe(true)
+  })
+})
 describe('HyperliquidService ghost-fill pair detector + post-fill read-guard', () => {
   const ADDR = '0xbb64c24a6b2ee1185621490d2a1ae06522f15f57'
   const SZ = '0.2199'
@@ -890,6 +957,78 @@ describe('HyperliquidService ghost-fill pair detector + post-fill read-guard', (
     expect(guard.verdict).toBe('position-exists')
     expect(guard.position?.coin).toBe('ETH')
     expect(guard.warning).toBeUndefined()
+  })
+
+  test('live position + bracket → SL re-anchors relative to the actual fill (slip class)', async () => {
+    const service = buildGuardService({
+      userFills: [wireFill({ oid: 924, side: 'B', time: 1_000_000 })],
+      clearinghouseState: {
+        assetPositions: [
+          {
+            position: {
+              coin: 'ETH',
+              szi: SZ,
+              entryPx: '2404', // actual fill
+              positionValue: '527.76',
+              unrealizedPnl: '0',
+              returnOnEquity: '0',
+              liquidationPx: null,
+              leverage: { value: 20, type: 'cross' },
+              marginUsed: '26.39',
+              maxLeverage: 25
+            }
+          }
+        ],
+        crossMarginSummary: {}
+      }
+    })
+    const Big = await import('bignumber.js').then((m) => m.default)
+    const guard = await service.verifyPostFillPosition({
+      address: ADDR as `0x${string}`,
+      coin: 'ETH',
+      side: 'long',
+      slPx: new Big(2402),
+      entryRef: new Big(2405) // intended band
+    })
+    expect(guard.verdict).toBe('position-exists')
+    expect(guard.slReanchored).toBe('2401')
+    expect(guard.warning).toContain('SL_REANCHOR')
+  })
+
+  test('live position + bracket + fill slipped through the stop → FILL_SLIP_INVERSION (reject + re-stage)', async () => {
+    const service = buildGuardService({
+      userFills: [wireFill({ oid: 924, side: 'B', time: 1_000_000 })],
+      clearinghouseState: {
+        assetPositions: [
+          {
+            position: {
+              coin: 'ETH',
+              szi: SZ,
+              entryPx: '2399.5', // fill below the intended SL 2402
+              positionValue: '527.76',
+              unrealizedPnl: '0',
+              returnOnEquity: '0',
+              liquidationPx: null,
+              leverage: { value: 20, type: 'cross' },
+              marginUsed: '26.39',
+              maxLeverage: 25
+            }
+          }
+        ],
+        crossMarginSummary: {}
+      }
+    })
+    const Big = await import('bignumber.js').then((m) => m.default)
+    const guard = await service.verifyPostFillPosition({
+      address: ADDR as `0x${string}`,
+      coin: 'ETH',
+      side: 'long',
+      slPx: new Big(2402),
+      entryRef: new Big(2405)
+    })
+    expect(guard.verdict).toBe('position-exists')
+    expect(guard.warning).toContain('FILL_SLIP_INVERSION')
+    expect(guard.warning).toContain('reject + re-stage')
   })
 
   test('no recent fills + flat → no-recent-fills (nothing to verify)', async () => {
