@@ -26,7 +26,13 @@ interface FakeHyperliquid {
     size: string
     entryPx: string
   }>
-  closeCalls: Array<{ coin: string; amount: string; side: string; reduceOnly: boolean; dex: string | null }>
+  closeCalls: Array<{
+    coin: string
+    amount: string
+    side: string
+    reduceOnly: boolean
+    dex: string | null
+  }>
   listPositionsCalls: number
 }
 
@@ -71,25 +77,35 @@ async function freshService(
         twapOrders: []
       }
     }),
-    tradePerp: vi.fn(async (params: { request: { coin: string; amount: BigNumber; side: string; reduceOnly: boolean; dex: string | null } }) => {
-      fake.closeCalls.push({
-        coin: params.request.coin,
-        amount: params.request.amount.toFixed(),
-        side: params.request.side,
-        reduceOnly: params.request.reduceOnly,
-        dex: params.request.dex
-      })
-      // Simulate a full close: remove the position.
-      const coin = params.request.coin.toUpperCase()
-      fake.positions = fake.positions.filter((p) => p.coin.toUpperCase() !== coin)
-      return {
-        status: 'ok',
-        response: {
-          type: 'order',
-          data: { statuses: [{ filled: { totalSz: '1', avgPx: '100', oid: 12345 } }] }
+    tradePerp: vi.fn(
+      async (params: {
+        request: {
+          coin: string
+          amount: BigNumber
+          side: string
+          reduceOnly: boolean
+          dex: string | null
+        }
+      }) => {
+        fake.closeCalls.push({
+          coin: params.request.coin,
+          amount: params.request.amount.toFixed(),
+          side: params.request.side,
+          reduceOnly: params.request.reduceOnly,
+          dex: params.request.dex
+        })
+        // Simulate a full close: remove the position.
+        const coin = params.request.coin.toUpperCase()
+        fake.positions = fake.positions.filter((p) => p.coin.toUpperCase() !== coin)
+        return {
+          status: 'ok',
+          response: {
+            type: 'order',
+            data: { statuses: [{ filled: { totalSz: '1', avgPx: '100', oid: 12345 } }] }
+          }
         }
       }
-    })
+    )
   } as unknown as HyperliquidService
 
   const infoClient = {
@@ -105,8 +121,26 @@ async function freshService(
           collateralToken: 0
         },
         [
-          { prevDayPx: '69000', dayNtlVlm: '0', markPx: mark, midPx: mark, funding: '0', openInterest: '0', premium: null, oraclePx: mark },
-          { prevDayPx: '10.9', dayNtlVlm: '0', markPx: mark, midPx: mark, funding: '0', openInterest: '0', premium: null, oraclePx: mark }
+          {
+            prevDayPx: '69000',
+            dayNtlVlm: '0',
+            markPx: mark,
+            midPx: mark,
+            funding: '0',
+            openInterest: '0',
+            premium: null,
+            oraclePx: mark
+          },
+          {
+            prevDayPx: '10.9',
+            dayNtlVlm: '0',
+            markPx: mark,
+            midPx: mark,
+            funding: '0',
+            openInterest: '0',
+            premium: null,
+            oraclePx: mark
+          }
         ]
       ]
     })
@@ -135,8 +169,12 @@ describe('computeTrailingStop (pure trail math)', () => {
   })
 
   test('px trail: long subtracts, short adds the absolute distance', () => {
-    expect(computeTrailingStop('long', new BigNumber(70000), { kind: 'px', value: 120 }).toNumber()).toBe(69880)
-    expect(computeTrailingStop('short', new BigNumber(68000), { kind: 'px', value: 120 }).toNumber()).toBe(68120)
+    expect(
+      computeTrailingStop('long', new BigNumber(70000), { kind: 'px', value: 120 }).toNumber()
+    ).toBe(69880)
+    expect(
+      computeTrailingStop('short', new BigNumber(68000), { kind: 'px', value: 120 }).toNumber()
+    ).toBe(68120)
   })
 })
 
@@ -180,7 +218,11 @@ describe('TRAIL-PEAK FEED verify example — live-book tickers (LINK/AAPL/HOOD)'
   // most 30%. stop(long) = entry + 0.7 x (peak - entry); short mirrored. These
   // pin the EXACT exit the verify feed computes for the current book — no
   // scaled-TP legs, so the monitor derives the exit from the high-water mark.
-  const mkProfit = (pct: number, usd: number) => ({ kind: 'profit' as const, trailProfitPct: pct, engageProfitUsd: usd })
+  const mkProfit = (pct: number, usd: number) => ({
+    kind: 'profit' as const,
+    trailProfitPct: pct,
+    engageProfitUsd: usd
+  })
 
   test('LINK long: entry 15.40, session peak 19.20 -> banked stop = 18.06 (keep 70%)', () => {
     const stop = computeProfitTrailStop('long', new BigNumber('15.40'), new BigNumber('19.20'), 0.7)
@@ -189,7 +231,12 @@ describe('TRAIL-PEAK FEED verify example — live-book tickers (LINK/AAPL/HOOD)'
   })
 
   test('AAPL short: entry 227.50, session trough 219.00 -> stop = 221.55 (bank 70%)', () => {
-    const stop = computeProfitTrailStop('short', new BigNumber('227.50'), new BigNumber('219.00'), 0.7)
+    const stop = computeProfitTrailStop(
+      'short',
+      new BigNumber('227.50'),
+      new BigNumber('219.00'),
+      0.7
+    )
     expect(stop.toNumber()).toBeCloseTo(227.5 - 0.7 * (227.5 - 219.0), 4)
     expect(stop.toNumber()).toBeCloseTo(221.55, 4)
   })
@@ -240,7 +287,9 @@ describe('TrailingStopService arm (no-lose guard + seeding)', () => {
 
   test('refuses to arm when the initial stop already crosses the current mark (short)', async () => {
     const fake = fakeHyperliquid()
-    fake.positions = [{ dex: 'main', coin: 'BTC', side: 'short', size: '0.02166', entryPx: '69178' }]
+    fake.positions = [
+      { dex: 'main', coin: 'BTC', side: 'short', size: '0.02166', entryPx: '69178' }
+    ]
     const { service } = await freshService(fake, { mark: '71000' }) // mark above initial stop
     await expect(
       service.arm({
@@ -275,7 +324,12 @@ describe('TrailingStopService arm (no-lose guard + seeding)', () => {
 })
 
 describe('TrailingStopService monitor loop (runMonitor)', () => {
-  async function armedState(service: TrailingStopService, side: 'long' | 'short', entry: string, peak: string): Promise<TrailingStopState> {
+  async function armedState(
+    service: TrailingStopService,
+    side: 'long' | 'short',
+    entry: string,
+    peak: string
+  ): Promise<TrailingStopState> {
     const fake = fakeHyperliquid()
     fake.positions = [{ dex: 'main', coin: 'BTC', side, size: '0.02166', entryPx: entry }]
     const { service: svc } = await freshService(fake, { mark: peak })

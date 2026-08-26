@@ -128,13 +128,31 @@ describe('EntryGateService override (authority-gated, journaled)', () => {
 
   test('re-grant MRNA after an ETH re-invoke — both survive (no clobber)', async () => {
     const { service: a, stateDir } = await freshService(['exec-lead', 'chief'])
-    await a.override({ dex: 'main', coin: 'ETH', actor: 'exec-lead', reason: 'eth-1', ttlMs: 60_000 })
+    await a.override({
+      dex: 'main',
+      coin: 'ETH',
+      actor: 'exec-lead',
+      reason: 'eth-1',
+      ttlMs: 60_000
+    })
     const b = new EntryGateService({ stateDir, overrideActors: ['exec-lead', 'chief'] })
-    await b.override({ dex: 'main', coin: 'MRNA', actor: 'exec-lead', reason: 'mrna', ttlMs: 60_000 })
+    await b.override({
+      dex: 'main',
+      coin: 'MRNA',
+      actor: 'exec-lead',
+      reason: 'mrna',
+      ttlMs: 60_000
+    })
 
     // Another re-invoke of ETH (the exact flap: last ETH write wiped MRNA).
     const c = new EntryGateService({ stateDir, overrideActors: ['exec-lead', 'chief'] })
-    await c.override({ dex: 'main', coin: 'ETH', actor: 'exec-lead', reason: 'eth-2', ttlMs: 60_000 })
+    await c.override({
+      dex: 'main',
+      coin: 'ETH',
+      actor: 'exec-lead',
+      reason: 'eth-2',
+      ttlMs: 60_000
+    })
 
     const eth = await c.isEntryAllowed('main', 'ETH')
     const mrna = await c.isEntryAllowed('main', 'MRNA')
