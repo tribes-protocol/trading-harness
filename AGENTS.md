@@ -240,18 +240,15 @@ Preferred path in agent clients: use the Tribes login skill (`/tribes-login`, or
 
 ### Installing the skills
 
-Trading-only skill docs live as real directories under repo-root `skills/`. On sandbox bootstrap,
-the synced `zipbox-*` catalog is installed read-only under `/root/skills`, and the matching
-repo-root entries become per-slug symlinks to that canonical catalog. Every client's skills
-directory — `.pi/skills/` for Pi, `.claude/skills/` for Claude Code, and the matching
-`.<client>/skills/` for each other client — remains a symlink to the mixed repo-root directory,
-so clients discover both the preserved trading skills and the shared zipbox skills without
-divergent copies.
+All skill docs — trading-only and the vendored `zipbox-*` catalog — live as real directories
+under repo-root `skills/`. Every client's skills directory — `.pi/skills/` for Pi,
+`.claude/skills/` for Claude Code, and the matching `.<client>/skills/` for each other client —
+is a symlink to that mixed repo-root directory, so clients discover both sets without divergent
+copies. There is no install step: the checkout is the catalog. (Pi additionally reads the
+sandbox-wide catalog at `~/.agents/skills` natively, where the platform installs its own copy.)
 
 If your client reads skills from a directory that this repo does not already provide, symlink it
-to the repo-root `skills/` directory (`ln -s ../skills .<client>/skills`). Re-running
-`scripts/install-shared-skills.sh` refreshes only `zipbox-*` entries; it never removes a
-trading-only skill.
+to the repo-root `skills/` directory (`ln -s ../skills .<client>/skills`).
 
 ### Updating the shared skills
 
