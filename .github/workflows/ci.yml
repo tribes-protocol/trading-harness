@@ -29,6 +29,17 @@ jobs:
         run: bun run build
 
       - name: Tests (unit + skills contract)
+        # Presence, not identity. src/common/Env.ts resolves PRIVY_APP_ID as
+        # `process.env.PRIVY_APP_ID ?? (IS_PRODUCTION ? <baked id> : ensureString(...))`,
+        # so ANY non-empty value short-circuits the `??` and is returned unvalidated.
+        # Under vitest NODE_ENV is 'test', so IS_PRODUCTION is false and the
+        # ensureString branch threw at MODULE-IMPORT time, failing five suites during
+        # collection — before any in-test vi.stubEnv could run. Nothing here talks to
+        # Privy; the suites that do exercise it already stub their own fake ids. Plain
+        # env, deliberately NOT a secret: a real app id would be both unnecessary and
+        # a credential in CI.
+        env:
+          PRIVY_APP_ID: test-placeholder
         run: bunx vitest run
 
       - name: Skills release digest verification

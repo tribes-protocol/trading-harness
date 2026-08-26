@@ -146,8 +146,9 @@ tribes-cli hyperliquid trade-perp \
 Assign ONE `cloid` (`0x` + 32 hex) per ticket BEFORE any order command and keep it for the
 whole ticket life — the entry and every retry of THAT ticket reuse the SAME cloid, so a
 retry-on-ambiguous-ack is deduped by the venue instead of double-filling.
+
 - Generate once per ticket: `cloid=$(cat /dev/urandom | od -An -N16 -tx1 | tr -d ' \n' |
-  sed 's/^\(..\).*/0x &/'` — or reuse the ticket's existing cloid when re-sending.
+sed 's/^\(..\).*/0x &/'` — or reuse the ticket's existing cloid when re-sending.
 - NEVER mint a fresh cloid on a retry of the same ticket — that defeats the dedupe.
 - `trade-spot` accepts the same `--cloid`; add it identically.
 - A re-fire that REUSES the same cloid is ignored by the venue (dedupe); a distinct cloid is a
@@ -187,14 +188,14 @@ TP/SL line only if the user explicitly waived exits.
 
 ## Error recovery
 
-| Symptom                                  | Action                                                                                                                      |
-| ---------------------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
-| Auth error (unauthorized, expired token) | Run `tribes-cli login`, retry the original command once, then stop and report.                                              |
-| Insufficient balance/margin              | Run the `hyperliquid` skill funding flow (`references/funding-paths.md`) with user confirmation, then retry the order once. |
-| Order/leg/sub-order below $10 minimum    | Raise the size, or reduce `--orders` (ladder) / `--duration-minutes` (TWAP), then retry.                                    |
-| Size or price rejected                   | Re-check the `szDecimals` rounding from step 4 against step 1 data, then retry once.                                        |
+| Symptom                                  | Action                                                                                                                                                                                                                                                                                            |
+| ---------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Auth error (unauthorized, expired token) | Run `tribes-cli login`, retry the original command once, then stop and report.                                                                                                                                                                                                                    |
+| Insufficient balance/margin              | Run the `hyperliquid` skill funding flow (`references/funding-paths.md`) with user confirmation, then retry the order once.                                                                                                                                                                       |
+| Order/leg/sub-order below $10 minimum    | Raise the size, or reduce `--orders` (ladder) / `--duration-minutes` (TWAP), then retry.                                                                                                                                                                                                          |
+| Size or price rejected                   | Re-check the `szDecimals` rounding from step 4 against step 1 data, then retry once.                                                                                                                                                                                                              |
 | **Entry refused: `entry trigger gate`**  | The coin's gate is not `trigger_fired` within TTL — NO entry may open until the trigger stack fires (or an authority override is granted). Inspect with `hyperliquid entry-gate status --coin <coin>`; do NOT retry a refused entry. Reduce-only exits and cancels are never blocked by the gate. |
-| Any other API failure                    | Retry the same command once; if it fails again, stop and report the error.                                                  |
+| Any other API failure                    | Retry the same command once; if it fails again, stop and report the error.                                                                                                                                                                                                                        |
 
 ## Related skills
 

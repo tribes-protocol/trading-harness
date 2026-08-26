@@ -400,6 +400,7 @@ When you show an ETH or SOL address for a token, liquidity pool, or Hyperliquid 
 - Hyperliquid perp: `[coin](https://tribes.xyz/perps/<coin>)` — e.g. `BTC`, `ETH`, `SOL`.
 
 <!-- BEGIN TRIBES RESOURCE ETIQUETTE -->
+
 ## Shared-resource etiquette
 
 - This machine may share its host with other agents. Keep concurrency conservative and leave capacity for neighboring work.

@@ -193,9 +193,9 @@ describe('cloid pass-through (venue dedupe)', () => {
       walletId: 'w'
     })
     expect(parsed.cloid).toBe(VALID_CLOID)
-    expect(HyperliquidPerpTradeCommandOptionsSchema.safeParse({ ...parsed, cloid: 'bad' }).success).toBe(
-      false
-    )
+    expect(
+      HyperliquidPerpTradeCommandOptionsSchema.safeParse({ ...parsed, cloid: 'bad' }).success
+    ).toBe(false)
   })
 
   test('trade-spot options thread a caller cloid through unchanged', () => {
@@ -557,9 +557,11 @@ describe('HyperliquidService candles', () => {
   })
 })
 
-
 describe('HyperliquidService entry-trigger gate enforcement', () => {
-  async function gateService(): Promise<{ entryGate: import('@/services/EntryGateService').EntryGateService; stateDir: string }> {
+  async function gateService(): Promise<{
+    entryGate: import('@/services/EntryGateService').EntryGateService
+    stateDir: string
+  }> {
     const { mkdtemp, rm } = await import('node:fs/promises')
     const { tmpdir } = await import('node:os')
     const { join } = await import('node:path')
@@ -735,7 +737,9 @@ describe('HyperliquidService account-read rate-limit resilience', () => {
     return err
   }
 
-  function balancesService(infoClient: Pick<InfoClient, 'clearinghouseState' | 'spotClearinghouseState'>) {
+  function balancesService(
+    infoClient: Pick<InfoClient, 'clearinghouseState' | 'spotClearinghouseState'>
+  ) {
     const params: HyperliquidServiceParams = {
       transaction: {} as HyperliquidServiceParams['transaction'],
       infoClient: infoClient as InfoClient
@@ -744,8 +748,18 @@ describe('HyperliquidService account-read rate-limit resilience', () => {
   }
 
   const PERP_STATE = {
-    marginSummary: { accountValue: '10000', totalNtlPos: '5000', totalRawUsd: '10000', totalMarginUsed: '100' },
-    crossMarginSummary: { accountValue: '10000', totalNtlPos: '5000', totalRawUsd: '10000', totalMarginUsed: '100' },
+    marginSummary: {
+      accountValue: '10000',
+      totalNtlPos: '5000',
+      totalRawUsd: '10000',
+      totalMarginUsed: '100'
+    },
+    crossMarginSummary: {
+      accountValue: '10000',
+      totalNtlPos: '5000',
+      totalRawUsd: '10000',
+      totalMarginUsed: '100'
+    },
     withdrawable: '9000',
     assetPositions: [],
     crossMaintenanceMarginUsed: '0',
@@ -773,7 +787,10 @@ describe('HyperliquidService account-read rate-limit resilience', () => {
 })
 
 describe('HyperliquidService bracket side-guard (inverted-stop prevention)', () => {
-  async function bracketService(): Promise<{ gated: HyperliquidService; cleanup: () => Promise<void> }> {
+  async function bracketService(): Promise<{
+    gated: HyperliquidService
+    cleanup: () => Promise<void>
+  }> {
     const { mkdtemp, rm } = await import('node:fs/promises')
     const { tmpdir } = await import('node:os')
     const { join } = await import('node:path')
@@ -1006,7 +1023,10 @@ describe('HyperliquidService ghost-fill pair detector + post-fill read-guard', (
       ],
       clearinghouseState: { assetPositions: [], crossMarginSummary: {} }
     })
-    const guard = await service.verifyPostFillPosition({ address: ADDR as `0x${string}`, coin: 'ETH' })
+    const guard = await service.verifyPostFillPosition({
+      address: ADDR as `0x${string}`,
+      coin: 'ETH'
+    })
     expect(guard.verdict).toBe('fills-without-position')
     expect(guard.warning).toContain('FILL_WITHOUT_POSITION')
     expect(guard.pairs).toHaveLength(1)
@@ -1037,7 +1057,10 @@ describe('HyperliquidService ghost-fill pair detector + post-fill read-guard', (
         crossMarginSummary: {}
       }
     })
-    const guard = await service.verifyPostFillPosition({ address: ADDR as `0x${string}`, coin: 'ETH' })
+    const guard = await service.verifyPostFillPosition({
+      address: ADDR as `0x${string}`,
+      coin: 'ETH'
+    })
     expect(guard.verdict).toBe('position-exists')
     expect(guard.position?.coin).toBe('ETH')
     expect(guard.warning).toBeUndefined()
@@ -1120,7 +1143,10 @@ describe('HyperliquidService ghost-fill pair detector + post-fill read-guard', (
       userFills: [],
       clearinghouseState: { assetPositions: [], crossMarginSummary: {} }
     })
-    const guard = await service.verifyPostFillPosition({ address: ADDR as `0x${string}`, coin: 'ETH' })
+    const guard = await service.verifyPostFillPosition({
+      address: ADDR as `0x${string}`,
+      coin: 'ETH'
+    })
     expect(guard.verdict).toBe('no-recent-fills')
   })
 
@@ -1132,7 +1158,10 @@ describe('HyperliquidService ghost-fill pair detector + post-fill read-guard', (
     // The service has no cancel path at all: verifyPostFillPosition only calls
     // listPositions + listFills (reads). It resolves without throwing even when
     // the position is flat.
-    const guard = await service.verifyPostFillPosition({ address: ADDR as `0x${string}`, coin: 'ETH' })
+    const guard = await service.verifyPostFillPosition({
+      address: ADDR as `0x${string}`,
+      coin: 'ETH'
+    })
     expect(guard.verdict).toBe('fills-without-position')
   })
 
@@ -1227,8 +1256,30 @@ describe('HyperliquidService order-path flatten guard (COIN rule)', () => {
       meta,
       [
         MAIN_CONTEXT,
-        { prevDayPx: '178', dayNtlVlm: '2', markPx: '180.09', midPx: '180.09', funding: '0', openInterest: '1', premium: '0', oraclePx: '180.09', impactPxs: ['180.1', '180.08'], dayBaseVlm: '2' },
-        { prevDayPx: '10.9', dayNtlVlm: '2', markPx: '11.5', midPx: '11.5', funding: '0', openInterest: '1', premium: '0', oraclePx: '11.5', impactPxs: ['11.51', '11.49'], dayBaseVlm: '2' }
+        {
+          prevDayPx: '178',
+          dayNtlVlm: '2',
+          markPx: '180.09',
+          midPx: '180.09',
+          funding: '0',
+          openInterest: '1',
+          premium: '0',
+          oraclePx: '180.09',
+          impactPxs: ['180.1', '180.08'],
+          dayBaseVlm: '2'
+        },
+        {
+          prevDayPx: '10.9',
+          dayNtlVlm: '2',
+          markPx: '11.5',
+          midPx: '11.5',
+          funding: '0',
+          openInterest: '1',
+          premium: '0',
+          oraclePx: '11.5',
+          impactPxs: ['11.51', '11.49'],
+          dayBaseVlm: '2'
+        }
       ]
     ])
     const infoClient = {
@@ -1277,7 +1328,11 @@ describe('HyperliquidService order-path flatten guard (COIN rule)', () => {
   })
 
   test('the same close PASSES when a chief journaled user directive exists', async () => {
-    const { svc, cleanup } = await flattenService({ coin: 'COUN', liveSide: 'long', directive: true })
+    const { svc, cleanup } = await flattenService({
+      coin: 'COUN',
+      liveSide: 'long',
+      directive: true
+    })
     const Big = await import('bignumber.js').then((m) => m.default)
     try {
       const error = await svc

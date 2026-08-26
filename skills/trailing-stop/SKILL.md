@@ -14,13 +14,14 @@ allowed-tools: bash read
 # Trailing Stop
 
 Autonomous profit protection for an open Hyperliquid perp position: `arm` captures the position
-+ trail config, a detached `monitor` loop follows the price (streaming via the SDK's
-`SubscriptionClient`/`WebSocketTransport`, 10s poll fallback) and tightens the stop as the
-position moves in favor, and on trigger it fires a reduce-only market close at the LIVE position
-size. The trailing stop sits ALONGSIDE the position's hard SL/TP bracket — never a naked
-position, never a flip, never over-close. Requires: auth token (`tribes-cli login` once) and
-`evmWalletId` + EVM address from `zipbox-wallet` — the address is `--from`, the id is
-`--wallet-id`.
+
+- trail config, a detached `monitor` loop follows the price (streaming via the SDK's
+  `SubscriptionClient`/`WebSocketTransport`, 10s poll fallback) and tightens the stop as the
+  position moves in favor, and on trigger it fires a reduce-only market close at the LIVE position
+  size. The trailing stop sits ALONGSIDE the position's hard SL/TP bracket — never a naked
+  position, never a flip, never over-close. Requires: auth token (`tribes-cli login` once) and
+  `evmWalletId` + EVM address from `zipbox-wallet` — the address is `--from`, the id is
+  `--wallet-id`.
 
 ## When to use
 

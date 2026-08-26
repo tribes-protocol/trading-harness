@@ -181,7 +181,13 @@ describe('SizingLockService — authority-gated journaled override', () => {
     // Fresh process = the second CLI command; must see ETH before writing MRNA.
     const b = new SizingLockService({ stateDir, overrideActors: ['exec-lead', 'chief'] })
     await b.arm({ packageId: 'A-212', version: 'v3', perCoin: [V3_BTC_ENTRY] })
-    await b.override({ dex: 'main', coin: 'MRNA', actor: 'exec-lead', reason: 'mrna', ttlMs: 60_000 })
+    await b.override({
+      dex: 'main',
+      coin: 'MRNA',
+      actor: 'exec-lead',
+      reason: 'mrna',
+      ttlMs: 60_000
+    })
 
     // Both override gates must be consumed.
     const eth = await b.isEntrySizeAllowed({
@@ -343,7 +349,9 @@ describe('SizingLockService arm-collision guard (COIN ghost-flatten class)', () 
   const ADDR = '0xbb64c24a6b2ee1185621490d2a1ae06522f15f57'
 
   // A service whose armCollisionCheck returns a programmable verdict per coin.
-  async function collisionService(verdicts: Record<string, { livePosition?: boolean; inFlightFill?: boolean }>): Promise<{
+  async function collisionService(
+    verdicts: Record<string, { livePosition?: boolean; inFlightFill?: boolean }>
+  ): Promise<{
     service: SizingLockService
     stateDir: string
   }> {
@@ -360,7 +368,14 @@ describe('SizingLockService arm-collision guard (COIN ghost-flatten class)', () 
     return { service, stateDir }
   }
 
-  const COIN_ENTRY = { coin: 'COIN', dex: 'main', notionalUsd: 95, marginUsd: 95, leverage: 20, szDecimals: 4 }
+  const COIN_ENTRY = {
+    coin: 'COIN',
+    dex: 'main',
+    notionalUsd: 95,
+    marginUsd: 95,
+    leverage: 20,
+    szDecimals: 4
+  }
   const COIN_ENTRY_60 = { ...COIN_ENTRY, notionalUsd: 60, marginUsd: 60 }
 
   test('re-arm a coin with a LIVE position is REFUSED', async () => {
@@ -437,13 +452,19 @@ describe('SizingLockService arm-collision — resting entry + reduce-only', () =
     const service = new SizingLockService({
       stateDir,
       overrideActors: ['exec-lead', 'chief'],
-      armCollisionCheck: async () => ({ livePosition: false, inFlightFill: false, restingEntry: true })
+      armCollisionCheck: async () => ({
+        livePosition: false,
+        inFlightFill: false,
+        restingEntry: true
+      })
     })
     await service.load()
     const armed = await service.arm({
       packageId: 'A-1',
       version: 'v14',
-      perCoin: [{ coin: 'COIN', dex: 'main', notionalUsd: 95, marginUsd: 95, leverage: 20, szDecimals: 4 }],
+      perCoin: [
+        { coin: 'COIN', dex: 'main', notionalUsd: 95, marginUsd: 95, leverage: 20, szDecimals: 4 }
+      ],
       address: '0xbb64c24a6b2ee1185621490d2a1ae06522f15f57'
     })
     expect(armed.version).toBe('v14')
@@ -462,7 +483,9 @@ describe('SizingLockService arm-collision — resting entry + reduce-only', () =
     const armed = await service.arm({
       packageId: 'A-1',
       version: 'v1',
-      perCoin: [{ coin: 'COIN', dex: 'main', notionalUsd: 95, marginUsd: 95, leverage: 20, szDecimals: 4 }]
+      perCoin: [
+        { coin: 'COIN', dex: 'main', notionalUsd: 95, marginUsd: 95, leverage: 20, szDecimals: 4 }
+      ]
     })
     expect(armed.armed).toBe(true)
     await rm(stateDir, { recursive: true, force: true })
@@ -506,7 +529,9 @@ describe('SizingLockService arm-journaling + order-path flatten guard', () => {
     await service.arm({
       packageId: 'A-1',
       version: 'v14-COIN60',
-      perCoin: [{ coin: 'COIN', dex: 'main', notionalUsd: 60, marginUsd: 60, leverage: 20, szDecimals: 4 }],
+      perCoin: [
+        { coin: 'COIN', dex: 'main', notionalUsd: 60, marginUsd: 60, leverage: 20, szDecimals: 4 }
+      ],
       address: '0xbb64c24a6b2ee1185621490d2a1ae06522f15f57' as `0x${string}`
     })
     const journal = await readFile(join(stateDir, 'sizing-lock-journal.jsonl'), 'utf8')
@@ -529,13 +554,17 @@ describe('SizingLockService arm-journaling + order-path flatten guard', () => {
     await service.arm({
       packageId: 'A-1',
       version: 'v13',
-      perCoin: [{ coin: 'COIN', dex: 'main', notionalUsd: 95, marginUsd: 95, leverage: 20, szDecimals: 4 }],
+      perCoin: [
+        { coin: 'COIN', dex: 'main', notionalUsd: 95, marginUsd: 95, leverage: 20, szDecimals: 4 }
+      ],
       address: '0xbb64c24a6b2ee1185621490d2a1ae06522f26f57' as `0x${string}`
     })
     await service.arm({
       packageId: 'A-1',
       version: 'v14',
-      perCoin: [{ coin: 'COIN', dex: 'main', notionalUsd: 60, marginUsd: 60, leverage: 20, szDecimals: 4 }],
+      perCoin: [
+        { coin: 'COIN', dex: 'main', notionalUsd: 60, marginUsd: 60, leverage: 20, szDecimals: 4 }
+      ],
       address: '0xbb64c24a6b2ee1185621490d2a1ae06522f26f57' as `0x${string}`
     })
     const journal = await readFile(join(stateDir, 'sizing-lock-journal.jsonl'), 'utf8')
@@ -571,11 +600,19 @@ describe('SizingLockService arm-journaling + order-path flatten guard', () => {
       armCollisionCheck: async () => ({ livePosition: true, inFlightFill: false })
     })
     await service.load()
-    await service.arm({ packageId: 'A-1', version: 'v1', perCoin: [{ coin: 'COIN', dex: 'main', notionalUsd: 95, marginUsd: 95, leverage: 20, szDecimals: 4 }] })
+    await service.arm({
+      packageId: 'A-1',
+      version: 'v1',
+      perCoin: [
+        { coin: 'COIN', dex: 'main', notionalUsd: 95, marginUsd: 95, leverage: 20, szDecimals: 4 }
+      ]
+    })
     const armed = await service.arm({
       packageId: 'A-1',
       version: 'v14',
-      perCoin: [{ coin: 'COIN', dex: 'main', notionalUsd: 60, marginUsd: 60, leverage: 20, szDecimals: 4 }],
+      perCoin: [
+        { coin: 'COIN', dex: 'main', notionalUsd: 60, marginUsd: 60, leverage: 20, szDecimals: 4 }
+      ],
       address: '0xbb64c24a6b2ee1185621490d2a1ae06522f26f57' as `0x${string}`,
       overrideActor: 'chief',
       overrideReason: 'user directive: deliberate close + re-place COIN at new spec'
@@ -661,7 +698,10 @@ describe('SizingLockService TWAP-in-flight + slot-cap guard (CXMT over-cap class
   })
 
   test('within-cap TWAP passes (no refusal when open legs fit the slot cap)', async () => {
-    const { service, stateDir } = await twapService({ COIN: { livePosition: false, openTwapLegs: 1 } }, 4)
+    const { service, stateDir } = await twapService(
+      { COIN: { livePosition: false, openTwapLegs: 1 } },
+      4
+    )
     await service.arm({ packageId: 'A-1', version: 'v1', perCoin: [COIN_ENTRY] })
     const armed = await service.arm({
       packageId: 'A-1',
@@ -691,4 +731,3 @@ describe('SizingLockService TWAP-in-flight + slot-cap guard (CXMT over-cap class
     await rm(stateDir, { recursive: true, force: true })
   })
 })
-

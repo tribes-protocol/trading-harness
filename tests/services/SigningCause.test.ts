@@ -11,7 +11,9 @@ describe('unwrapCause', () => {
     // The SDK wraps ANY wallet.signTypedData rejection into AbstractWalletError
     // with {cause}. A plain .message hid the real 403 (the bug that froze the
     // desk's close). unwrapCause must walk to the true reason.
-    const terminalError = new Error('Failed to sign Ethereum typed data: 403 Forbidden{"error":"Agent wallet does not belong to caller"}')
+    const terminalError = new Error(
+      'Failed to sign Ethereum typed data: 403 Forbidden{"error":"Agent wallet does not belong to caller"}'
+    )
     const sdkWrapper = new Error('Failed to sign typed data with viem wallet', {
       cause: terminalError
     })
@@ -80,7 +82,8 @@ describe('HyperliquidSignReplayResultSchema', () => {
       nonce: 1,
       timestamp: 2,
       ok: false,
-      error: 'AbstractWalletError: Failed to sign typed data with viem wallet → caused by: 403 Forbidden'
+      error:
+        'AbstractWalletError: Failed to sign typed data with viem wallet → caused by: 403 Forbidden'
     })
     expect(parsed.ok).toBe(false)
   })
