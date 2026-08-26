@@ -47,8 +47,7 @@
 //      The manifest is only rewritten when the file set actually changed, so a bare
 //      sha bump with identical skill content produces no diff. `upstreamSha` stays
 //      the 40-hex upstream COMMIT — apps/cli/test/skills/SyncedSkills.test.ts pins
-//      that shape, and scripts/install-shared-skills.sh scrapes the `files` keys
-//      line by line, so neither may change form.
+//      that shape, so it may not change form.
 //
 // The routing block backticks the SLUG ONLY and strips every backtick from the
 // description: tests/skills/SkillsContract.test.ts fails on any backticked token in
