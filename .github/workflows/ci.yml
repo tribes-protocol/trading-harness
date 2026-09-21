@@ -41,6 +41,3 @@ jobs:
         env:
           PRIVY_APP_ID: test-placeholder
         run: bunx vitest run
-
-      - name: Skills release digest verification
-        run: bun run test:skills-release

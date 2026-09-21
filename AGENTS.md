@@ -185,7 +185,10 @@ Pick the skill with these tie-breaker rules, in order:
 | Alert the human: long job finished, needs attention                                | `zipbox-notify`        |
 | Shape every reply for an ADHD reader (applies to all output)                       | `i-have-adhd`          |
 
-<!-- BEGIN synced skill routes (managed by scripts/skills-upgrade.mjs) -->
+### Platform-provided skills
+
+These zipbox skills are installed by the sandbox platform at ~/.agents/skills; they are not
+vendored in this repo.
 
 - `zipbox-api-keys` — Find and use the API keys this box already holds for third-party providers.
 - `zipbox-browser` — Fast headless browser automation with Microsoft's Playwright CLI for JavaScript-rendered pages, clicks, typing, snapshots, screenshots, PDF capture, and console or network inspection.
@@ -199,8 +202,6 @@ Pick the skill with these tie-breaker rules, in order:
 - `zipbox-wallet` — Wallet and transaction capability for this sandbox's bound Privy wallet (EVM + Solana), through the baked tribes-wallet CLI.
 - `zipbox-websearch` — Search the open web and extract readable text from a known public URL.
 - `zipbox-x` — Read X (x.com, formerly Twitter) through the sandbox's metered egress proxy — profiles, timelines, mentions, recent search, quote posts, followers.
-
-<!-- END synced skill routes -->
 
 ## Harness-wide execution invariants
 
@@ -240,35 +241,27 @@ Preferred path in agent clients: use the Tribes login skill (`/tribes-login`, or
 
 ### Installing the skills
 
-All skill docs — trading-only and the vendored `zipbox-*` catalog — live as real directories
-under repo-root `skills/`. Every client's skills directory — `.pi/skills/` for Pi,
-`.claude/skills/` for Claude Code, and the matching `.<client>/skills/` for each other client —
-is a symlink to that mixed repo-root directory, so clients discover both sets without divergent
-copies. There is no install step: the checkout is the catalog. (Pi additionally reads the
-sandbox-wide catalog at `~/.agents/skills` natively, where the platform installs its own copy.)
+The trading skills live as real directories under repo-root `skills/`. Every client's skills
+directory — `.pi/skills/` for Pi, `.claude/skills/` for Claude Code, and the matching
+`.<client>/skills/` for each other client — is a symlink to that repo-root directory, so clients
+discover the trading set without divergent copies. There is no install step: the checkout is the
+catalog.
+
+The shared `zipbox-*` catalog is NOT vendored here. The sandbox platform delivers it at
+`~/.agents/skills`, which Pi reads natively, so the routing map below points at skills that exist
+at that path rather than under `skills/`. Outside a Tribes sandbox that catalog may be absent, and
+the skills that wrap baked sandbox CLIs (for example `zipbox-browser`) do not work there at all;
+`tribes-cli web-search` is the non-sandbox fallback for the web route.
 
 If your client reads skills from a directory that this repo does not already provide, symlink it
 to the repo-root `skills/` directory (`ln -s ../skills .<client>/skills`).
 
 ### Updating the shared skills
 
-There is no scheduled sync — upstream changes land when someone asks for them. Run
-`bun run skills:upgrade` (add `-- --pin <contentSha256>` to take a specific published release
-instead of the current one), review the diff, then commit and open a PR like any other change.
-
-The catalog is published by `tribes-protocol/terminal` on every merge to `main` that touches
-`harnesses/setup/skills/**`, content-addressed, to a public-read R2 bucket at
-`https://skills.zipbox.ai/skills/`. That repo is private, so this is the only route: there is no
-cross-repo token and there should not be one. The command downloads the release, verifies the
-tarball's sha256 against the release manifest, the archive's own content hash against the address
-it asked for, and every extracted file against the manifest — all in a temp dir, before anything
-is written into `skills/`. It then regenerates the routing bullets above and records provenance in
-`skills/.synced.json` (upstream commit, content address, tree hash, source URL, and a sha256 per
-vendored file). `--pin` is what makes a vendored release reproducible: it anchors the whole digest
-chain in an argument you typed rather than in the mutable `latest.json` pointer.
-
-Those files are machine-written: edit them upstream, never here — `apps/cli/test/skills/SyncedSkills.test.ts`
-fails CI on any hand-edit, and `test/skills-release-verify.test.mjs` covers the digest chain itself.
+The shared catalog is owned by `tribes-protocol/terminal` under `harnesses/setup/skills/` and
+published, content-addressed, to a public-read R2 bucket at `https://skills.zipbox.ai/skills/`.
+The sandbox platform installs it at `~/.agents/skills`; this repo does not vendor it, so there is
+nothing to sync here. Change those skills upstream and let the platform deliver the new release.
 
 ## Runtime Preconditions
 
