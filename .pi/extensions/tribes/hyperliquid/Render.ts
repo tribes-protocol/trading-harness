@@ -37,7 +37,7 @@ const TAB_LABELS: Readonly<Record<HlTab, string>> = {
   deposits: 'Deposits'
 }
 // Rows shown per page so the below-editor widget never grows unbounded; extra
-// items are reachable by paging (ctrl+shift+↑/↓).
+// items are reachable by paging (ctrl+shift+pageUp/pageDown).
 export const MAX_TAB_ROWS = 12
 const TRIBES_PERP_URL = 'https://tribes.xyz/perps'
 
@@ -665,10 +665,10 @@ export function clampScrollStart(offset: number, total: number): number {
 }
 
 // Footer shown only when a tab has more than one page, so the operator knows
-// where they are in the list and that ctrl+shift+↑/↓ pages through it.
+// where they are in the list and that ctrl+shift+pageUp/pageDown pages through it.
 function scrollFooter(total: number, start: number, shown: number, theme: Theme): string | null {
   if (total <= MAX_TAB_ROWS) return null
-  return theme.fg('dim', `↕ ${start + 1}–${start + shown} of ${total}  ·  ctrl+shift+↑/↓`)
+  return theme.fg('dim', `↕ ${start + 1}–${start + shown} of ${total}  ·  ctrl+shift+pgup/pgdn`)
 }
 
 function withFooter(body: string, footer: string | null): string {

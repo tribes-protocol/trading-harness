@@ -1,12 +1,15 @@
+import { execFile } from 'node:child_process'
 import { existsSync } from 'node:fs'
 import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import { dirname, resolve } from 'node:path'
+import { promisify } from 'node:util'
 
 import type { ExtensionAPI, ExtensionContext, Theme } from '@earendil-works/pi-coding-agent'
 import type { TUI } from '@earendil-works/pi-tui'
 
 import { readExtensionToggles, writeExtensionToggle } from '../ExtensionToggles.ts'
 import { STATUS_REFRESH_EVENT } from '../StatusRefresh.ts'
+import { resolveTradesStateDir } from '../WorkspacePaths.ts'
 import { FALLBACK_PERP_DEXES, resolvePerpDexes } from './DexDiscovery.ts'
 import { ensureJsonTreeString } from './EnsureJson.ts'
 import {
@@ -34,9 +37,12 @@ import type {
   StatusPosition
 } from './StatusTypes.ts'
 
+const execFileAsync = promisify(execFile)
 const RUNTIME_STATUS_DIR = 'runtime/hyperliquid'
 const STATUS_FILE = 'live-status.json'
 const CONFIG_FILE = 'config.json'
+const WALLET_LIST_TIMEOUT_MS = 15_000
+const WALLET_LIST_MAX_BUFFER_BYTES = 1024 * 1024
 const COST_LOOKBACK_DAYS = 7
 const CLOSED_PNL_LOOKBACK_HOURS = 24
 const RECENT_TRADES_LIMIT = 100
@@ -93,15 +99,19 @@ type AccountState =
   | { readonly kind: 'missing' }
 
 async function resolveAccountState(cwd: string): Promise<AccountState> {
+  const stateDir = resolveTradesStateDir(cwd)
   // .tribes/privy-wallets.json is written by the tribes wallet-snapshot warmup
   // (`tribes-cli wallet list`), which runs a beat AFTER session start — so an
   // absent/unreadable file means "still loading", not "no account".
-  // But if the agent key itself is absent, the user hasn't logged in at all.
   let raw: string
   try {
-    raw = await readFile(resolve(cwd, '.tribes/privy-wallets.json'), 'utf8')
+    raw = await readFile(resolve(stateDir, 'privy-wallets.json'), 'utf8')
   } catch {
-    if (!existsSync(resolve(cwd, '.tribes/agent-authorization-key.json'))) {
+    // Prefer the baked zipbox-wallet CLI before declaring the user logged out:
+    // it resolves the same Privy wallet without the harness bearer.
+    const fromCli = await readEvmAddressFromWalletCli()
+    if (fromCli !== null) return { kind: 'ready', address: fromCli }
+    if (!existsSync(resolve(stateDir, 'agent-authorization-key.json'))) {
       return { kind: 'unauthenticated' }
     }
     return { kind: 'pending' }
@@ -123,6 +133,29 @@ async function resolveAccountState(cwd: string): Promise<AccountState> {
     }
   }
   return { kind: 'missing' }
+}
+
+// The routed wallet surface is the baked `tribes-wallet` CLI (zipbox-wallet
+// skill). Used as the account source when the harness snapshot is absent, so the
+// panel still resolves an address without a fresh harness bearer.
+async function readEvmAddressFromWalletCli(): Promise<string | null> {
+  try {
+    const { stdout } = await execFileAsync('tribes-wallet', ['wallet', 'list'], {
+      timeout: WALLET_LIST_TIMEOUT_MS,
+      maxBuffer: WALLET_LIST_MAX_BUFFER_BYTES,
+      encoding: 'utf8'
+    })
+    const parsed: unknown = JSON.parse(stdout)
+    if (!Array.isArray(parsed)) return null
+    for (const row of parsed) {
+      if (!isRecord(row)) continue
+      const wallet = row.evmWalletAddress
+      if (typeof wallet === 'string' && /^0x[0-9a-fA-F]{40}$/u.test(wallet)) return wallet
+    }
+    return null
+  } catch {
+    return null
+  }
 }
 
 async function hyperliquidInfo<T>(body: InfoBody, options: InfoRequestOptions = {}): Promise<T> {
@@ -904,7 +937,8 @@ async function refreshStatusSnapshot(cwd: string): Promise<HyperliquidStatus> {
 
 export default function hyperliquidStatus(pi: ExtensionAPI): void {
   let activeTab: HlTab = 'positions'
-  // Row offset into the active tab's list; paged by ctrl+shift+↑/↓, reset on tab switch.
+  // Row offset into the active tab's list; paged by ctrl+shift+pageUp/pageDown, reset on tab
+  // switch.
   let scrollOffset = 0
   let statusTimer: ReturnType<typeof setInterval> | undefined
   let refreshing = false
@@ -1147,14 +1181,17 @@ export default function hyperliquidStatus(pi: ExtensionAPI): void {
     handler: (ctx) => (enabled ? switchTab(ctx, { delta: -1 }) : Promise.resolve())
   })
 
-  pi.registerShortcut('ctrl+shift+down', {
+  // Page keys, not ctrl+shift+↑/↓: pi binds those to its own transcript prompt
+  // navigation (tui.altScreen.previousPrompt/nextPrompt), and pi warns on every
+  // startup when an extension shadows a built-in shortcut.
+  pi.registerShortcut('ctrl+shift+pageDown', {
     description: 'Hyperliquid widget: page down (show more items)',
     handler: () => {
       if (enabled) scrollTab(1)
     }
   })
 
-  pi.registerShortcut('ctrl+shift+up', {
+  pi.registerShortcut('ctrl+shift+pageUp', {
     description: 'Hyperliquid widget: page up (show previous items)',
     handler: () => {
       if (enabled) scrollTab(-1)

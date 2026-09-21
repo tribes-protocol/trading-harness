@@ -14,7 +14,7 @@ allowed-tools: bash read
 
 Backing command group: `tribes-cli spot-trading`. Quotes on-chain swaps and bridges; the
 `zipbox-wallet` skill broadcasts the result. Canonical home of `tribes-cli token search`.
-Requires: wallet addresses and Privy wallet IDs from `tribes-cli wallet list` (`zipbox-wallet` skill).
+Requires: wallet addresses and Privy wallet IDs from `tribes-wallet wallet list` (`zipbox-wallet` skill).
 
 ## When to use
 
@@ -47,8 +47,8 @@ omit it for the default; set it only when the user asks for a specific slippage 
 
 ## Required flow
 
-1. `tribes-cli wallet list` — source address plus `evmWalletId` / `solWalletId` for broadcast.
-2. `tribes-cli wallet assets` — the source token row gives `--from-token` and its `decimals`.
+1. `tribes-wallet wallet list` — source address plus `evmWalletId` / `solWalletId` for broadcast.
+2. `tribes-wallet wallet assets` — the source token row gives `--from-token` and its `decimals`.
 3. Resolve any token address not found in balances with token search (section below).
 4. Convert the decimal amount to base units (section below).
 5. Request the quote (section below).

@@ -8,6 +8,7 @@ import { ExtensionAPI, ExtensionCommandContext } from '@earendil-works/pi-coding
 
 import { readDotEnv } from './DotEnv'
 import { warmWalletSnapshot } from './WalletSnapshot'
+import { resolveTradesStateDir, resolveWorkspaceRoot } from './WorkspacePaths.ts'
 
 const execFileAsync = promisify(execFile)
 
@@ -53,13 +54,14 @@ function stripAnsi(text: string): string {
 }
 
 /**
- * Copy the host-minted agent key into <root>/.tribes. Sync + best-effort so the key
- * is in place before AgentProxyToken.ts mints the API_BEARER_TOKEN the CLIs and
- * /agent/* calls authenticate with. A missing host key (local dev / already
- * provisioned) leaves any existing key untouched.
+ * Copy the host-minted agent key into the canonical state dir the CLI reads
+ * (`resolveTradesStateDir`). Sync + best-effort so the key is in place before
+ * AgentProxyToken.ts mints the API_BEARER_TOKEN the CLIs and /agent/* calls
+ * authenticate with. A missing host key (local dev / already provisioned) leaves
+ * any existing key untouched.
  */
 export function installAgentKey(cwd: string): void {
-  const keyPath = resolve(cwd, '.tribes/agent-authorization-key.json')
+  const keyPath = resolve(resolveTradesStateDir(cwd), 'agent-authorization-key.json')
   try {
     mkdirSync(dirname(keyPath), { recursive: true })
     copyFileSync(HOST_KEY_PATH, keyPath)
@@ -75,16 +77,16 @@ export function installAgentKey(cwd: string): void {
  * key returns true and fails loudly later via the provider/token path.
  */
 export function hasAgentKey(cwd: string): boolean {
-  return existsSync(resolve(cwd, '.tribes/agent-authorization-key.json'))
+  return existsSync(resolve(resolveTradesStateDir(cwd), 'agent-authorization-key.json'))
 }
 
 /**
- * Materialize <root>/.env so every CLI (and the LLM proxy) reads its config
- * straight from .env (bun auto-loads .env from the workspace) with no per-command
- * token prefix. Existing values are preserved; only the keys this harness owns
- * are overridden — passthrough vars from the process env (when present) and a
- * freshly minted API_BEARER_TOKEN. `--force` mints a brand-new token (ignoring
- * .env + cache) so each call genuinely refreshes the key.
+ * Materialize <workspaceRoot>/.env so every CLI (and the LLM proxy) reads its
+ * config straight from .env (bun auto-loads .env from the workspace) with no
+ * per-command token prefix. Existing values are preserved; only the keys this
+ * harness owns are overridden — passthrough vars from the process env (when
+ * present) and a freshly minted API_BEARER_TOKEN. `--force` mints a brand-new
+ * token (ignoring .env + cache) so each call genuinely refreshes the key.
  */
 export async function writeAuthEnv(cwd: string): Promise<void> {
   const { stdout } = await execFileAsync(
@@ -97,7 +99,8 @@ export async function writeAuthEnv(cwd: string): Promise<void> {
     }
   )
 
-  const env = await readDotEnv(cwd)
+  const workspaceRoot = resolveWorkspaceRoot(cwd)
+  const env = await readDotEnv(workspaceRoot)
   for (const name of ENV_PASSTHROUGH) {
     const value = process.env[name]
     if (value) env.set(name, value)
@@ -105,7 +108,7 @@ export async function writeAuthEnv(cwd: string): Promise<void> {
   env.set('API_BEARER_TOKEN', stdout.trim())
 
   const body = [...env].map(([key, value]) => `${key}=${value}`).join('\n')
-  await writeFile(resolve(cwd, '.env'), `${body}\n`, { mode: 0o600 })
+  await writeFile(resolve(workspaceRoot, '.env'), `${body}\n`, { mode: 0o600 })
 }
 
 /**

@@ -221,15 +221,20 @@ COMPILED_ARTIFACT="$PWD/node_modules/.bin/tribes-cli-compiled"
 
 echo "[bootstrap] compiling the harness into a single tribes-cli binary…"
 rm -f "$ARTIFACT" "$COMPILED_ARTIFACT"
+# The wrapper cds to the checkout AND exports TRIBES_WORKSPACE_ROOT, so every
+# tribes-cli invocation — from any shell, any cwd — anchors `.tribes`/.env to
+# this checkout. The harness path resolver (src/common/Env.ts) reads that env
+# first, which is what keeps the CLI, the Pi extension, and the bun token minter
+# on one state dir.
 if NODE_ENV=production bun build --compile --outfile "$COMPILED_ARTIFACT" "$ENTRY"; then
-  printf '#!/bin/sh\ncd "%s"\nexec "%s" "$@"\n' "$PWD" "$COMPILED_ARTIFACT" >"$ARTIFACT"
+  printf '#!/bin/sh\ncd "%s"\nexport TRIBES_WORKSPACE_ROOT="%s"\nexec "%s" "$@"\n' "$PWD" "$PWD" "$COMPILED_ARTIFACT" >"$ARTIFACT"
   chmod +x "$ARTIFACT"
   echo "[bootstrap] compiled $ENTRY -> $COMPILED_ARTIFACT"
 else
   # --compile unavailable (older bun / unsupported target): fall back to a shim
   # that runs the same entry through bun. Same `tribes-cli` interface either way.
   echo "[bootstrap] bun --compile unavailable; installing a bun shim instead"
-  printf '#!/bin/sh\nexec bun "%s/%s" "$@"\n' "$PWD" "$ENTRY" >"$ARTIFACT"
+  printf '#!/bin/sh\ncd "%s"\nexport TRIBES_WORKSPACE_ROOT="%s"\nexec bun "%s/%s" "$@"\n' "$PWD" "$PWD" "$PWD" "$ENTRY" >"$ARTIFACT"
   chmod +x "$ARTIFACT"
 fi
 

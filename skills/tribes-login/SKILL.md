@@ -87,4 +87,6 @@ Requires: `tribes-cli` on PATH — if missing, run `bun run bootstrap.sh` (AGENT
 
 ## Related skills
 
-- `zipbox-wallet` — run `tribes-cli wallet list` right after login to warm the wallet snapshot.
+- `zipbox-wallet` — wallet discovery and transfers use the baked `tribes-wallet` CLI; run
+  `tribes-wallet wallet list` right after login. (The harness snapshot warmup still runs
+  `tribes-cli wallet list`.)

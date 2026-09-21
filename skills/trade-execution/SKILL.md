@@ -13,7 +13,7 @@ allowed-tools: bash read
 
 # Trade Execution
 
-This skill is a playbook, not a command group: it sequences `tribes-cli wallet` and
+This skill is a playbook, not a command group: it sequences `tribes-wallet` and
 `tribes-cli hyperliquid` commands in a fixed order and adds mandatory post-trade verification.
 Requires: the `zipbox-wallet` and `hyperliquid` skills (full flag lists and sizing rules live there).
 
@@ -65,7 +65,7 @@ tribes-cli hyperliquid list-assets --market spot
 ### 2. Wallet
 
 ```bash
-tribes-cli wallet list
+tribes-wallet wallet list
 ```
 
 Take `evmWalletId` → `--wallet-id`, and `evmWalletAddress` → `--from` on signed commands and

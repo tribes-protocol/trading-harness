@@ -1,16 +1,17 @@
 import { execFile } from 'node:child_process'
 import { existsSync } from 'node:fs'
 import { mkdir, readFile, writeFile } from 'node:fs/promises'
-import { dirname, resolve } from 'node:path'
+import { dirname, join, resolve } from 'node:path'
 import { promisify } from 'node:util'
 
 import { ensureJsonTreeString } from '../hyperliquid/EnsureJson.ts'
+import { resolveTradesStateDir, resolveWorkspaceRoot } from '../WorkspacePaths.ts'
 import type { WalletAsset, WalletAssetPnl, WalletChainId, WalletStatus } from './StatusTypes.ts'
 
 const execFileAsync = promisify(execFile)
 const STATUS_PATH = 'runtime/tribes/wallet/live-status.json'
-const WALLET_SNAPSHOT_PATH = '.tribes/privy-wallets.json'
-const AUTH_KEY_PATH = '.tribes/agent-authorization-key.json'
+const WALLET_SNAPSHOT_FILENAME = 'privy-wallets.json'
+const AUTH_KEY_FILENAME = 'agent-authorization-key.json'
 const FETCH_TIMEOUT_MS = 30_000
 const FETCH_MAX_BUFFER_BYTES = 4 * 1024 * 1024
 
@@ -130,12 +131,49 @@ function normalizeAssetsResponse(value: unknown): WalletAssetsResponse {
   }
 }
 
+function addressesFromRows(rows: readonly unknown[]): string[] {
+  const addresses = new Set<string>()
+  for (const row of rows) {
+    if (!isRecord(row)) continue
+    const evm = stringValue(row.evmWalletAddress)
+    const solana = stringValue(row.solWalletAddress)
+    if (evm !== null) addresses.add(evm)
+    if (solana !== null) addresses.add(solana)
+  }
+  return [...addresses]
+}
+
+// The routed wallet surface is the baked `tribes-wallet` CLI (zipbox-wallet
+// skill). Prefer it so the panel resolves the account even when the harness
+// bearer is stale; an older sandbox without the baked CLI falls through to the
+// harness snapshot below.
+async function readWalletAccountsFromCli(cwd: string): Promise<string[] | null> {
+  try {
+    const { stdout } = await execFileAsync('tribes-wallet', ['wallet', 'list'], {
+      cwd,
+      timeout: FETCH_TIMEOUT_MS,
+      maxBuffer: FETCH_MAX_BUFFER_BYTES,
+      encoding: 'utf8'
+    })
+    const parsed: unknown = JSON.parse(stdout)
+    if (!Array.isArray(parsed)) return null
+    const addresses = addressesFromRows(parsed)
+    return addresses.length > 0 ? addresses : null
+  } catch {
+    return null
+  }
+}
+
 async function resolveWalletAccounts(cwd: string): Promise<WalletAccountState> {
+  const fromCli = await readWalletAccountsFromCli(cwd)
+  if (fromCli !== null) return { kind: 'ready', addresses: fromCli }
+
+  const stateDir = resolveTradesStateDir(cwd)
   let raw: string
   try {
-    raw = await readFile(resolve(cwd, WALLET_SNAPSHOT_PATH), 'utf8')
+    raw = await readFile(join(stateDir, WALLET_SNAPSHOT_FILENAME), 'utf8')
   } catch {
-    return existsSync(resolve(cwd, AUTH_KEY_PATH))
+    return existsSync(join(stateDir, AUTH_KEY_FILENAME))
       ? { kind: 'pending' }
       : { kind: 'unauthenticated' }
   }
@@ -146,15 +184,8 @@ async function resolveWalletAccounts(cwd: string): Promise<WalletAccountState> {
     return { kind: 'pending' }
   }
   if (!Array.isArray(snapshot)) return { kind: 'missing' }
-  const addresses = new Set<string>()
-  for (const row of snapshot) {
-    if (!isRecord(row)) continue
-    const evm = stringValue(row.evmWalletAddress)
-    const solana = stringValue(row.solWalletAddress)
-    if (evm !== null) addresses.add(evm)
-    if (solana !== null) addresses.add(solana)
-  }
-  return addresses.size > 0 ? { kind: 'ready', addresses: [...addresses] } : { kind: 'missing' }
+  const addresses = addressesFromRows(snapshot)
+  return addresses.length > 0 ? { kind: 'ready', addresses } : { kind: 'missing' }
 }
 
 function unavailableStatus(
@@ -192,12 +223,13 @@ function hasSameWallets(left: readonly string[], right: readonly string[]): bool
   return left.every((wallet) => expected.has(wallet.toLowerCase()))
 }
 
-async function fetchWalletAssets(
+async function runWalletAssetsCli(
+  command: string,
   cwd: string,
   addresses: readonly string[]
 ): Promise<WalletAssetsResponse> {
   const { stdout } = await execFileAsync(
-    'tribes-cli',
+    command,
     ['wallet', 'assets', '--wallet-addresses', ...addresses],
     {
       cwd,
@@ -210,8 +242,26 @@ async function fetchWalletAssets(
   return normalizeAssetsResponse(parsed)
 }
 
+// zipbox-wallet (`tribes-wallet`) is the routed balance surface; the harness
+// `tribes-cli wallet assets` stays the fallback for older sandboxes without the
+// baked CLI. Both serve the same underlying Privy wallet.
+async function fetchWalletAssets(
+  cwd: string,
+  addresses: readonly string[]
+): Promise<WalletAssetsResponse> {
+  try {
+    return await runWalletAssetsCli('tribes-wallet', cwd, addresses)
+  } catch (primaryError) {
+    try {
+      return await runWalletAssetsCli('tribes-cli', cwd, addresses)
+    } catch {
+      throw primaryError
+    }
+  }
+}
+
 async function writeCachedStatus(cwd: string, status: WalletStatus): Promise<void> {
-  const path = resolve(cwd, STATUS_PATH)
+  const path = resolve(resolveWorkspaceRoot(cwd), STATUS_PATH)
   await mkdir(dirname(path), { recursive: true })
   await writeFile(path, `${ensureJsonTreeString(status)}\n`, 'utf8')
 }
@@ -242,7 +292,9 @@ function cachedStatusFromUnknown(value: unknown): WalletStatus | null {
 
 export async function readCachedWalletStatus(cwd: string): Promise<WalletStatus | null> {
   try {
-    const parsed: unknown = JSON.parse(await readFile(resolve(cwd, STATUS_PATH), 'utf8'))
+    const parsed: unknown = JSON.parse(
+      await readFile(resolve(resolveWorkspaceRoot(cwd), STATUS_PATH), 'utf8')
+    )
     return cachedStatusFromUnknown(parsed)
   } catch {
     return null

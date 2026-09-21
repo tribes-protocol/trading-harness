@@ -32,6 +32,7 @@ import { STATUS_REFRESH_EVENT } from './StatusRefresh.ts'
 import { registerWalletExtension } from './wallet/WalletExtension.ts'
 import { warmWalletSnapshot } from './WalletSnapshot.ts'
 import { showWelcome } from './Welcome.ts'
+import { anchorWorkspaceRoot } from './WorkspacePaths.ts'
 
 interface StartupNotice {
   readonly message: string
@@ -44,6 +45,13 @@ function errorMessage(err: unknown): string {
 
 export default async function tribes(pi: ExtensionAPI): Promise<void> {
   const cwd = process.cwd()
+
+  // Pin the checkout root for this process and every child it spawns (the bun
+  // token minter, the agent's tribes-cli calls), so all of them resolve the SAME
+  // `.tribes` state dir the extension installs the agent key into. Without this,
+  // the minter's core resolver and the extension's cwd-relative writes can point
+  // at different dirs and the CLI reports "Authorization key missing".
+  anchorWorkspaceRoot(cwd)
 
   // Put the agent key in place before AgentProxyToken.ts mints the CLI bearer.
   installAgentKey(cwd)

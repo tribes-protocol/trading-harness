@@ -1,5 +1,4 @@
-import { homedir } from 'node:os'
-import { dirname, resolve } from 'node:path'
+import { resolve } from 'node:path'
 
 import { ensureString } from '@/utils/Lang'
 
@@ -57,31 +56,33 @@ export const NANSEN_API_KEY = process.env.NANSEN_API_KEY ?? ''
 export const MARKETSTACK_API_KEY = process.env.MARKETSTACK_API_KEY ?? ''
 
 /**
- * Anchored, absolute on-disk state root for the durable entry-gate / sizing
- * state (entry-gate.json, the sizing manifest, and their journals). Anchor to
- * this, NEVER process.cwd(): a cwd-relative default let an override run from a
- * foreign cwd silently write a stray `.tribes` the order path never read — that
- * is exactly how the desk's BTC slot-1 override stranded (states:[] at order
- * time despite the desk believing it was journaled; a /tmp/rel-ob/.tribes still
- * exists).
+ * Anchored workspace root — the directory that holds the harness checkout (the
+ * project `.env`, `.tribes/`, `runtime/`). Precedence: TRIBES_WORKSPACE_ROOT env
+ * wins; else process.cwd(). cwd is a reliable anchor because both entry points
+ * guarantee it: the compiled `tribes-cli` wrapper `cd`s to the checkout before
+ * exec, and Pi launches with the checkout as its working directory. The env
+ * overrides stay the absolute escape hatch for any caller booted from a foreign
+ * cwd (tests, a raw compiled-binary invocation).
+ */
+export function resolveWorkspaceRoot(): string {
+  const explicit = process.env.TRIBES_WORKSPACE_ROOT?.trim()
+  if (explicit !== undefined && explicit.length > 0) return resolve(explicit)
+  return resolve(process.cwd())
+}
+
+/**
+ * Anchored, absolute on-disk state root for durable harness state — the agent
+ * authorization key, the JWT cache, the wallet snapshot, and the entry-gate /
+ * sizing state (entry-gate.json, the sizing manifest, and their journals).
  *
- * Precedence: TRIBES_STATE_DIR env wins outright; else $HOME/workspace/.tribes
- * (the sandbox clones the harness into /root/workspace per AGENTS.md, so this
- * keeps today's /root/workspace/.tribes production store); else $HOME/.tribes.
- * Every choice is absolute, so the writer CLI and the order path resolve the
- * SAME path no matter what cwd each process boots in.
+ * Precedence: TRIBES_STATE_DIR env wins outright; else `<workspaceRoot>/.tribes`.
+ * Every choice is absolute, and the Pi extension, the `bun`-spawned token minter,
+ * and the compiled CLI all derive it from the SAME TRIBES_WORKSPACE_ROOT /
+ * TRIBES_STATE_DIR contract, so a foreign-cwd write can never strand a store the
+ * order path never reads (the BTC slot-1 override class).
  */
 export function resolveTradesStateDir(): string {
   const explicit = process.env.TRIBES_STATE_DIR?.trim()
   if (explicit !== undefined && explicit.length > 0) return resolve(explicit)
-  return resolve(homedir(), 'workspace', '.tribes')
-}
-
-/**
- * Anchored workspace root (the parent of the state dir, where the project
- * `.env` and the git workspace live). Also never cwd: resolved relative to the
- * state dir so a foreign-cwd invocation finds the same repo files.
- */
-export function resolveWorkspaceRoot(): string {
-  return dirname(resolveTradesStateDir())
+  return resolve(resolveWorkspaceRoot(), '.tribes')
 }
