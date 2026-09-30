@@ -3,23 +3,21 @@ name: alpha-scout
 description: >-
   Discovers opportunities BEFORE a specific token is chosen. Handles: trending tokens, new token
   listings, and smart-money flows and accumulation. Call to find what is hot or where smart money
-  is rotating. NOT for: one identified token's price, safety, or trades (use token-analyst);
-  market-wide rankings or top movers (use market-strategist); trending pools (use defi-analyst).
+  is rotating. NOT for: one identified token's price, safety, or trades (use token-analyst).
 allowed-tools: bash read
 ---
 
 # Alpha Scout
 
 Backing command groups: `tribes-cli smart-money` (Nansen smart-money netflows, holdings, and
-trades), plus `tribes-cli token-data trending` / `token-data new-listings` (BirdEye) and
-`tribes-cli market trending` (CoinGecko search popularity) — all structured JSON, answering in
-seconds. YOU are the scout: pull the numbers with the subcommands below and do the
-interpretation — intersecting lists, spotting rotation, ranking candidates — yourself. There
-is no backend specialist behind this skill and no free-text query subcommand.
+trades), plus `tribes-cli token-data trending` / `token-data new-listings` (BirdEye) — all
+structured JSON, answering in seconds. YOU are the scout: pull the numbers with the subcommands
+below and do the interpretation — intersecting lists, spotting rotation, ranking candidates —
+yourself. There is no backend specialist behind this skill and no free-text query subcommand.
 
 ## When to use
 
-- "What's trending?" / "What's hot right now?" — `token-data trending` + `market trending`,
+- "What's trending?" / "What's hot right now?" — `token-data trending` + `asset trending`,
   cross-checked against smart-money flows.
 - "What are whales / smart money buying?" — `smart-money netflow`, `holdings`, `dex-trades`,
   `perp-trades`, `dcas`.
@@ -27,8 +25,7 @@ is no backend specialist behind this skill and no free-text query subcommand.
 - Per-token cohort flows or top-trader PnL BEFORE committing to a deep dive —
   `smart-money flow-intelligence`, `pnl-leaderboard`.
 - NOT for one identified token's price, security, or trades — use `token-analyst`.
-- NOT for market-wide rankings, global caps, or top gainers/losers — use `market-strategist`.
-- NOT for trending or new pools and DEX pairs — use `defi-analyst`.
+- NOT for market-wide briefings — use `strategize`.
 
 ## Hard rules
 
@@ -89,7 +86,7 @@ Every subcommand accepts `--out <file>`. All read-only.
 
 ```bash
 tribes-cli token-data trending --chain solana --limit 20
-tribes-cli market trending
+tribes-cli asset trending --chain solana --limit 20
 tribes-cli smart-money netflow --chain all --limit 20
 tribes-cli smart-money token-list --chain ethereum --timeframe 24h
 ```
@@ -129,7 +126,7 @@ tribes-cli smart-money pnl-leaderboard --token <address> --chain solana --limit 
 1. Verify Hyperliquid tradability before presenting ideas as executable (AGENTS.md guardrail).
 2. IF the request was unscoped, THEN add securities (`stock-analyst`) and commodities
    (`commodity-analyst`) passes; see AGENTS.md.
-3. Hand off a chosen token: on-chain deep-dive → `token-analyst`; profile → `fundamentals-analyst`.
+3. Hand off a chosen token: on-chain deep-dive → `token-analyst`; profile → `asset-data`.
 
 ## Error recovery
 
@@ -143,7 +140,5 @@ tribes-cli smart-money pnl-leaderboard --token <address> --chain solana --limit 
 ## Related skills
 
 - `token-analyst` — deep-dive on one identified token (price, security, trades, holders).
-- `fundamentals-analyst` — research profile of one listed coin.
-- `market-strategist` — market-wide rankings, movers, and category rotation.
-- `defi-analyst` — trending pools and DEX pairs.
+- `asset-data` — profile/discovery via the generic `asset` router.
 - `hyperliquid` — tradability verification and execution for discovered ideas.

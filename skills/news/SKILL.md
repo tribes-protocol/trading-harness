@@ -23,7 +23,6 @@ Requires: an auth token (run `tribes-cli login` once if commands fail with auth 
 - NOT for numeric macro indicators (CPI, yields, VIX, DXY) — use `macros`.
 - NOT for event odds or market-implied probabilities — use `prediction`.
 - NOT for general non-asset web questions or reading one known URL — use `zipbox-websearch`.
-- NOT for source-backed deep research on protocols or companies — use `research-analyst`.
 
 ## Hard rules
 
@@ -115,7 +114,6 @@ Use only when the CLI path is exhausted (see Error recovery) or the topic has no
 - `macros` — numeric macro indicators; this skill covers the macro narrative side only.
 - `prediction` — event odds and market-implied probabilities.
 - `zipbox-websearch` — general web search and the first hop of the fallback chain.
-  Outside a sandbox, `tribes-cli web-search` is the same backend.
 - `zipbox-browser` — JS-gated or fetch-blocked pages during fallback. Outside a sandbox it has no
   equivalent, so that hop is unavailable rather than stale.
 - `spot-trading` — documents `tribes-cli token search` (symbol → chainId + address).

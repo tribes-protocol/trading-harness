@@ -7,7 +7,7 @@ import { resolveCapability } from '@/routing/Router'
 type StubPayload = { value: number }
 
 function okSource(value: number): AssetSource<StubPayload> {
-  return { provider: 'geckoterminal', fetch: vi.fn(async () => ({ value })) }
+  return { provider: 'marketstack', fetch: vi.fn(async () => ({ value })) }
 }
 
 function failingSource(error: unknown, authoritative = false): AssetSource<StubPayload> {
@@ -55,10 +55,10 @@ describe('resolveCapability', () => {
     const result = await resolveCapability({ capability: 'price', sources: [first, second] })
 
     expect(result.value).toBe(7)
-    expect(result.source).toBe('geckoterminal')
+    expect(result.source).toBe('marketstack')
     expect(result.attempted).toHaveLength(2)
     expect(result.attempted[0]).toMatchObject({ provider: 'birdeye', outcome: 'key_unset' })
-    expect(result.attempted[1]).toEqual({ provider: 'geckoterminal', outcome: 'ok' })
+    expect(result.attempted[1]).toEqual({ provider: 'marketstack', outcome: 'ok' })
   })
 
   it('falls back on 401 (tier gate)', async () => {
@@ -67,7 +67,7 @@ describe('resolveCapability', () => {
 
     const result = await resolveCapability({ capability: 'price', sources: [first, second] })
 
-    expect(result.source).toBe('geckoterminal')
+    expect(result.source).toBe('marketstack')
     expect(result.attempted[0]).toMatchObject({ provider: 'birdeye', outcome: 'http_401' })
   })
 
@@ -77,7 +77,7 @@ describe('resolveCapability', () => {
 
     const result = await resolveCapability({ capability: 'candles', sources: [first, second] })
 
-    expect(result.source).toBe('geckoterminal')
+    expect(result.source).toBe('marketstack')
     expect(result.attempted[0]).toMatchObject({ provider: 'birdeye', outcome: 'http_429' })
   })
 
@@ -89,7 +89,7 @@ describe('resolveCapability', () => {
 
     const result = await resolveCapability({ capability: 'profile', sources: [first, second] })
 
-    expect(result.source).toBe('geckoterminal')
+    expect(result.source).toBe('marketstack')
     expect(result.attempted[0]).toMatchObject({ provider: 'birdeye', outcome: 'http_500' })
   })
 
@@ -99,7 +99,7 @@ describe('resolveCapability', () => {
 
     const result = await resolveCapability({ capability: 'price', sources: [first, second] })
 
-    expect(result.source).toBe('geckoterminal')
+    expect(result.source).toBe('marketstack')
     expect(result.attempted[0]).toMatchObject({ provider: 'birdeye', outcome: 'timeout' })
   })
 
@@ -109,7 +109,7 @@ describe('resolveCapability', () => {
 
     const result = await resolveCapability({ capability: 'price', sources: [first, second] })
 
-    expect(result.source).toBe('geckoterminal')
+    expect(result.source).toBe('marketstack')
     expect(result.attempted[0]).toMatchObject({ provider: 'birdeye', outcome: 'empty' })
   })
 
@@ -119,7 +119,7 @@ describe('resolveCapability', () => {
 
     const result = await resolveCapability({ capability: 'price', sources: [first, second] })
 
-    expect(result.source).toBe('geckoterminal')
+    expect(result.source).toBe('marketstack')
     expect(result.attempted[0]).toMatchObject({ provider: 'birdeye', outcome: 'parse_error' })
   })
 
@@ -129,7 +129,7 @@ describe('resolveCapability', () => {
 
     const result = await resolveCapability({ capability: 'price', sources: [first, second] })
 
-    expect(result.source).toBe('geckoterminal')
+    expect(result.source).toBe('marketstack')
     expect(result.attempted[0]).toMatchObject({ provider: 'birdeye', outcome: 'not_found' })
   })
 

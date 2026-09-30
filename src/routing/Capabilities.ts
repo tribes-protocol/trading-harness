@@ -14,12 +14,7 @@ import type {
 // router tries sources in chain order and stops at the first success.
 // ---------------------------------------------------------------------------
 
-export type AssetProviderId =
-  | 'birdeye'
-  | 'geckoterminal'
-  | 'coingecko'
-  | 'marketstack'
-  | 'hyperliquid'
+export type AssetProviderId = 'birdeye' | 'marketstack' | 'hyperliquid'
 
 export type AssetSource<T> = {
   readonly provider: AssetProviderId

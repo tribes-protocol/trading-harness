@@ -33,7 +33,7 @@ describe('multi-asset trading policy', () => {
 
   it('provides a dedicated commodity research and thesis path', () => {
     expect(existsSync(join(REPO_ROOT, '.agents/desk-commodity-research.md'))).toBe(true)
-    expect(commodityAnalyst).toContain('research-analyst')
+    expect(commodityAnalyst).toContain('zipbox-websearch')
     expect(commodityAnalyst).toContain('technical-analyst')
     expect(commodityAnalyst).toContain('list-assets --all-dexes')
     expect(thesis).toContain('desk-commodity-research')

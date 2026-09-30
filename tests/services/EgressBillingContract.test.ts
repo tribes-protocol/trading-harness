@@ -3,11 +3,7 @@ import { readFile } from 'node:fs/promises'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { BirdeyeService } from '@/services/BirdeyeService'
-import { CoinService } from '@/services/CoinService'
-import { ExchangesService } from '@/services/ExchangesService'
-import { MarketService } from '@/services/MarketService'
 import { NansenService } from '@/services/NansenService'
-import { OnchainService } from '@/services/OnchainService'
 import { StocksService } from '@/services/StocksService'
 
 type CredentialPlacement =
@@ -22,42 +18,9 @@ type EgressProbe = {
   readonly invoke: (apiKey: string) => Promise<unknown>
 }
 
-const PROVIDER_ENV_NAMES = [
-  'BIRDEYE_API_KEY',
-  'COIN_GECKO_PRO_API_KEY',
-  'MARKETSTACK_API_KEY',
-  'NANSEN_API_KEY'
-] as const
+const PROVIDER_ENV_NAMES = ['BIRDEYE_API_KEY', 'MARKETSTACK_API_KEY', 'NANSEN_API_KEY'] as const
 
 const EGRESS_PROBES: readonly EgressProbe[] = [
-  {
-    label: 'CoinGecko coin',
-    envName: 'COIN_GECKO_PRO_API_KEY',
-    origin: 'https://pro-api.coingecko.com',
-    credential: { kind: 'header', name: 'x-cg-pro-api-key' },
-    invoke: (apiKey) => new CoinService({ apiKey }).getRates()
-  },
-  {
-    label: 'CoinGecko market',
-    envName: 'COIN_GECKO_PRO_API_KEY',
-    origin: 'https://pro-api.coingecko.com',
-    credential: { kind: 'header', name: 'x-cg-pro-api-key' },
-    invoke: (apiKey) => new MarketService({ apiKey }).getGlobal()
-  },
-  {
-    label: 'CoinGecko onchain',
-    envName: 'COIN_GECKO_PRO_API_KEY',
-    origin: 'https://pro-api.coingecko.com',
-    credential: { kind: 'header', name: 'x-cg-pro-api-key' },
-    invoke: (apiKey) => new OnchainService({ apiKey }).getNetworks({ limit: 50 })
-  },
-  {
-    label: 'CoinGecko exchanges',
-    envName: 'COIN_GECKO_PRO_API_KEY',
-    origin: 'https://pro-api.coingecko.com',
-    credential: { kind: 'header', name: 'x-cg-pro-api-key' },
-    invoke: (apiKey) => new ExchangesService({ apiKey }).list({ limit: 10 })
-  },
   {
     label: 'BirdEye',
     envName: 'BIRDEYE_API_KEY',

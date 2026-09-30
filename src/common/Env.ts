@@ -50,7 +50,6 @@ export const PRIVY_APP_ID =
 // placeholder under the name and the egress proxy swaps in the real key, so
 // this process never holds a live credential. Empty string = provider not
 // configured; the dependent command group reports itself unavailable.
-export const COIN_GECKO_PRO_API_KEY = process.env.COIN_GECKO_PRO_API_KEY ?? ''
 export const BIRDEYE_API_KEY = process.env.BIRDEYE_API_KEY ?? ''
 export const NANSEN_API_KEY = process.env.NANSEN_API_KEY ?? ''
 export const MARKETSTACK_API_KEY = process.env.MARKETSTACK_API_KEY ?? ''

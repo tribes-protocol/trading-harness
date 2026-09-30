@@ -6,9 +6,8 @@ description: >-
   unemployment, gold, and Brent oil. Call for any question needing current macro NUMBERS —
   interest rates, inflation print, dollar strength, oil price — or as the numeric half of macro
   state for strategize (pair with news for narrative). NOT for: macro narrative, headlines, or
-  why markets moved (use news); individual stock prices (use stock-analyst); crypto market caps,
-  dominance, or breadth (use market-strategist); event odds like rate-cut probabilities (use
-  prediction).
+  why markets moved (use news); individual stock prices (use stock-analyst); market-implied
+  odds like rate-cut probabilities (use prediction).
 allowed-tools: bash read
 ---
 
@@ -27,7 +26,6 @@ Requires: an auth token (run `tribes-cli login` once if commands fail with auth 
   narrative half.
 - NOT for why markets moved, headlines, or macro sentiment — use `news`.
 - NOT for individual stock prices or candles — use `stock-analyst`.
-- NOT for crypto market cap, dominance, or rankings — use `market-strategist`.
 - NOT for market-implied odds of macro events (rate cuts, elections) — use `prediction`.
 
 ## Hard rules
@@ -112,5 +110,4 @@ tribes-cli macros market | jq '{vix: .vix.value, us10y: .yields.us10y, curve: .y
 - `news` — macro narrative, headlines, and sentiment (the other half of macro context).
 - `strategize` — consumes this snapshot plus `news` output when forming trade theses.
 - `prediction` — market-implied probabilities of macro events (rate cuts, elections).
-- `market-strategist` — crypto market-wide aggregates (caps, dominance, rankings).
 - `commodity-analyst` — turns gold, Brent, dollar, rates, and inflation context into a commodity thesis.

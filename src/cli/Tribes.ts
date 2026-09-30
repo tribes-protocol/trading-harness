@@ -15,16 +15,11 @@ import { ZodError } from 'zod'
 
 import { buildAssetCommand } from '@/cli/Asset'
 import { buildTokenDataCommand } from '@/cli/BirdeyeData'
-import { buildCoinCommand } from '@/cli/Coin'
-import { buildEnsCommand } from '@/cli/Ens'
-import { buildExchangesCommand } from '@/cli/Exchanges'
 import { buildHyperliquidCommand } from '@/cli/Hyperliquid'
 import { buildLoginCommand } from '@/cli/Login'
 import { buildMacrosCommand } from '@/cli/Macros'
-import { buildMarketCommand } from '@/cli/Market'
 import { buildNewsCommand } from '@/cli/News'
 import { buildNotifyCommand } from '@/cli/Notify'
-import { buildOnchainCommand } from '@/cli/Onchain'
 import { buildPredictionCommand } from '@/cli/Prediction'
 import { buildSmartMoneyCommand } from '@/cli/SmartMoney'
 import { buildSpotTradingCommand } from '@/cli/SpotTrading'
@@ -35,7 +30,6 @@ import { buildTrailingStopCommand } from '@/cli/TrailingStop'
 import { buildTransactionCommand } from '@/cli/Transaction'
 import { buildWalletCommand } from '@/cli/Wallet'
 import { buildWalletDataCommand } from '@/cli/WalletData'
-import { buildWebSearchCommand } from '@/cli/WebSearch'
 import { unwrapCause } from '@/helpers/Cause'
 
 const VERSION = '1.0.0'
@@ -56,19 +50,13 @@ function buildTribesCli(): Command {
   program.addCommand(buildAssetCommand())
   program.addCommand(buildNewsCommand())
   program.addCommand(buildMacrosCommand())
-  program.addCommand(buildMarketCommand())
-  program.addCommand(buildCoinCommand())
-  program.addCommand(buildOnchainCommand())
-  program.addCommand(buildExchangesCommand())
   program.addCommand(buildTokenDataCommand())
   program.addCommand(buildSmartMoneyCommand())
   program.addCommand(buildWalletDataCommand())
   program.addCommand(buildTrailingStopCommand())
   program.addCommand(buildStocksCommand())
-  program.addCommand(buildEnsCommand())
   program.addCommand(buildTaCommand())
   program.addCommand(buildTokenCommand())
-  program.addCommand(buildWebSearchCommand())
   program.addCommand(buildPredictionCommand())
 
   program.addCommand(buildLoginCommand())

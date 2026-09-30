@@ -81,15 +81,12 @@ the legs return because it needs the complete candidate list.
    supply disruptions). Cite the leading outcome and probability only when the market is active
    and relevant; odds are supporting evidence, never a stand-alone trade signal.
 
-4. Crypto ideas (structured JSON — interpret the numbers yourself, per the market-strategist
-   and alpha-scout skills):
+4. Crypto ideas (structured JSON — interpret the numbers yourself, per the alpha-scout skill):
 
    ```bash
-   tribes-cli market movers --duration 24h
-   tribes-cli market global
-   tribes-cli market categories --limit 30
    tribes-cli smart-money netflow --limit 20
    tribes-cli token-data trending
+   tribes-cli asset trending --chain solana --limit 10
    ```
 
 5. Securities ideas (per the stock-analyst skill — movers and quotes have no native command,
@@ -203,7 +200,7 @@ only; NEVER commit journal files.
 - `news` — asset narrative and the fallback chain for commodity news.
 - `prediction` — event-odds context.
 - `thesis` — sends the strongest candidate to the bull-vs-bear desk before any entry.
-- `market-strategist` and `alpha-scout` — crypto ideas legs.
+- `alpha-scout` — crypto ideas leg.
 - `stock-analyst` — securities ideas leg.
 - `commodity-analyst` — commodity ideas leg and commodity-specific research path.
 - `hyperliquid` — all-dex discovery and the final venue-quality filter.

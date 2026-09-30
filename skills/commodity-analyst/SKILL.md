@@ -66,24 +66,19 @@ macro series as a stated gap; do not replace it with a stale value.
 
 ### 3. Research supply, demand, and the catalyst calendar
 
-```bash
-tribes-cli web-search search \
-  --query "{COMMODITY} supply demand inventories policy weather geopolitical drivers scheduled catalysts {HORIZON}"
-tribes-cli web-search extract --url "{PRIMARY_OR_INDUSTRY_SOURCE_URL}"
-```
+The first hop of the `news` skill's fallback chain covers commodities: run
+`zipbox-websearch search` for `"{COMMODITY} supply demand inventories policy weather geopolitical drivers scheduled catalysts {HORIZON}"` and `zipbox-websearch extract` on the
+primary or industry sources it returns.
 
 Extract the 1–3 most primary or industry sources from the results, keep the URL for each claim,
-and state yourself what would support or invalidate a {SIDE} thesis (the `research-analyst`
-composition pattern).
+and state yourself what would support or invalidate a {SIDE} thesis.
 
 This is the source-backed structural leg. It is not a price or venue-data substitute.
 
 ### 4. Collect commodity headlines through the news fallback
 
-```bash
-tribes-cli web-search search \
-  --query "{COMMODITY} supply demand inventories policy weather geopolitics market news {HORIZON}"
-```
+Run the `news` skill's commodity fallback (`zipbox-websearch search` with a
+`"{COMMODITY} … market news {HORIZON}"` query, then `extract` on the strongest hit).
 
 Retain recent, attributable headlines and cross-check the strongest claim against a primary or
 industry source. If a selected source is blocked or JS-rendered, use `zipbox-browser`; do not bypass a
@@ -138,7 +133,6 @@ GAPS: <unavailable source, missing market data, or none>
 | Symptom                                  | Action                                                                         |
 | ---------------------------------------- | ------------------------------------------------------------------------------ |
 | Auth error (unauthorized, expired token) | Run `tribes-cli login`, retry the original command once, then stop and report. |
-| Research analyst fails                   | Retry once; then use the news fallback and state the research gap.             |
 | Search or source is blocked              | Use `zipbox-browser` for that URL only; never bypass access controls.          |
 | Market data is absent or inconsistent    | Keep it watchlist-only and refine once for a liquid listed substitute.         |
 
@@ -146,9 +140,7 @@ GAPS: <unavailable source, missing market data, or none>
 
 - `macros` — numeric gold, Brent, rates, dollar, inflation, and volatility context.
 - `news` — owns the commodity-news fallback sequence.
-- `research-analyst` — cited supply/demand and policy research.
-- `zipbox-websearch` — first fallback hop for commodity headlines. Outside a sandbox,
-  `tribes-cli web-search` is the same backend.
+- `zipbox-websearch` — first fallback hop for commodity headlines.
 - `zipbox-browser` — only for JS-gated or blocked sources. Outside a sandbox it has no equivalent,
   so that hop is unavailable rather than stale.
 - `technical-analyst` — trend, volatility, entry, target, and invalidation analysis.

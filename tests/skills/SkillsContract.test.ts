@@ -96,7 +96,7 @@ describe('skill docs contract', () => {
   const slugs = skillSlugs()
 
   it('has a SKILL.md in every skill directory', () => {
-    expect(slugs.length).toBeGreaterThanOrEqual(20)
+    expect(slugs.length).toBeGreaterThanOrEqual(19)
     for (const slug of slugs) {
       expect(() => statSync(join(SKILLS_DIR, slug, 'SKILL.md')), slug).not.toThrow()
     }

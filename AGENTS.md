@@ -58,7 +58,7 @@ Today's date is not something you can assume — you do not have a reliable inte
 
 ## Refine analyst answers before finishing
 
-The analyst skills (`alpha-scout`, `token-analyst`, `defi-analyst`, and the rest) are data
+The analyst skills (`alpha-scout`, `token-analyst`, `asset-data`, and the rest) are data
 commands plus **your** interpretation — there is no backend specialist to finish the thinking
 for you. A first pass that merely reprints one command's JSON is not decision-grade.
 
@@ -135,17 +135,15 @@ Pick the skill with these tie-breaker rules, in order:
   `hyperliquid` (they are Hyperliquid perps). Commodities → `commodity-analyst` for the research
   path, then `hyperliquid` for the venue-quality check and execution. Crypto → the table below.
   Unscoped discovery → all three classes (cross-asset guardrail above).
-- **R3 — One asset vs market-wide.** One identified token → `token-analyst` (on-chain) or
-  `fundamentals-analyst` (research profile). Market-wide aggregates/rankings →
-  `market-strategist`. No specific asset chosen yet → `alpha-scout`.
+- **R3 — One asset vs market-wide.** One identified token → `token-analyst` (on-chain).
+  Market-wide state and briefing inputs → `strategize` (composes macro, news, odds, and
+  idea legs); there is no CoinGecko ranking-table command left in this catalog. No specific
+  asset chosen yet → `alpha-scout`.
 - **R4 — Data vs computation.** Indicator values, signals, setups, or backtests → `technical-analyst`
   regardless of asset class. Raw prices/candles only → the asset's data skill.
 - **External info precedence:** `news` first for market/asset news and sentiment →
-  `research-analyst` for source-backed finance research and ENS → `zipbox-websearch` as last
-  resort or to read a specific URL → `zipbox-browser` only for JS-gated or fetch-blocked pages.
-  Outside a Tribes sandbox `zipbox-websearch` has no credential; `tribes-cli web-search search`
-  and `tribes-cli web-search extract` are the same backend and keep working there after
-  `tribes-cli login`. `zipbox-browser` has no such fallback: it assumes the baked sandbox runtime
+  `zipbox-websearch` as last resort or to read a specific URL → `zipbox-browser` only for
+  JS-gated or fetch-blocked pages. `zipbox-browser` has no fallback: it assumes the baked sandbox runtime
   and no `tribes-cli browser` command exists, so outside a Tribes sandbox the browser route is
   unavailable — say the page needs a browser this environment does not have and answer from the
   fetch path. A missing baked command outside a sandbox means the runtime was never baked, NOT that
@@ -154,36 +152,31 @@ Pick the skill with these tie-breaker rules, in order:
   (that is `news`) or market, token, or stock data (that is the matching analyst skill) — it is
   for pages the fetch path cannot render, not a way around the finance routing above.
 
-| Intent                                                                             | Skill                  |
-| ---------------------------------------------------------------------------------- | ---------------------- |
-| Any asset's price, candles, profile, search, trending, new, holders (default path) | `asset-data`           |
-| One crypto token: price, chart, safety, trades, holders                            | `token-analyst`        |
-| One coin: profile, links, supply, historical charts, where listed                  | `fundamentals-analyst` |
-| Trending tokens, new listings, smart-money flows                                   | `alpha-scout`          |
-| Global caps, dominance, rankings, crypto top movers                                | `market-strategist`    |
-| Stock or security prices, candles, issuer detail                                   | `stock-analyst`        |
-| Commodity candidate research, macro drivers, and venue-quality scan                | `commodity-analyst`    |
-| Indicators, signals, backtests (any asset)                                         | `technical-analyst`    |
-| Liquidity pools, DEX pairs, TVL                                                    | `defi-analyst`         |
-| CEX rankings, derivatives open interest, public treasuries                         | `exchange-analyst`     |
-| Numeric macro indicators (CPI, yields, VIX, DXY)                                   | `macros`               |
-| Market news, catalysts, sentiment (crypto, securities, commodities)                | `news`                 |
-| Event odds and prediction markets                                                  | `prediction`           |
-| Deep finance research, ENS resolution                                              | `research-analyst`     |
-| Full market briefing (macro + news + odds + ideas)                                 | `strategize`           |
-| What to trade / is this trade worth taking (bull-bear debate)                      | `thesis`               |
-| Wallet addresses, wallet IDs, raw balances (pre-trade)                             | `zipbox-wallet`        |
-| Third-party wallet balances, PnL, transaction/counterparty history                 | `wallet-analyst`       |
-| Hyperliquid markets, perp/HL-spot orders, deposits, all security/commodity trades  | `hyperliquid`          |
-| End-to-end trade with pre/post checks                                              | `trade-execution`      |
-| Stops, leverage, liquidation distance, closing positions                           | `position-management`  |
-| Arm, monitor, and exit a trailing stop on an open perp position                    | `trailing-stop`        |
-| On-chain DEX swap or cross-chain bridge                                            | `spot-trading`         |
-| Broadcast a prepared transaction, check tx status                                  | `zipbox-wallet`        |
-| General web lookup or read one URL                                                 | `zipbox-websearch`     |
-| JS-gated or fetch-blocked pages, UI automation                                     | `zipbox-browser`       |
-| Alert the human: long job finished, needs attention                                | `zipbox-notify`        |
-| Shape every reply for an ADHD reader (applies to all output)                       | `i-have-adhd`          |
+| Intent                                                                             | Skill                 |
+| ---------------------------------------------------------------------------------- | --------------------- |
+| Any asset's price, candles, profile, search, trending, new, holders (default path) | `asset-data`          |
+| One crypto token: price, chart, safety, trades, holders                            | `token-analyst`       |
+| Trending tokens, new listings, smart-money flows                                   | `alpha-scout`         |
+| Stock or security prices, candles, issuer detail                                   | `stock-analyst`       |
+| Commodity candidate research, macro drivers, and venue-quality scan                | `commodity-analyst`   |
+| Indicators, signals, backtests (any asset)                                         | `technical-analyst`   |
+| Numeric macro indicators (CPI, yields, VIX, DXY)                                   | `macros`              |
+| Market news, catalysts, sentiment (crypto, securities, commodities)                | `news`                |
+| Event odds and prediction markets                                                  | `prediction`          |
+| Full market briefing (macro + news + odds + ideas)                                 | `strategize`          |
+| What to trade / is this trade worth taking (bull-bear debate)                      | `thesis`              |
+| Wallet addresses, wallet IDs, raw balances (pre-trade)                             | `zipbox-wallet`       |
+| Third-party wallet balances, PnL, transaction/counterparty history                 | `wallet-analyst`      |
+| Hyperliquid markets, perp/HL-spot orders, deposits, all security/commodity trades  | `hyperliquid`         |
+| End-to-end trade with pre/post checks                                              | `trade-execution`     |
+| Stops, leverage, liquidation distance, closing positions                           | `position-management` |
+| Arm, monitor, and exit a trailing stop on an open perp position                    | `trailing-stop`       |
+| On-chain DEX swap or cross-chain bridge                                            | `spot-trading`        |
+| Broadcast a prepared transaction, check tx status                                  | `zipbox-wallet`       |
+| General web lookup or read one URL                                                 | `zipbox-websearch`    |
+| JS-gated or fetch-blocked pages, UI automation                                     | `zipbox-browser`      |
+| Alert the human: long job finished, needs attention                                | `zipbox-notify`       |
+| Shape every reply for an ADHD reader (applies to all output)                       | `i-have-adhd`         |
 
 ### Platform-provided skills
 
@@ -250,8 +243,7 @@ catalog.
 The shared `zipbox-*` catalog is NOT vendored here. The sandbox platform delivers it at
 `~/.agents/skills`, which Pi reads natively, so the routing map below points at skills that exist
 at that path rather than under `skills/`. Outside a Tribes sandbox that catalog may be absent, and
-the skills that wrap baked sandbox CLIs (for example `zipbox-browser`) do not work there at all;
-`tribes-cli web-search` is the non-sandbox fallback for the web route.
+the skills that wrap baked sandbox CLIs (for example `zipbox-browser`) do not work there at all.
 
 If your client reads skills from a directory that this repo does not already provide, symlink it
 to the repo-root `skills/` directory (`ln -s ../skills .<client>/skills`).
@@ -330,7 +322,7 @@ Services are dependency-injected by hand. A CLI builder constructs the services 
 
 ### Adding a new provider-backed capability
 
-Each data capability is a direct-provider slice: a PascalCase service in `src/services` (named-params ctor taking `{ apiKey }` for keyed providers, private fetch, zod-parsed compact snake_case output), schemas in `src/types`, a `build…Command()` builder in `src/cli` composed into `Tribes.ts` (every subcommand structured JSON + `--out`), tests in `tests/services`, and a doc-only `SKILL.md` under `skills/<slug>/` plus a routing-map row here. `MarketService` / `tribes-cli market` is the reference slice. Provider key env-var names must match the control plane's egress billing entries so in-VM placeholder injection works.
+Each data capability is a direct-provider slice: a PascalCase service in `src/services` (named-params ctor taking `{ apiKey }` for keyed providers, private fetch, zod-parsed compact snake_case output), schemas in `src/types`, a `build…Command()` builder in `src/cli` composed into `Tribes.ts` (every subcommand structured JSON + `--out`), tests in `tests/services`, and a doc-only `SKILL.md` under `skills/<slug>/` plus a routing-map row here. `BirdeyeService` / `tribes-cli token-data` is the reference slice. Provider key env-var names must match the control plane's egress billing entries so in-VM placeholder injection works.
 
 ### Pi extensions
 

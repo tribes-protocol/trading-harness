@@ -6,8 +6,7 @@ description: >-
   status — the freshest price is the latest daily close from candles; say so plainly. Call for
   any stock/equity data question. NOT for: indicator values, signals, or backtests (use
   technical-analyst); stock news, catalysts, and sentiment (use news); executing stock trades
-  (use hyperliquid — stocks are Hyperliquid perps); crypto movers or rankings (use
-  market-strategist).
+  (use hyperliquid — stocks are Hyperliquid perps); crypto market-wide data (use strategize).
 allowed-tools: bash read
 ---
 
@@ -34,7 +33,8 @@ specialist behind this skill and no `ask` subcommand.
   `tribes-cli ta`.
 - NOT for stock news, catalysts, or sentiment — use `news`.
 - NOT for placing or sizing stock trades — use `hyperliquid` (stocks are Hyperliquid perps).
-- NOT for crypto movers or market-wide crypto data — use `market-strategist`.
+- NOT for crypto market-wide data or briefings — use `strategize` (or the `alpha-scout`
+  crypto-ideas leg for unscoped discovery).
 
 ## Hard rules
 
@@ -45,7 +45,7 @@ specialist behind this skill and no `ask` subcommand.
 3. Candles are daily EOD only (`--interval` supports only `1d`). There is no intraday
    candle data — always state that candle figures are end-of-day closes.
 4. Relay exact figures with the timeframe and direction of change, never approximations.
-5. For unscoped movers/discovery requests, also run crypto via `market-strategist` and
+5. For unscoped movers/discovery requests, also run a crypto-ideas pass via `alpha-scout` and
    commodities via `commodity-analyst` (cross-asset guardrail, see AGENTS.md).
 6. Apply the Hyperliquid tradability guardrail before pitching trade ideas: verify with
    `hyperliquid list-assets --all-dexes` and split actionable, watchlist-only, and
@@ -115,5 +115,4 @@ or backtests on the same file, use `technical-analyst`.
 - `technical-analyst` — indicator computation, signals, and backtests on candle files from here.
 - `news` — stock news, catalysts, and sentiment for a ticker.
 - `hyperliquid` — discover the hosting dex and execute stock trades as Hyperliquid perps.
-- `market-strategist` — crypto movers, rankings, and market-wide aggregates.
 - `commodity-analyst` — the commodities pass for unscoped movers/opportunity questions.

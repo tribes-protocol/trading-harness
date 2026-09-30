@@ -4,19 +4,15 @@ description: >-
   Deep-dives into ONE identified token using real-time on-chain data. Handles: live and
   historical on-chain prices and OHLCV candles, security and rug-risk audits (owner/creator,
   mint/freeze authority, top-holder concentration), on-chain trades and volume, holder tables,
-  smart-money and whale flow on the token, contract-to-CoinGecko mapping,
-  and name-to-address resolution. Call for any question about a specific token's price, safety,
-  trades, holders, or flows. NOT for: coin profiles, supply trends, or exchange listings (use
-  fundamentals-analyst); trending or new-token discovery (use alpha-scout); market-wide
-  rankings or multi-coin CoinGecko prices (use market-strategist); pool or DEX analysis (use
-  defi-analyst).
+  smart-money and whale flow on the token, and name-to-address resolution. Call for any question
+  about a specific token's price, safety, trades, holders, or flows. NOT for: trending or
+  new-token discovery (use alpha-scout); market-wide briefings (use strategize).
 allowed-tools: bash read
 ---
 
 # Token Analyst
 
-Backing command groups: `tribes-cli token-data` (BirdEye per-token data), plus
-`tribes-cli coin contract` (map a contract address to its CoinGecko profile) and
+Backing command groups: `tribes-cli token-data` (BirdEye per-token data) plus
 `tribes-cli smart-money flow-intelligence` (Nansen per-cohort flows on one token) — all
 structured JSON, answering in seconds. YOU are the analyst: pull the numbers with the
 subcommands below and do the interpretation — safety verdict, flow read, price narrative —
@@ -24,7 +20,7 @@ yourself. There is no backend specialist behind this skill.
 
 ## Generic data path
 
-Price and candles DEFAULT to the generic router — automatic BirdEye→CoinGecko fallback, one
+Price and candles DEFAULT to the generic router — BirdEye-backed with automatic fallback, one
 payload shape either way, and every response carries `source` (who answered) plus `attempted`
 (the fallback trail):
 
@@ -41,18 +37,19 @@ BirdEye specifically (no fallback). Full `asset` docs live in the `asset-data` s
 
 - Current price, liquidity, and volume snapshot for one identified token (`overview`,
   `asset price`; `token-data price` for direct BirdEye).
-- Security and rug-risk audit before touching a token (`security` + `holders` + `coin contract`).
+- Security and rug-risk audit before touching a token (`security` + `holders`).
 - On-chain trade flow and whale/smart-money buys and sells (`trades` +
   `smart-money flow-intelligence`); a specific wallet's holdings live in `wallet-analyst`
   (`wallet-data net-worth`).
 - Historical candles for one token (`asset candles`; `token-data ohlcv` for direct BirdEye),
   chained into `ta` for indicator math.
-- NOT for coin profiles, supply trends, or exchange listings — use `fundamentals-analyst`.
+- NOT for coin profiles, supply trends, or exchange-listing histories — `asset profile
+--address --chain` covers the profile block; anything deeper has no command left in this catalog.
 - NOT for trending tokens, new listings, or smart-money discovery — use `alpha-scout`
   (`token-data trending` and `new-listings` exist here, but discovery workflows live there).
-- NOT for market-wide rankings, top movers, or multi-coin CoinGecko price tables — use
-  `market-strategist`.
-- NOT for pool, pair, or DEX questions — use `defi-analyst`.
+- NOT for market-wide briefings — use `strategize`.
+- Pool, pair, or DEX questions — `asset candles --pool --chain` gives pair charts; there is no
+  separate pool skill left in this catalog.
 
 ## Hard rules
 
@@ -95,11 +92,10 @@ Under `tribes-cli token-data`; every subcommand accepts `--out <file>` and (unle
 
 Companion commands (same JSON + `--out` contract):
 
-| Command                                    | Purpose                                                    | Required flags            | Useful flags                                       |
-| ------------------------------------------ | ---------------------------------------------------------- | ------------------------- | -------------------------------------------------- |
-| `tribes-cli coin contract`                 | Resolve a contract address to a coin id + core market data | `--platform`, `--address` |                                                    |
-| `tribes-cli smart-money flow-intelligence` | Per-cohort netflows (smart traders, whales, exchanges)     | `--token`, `--chain`      | `--timeframe 5m\|1h\|6h\|12h\|1d\|7d` (default 1d) |
-| `tribes-cli token search`                  | Resolve a name/symbol to chain + address                   | `--query`                 | full docs in the `spot-trading` skill              |
+| Command                                    | Purpose                                                | Required flags       | Useful flags                                       |
+| ------------------------------------------ | ------------------------------------------------------ | -------------------- | -------------------------------------------------- |
+| `tribes-cli smart-money flow-intelligence` | Per-cohort netflows (smart traders, whales, exchanges) | `--token`, `--chain` | `--timeframe 5m\|1h\|6h\|12h\|1d\|7d` (default 1d) |
+| `tribes-cli token search`                  | Resolve a name/symbol to chain + address               | `--query`            | full docs in the `spot-trading` skill              |
 
 ## Examples
 
@@ -120,11 +116,10 @@ selling (smart traders vs whales vs exchanges) from `flow-intelligence`.
 ```bash
 tribes-cli token-data security --address 0x6982508145454ce325ddbe47a25d4ec3d2311933 --chain ethereum
 tribes-cli token-data holders --address 0x6982508145454ce325ddbe47a25d4ec3d2311933 --chain ethereum --limit 50
-tribes-cli coin contract --platform ethereum --address 0x6982508145454ce325ddbe47a25d4ec3d2311933
 ```
 
-Combine mint/freeze flags and owner/creator from `security`, concentration from `holders`, and
-the CoinGecko identity check from `coin contract` into one verdict.
+Combine mint/freeze flags and owner/creator from `security` with concentration from `holders`
+into one verdict.
 
 ### Ambiguous symbol — resolve first, then pull data
 
@@ -155,9 +150,6 @@ does the same via BirdEye directly) — indicator math, levels, and backtests li
 
 ## Related skills
 
-- `fundamentals-analyst` — CoinGecko research profile of one listed coin.
 - `alpha-scout` — discovery before a specific token is chosen.
-- `market-strategist` — market-wide aggregates, rankings, and movers.
-- `defi-analyst` — pools, pairs, and DEX activity.
 - `technical-analyst` — indicator math, levels, and backtests on `ohlcv --out` candle files.
 - `hyperliquid` — all-dex tradability check before trade ideas.

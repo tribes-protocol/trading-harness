@@ -1,7 +1,5 @@
 import { z } from 'zod'
 
-import { CoinDaysSchema } from '@/types/Coin'
-
 // ---------------------------------------------------------------------------
 // Unified capability payloads printed by `tribes-cli asset`. One shape per
 // capability regardless of which provider answered; every response carries the
@@ -40,7 +38,7 @@ const CapabilityEnvelopeSchema = z.object({
 export const AssetTimeframeSchema = z.enum(['1m', '5m', '15m', '1h', '4h', '1d', '1w'])
 export type AssetTimeframe = z.infer<typeof AssetTimeframeSchema>
 
-export const AssetSpaceSchema = z.enum(['onchain', 'coins'])
+export const AssetSpaceSchema = z.enum(['onchain'])
 export type AssetSpace = z.infer<typeof AssetSpaceSchema>
 
 // --- price ---------------------------------------------------------------
@@ -227,7 +225,6 @@ const OutOptionSchema = z.string().nullish()
 type IdentifierOptions = {
   readonly address?: string | null | undefined
   readonly chain?: string | null | undefined
-  readonly id?: string | null | undefined
   readonly ticker?: string | null | undefined
   readonly perp?: string | null | undefined
   readonly pool?: string | null | undefined
@@ -240,7 +237,6 @@ function refineIdentifierForms(
 ): void {
   const flags: Array<[string, string | null | undefined]> = [
     ['--address', options.address],
-    ['--id', options.id],
     ['--ticker', options.ticker],
     ['--perp', options.perp],
     ['--pool', options.pool]
@@ -274,7 +270,6 @@ function refineIdentifierForms(
 const AssetPriceCommandOptionsBaseSchema = z.object({
   address: IdentifierOptionSchema,
   chain: IdentifierOptionSchema,
-  id: IdentifierOptionSchema,
   ticker: IdentifierOptionSchema,
   perp: IdentifierOptionSchema,
   out: OutOptionSchema
@@ -282,7 +277,7 @@ const AssetPriceCommandOptionsBaseSchema = z.object({
 
 export const AssetPriceCommandOptionsSchema = AssetPriceCommandOptionsBaseSchema.superRefine(
   (options, ctx) => {
-    refineIdentifierForms(options, ctx, ['--address --chain', '--id', '--ticker', '--perp'])
+    refineIdentifierForms(options, ctx, ['--address --chain', '--ticker', '--perp'])
   }
 )
 export type AssetPriceCommandOptions = z.infer<typeof AssetPriceCommandOptionsSchema>
@@ -290,38 +285,15 @@ export type AssetPriceCommandOptions = z.infer<typeof AssetPriceCommandOptionsSc
 const AssetCandlesCommandOptionsBaseSchema = z.object({
   address: IdentifierOptionSchema,
   chain: IdentifierOptionSchema,
-  id: IdentifierOptionSchema,
   ticker: IdentifierOptionSchema,
   pool: IdentifierOptionSchema,
   timeframe: AssetTimeframeSchema.nullish(),
-  days: CoinDaysSchema.nullish(),
   out: OutOptionSchema
 })
 
 export const AssetCandlesCommandOptionsSchema = AssetCandlesCommandOptionsBaseSchema.superRefine(
   (options, ctx) => {
-    refineIdentifierForms(options, ctx, ['--address --chain', '--id', '--ticker', '--pool --chain'])
-    if (
-      options.days !== null &&
-      options.days !== undefined &&
-      (options.id === null || options.id === undefined)
-    ) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: '--days applies only to --id (CoinGecko coin OHLC); use --timeframe otherwise'
-      })
-    }
-    if (
-      options.timeframe !== null &&
-      options.timeframe !== undefined &&
-      options.id !== null &&
-      options.id !== undefined
-    ) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: '--timeframe does not apply to --id; use --days'
-      })
-    }
+    refineIdentifierForms(options, ctx, ['--address --chain', '--ticker', '--pool --chain'])
     if (
       options.ticker !== null &&
       options.ticker !== undefined &&
@@ -341,39 +313,25 @@ export type AssetCandlesCommandOptions = z.infer<typeof AssetCandlesCommandOptio
 const AssetProfileCommandOptionsBaseSchema = z.object({
   address: IdentifierOptionSchema,
   chain: IdentifierOptionSchema,
-  id: IdentifierOptionSchema,
   ticker: IdentifierOptionSchema,
   out: OutOptionSchema
 })
 
 export const AssetProfileCommandOptionsSchema = AssetProfileCommandOptionsBaseSchema.superRefine(
   (options, ctx) => {
-    refineIdentifierForms(options, ctx, ['--address --chain', '--id', '--ticker'])
+    refineIdentifierForms(options, ctx, ['--address --chain', '--ticker'])
   }
 )
 export type AssetProfileCommandOptions = z.infer<typeof AssetProfileCommandOptionsSchema>
 
-const AssetTrendingCommandOptionsBaseSchema = z.object({
-  space: AssetSpaceSchema.nullish(),
+export const AssetTrendingCommandOptionsSchema = z.object({
   chain: IdentifierOptionSchema,
   limit: z.number().int().min(1).max(50).nullish(),
   out: OutOptionSchema
 })
-
-export const AssetTrendingCommandOptionsSchema = AssetTrendingCommandOptionsBaseSchema.superRefine(
-  (options, ctx) => {
-    if (options.space === 'coins' && options.chain !== null && options.chain !== undefined) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: '--chain applies only to --space onchain'
-      })
-    }
-  }
-)
 export type AssetTrendingCommandOptions = z.infer<typeof AssetTrendingCommandOptionsSchema>
 
 export const AssetNewCommandOptionsSchema = z.object({
-  space: AssetSpaceSchema.nullish(),
   limit: z.number().int().min(1).max(50).nullish(),
   out: OutOptionSchema
 })
@@ -381,7 +339,7 @@ export type AssetNewCommandOptions = z.infer<typeof AssetNewCommandOptionsSchema
 
 export const AssetSearchCommandOptionsSchema = z.object({
   query: z.string().min(1),
-  chain: IdentifierOptionSchema,
+  chain: z.string().min(1),
   limit: z.number().int().min(1).max(50).nullish(),
   out: OutOptionSchema
 })

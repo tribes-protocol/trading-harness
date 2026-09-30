@@ -7,9 +7,8 @@ description: >-
   computed locally from OHLCV candles, swing support/resistance levels, multi-indicator
   confluence reads, and long-only backtests of two built-in strategies (SMA cross,
   RSI mean-revert). Call whenever the question is an indicator value, signal, setup, level, or
-  backtest. NOT for: raw prices or candles with no indicator math (use stock-analyst,
-  fundamentals-analyst, or token-analyst); stock prices or candles (use stock-analyst); asset
-  news (use news); pool OHLCV charts (use defi-analyst).
+  backtest. NOT for: raw prices or candles with no indicator math (use stock-analyst or
+  token-analyst); stock prices or candles (use stock-analyst); asset news (use news).
 allowed-tools: bash read
 ---
 
@@ -34,13 +33,13 @@ the shared candle contract, which is exactly what `--candles-file` expects:
 { "source": "<provider>", "candles": [{ "t": 0, "o": 0, "h": 0, "l": 0, "c": 0, "v": 0 }] }
 ```
 
-`t` is epoch ms; `v` may be absent (coin-id candles — `asset candles --id` / `coin ohlc` —
-have no volume; skip `vwap` on those files).
+`t` is epoch ms; `v` may be absent on some sources (e.g. stock EOD rows) — skip `vwap` on
+those files.
 
-Candle COUNT is not the requested day count. Providers cap granularity — `coin ohlc --days 365`
-returns far fewer than 365 daily candles (often ~90). Before reporting a backtest span or a
-"lookback", read the FIRST and LAST candle `t` in the file and state the real date range and
-candle count. Never equate `--days N` with "N candles" or "N days of history" — a 92-candle
+Candle COUNT is not the requested window. Providers cap granularity — a `--limit 100` stock
+fetch returns 100 rows at most, and some historical windows truncate. Before reporting a
+backtest span or a "lookback", read the FIRST and LAST candle `t` in the file and state the
+real date range and candle count. Never equate a count with a date range — a 92-candle
 daily series is ~3 months, not a year, and any regime conclusion must match the true window.
 
 ## When to use
@@ -54,11 +53,12 @@ daily series is ~3 months, not a year, and any regime conclusion must match the 
   No need to fall back to the on-chain proxy for perps.
 - Commodities: no direct candle source — use an ETF proxy via `asset candles --ticker` (e.g.
   GLD for gold) and state the proxy in your answer.
-- NOT for raw candles or price history as the answer itself — use `fundamentals-analyst` or
-  `stock-analyst`.
+- NOT for raw candles or price history as the answer itself — use `stock-analyst`, or the
+  candle sources below for tokens.
 - NOT for one token's live price, safety, or on-chain trades — use `token-analyst`.
 - NOT for stock prices, candles, or ticker details — use `stock-analyst`; stock news — use `news`.
-- NOT for pool or pair OHLCV charts as a deliverable — use `defi-analyst`.
+- Pool or pair OHLCV charts as a deliverable: `asset candles --pool --chain` covers them
+  (BirdEye pair OHLCV); there is no separate pool-chart skill.
 
 ## Hard rules
 
@@ -94,27 +94,28 @@ Default: `tribes-cli asset candles` — one line per asset class, automatic prov
 `source` in the file says who answered (full docs in the `asset-data` skill):
 
 ```bash
-tribes-cli asset candles --address <address> --chain <chain> --timeframe 4H --out <file>  # contract token
-tribes-cli asset candles --id <coin-id> --days 90 --out <file>                            # CoinGecko coin
+tribes-cli asset candles --address <address> --chain <chain> --timeframe 4h --out <file>  # contract token
 tribes-cli asset candles --ticker <SYMBOL> --out <file>                                   # stock (daily)
+tribes-cli asset candles --pool <pair-address> --chain <chain> --timeframe 1h --out <file> # DEX pair
 ```
 
 Fallback / manual path — the direct provider commands, for when you need one specific
-provider or a source the router does not cover (DEX pools):
+provider or a source the generic router does not cover:
 
-| Asset                  | Command                         | Required flags                                            | Useful flags                                               |
-| ---------------------- | ------------------------------- | --------------------------------------------------------- | ---------------------------------------------------------- |
-| Crypto token (address) | `tribes-cli token-data ohlcv`   | `--address`, `--timeframe 1m\|5m\|15m\|1H\|4H\|1D\|1W`    | `--chain` (default solana), `--from`/`--to` (epoch s)      |
-| Coin (CoinGecko id)    | `tribes-cli coin ohlc`          | `--id`, `--days 1\|7\|14\|30\|90\|180\|365\|max`          | no volume — skip `vwap`                                    |
-| DEX pool               | `tribes-cli onchain pool-ohlcv` | `--network`, `--address`, `--timeframe minute\|hour\|day` | `--aggregate <n>` (e.g. 4 for 4h), `--limit` (default 100) |
-| Stock (daily only)     | `tribes-cli stocks candles`     | `--symbol`                                                | `--from`/`--to` (YYYY-MM-DD), `--limit` (default 100)      |
+| Asset                  | Command                       | Required flags                                         | Useful flags                                          |
+| ---------------------- | ----------------------------- | ------------------------------------------------------ | ----------------------------------------------------- |
+| Crypto token (address) | `tribes-cli token-data ohlcv` | `--address`, `--timeframe 1m\|5m\|15m\|1H\|4H\|1D\|1W` | `--chain` (default solana), `--from`/`--to` (epoch s) |
+| Stock (daily only)     | `tribes-cli stocks candles`   | `--symbol`                                             | `--from`/`--to` (YYYY-MM-DD), `--limit` (default 100) |
+
+The generic `asset candles` route (`--address --chain`, `--ticker`, `--pool --chain`)
+covers the same ground with automatic provider fallback.
 
 ## Examples
 
 ### Crypto confluence read (major coin, 4H via token candles)
 
 ```bash
-tribes-cli asset candles --address <token-address> --chain ethereum --timeframe 4H --out /tmp/tok-4h.json
+tribes-cli asset candles --address <token-address> --chain ethereum --timeframe 4h --out /tmp/tok-4h.json
 tribes-cli ta indicators --candles-file /tmp/tok-4h.json --set rsi,macd,atr
 tribes-cli ta levels --candles-file /tmp/tok-4h.json
 ```
@@ -129,11 +130,11 @@ tribes-cli asset candles --ticker TSLA --out /tmp/tsla-1d.json
 tribes-cli ta indicators --candles-file /tmp/tsla-1d.json --set bb,ema,stoch
 ```
 
-### Backtest (RSI mean-revert on BTC, 90 days of daily candles)
+### Backtest (RSI mean-revert on SOL, ~90 days of daily candles)
 
 ```bash
-tribes-cli asset candles --id bitcoin --days 90 --out /tmp/btc-90d.json
-tribes-cli ta backtest --candles-file /tmp/btc-90d.json --strategy rsi-revert --rsi-low 30 --rsi-high 70
+tribes-cli token-data ohlcv --address So11111111111111111111111111111111111111112 --chain solana --timeframe 1D --from 1751500000 --to 1779500000 --out /tmp/sol-1d.json
+tribes-cli ta backtest --candles-file /tmp/sol-1d.json --strategy rsi-revert --rsi-low 30 --rsi-high 70
 ```
 
 Report win rate, total return vs buy-and-hold, and max drawdown straight from the JSON.
@@ -152,7 +153,5 @@ Report win rate, total return vs buy-and-hold, and max drawdown straight from th
 ## Related skills
 
 - `stock-analyst` — stock daily candles, ticker details, and search (Marketstack).
-- `fundamentals-analyst` — raw coin OHLCV candles and historical charts (no indicator math).
-- `defi-analyst` — pool discovery and pool charts as a deliverable.
 - `strategize` — turns TA reads into a trade plan.
 - `hyperliquid` — tradability check and execution for TA-based trade ideas.
